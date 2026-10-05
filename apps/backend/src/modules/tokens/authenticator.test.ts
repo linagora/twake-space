@@ -1,5 +1,13 @@
 import { eq } from 'drizzle-orm'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi
+} from 'vitest'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { sha256 } from '../auth/authenticator.ts'
 import { apiTokenAuthenticator } from './authenticator.ts'
@@ -41,7 +49,38 @@ async function aToken(
   }
 }
 
-const authenticate = (token: string) => apiTokenAuthenticator(testDb.db)(token)
+const authenticate = (token: string) =>
+  apiTokenAuthenticator(testDb.db, {
+    isTechnicalAccount: () => Promise.reject(new Error('not technical'))
+  })(token)
+
+describe('technical accounts', () => {
+  it('refuses the token once the account is gone, checking every 5 minutes', async () => {
+    await aToken('tws_ci', { technical: true })
+    const isTechnicalAccount = vi
+      .fn<() => Promise<boolean>>()
+      .mockResolvedValueOnce(true)
+      .mockResolvedValue(false)
+    let now = 0
+    const check = apiTokenAuthenticator(
+      testDb.db,
+      { isTechnicalAccount },
+      () => now
+    )
+
+    const first = await check('tws_ci')
+    now += 4 * 60_000
+    const cached = await check('tws_ci')
+    now += 2 * 60_000
+    const gone = await check('tws_ci')
+
+    expect(first).toMatchObject({ userId: ALICE })
+    expect(cached).toMatchObject({ userId: ALICE })
+    expect(gone).toBeNull()
+    expect(isTechnicalAccount).toHaveBeenCalledTimes(2)
+    expect(isTechnicalAccount).toHaveBeenCalledWith('org-1', ALICE)
+  })
+})
 
 describe('apiTokenAuthenticator', () => {
   it('returns the caller of an account token', async () => {

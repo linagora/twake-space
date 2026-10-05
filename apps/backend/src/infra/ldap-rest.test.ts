@@ -148,6 +148,28 @@ describe('ldapRestDirectory', () => {
     expect(await directory.organization('org_gone')).toBeUndefined()
   })
 
+  it('knows a live technical account of the organization', async () => {
+    const { directory, organizations } = setup()
+    organizations.getUser
+      .mockResolvedValueOnce({ ...user, isTechnical: true })
+      .mockResolvedValueOnce(user)
+      .mockResolvedValueOnce({ ...user, isTechnical: true, isDeleted: true })
+      .mockRejectedValueOnce(new NotFoundError('user not found'))
+
+    const answers = [
+      await directory.isTechnicalAccount('org_acme', '3f2a'),
+      await directory.isTechnicalAccount('org_acme', '3f2a'),
+      await directory.isTechnicalAccount('org_acme', '3f2a'),
+      await directory.isTechnicalAccount('org_acme', '3f2a')
+    ]
+
+    expect(answers).toEqual([true, false, false, false])
+    expect(organizations.getUser).toHaveBeenCalledWith('org_acme', {
+      by: 'id',
+      value: '3f2a'
+    })
+  })
+
   it('propagates other ldap-rest failures', async () => {
     const { directory, organizations } = setup()
     organizations.getUser.mockRejectedValue(new Error('ldap-rest unreachable'))

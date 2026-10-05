@@ -35,15 +35,13 @@ if (config.homeserver) {
   homeserverId = await configureHomeserver(db, key, homeserver)
 }
 
+const directory = ldapRestDirectory(createLdapRestClient(config))
 const routes: Routes = {
   activity: {
     get: type => resourceActivityRoutes.get(type) ?? activityRoute.get(type)
   },
   platform: meetingOrganizations(
-    {
-      directory: ldapRestDirectory(createLdapRestClient(config)),
-      homeserverId
-    },
+    { directory, homeserverId },
     {
       get: key =>
         spacePlatformRoutes.get(key) ?? organizationPlatformRoutes.get(key)
@@ -63,10 +61,11 @@ const authorize = await setUpAuth(server, {
     clientId: config.OIDC_CLIENT_ID,
     clientSecret: config.OIDC_CLIENT_SECRET,
     audience: config.OIDC_AUDIENCE
-  }
+  },
+  directory
 })
 registerSpaceRoutes(server, { db, authorize })
-registerTokenRoutes(server, { db, authorize })
+registerTokenRoutes(server, { db, authorize, directory })
 registerNotificationRoutes(server, { db, authorize })
 const streams = createStreams()
 registerLiveRoutes(server, { authorize, streams })
