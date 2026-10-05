@@ -16,7 +16,9 @@ export const wsTickets = pgTable(
   {
     ticketHash: text('ticket_hash').primaryKey(),
     username: text().notNull(),
+    sid: text().notNull(),
     organizationId: text('organization_id').notNull(),
+    tokenExpiresAt: timestamptz('token_expires_at').notNull(),
     expiresAt: timestamptz('expires_at').notNull(),
     usedAt: timestamptz('used_at')
   },
