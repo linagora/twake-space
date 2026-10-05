@@ -43,7 +43,15 @@ export function registerLiveRoutes(
       response.end()
     }
     const expiry = setTimeout(close, identity.expiresAt.getTime() - Date.now())
-    const remove = streams.add({ sessionId: identity.sessionId, close })
+    const remove = streams.add({
+      sessionId: identity.sessionId,
+      userId: identity.userId,
+      send: (event, data) => {
+        if (response.writableEnded) return
+        response.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+      },
+      close
+    })
     response.on('close', () => {
       clearInterval(heartbeat)
       clearTimeout(expiry)

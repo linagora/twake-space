@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { CloudEvent } from '../../events/envelope.ts'
 import { fresh } from '../../events/freshness.ts'
 import { parseOrDrop, type Handler } from '../../events/router.ts'
+import { tellSpaceMembers } from '../live/notify.ts'
 import { spaceResourceKind, spaceResources } from './schema.ts'
 
 type SpaceResourceKind = (typeof spaceResourceKind.enumValues)[number]
@@ -45,6 +46,7 @@ function onProvisioned(kind: SpaceResourceKind): Handler<CloudEvent> {
         target: [spaceResources.spaceId, spaceResources.kind],
         set: { resourceId: resource.id, provisionedAt: sql`now()` }
       })
+    await tellSpaceMembers(tx, space_id)
   }
 }
 

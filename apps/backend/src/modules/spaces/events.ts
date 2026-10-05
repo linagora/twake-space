@@ -7,6 +7,7 @@ import { lastChanges } from '../../events/schema.ts'
 import { parseOrDrop, type Handler } from '../../events/router.ts'
 import type { Tx } from '../../infra/db.ts'
 import { forgetActor } from '../feed/activity.ts'
+import { tell, tellSpaceMembers } from '../live/notify.ts'
 import { deleteNotificationsOf } from '../notifications/recipients.ts'
 import {
   dropSpaceFromTokens,
@@ -159,6 +160,7 @@ async function upsertGroups(
       target: [spaceGroups.spaceId, spaceGroups.groupId],
       set: { name: sql`excluded.name`, role: sql`excluded.role` }
     })
+  await tellSpaceMembers(tx, spaceId)
 }
 
 async function upsertMembers(
@@ -196,6 +198,7 @@ async function upsertMembers(
         role: sql`excluded.role`
       }
     })
+  await tell(tx, 'spaces', [...byUser.keys()], { spaceId })
 }
 
 async function deletedAfter(tx: Tx, spaceId: string, at: Date | undefined) {
@@ -245,6 +248,14 @@ async function removeMembers(
       )
     )
   )
+  for (const spaceId of new Set(removed.map(m => m.spaceId))) {
+    await tell(
+      tx,
+      'spaces',
+      removed.filter(m => m.spaceId === spaceId).map(m => m.userId),
+      { spaceId }
+    )
+  }
 }
 
 const onCreated: Handler<PlatformEvent> = async (event, tx, log) => {
@@ -311,6 +322,12 @@ const onDeleted: Handler<PlatformEvent> = async (event, tx) => {
     reason: 'its only space was deleted'
   })
   await tx.delete(spaces).where(eq(spaces.spaceId, id))
+  await tell(
+    tx,
+    'spaces',
+    members.map(m => m.userId),
+    { spaceId: id }
+  )
 }
 
 const onMemberChanged: Handler<PlatformEvent> = async (event, tx, log) => {
@@ -365,6 +382,7 @@ const onGroupUnlinked: Handler<PlatformEvent> = async (event, tx) => {
       )
     )
   )
+  await tellSpaceMembers(tx, id)
 }
 
 const groupUpdated = z.looseObject({
