@@ -6,12 +6,17 @@ import { createMessageHandler, type Routes } from './events/router.ts'
 import { createDb, migrateDb } from './infra/db.ts'
 import { createServer } from './infra/http.ts'
 import { startConsumer, startDeadLetterProducer } from './infra/kafka.ts'
+import { createLdapRestClient, ldapRestDirectory } from './infra/ldap-rest.ts'
 import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
 import { schedulePurge } from './modules/feed/retention.ts'
 import { registerLiveRoutes } from './modules/live/routes.ts'
 import { createStreams } from './modules/live/streams.ts'
 import { registerNotificationRoutes } from './modules/notifications/routes.ts'
+import {
+  meetingOrganizations,
+  organizationPlatformRoutes
+} from './modules/organizations/availability.ts'
 import { configureHomeserver } from './modules/organizations/homeservers.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
@@ -21,18 +26,28 @@ import { registerTokenRoutes } from './modules/tokens/routes.ts'
 const config = loadConfig()
 const logger = pino({ level: config.LOG_LEVEL })
 
+const { sql, db } = createDb(config.DATABASE_URL)
+await migrateDb(db)
+let homeserverId: string | undefined
+if (config.homeserver) {
+  const { key, ...homeserver } = config.homeserver
+  homeserverId = await configureHomeserver(db, key, homeserver)
+}
+
 const routes: Routes = {
   activity: {
     get: type => resourceActivityRoutes.get(type) ?? activityRoute.get(type)
   },
-  platform: spacePlatformRoutes
-}
-
-const { sql, db } = createDb(config.DATABASE_URL)
-await migrateDb(db)
-if (config.homeserver) {
-  const { key, ...homeserver } = config.homeserver
-  await configureHomeserver(db, key, homeserver)
+  platform: meetingOrganizations(
+    {
+      directory: ldapRestDirectory(createLdapRestClient(config)),
+      homeserverId
+    },
+    {
+      get: key =>
+        spacePlatformRoutes.get(key) ?? organizationPlatformRoutes.get(key)
+    }
+  )
 }
 
 let accepting = false

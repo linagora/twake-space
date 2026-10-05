@@ -4,6 +4,7 @@ import { z } from 'zod'
 import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import type { Authorize, Caller } from '../auth/index.ts'
+import { organizations } from '../organizations/schema.ts'
 import {
   spaceGroups,
   spaceMembers,
@@ -78,7 +79,7 @@ export function registerSpaceRoutes(
         return reply.code(404).send({ error: 'not_found' })
       }
 
-      const [members, groups, resources] = await Promise.all([
+      const [members, groups, resources, [organization]] = await Promise.all([
         db
           .select({
             id: spaceMembers.userId,
@@ -101,12 +102,23 @@ export function registerSpaceRoutes(
         db
           .select({ kind: spaceResources.kind, id: spaceResources.resourceId })
           .from(spaceResources)
-          .where(eq(spaceResources.spaceId, spaceId))
+          .where(eq(spaceResources.spaceId, spaceId)),
+        db
+          .select({
+            chat: organizations.chatAvailable,
+            mail: organizations.mailAvailable
+          })
+          .from(organizations)
+          .where(
+            eq(organizations.organizationId, callerOf(request).organizationId)
+          )
       ])
       const resourceIds = new Map(resources.map(r => [r.kind, r.id]))
 
       return {
         ...space,
+        chat: organization?.chat ?? false,
+        mail: organization?.mail ?? false,
         members,
         groups,
         // A kind without an id is still being prepared by its app.

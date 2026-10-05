@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createServer } from '../../infra/http.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
+import { organizations } from '../organizations/schema.ts'
 import type { TokenCaller } from '../tokens/authenticator.ts'
 import { registerSpaceRoutes } from './routes.ts'
 import { spaceGroups, spaceMembers, spaceResources, spaces } from './schema.ts'
@@ -22,7 +23,13 @@ afterAll(() => testDb.drop())
 
 beforeEach(async () => {
   const { db } = testDb
-  for (const table of [spaceMembers, spaceGroups, spaceResources, spaces]) {
+  for (const table of [
+    spaceMembers,
+    spaceGroups,
+    spaceResources,
+    spaces,
+    organizations
+  ]) {
     await db.delete(table)
   }
   await db.insert(spaces).values([
@@ -173,6 +180,21 @@ describe('GET /spaces/:id', () => {
     expect(body.resources).toContainEqual({ kind: 'drive', id: 'folder-1' })
     expect(body.resources).toContainEqual({ kind: 'mailbox', id: null })
     expect(body.resources).toHaveLength(5)
+  })
+
+  it("says whether the organization's chat and mail are on", async () => {
+    const get = setUp()
+    const before = await get(`/spaces/${DESIGN}`)
+    await testDb.db.insert(organizations).values({
+      organizationId: 'org-1',
+      domain: 'org-1.example.com',
+      chatAvailable: true
+    })
+
+    const after = await get(`/spaces/${DESIGN}`)
+
+    expect(before.json()).toMatchObject({ chat: false, mail: false })
+    expect(after.json()).toMatchObject({ chat: true, mail: false })
   })
 
   it.each([
