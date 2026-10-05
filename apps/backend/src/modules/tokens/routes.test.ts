@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createServer } from '../../infra/http.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
-import { spaceMembers, spaces } from '../spaces/schema.ts'
+import { organizationMembers, spaceMembers, spaces } from '../spaces/schema.ts'
 import { apiTokenAuthenticator, type TokenCaller } from './authenticator.ts'
 import { registerTokenRoutes } from './routes.ts'
 import {
@@ -18,6 +18,7 @@ const ALICE = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
 const BOB = 'c9f0f895-fb98-4b91-a1a4-7f3e2d1c0b5a'
 const DESIGN = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
 const SALES = '9d1c7a52-0b3e-4f6a-8c2d-5e4f3a2b1c0d'
+const HR = '6a1f3e2d-8c4b-4a5e-9f7d-2b3c4d5e6f70'
 const DAY = 24 * 60 * 60 * 1000
 
 let testDb: TestDb
@@ -33,6 +34,7 @@ beforeEach(async () => {
     apiTokenSpaces,
     apiTokens,
     organizationTokenPolicy,
+    organizationMembers,
     spaceMembers,
     spaces
   ]) {
@@ -40,7 +42,22 @@ beforeEach(async () => {
   }
   await db.insert(spaces).values([
     { spaceId: DESIGN, organizationId: 'org-1', name: 'Design' },
-    { spaceId: SALES, organizationId: 'org-1', name: 'Sales' }
+    { spaceId: SALES, organizationId: 'org-1', name: 'Sales' },
+    { spaceId: HR, organizationId: 'org-1', name: 'HR' }
+  ])
+  await db.insert(organizationMembers).values([
+    {
+      organizationId: 'org-1',
+      userId: ALICE,
+      email: 'alice@example.com',
+      role: 'admin'
+    },
+    {
+      organizationId: 'org-1',
+      userId: BOB,
+      email: 'bob@example.com',
+      role: 'member'
+    }
   ])
   await db.insert(spaceMembers).values([
     {
@@ -77,7 +94,7 @@ function setUp(tokenCaller: TokenCaller = aTokenCaller()) {
   )
   registerTokenRoutes(app, { db: testDb.db, authorize })
   return (
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     url: string,
     body?: object,
     token = 'alice'
@@ -290,5 +307,157 @@ describe('PATCH and DELETE /tokens/:id', () => {
       (await call('PATCH', `/tokens/${id}`, { name: 'mine' })).statusCode
     ).toBe(404)
     expect((await call('DELETE', `/tokens/${id}`)).statusCode).toBe(404)
+  })
+})
+
+const orgToken = (body: object = {}) => create({ role: 'editor', ...body })
+
+describe('organization tokens', () => {
+  it('acts with its own role on every space it covers', async () => {
+    const call = setUp()
+
+    const created = await call('POST', '/organization/tokens', orgToken())
+
+    expect(created.statusCode).toBe(201)
+    const caller = await apiTokenAuthenticator(testDb.db)(
+      created.json<{ token: string }>().token
+    )
+    expect(caller).toMatchObject({
+      userId: null,
+      role: 'editor',
+      organizationId: 'org-1',
+      spaceIds: null
+    })
+    expect(
+      (await call('GET', '/organization/tokens')).json<{ tokens: object[] }>()
+        .tokens
+    ).toEqual([
+      expect.objectContaining({ name: 'release bot', role: 'editor' })
+    ])
+    expect(
+      (await call('GET', '/tokens')).json<{ tokens: object[] }>().tokens
+    ).toEqual([])
+  })
+
+  it('covers any space of the organization', async () => {
+    const call = setUp()
+
+    const org = await call(
+      'POST',
+      '/organization/tokens',
+      orgToken({ spaces: [HR] })
+    )
+    const own = await call('POST', '/tokens', create({ spaces: [HR] }))
+
+    expect(org.statusCode).toBe(201)
+    expect(own.statusCode).toBe(400)
+  })
+
+  it('needs a role, and only there', async () => {
+    const call = setUp()
+
+    expect(
+      (await call('POST', '/organization/tokens', create())).statusCode
+    ).toBe(400)
+    expect(
+      (await call('POST', '/tokens', create({ role: 'admin' }))).statusCode
+    ).toBe(400)
+  })
+
+  it('is managed by organization admins only', async () => {
+    const byBob = await setUp()(
+      'POST',
+      '/organization/tokens',
+      orgToken(),
+      'bob'
+    )
+    const byOrgToken = await setUp(
+      aTokenCaller({ userId: null, role: 'admin', scopes: ['tokens:write'] })
+    )('GET', '/organization/tokens', undefined, 'tws_bot')
+
+    expect(byBob.statusCode).toBe(403)
+    expect(byOrgToken.statusCode).toBe(403)
+  })
+
+  it('renames and revokes only organization tokens', async () => {
+    const call = setUp()
+    const org = await call('POST', '/organization/tokens', orgToken())
+    const own = await call('POST', '/tokens', create())
+    const orgId = org.json<{ id: string }>().id
+    const ownId = own.json<{ id: string }>().id
+
+    expect(
+      (await call('PATCH', `/organization/tokens/${orgId}`, { name: 'ci' }))
+        .statusCode
+    ).toBe(204)
+    expect(
+      (await call('DELETE', `/organization/tokens/${ownId}`)).statusCode
+    ).toBe(404)
+    expect(
+      (await call('DELETE', `/organization/tokens/${orgId}`)).statusCode
+    ).toBe(204)
+  })
+})
+
+describe('organization token policy', () => {
+  it('caps the lifetime of new tokens', async () => {
+    const call = setUp()
+
+    const before = await call('GET', '/organization/token-policy')
+    const put = await call('PUT', '/organization/token-policy', {
+      allowNoExpiry: false,
+      maxLifetimeDays: 30
+    })
+    const tooLong = await call('POST', '/tokens', create({ expiresInDays: 90 }))
+
+    expect(before.json()).toEqual({
+      allowNoExpiry: false,
+      maxLifetimeDays: null
+    })
+    expect(put.statusCode).toBe(204)
+    expect((await call('GET', '/organization/token-policy')).json()).toEqual({
+      allowNoExpiry: false,
+      maxLifetimeDays: 30
+    })
+    expect(tooLong.statusCode).toBe(400)
+  })
+
+  it('is set by organization admins only', async () => {
+    const response = await setUp()(
+      'PUT',
+      '/organization/token-policy',
+      { allowNoExpiry: true, maxLifetimeDays: null },
+      'bob'
+    )
+
+    expect(response.statusCode).toBe(403)
+  })
+})
+
+describe('organization token audit log', () => {
+  it('shows every token change in the organization, newest first', async () => {
+    const call = setUp()
+    const own = await call('POST', '/tokens', create({ name: 'mine' }), 'bob')
+    const org = await call('POST', '/organization/tokens', orgToken())
+    await call(
+      'DELETE',
+      `/organization/tokens/${org.json<{ id: string }>().id}`
+    )
+
+    const audit = await call('GET', '/organization/token-audit')
+    const byBob = await call(
+      'GET',
+      '/organization/token-audit',
+      undefined,
+      'bob'
+    )
+
+    expect(audit.json<{ entries: object[] }>().entries).toMatchObject([
+      { tokenName: 'release bot', action: 'revoked', actor: ALICE },
+      { tokenName: 'release bot', action: 'created', actor: ALICE },
+      { tokenName: 'mine', action: 'created', actor: BOB }
+    ])
+    expect(own.statusCode).toBe(201)
+    expect(byBob.statusCode).toBe(403)
   })
 })
