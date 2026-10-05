@@ -1,7 +1,11 @@
 import { fileURLToPath } from 'node:url'
+import { timestamp } from 'drizzle-orm/pg-core'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
+
+export const timestamptz = (name: string) =>
+  timestamp(name, { withTimezone: true })
 
 export function createDb(url: string) {
   const sql = postgres(url, { onnotice: () => undefined })
