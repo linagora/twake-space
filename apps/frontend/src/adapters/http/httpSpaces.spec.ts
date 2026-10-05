@@ -35,6 +35,21 @@ describe('httpSpaces', () => {
     expect(requested().url).toBe('https://api.test/spaces')
   })
 
+  it('reads one space', async () => {
+    const space = {
+      id: 'a1',
+      name: 'Roadmap',
+      role: 'admin',
+      chat: false,
+      mail: true,
+      resources: [{ kind: 'tasks', id: null }]
+    }
+    fetchMock.mockResolvedValue(Response.json(space))
+
+    await expect(spaces.get('a1')).resolves.toEqual(space)
+    expect(requested().url).toBe('https://api.test/spaces/a1')
+  })
+
   it('creates a space by name', async () => {
     let sent: unknown
     fetchMock.mockImplementation(async request => {
