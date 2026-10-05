@@ -2,7 +2,12 @@ import { lt, sql } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import type { Db } from '../../infra/db.ts'
 import { notifications } from '../notifications/schema.ts'
-import { activityEvents, feedMessages, feedReactions } from './schema.ts'
+import {
+  activityEvents,
+  appServiceTransactions,
+  feedMessages,
+  feedReactions
+} from './schema.ts'
 
 const PURGE_EVERY_MS = 60 * 60 * 1000
 
@@ -25,6 +30,9 @@ export function purgeExpired(db: Db, now = new Date()): Promise<boolean> {
     await tx
       .delete(notifications)
       .where(lt(notifications.createdAt, daysBefore(now, 90)))
+    await tx
+      .delete(appServiceTransactions)
+      .where(lt(appServiceTransactions.createdAt, daysBefore(now, 7)))
     return true
   })
 }

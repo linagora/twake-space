@@ -4,11 +4,13 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   unique,
   uuid
 } from 'drizzle-orm/pg-core'
 import { timestamptz } from '../../infra/db.ts'
+import { homeservers } from '../organizations/schema.ts'
 
 // A user's id is null when only their email was sent and no space member has it.
 export type Actor =
@@ -85,4 +87,20 @@ export const feedReactions = pgTable(
     createdAt: timestamptz('created_at').notNull().defaultNow()
   },
   table => [index().on(table.createdAt)]
+)
+
+// Synapse resends a transaction until it gets a 200.
+export const appServiceTransactions = pgTable(
+  'app_service_transactions',
+  {
+    homeserverId: uuid('homeserver_id')
+      .notNull()
+      .references(() => homeservers.id, { onDelete: 'cascade' }),
+    txnId: text('txn_id').notNull(),
+    createdAt: timestamptz('created_at').notNull().defaultNow()
+  },
+  table => [
+    primaryKey({ columns: [table.homeserverId, table.txnId] }),
+    index().on(table.createdAt)
+  ]
 )
