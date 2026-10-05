@@ -1,3 +1,4 @@
+import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { CloudEvent } from '../../events/envelope.ts'
 import { MalformedEventError } from '../../events/router.ts'
@@ -33,7 +34,9 @@ function provisioned(
     data: { space_id: SPACE_ID, resource },
     ...overrides
   }
-  return testDb.db.transaction(tx => handler(event, tx))
+  return testDb.db.transaction(tx =>
+    handler(event, tx, pino({ level: 'silent' }))
+  )
 }
 
 const readResources = () =>
