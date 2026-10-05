@@ -29,13 +29,15 @@ export const spaceMembers = pgTable(
   'space_members',
   {
     spaceId: uuid('space_id').notNull(),
+    // The LDAP entryUUID: a username or an email can change.
+    userId: uuid('user_id').notNull(),
     username: text().notNull(),
     email: text().notNull(),
     role: spaceRole().notNull()
   },
   table => [
-    primaryKey({ columns: [table.spaceId, table.username] }),
-    index().on(table.username)
+    primaryKey({ columns: [table.spaceId, table.userId] }),
+    index().on(table.userId)
   ]
 )
 

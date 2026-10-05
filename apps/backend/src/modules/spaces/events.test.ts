@@ -7,7 +7,9 @@ import { spacePlatformRoutes } from './events.ts'
 import { spaceMembers, spaces } from './schema.ts'
 
 const SPACE_ID = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
+const JDOE_ID = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
 const jdoe = {
+  uuid: JDOE_ID,
   username: 'jdoe',
   email: 'jdoe@evilcorp.com',
   firstName: 'John',
@@ -49,6 +51,7 @@ const readSpace = () =>
 const readMembers = () =>
   testDb.db
     .select({
+      userId: spaceMembers.userId,
       username: spaceMembers.username,
       email: spaceMembers.email,
       role: spaceMembers.role
@@ -64,7 +67,12 @@ describe('space events', () => {
       { organizationId: 'evilcorp123', name: 'Design Sprint' }
     ])
     expect(await readMembers()).toEqual([
-      { username: 'jdoe', email: 'jdoe@evilcorp.com', role: 'editor' }
+      {
+        userId: JDOE_ID,
+        username: 'jdoe',
+        email: 'jdoe@evilcorp.com',
+        role: 'editor'
+      }
     ])
   })
 
@@ -106,13 +114,15 @@ describe('space events', () => {
     expect(await readMembers()).toEqual([])
   })
 
-  it("removes a deleted user from their organization's spaces only", async () => {
-    const otherOrgSpace = '9d1c7a52-0b3e-4f6a-8c2d-5e4f3a2b1c0d'
+  it('removes a deleted user and no one else', async () => {
+    const otherSpace = '9d1c7a52-0b3e-4f6a-8c2d-5e4f3a2b1c0d'
+    const other = { ...jdoe, uuid: '1679091c-5a88-4faf-afb5-e6087eb1b2dc' }
     await created()
-    await created({ id: otherOrgSpace, organizationId: 'acme' })
+    await created({ id: otherSpace, members: [other] })
     await handle('domain.user.deleted', {
       emitter: 'ldap-rest',
       type: 'user.deleted',
+      uuid: JDOE_ID,
       userId: 'jdoe',
       internalEmail: 'jdoe@evilcorp.com',
       organizationId: 'evilcorp123',
@@ -124,7 +134,7 @@ describe('space events', () => {
       await testDb.db
         .select()
         .from(spaceMembers)
-        .where(eq(spaceMembers.spaceId, otherOrgSpace))
+        .where(eq(spaceMembers.spaceId, otherSpace))
     ).toHaveLength(1)
   })
 
@@ -144,7 +154,12 @@ describe('member events', () => {
       actor: 'admin@evilcorp.com',
       timestamp: '2026-10-05T09:12:44.512Z'
     })
-  const asmith = { ...jdoe, username: 'asmith', email: 'asmith@evilcorp.com' }
+  const asmith = {
+    ...jdoe,
+    uuid: 'c9f0f895-fb98-4b91-a1a4-7f3e2d1c0b5a',
+    username: 'asmith',
+    email: 'asmith@evilcorp.com'
+  }
 
   it('adds a member with their role', async () => {
     await created()
@@ -152,6 +167,7 @@ describe('member events', () => {
     await member('twake.space.member.added', [{ ...asmith, role: 'viewer' }])
 
     expect(await readMembers()).toContainEqual({
+      userId: asmith.uuid,
       username: 'asmith',
       email: 'asmith@evilcorp.com',
       role: 'viewer'
@@ -167,6 +183,18 @@ describe('member events', () => {
 
     expect(await readMembers()).toMatchObject([
       { username: 'jdoe', role: 'admin' }
+    ])
+  })
+
+  it('keeps a member whose username changed as the same person', async () => {
+    await created()
+
+    await member('twake.space.member.role.changed', [
+      { ...jdoe, username: 'john.doe', role: 'admin' }
+    ])
+
+    expect(await readMembers()).toMatchObject([
+      { userId: JDOE_ID, username: 'john.doe', role: 'admin' }
     ])
   })
 
