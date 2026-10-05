@@ -1,5 +1,5 @@
 import type { HttpServer } from '../../infra/http.ts'
-import type { RequireIdentity } from '../auth/index.ts'
+import type { Authorize } from '../auth/index.ts'
 import type { Streams } from './streams.ts'
 
 // Under the idle timeout of common proxies, so they keep the stream open.
@@ -7,7 +7,7 @@ const HEARTBEAT_MS = 25_000
 
 export function registerLiveRoutes(
   app: HttpServer,
-  deps: { requireIdentity: RequireIdentity; streams: Streams }
+  deps: { authorize: Authorize; streams: Streams }
 ) {
   const { streams } = deps
 
@@ -17,9 +17,11 @@ export function registerLiveRoutes(
     done()
   })
 
-  app.get('/stream', { preHandler: deps.requireIdentity }, (request, reply) => {
-    const identity = request.identity
-    if (!identity) throw new Error('requireIdentity let a request through')
+  app.get('/stream', { preHandler: deps.authorize() }, (request, reply) => {
+    const identity = request.caller
+    if (identity?.kind !== 'session') {
+      throw new Error('authorize let a request through')
+    }
     reply.hijack()
     const response = reply.raw
     response.writeHead(200, {

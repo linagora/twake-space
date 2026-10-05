@@ -27,7 +27,12 @@ function setUp(
     revoke: vi.fn(() => Promise.resolve()),
     saveTicket: vi.fn(() => Promise.resolve())
   } satisfies AuthStore
-  registerAuth(app, { authenticate, provider, store })
+  registerAuth(app, {
+    authenticate,
+    authenticateToken: () => Promise.resolve(null),
+    provider,
+    store
+  })
   return { app, store }
 }
 

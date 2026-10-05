@@ -31,7 +31,8 @@ export const apiTokens = pgTable(
     id: uuid().primaryKey().defaultRandom(),
     organizationId: text('organization_id').notNull(),
     ownerKind: tokenOwnerKind('owner_kind').notNull(),
-    ownerUsername: text('owner_username'),
+    // The account's LDAP entryUUID, as space members are keyed.
+    accountId: uuid('account_id'),
     name: text().notNull(),
     tokenHash: text('token_hash').notNull().unique(),
     scopes: tokenScope().array().notNull(),
@@ -45,10 +46,10 @@ export const apiTokens = pgTable(
     createdAt: timestamptz('created_at').notNull().defaultNow()
   },
   table => [
-    index().on(table.organizationId, table.ownerUsername),
+    index().on(table.organizationId, table.accountId),
     check(
       'api_tokens_owner',
-      sql`(${table.ownerKind} = 'account') = (${table.ownerUsername} is not null)`
+      sql`(${table.ownerKind} = 'account') = (${table.accountId} is not null)`
     ),
     check(
       'api_tokens_role',
