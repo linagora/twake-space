@@ -26,5 +26,22 @@
     "create": "Tạo không gian",
     "name": "Tên",
     "createFailed": "Không thể tạo không gian."
+  },
+  "tabs": {
+    "feed": "Bảng tin",
+    "chat": "Trò chuyện",
+    "tasks": "Công việc",
+    "drive": "Drive",
+    "mail": "Thư",
+    "calendar": "Lịch"
+  },
+  "space": {
+    "back": "Tất cả không gian",
+    "loading": "Đang tải không gian…",
+    "notFound": "Không gian này không tồn tại hoặc bạn không phải thành viên.",
+    "loadFailed": "Không thể tải không gian.",
+    "chatOff": "Bảng tin và Trò chuyện đang tắt: tổ chức của bạn chưa bật trò chuyện.",
+    "mailOff": "Thư đang tắt: tên miền thư của tổ chức bạn chưa được xác thực.",
+    "preparing": "%{app} đang được chuẩn bị cho không gian này."
   }
 }

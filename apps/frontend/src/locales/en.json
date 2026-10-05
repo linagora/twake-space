@@ -26,5 +26,22 @@
     "create": "Create a space",
     "name": "Name",
     "createFailed": "The space could not be created."
+  },
+  "tabs": {
+    "feed": "Feed",
+    "chat": "Chat",
+    "tasks": "Tasks",
+    "drive": "Drive",
+    "mail": "Mail",
+    "calendar": "Calendar"
+  },
+  "space": {
+    "back": "All spaces",
+    "loading": "Loading the space…",
+    "notFound": "This space does not exist, or you are not in it.",
+    "loadFailed": "The space could not be loaded.",
+    "chatOff": "Feed and Chat are off: chat is not turned on for your organization.",
+    "mailOff": "Mail is off: your organization's mail domain is not validated yet.",
+    "preparing": "%{app} is being prepared for this space."
   }
 }

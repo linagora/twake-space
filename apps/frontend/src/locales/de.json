@@ -26,5 +26,22 @@
     "create": "Space erstellen",
     "name": "Name",
     "createFailed": "Der Space konnte nicht erstellt werden."
+  },
+  "tabs": {
+    "feed": "Feed",
+    "chat": "Chat",
+    "tasks": "Aufgaben",
+    "drive": "Drive",
+    "mail": "Mail",
+    "calendar": "Kalender"
+  },
+  "space": {
+    "back": "Alle Spaces",
+    "loading": "Space wird geladen…",
+    "notFound": "Dieser Space existiert nicht, oder du bist kein Mitglied.",
+    "loadFailed": "Der Space konnte nicht geladen werden.",
+    "chatOff": "Feed und Chat sind aus: Chat ist für deine Organisation nicht aktiviert.",
+    "mailOff": "Mail ist aus: Die Mail-Domain deiner Organisation ist noch nicht bestätigt.",
+    "preparing": "%{app} wird für diesen Space vorbereitet."
   }
 }
