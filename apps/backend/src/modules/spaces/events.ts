@@ -233,6 +233,17 @@ const onGroupUnlinked: Handler<PlatformEvent> = async (event, tx) => {
   )
 }
 
+const groupUpdated = z.looseObject({
+  id: z.uuid(),
+  name: z.string().optional()
+})
+
+const onGroupUpdated: Handler<PlatformEvent> = async (event, tx) => {
+  const { id, name } = parseOrDrop(groupUpdated, event.body, event.routingKey)
+  if (!name) return
+  await tx.update(spaceGroups).set({ name }).where(eq(spaceGroups.groupId, id))
+}
+
 const userDeleted = z
   .looseObject({
     uuid: z.uuid().optional(),
@@ -264,5 +275,6 @@ export const spacePlatformRoutes: ReadonlyMap<
   ['twake.space.group.linked', onGroupChanged],
   ['twake.space.group.role.changed', onGroupChanged],
   ['twake.space.group.unlinked', onGroupUnlinked],
+  ['b2b.group.updated', onGroupUpdated],
   ['domain.user.deleted', onUserDeleted]
 ])
