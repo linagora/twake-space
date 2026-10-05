@@ -1,11 +1,12 @@
-import { and, eq, isNull, lt, or } from 'drizzle-orm'
+import { and, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm'
 import type { FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db, Tx } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import { hashSecret } from '../../infra/secrets.ts'
+import { notifyUsers } from '../notifications/recipients.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
-import { spaceResources } from '../spaces/schema.ts'
+import { spaceMembers, spaceResources } from '../spaces/schema.ts'
 import {
   appServiceTransactions,
   feedMessages,
@@ -45,6 +46,60 @@ const reaction = z.looseObject({
   })
 })
 
+const mentions = z.looseObject({
+  'm.mentions': z.looseObject({ user_ids: z.array(z.string()) })
+})
+
+// How Synapse's SSO mapping builds a person's Matrix localpart.
+export type Localpart = 'uid' | 'email'
+
+interface Homeserver {
+  id: string
+  serverName: string
+}
+
+interface Space {
+  spaceId: string
+  organizationId: string
+}
+
+async function notifyMentions(
+  tx: Tx,
+  homeserver: Homeserver,
+  localpart: Localpart,
+  space: Space,
+  event: RoomEvent
+) {
+  const userIds =
+    mentions.safeParse(event.content).data?.['m.mentions'].user_ids ?? []
+  const suffix = `:${homeserver.serverName}`
+  const localparts = userIds
+    .filter(
+      id => id !== event.sender && id.startsWith('@') && id.endsWith(suffix)
+    )
+    .map(id => id.slice(1, -suffix.length).toLowerCase())
+  if (localparts.length === 0) return
+  const members = await tx
+    .select({ userId: spaceMembers.userId })
+    .from(spaceMembers)
+    .where(
+      and(
+        eq(spaceMembers.spaceId, space.spaceId),
+        inArray(
+          localpart === 'uid'
+            ? sql`lower(${spaceMembers.username})`
+            : sql`lower(split_part(${spaceMembers.email}, '@', 1))`,
+          localparts
+        )
+      )
+    )
+  await notifyUsers(
+    tx,
+    members.map(m => ({ userId: m.userId, type: 'message_mention' as const })),
+    { ...space, matrixEventId: event.event_id }
+  )
+}
+
 // Room v11 moved redacts into the content.
 const redaction = z.looseObject({ redacts: z.string().min(1) })
 
@@ -57,7 +112,8 @@ function hsTokenOf(request: FastifyRequest): string | undefined {
 
 async function storeEvent(
   tx: Tx,
-  homeserverId: string,
+  homeserver: Homeserver,
+  localpart: Localpart,
   event: RoomEvent
 ): Promise<void> {
   const [space] = await tx
@@ -74,7 +130,7 @@ async function storeEvent(
       and(
         eq(spaceResources.kind, 'matrix_space'),
         eq(spaceResources.resourceId, event.room_id),
-        eq(organizations.homeserverId, homeserverId)
+        eq(organizations.homeserverId, homeserver.id)
       )
     )
   if (!space) return
@@ -101,7 +157,7 @@ async function storeEvent(
         )
       return
     }
-    await tx
+    const [stored] = await tx
       .insert(feedMessages)
       .values({
         matrixEventId: event.event_id,
@@ -112,6 +168,8 @@ async function storeEvent(
         originServerTs: event.origin_server_ts
       })
       .onConflictDoNothing()
+      .returning({ matrixEventId: feedMessages.matrixEventId })
+    if (stored) await notifyMentions(tx, homeserver, localpart, space, event)
     return
   }
 
@@ -145,8 +203,11 @@ async function storeEvent(
   }
 }
 
-export function registerTransactionRoutes(app: HttpServer, deps: { db: Db }) {
-  const { db } = deps
+export function registerTransactionRoutes(
+  app: HttpServer,
+  deps: { db: Db; localpart: Localpart }
+) {
+  const { db, localpart } = deps
 
   app.put(
     '/_matrix/app/v1/transactions/:txnId',
@@ -159,7 +220,7 @@ export function registerTransactionRoutes(app: HttpServer, deps: { db: Db }) {
           .send({ errcode: 'M_UNAUTHORIZED', error: 'missing hs_token' })
       }
       const [homeserver] = await db
-        .select({ id: homeservers.id })
+        .select({ id: homeservers.id, serverName: homeservers.serverName })
         .from(homeservers)
         .where(eq(homeservers.hsTokenHash, hashSecret(token)))
       if (!homeserver) {
@@ -185,7 +246,9 @@ export function registerTransactionRoutes(app: HttpServer, deps: { db: Db }) {
         for (const raw of body.data.events) {
           // One malformed event must not make Synapse resend the batch forever.
           const event = roomEvent.safeParse(raw)
-          if (event.success) await storeEvent(tx, homeserver.id, event.data)
+          if (event.success) {
+            await storeEvent(tx, homeserver, localpart, event.data)
+          }
         }
       })
       return reply.send({})

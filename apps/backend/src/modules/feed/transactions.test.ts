@@ -6,7 +6,8 @@ import { createServer } from '../../infra/http.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { configureHomeserver } from '../organizations/homeservers.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
-import { spaceResources, spaces } from '../spaces/schema.ts'
+import { notifications, notificationSettings } from '../notifications/schema.ts'
+import { spaceMembers, spaceResources, spaces } from '../spaces/schema.ts'
 import {
   appServiceTransactions,
   feedMessages,
@@ -17,6 +18,8 @@ import { registerTransactionRoutes } from './transactions.ts'
 const DESIGN = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
 const ROOM = '!design:example.com'
 const KEY = randomBytes(32)
+const ALICE = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
+const BOB = 'c9f0f895-fb98-4b91-a1a4-7f3e2d1c0b5a'
 
 let testDb: TestDb
 beforeAll(async () => {
@@ -27,6 +30,9 @@ afterAll(() => testDb.drop())
 beforeEach(async () => {
   const { db } = testDb
   for (const table of [
+    notifications,
+    notificationSettings,
+    spaceMembers,
     appServiceTransactions,
     feedReactions,
     feedMessages,
@@ -55,14 +61,30 @@ beforeEach(async () => {
     organizationId: 'acme',
     resourceId: ROOM
   })
+  await db.insert(spaceMembers).values([
+    {
+      spaceId: DESIGN,
+      userId: ALICE,
+      username: 'alice',
+      email: 'alice@acme.example.com',
+      role: 'editor'
+    },
+    {
+      spaceId: DESIGN,
+      userId: BOB,
+      username: 'bob',
+      email: 'robert@acme.example.com',
+      role: 'viewer'
+    }
+  ])
 })
 
-function setUp() {
+function setUp(localpart: 'uid' | 'email' = 'uid') {
   const app = createServer({
     logger: pino({ level: 'silent' }),
     isReady: () => Promise.resolve(true)
   })
-  registerTransactionRoutes(app, { db: testDb.db })
+  registerTransactionRoutes(app, { db: testDb.db, localpart })
   return (
     txnId: string,
     events: object[],
@@ -215,5 +237,63 @@ describe('PUT /_matrix/app/v1/transactions/:txnId', () => {
     expect(wrong.statusCode).toBe(403)
     expect(wrong.json()).toMatchObject({ errcode: 'M_FORBIDDEN' })
     expect(await readMessages()).toEqual([])
+  })
+
+  describe('mentions', () => {
+    const mentioning = (...userIds: string[]) =>
+      message('look', {
+        content: {
+          msgtype: 'm.text',
+          body: 'look',
+          'm.mentions': { user_ids: userIds }
+        }
+      })
+    const mentioned = () =>
+      testDb.db
+        .select({
+          userId: notifications.userId,
+          type: notifications.type,
+          spaceId: notifications.spaceId,
+          matrixEventId: notifications.matrixEventId
+        })
+        .from(notifications)
+
+    it('notifies the members a feed message mentions, never the sender', async () => {
+      const look = mentioning(
+        '@bob:example.com',
+        '@alice:example.com',
+        '@bob:elsewhere.com'
+      )
+
+      await setUp()('t1', [look])
+
+      expect(await mentioned()).toEqual([
+        {
+          userId: BOB,
+          type: 'message_mention',
+          spaceId: DESIGN,
+          matrixEventId: look.event_id
+        }
+      ])
+    })
+
+    it('reads the localpart from the email when configured so', async () => {
+      await setUp('email')('t1', [
+        mentioning('@bob:example.com'),
+        mentioning('@robert:example.com')
+      ])
+
+      expect((await mentioned()).map(m => m.userId)).toEqual([BOB])
+    })
+
+    it('follows the member settings', async () => {
+      await testDb.db
+        .insert(notificationSettings)
+        .values({ userId: BOB, type: 'message_mention', enabled: false })
+
+      await setUp()('t1', [mentioning('@bob:example.com')])
+
+      expect(await mentioned()).toEqual([])
+    })
   })
 })

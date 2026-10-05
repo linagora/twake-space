@@ -69,7 +69,7 @@ const authorize = await setUpAuth(server, {
 registerSpaceRoutes(server, { db, authorize })
 registerTokenRoutes(server, { db, authorize, directory })
 registerNotificationRoutes(server, { db, authorize })
-registerTransactionRoutes(server, { db })
+registerTransactionRoutes(server, { db, localpart: config.MATRIX_LOCALPART })
 const streams = createStreams()
 registerLiveRoutes(server, { authorize, streams })
 await listenForRevocations(sql, sessionId => {
