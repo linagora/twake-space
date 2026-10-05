@@ -1,0 +1,37 @@
+import type { ResourceKind, Space } from '@/application/spaces'
+
+export const TABS = [
+  'feed',
+  'chat',
+  'tasks',
+  'drive',
+  'mail',
+  'calendar'
+] as const
+
+export type Tab = (typeof TABS)[number]
+
+export type TabState = 'off' | 'preparing' | 'ready'
+
+const RESOURCE: Record<Tab, ResourceKind> = {
+  feed: 'matrix_space',
+  chat: 'matrix_space',
+  tasks: 'tasks',
+  drive: 'drive',
+  mail: 'mailbox',
+  calendar: 'calendar'
+}
+
+function isOn(space: Space, tab: Tab): boolean {
+  if (tab === 'feed' || tab === 'chat') return space.chat
+  if (tab === 'mail') return space.mail
+  return true
+}
+
+export function spaceTabs(space: Space): { tab: Tab; state: TabState }[] {
+  return TABS.map(tab => {
+    if (!isOn(space, tab)) return { tab, state: 'off' }
+    const resource = space.resources.find(r => r.kind === RESOURCE[tab])
+    return { tab, state: resource?.id ? 'ready' : 'preparing' }
+  })
+}

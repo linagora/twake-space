@@ -6,6 +6,7 @@ export function fakeSpaces(initial: SpaceSummary[] = []): SpacesService {
   const spaces = [...initial]
   return {
     list: vi.fn(() => Promise.resolve([...spaces])),
+    get: vi.fn(() => Promise.reject(new Error('no space here'))),
     create: vi.fn((name: string) => {
       const space: SpaceSummary = {
         id: `space-${String(spaces.length + 1)}`,
