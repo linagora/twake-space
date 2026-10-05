@@ -7,11 +7,12 @@ import { createDb, migrateDb } from './infra/db.ts'
 import { createServer } from './infra/http.ts'
 import { startConsumer, startProducer } from './infra/kafka.ts'
 import { setUpAuth } from './modules/auth/index.ts'
+import { spacePlatformRoutes } from './modules/spaces/events.ts'
 
 const config = loadConfig()
 const logger = pino({ level: config.LOG_LEVEL })
 
-const routes: Routes = { activity: new Map(), platform: new Map() }
+const routes: Routes = { activity: new Map(), platform: spacePlatformRoutes }
 
 const { sql, db } = createDb(config.DATABASE_URL)
 await migrateDb(db)
