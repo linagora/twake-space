@@ -6,6 +6,8 @@ import { fresh } from '../../events/freshness.ts'
 import { parseOrDrop, type Handler, type Routes } from '../../events/router.ts'
 import type { Tx } from '../../infra/db.ts'
 import type { Directory } from '../../infra/ldap-rest.ts'
+import type { TenantHomeservers } from './control-plane.ts'
+import { linkHomeserver } from './homeservers.ts'
 import { organizations } from './schema.ts'
 
 type Lookup = Routes['platform']
@@ -16,6 +18,20 @@ interface MeetingDeps {
   directory: Pick<Directory, 'organization'>
   // A single installation's homeserver, which serves every organization.
   homeserverId?: string | undefined
+  // In SaaS, where each tenant's homeserver comes from the chat control plane.
+  tenants?: { homeservers: TenantHomeservers; key: Buffer } | null | undefined
+}
+
+async function refreshHomeserver(
+  tx: Tx,
+  deps: MeetingDeps,
+  organizationId: string
+) {
+  if (!deps.tenants) return
+  const homeserver = await deps.tenants.homeservers.homeserverOf(organizationId)
+  if (homeserver) {
+    await linkHomeserver(tx, deps.tenants.key, organizationId, homeserver)
+  }
 }
 
 // The directory is read once: after that, events are newer than what the admin
@@ -46,6 +62,7 @@ async function meet(
       homeserverId: deps.homeserverId
     })
     .onConflictDoNothing()
+  await refreshHomeserver(tx, deps, organizationId)
 }
 
 export function meetingOrganizations(
@@ -62,6 +79,9 @@ export function meetingOrganizations(
           await meet(tx, deps, log, about.data.organizationId)
         }
         await handler(event, tx, log)
+        if (about.success && key === 'chat.deployment.completed') {
+          await refreshHomeserver(tx, deps, about.data.organizationId)
+        }
       }
     }
   }

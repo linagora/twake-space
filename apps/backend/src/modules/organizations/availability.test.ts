@@ -1,15 +1,18 @@
 import { randomBytes } from 'node:crypto'
+import { eq } from 'drizzle-orm'
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest'
 import type { PlatformEvent } from '../../events/envelope.ts'
 import type { Handler } from '../../events/router.ts'
 import { lastChanges } from '../../events/schema.ts'
 import type { Directory } from '../../infra/ldap-rest.ts'
+import { decrypt, hashSecret } from '../../infra/secrets.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import {
   meetingOrganizations,
   organizationPlatformRoutes
 } from './availability.ts'
+import type { TenantHomeservers } from './control-plane.ts'
 import { configureHomeserver } from './homeservers.ts'
 import { homeservers, organizations } from './schema.ts'
 
@@ -25,14 +28,21 @@ beforeEach(async () => {
   await testDb.db.delete(lastChanges)
 })
 
+const KEY = randomBytes(32)
+
 function setUp(
   found: Awaited<ReturnType<Directory['organization']>>,
-  homeserverId?: string
+  homeserverId?: string,
+  homeservers?: TenantHomeservers
 ) {
   const directory = { organization: vi.fn(() => Promise.resolve(found)) }
   const other = vi.fn<Handler<PlatformEvent>>(() => Promise.resolve())
   const routes = meetingOrganizations(
-    { directory, homeserverId },
+    {
+      directory,
+      homeserverId,
+      tenants: homeservers && { homeservers, key: KEY }
+    },
     {
       get: key =>
         organizationPlatformRoutes.get(key) ??
@@ -89,6 +99,77 @@ it("points a new organization to a single installation's homeserver", async () =
       .select({ homeserverId: organizations.homeserverId })
       .from(organizations)
   ).toEqual([{ homeserverId }])
+})
+
+const tenantHomeserver = (hsToken: string) => ({
+  url: 'https://matrix.acme.example.com',
+  serverName: 'acme.example.com',
+  asToken: 'as',
+  hsToken
+})
+
+const linked = async () => {
+  const rows = await testDb.db
+    .select({
+      homeserverId: organizations.homeserverId,
+      url: homeservers.url,
+      serverName: homeservers.serverName,
+      asToken: homeservers.asToken,
+      hsTokenHash: homeservers.hsTokenHash
+    })
+    .from(organizations)
+    .leftJoin(homeservers, eq(homeservers.id, organizations.homeserverId))
+  return rows.map(({ asToken, ...row }) => ({
+    ...row,
+    asToken: asToken && decrypt(KEY, asToken)
+  }))
+}
+
+it("fetches a new organization's homeserver from the chat control plane", async () => {
+  const homeserverOf = vi.fn(() => Promise.resolve(tenantHomeserver('hs')))
+  const { handle } = setUp(acme, undefined, { homeserverOf })
+
+  await handle('twake.space.created', { organizationId: 'org_acme' })
+
+  expect(homeserverOf).toHaveBeenCalledWith('org_acme')
+  expect(await linked()).toEqual([
+    {
+      homeserverId: expect.any(String) as string,
+      url: 'https://matrix.acme.example.com',
+      serverName: 'acme.example.com',
+      asToken: 'as',
+      hsTokenHash: hashSecret('hs')
+    }
+  ])
+})
+
+it('refreshes the homeserver on each chat deployment', async () => {
+  const homeserverOf = vi
+    .fn<TenantHomeservers['homeserverOf']>()
+    .mockResolvedValueOnce(undefined)
+    .mockResolvedValueOnce(tenantHomeserver('hs-1'))
+    .mockResolvedValueOnce(tenantHomeserver('hs-2'))
+  const { handle } = setUp({ ...acme, chat: false }, undefined, {
+    homeserverOf
+  })
+  const deployed = () =>
+    handle('chat.deployment.completed', {
+      organizationId: 'org_acme',
+      deployment: { completedAt: '2026-10-05T09:00:00Z' }
+    })
+
+  await handle('twake.space.created', { organizationId: 'org_acme' })
+  const before = await linked()
+  await deployed()
+  const [first] = await linked()
+  await deployed()
+
+  expect(before).toMatchObject([{ homeserverId: null }])
+  expect(first).toMatchObject({ hsTokenHash: hashSecret('hs-1') })
+  expect(await linked()).toEqual([
+    { ...first, hsTokenHash: hashSecret('hs-2') }
+  ])
+  expect(await testDb.db.$count(homeservers)).toBe(1)
 })
 
 it('keeps an organization the directory does not have out of the copy', async () => {

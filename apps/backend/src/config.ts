@@ -20,17 +20,23 @@ const HOMESERVER_KEYS = [
   'MATRIX_HOMESERVER_URL',
   'MATRIX_SERVER_NAME',
   'MATRIX_AS_TOKEN',
-  'MATRIX_HS_TOKEN',
-  'SECRETS_KEY'
+  'MATRIX_HS_TOKEN'
+] as const
+const CONTROL_PLANE_KEYS = [
+  'CHAT_CONTROL_PLANE_URL',
+  'CHAT_CONTROL_PLANE_TOKEN'
 ] as const
 
-// Set on a single installation, where one homeserver serves every organization.
+// A single installation sets its one homeserver, which serves every
+// organization; SaaS sets the chat control plane, which gives each tenant's.
 const homeserver = z
   .object({
     MATRIX_HOMESERVER_URL: z.url({ protocol: /^https?$/ }).optional(),
     MATRIX_SERVER_NAME: z.string().min(1).optional(),
     MATRIX_AS_TOKEN: z.string().min(1).optional(),
     MATRIX_HS_TOKEN: z.string().min(1).optional(),
+    CHAT_CONTROL_PLANE_URL: z.url({ protocol: /^https?$/ }).optional(),
+    CHAT_CONTROL_PLANE_TOKEN: z.string().min(1).optional(),
     SECRETS_KEY: z
       .base64()
       .refine(
@@ -40,34 +46,44 @@ const homeserver = z
       .optional()
   })
   .superRefine((env, ctx) => {
-    const missing = HOMESERVER_KEYS.filter(key => env[key] === undefined)
-    if (missing.length === HOMESERVER_KEYS.length) return
-    for (const key of missing) {
-      ctx.addIssue({
-        code: 'custom',
-        path: [key],
-        message: 'required with the other homeserver settings'
-      })
+    const complain = (key: string, message: string) => {
+      ctx.addIssue({ code: 'custom', path: [key], message })
+    }
+    const groups = [HOMESERVER_KEYS, CONTROL_PLANE_KEYS].map(keys => ({
+      keys,
+      missing: keys.filter(key => env[key] === undefined)
+    }))
+    const used = groups.filter(g => g.missing.length < g.keys.length)
+    for (const { missing } of used) {
+      for (const key of missing) complain(key, 'required with the others')
+    }
+    if (used.length === 2) {
+      for (const key of CONTROL_PLANE_KEYS) {
+        complain(key, 'not with a single homeserver')
+      }
+    }
+    if (used.length > 0 && env.SECRETS_KEY === undefined) {
+      complain('SECRETS_KEY', 'required to store homeserver tokens')
     }
   })
   .transform(env => {
+    const key = env.SECRETS_KEY && Buffer.from(env.SECRETS_KEY, 'base64')
     const {
       MATRIX_HOMESERVER_URL: url,
       MATRIX_SERVER_NAME: serverName,
       MATRIX_AS_TOKEN: asToken,
       MATRIX_HS_TOKEN: hsToken,
-      SECRETS_KEY: key
+      CHAT_CONTROL_PLANE_URL: controlPlaneUrl,
+      CHAT_CONTROL_PLANE_TOKEN: controlPlaneToken
     } = env
     return {
       homeserver:
         url && serverName && asToken && hsToken && key
-          ? {
-              url,
-              serverName,
-              asToken,
-              hsToken,
-              key: Buffer.from(key, 'base64')
-            }
+          ? { url, serverName, asToken, hsToken, key }
+          : null,
+      controlPlane:
+        controlPlaneUrl && controlPlaneToken && key
+          ? { url: controlPlaneUrl, token: controlPlaneToken, key }
           : null
     }
   })

@@ -21,6 +21,7 @@ import {
   meetingOrganizations,
   organizationPlatformRoutes
 } from './modules/organizations/availability.ts'
+import { controlPlaneHomeservers } from './modules/organizations/control-plane.ts'
 import { configureHomeserver } from './modules/organizations/homeservers.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
@@ -44,7 +45,14 @@ const routes: Routes = {
     get: type => resourceActivityRoutes.get(type) ?? activityRoute.get(type)
   },
   platform: meetingOrganizations(
-    { directory, homeserverId },
+    {
+      directory,
+      homeserverId,
+      tenants: config.controlPlane && {
+        homeservers: controlPlaneHomeservers(config.controlPlane),
+        key: config.controlPlane.key
+      }
+    },
     {
       get: key =>
         spacePlatformRoutes.get(key) ?? organizationPlatformRoutes.get(key)
@@ -94,8 +102,9 @@ const consumer = await startConsumer(
   })
 )
 const stopPurge = schedulePurge(db, logger)
-const stopPosting = config.homeserver
-  ? schedulePosting(db, config.homeserver.key, logger)
+const secretsKey = (config.homeserver ?? config.controlPlane)?.key
+const stopPosting = secretsKey
+  ? schedulePosting(db, secretsKey, logger)
   : () => undefined
 accepting = true
 logger.info('twake-space backend started')

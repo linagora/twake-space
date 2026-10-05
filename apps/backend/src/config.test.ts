@@ -21,6 +21,11 @@ const homeserver = {
   SECRETS_KEY: randomBytes(32).toString('base64')
 }
 
+const controlPlane = {
+  CHAT_CONTROL_PLANE_URL: 'https://control-plane.example.com',
+  CHAT_CONTROL_PLANE_TOKEN: 'cp'
+}
+
 describe('loadConfig', () => {
   it('has no homeserver unless one is configured', () => {
     expect(loadConfig(base).homeserver).toBeNull()
@@ -40,6 +45,36 @@ describe('loadConfig', () => {
     expect(() =>
       loadConfig({ ...base, ...homeserver, MATRIX_HS_TOKEN: undefined })
     ).toThrow('MATRIX_HS_TOKEN')
+  })
+
+  it('reads the chat control plane that gives each tenant its homeserver', () => {
+    const config = loadConfig({
+      ...base,
+      ...controlPlane,
+      SECRETS_KEY: homeserver.SECRETS_KEY
+    })
+
+    expect(config.homeserver).toBeNull()
+    expect(config.controlPlane).toEqual({
+      url: 'https://control-plane.example.com',
+      token: 'cp',
+      key: Buffer.from(homeserver.SECRETS_KEY, 'base64')
+    })
+  })
+
+  it('refuses a control plane configured in part, or with a homeserver', () => {
+    expect(() =>
+      loadConfig({
+        ...base,
+        CHAT_CONTROL_PLANE_URL: controlPlane.CHAT_CONTROL_PLANE_URL
+      })
+    ).toThrow('CHAT_CONTROL_PLANE_TOKEN')
+    expect(() => loadConfig({ ...base, ...controlPlane })).toThrow(
+      'SECRETS_KEY'
+    )
+    expect(() =>
+      loadConfig({ ...base, ...homeserver, ...controlPlane })
+    ).toThrow('CHAT_CONTROL_PLANE_URL')
   })
 
   it('refuses a key that is not 32 bytes', () => {
