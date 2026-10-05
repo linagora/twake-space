@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Tx } from '../infra/db.ts'
 import type { Deduplicator, EventKey } from './dedupe.ts'
 import type { CloudEvent, PlatformEvent } from './envelope.ts'
-import { createMessageHandler, type Handler } from './router.ts'
+import {
+  createMessageHandler,
+  MalformedEventError,
+  type Handler
+} from './router.ts'
 
 const tx = {} as Tx
 
@@ -126,6 +130,15 @@ describe('createMessageHandler', () => {
     )
     expect(activity).not.toHaveBeenCalled()
     expect(dedupe.keys).toEqual([{ source: 'amqp', id: 'm-1' }])
+  })
+
+  it('drops an event its handler finds malformed', async () => {
+    const { handle, activity } = setup()
+    activity.mockRejectedValueOnce(new MalformedEventError('no space id'))
+
+    expect(await handle('twake.drive.events.v1', message(fileCreated))).toBe(
+      'malformed'
+    )
   })
 
   it('propagates a handler failure so the offset is not committed', async () => {
