@@ -1,5 +1,12 @@
 {
   "app": {
     "name": "Twake Space"
+  },
+  "session": {
+    "signingIn": "Đang đăng nhập…",
+    "failed": "Đăng nhập không thành công.",
+    "retry": "Thử lại",
+    "signedInAs": "Đã đăng nhập với tên %{name}",
+    "signOut": "Đăng xuất"
   }
 }

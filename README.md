@@ -17,9 +17,19 @@ Node 24 (`nvm use`), Docker.
 ```bash
 npm ci
 docker compose up -d            # Kafka (topics created), Postgres
-cp apps/backend/.env.example apps/backend/.env   # set LDAP_REST_SECRET
+cp apps/backend/.env.example apps/backend/.env   # set LDAP_REST_SECRET, OIDC_CLIENT_SECRET
 npm run dev -w @twake-space/backend
 npm run dev -w @twake-space/frontend
+```
+
+The frontend reads its SSO settings from `apps/frontend/public/.env.js` (not committed):
+
+```js
+var SSO_BASE_URL = 'https://sign-up.twake.app/'
+var SSO_CLIENT_ID = 'twakespace'
+var SSO_SCOPE = 'openid email profile'
+var SSO_REDIRECT_URI = 'http://localhost:3000/auth/callback'
+var SSO_POST_LOGOUT_REDIRECT = 'http://localhost:3000/'
 ```
 
 `npm run check` runs lint, typecheck, tests and build for every app, as the CI does.
