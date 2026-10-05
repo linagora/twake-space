@@ -119,6 +119,23 @@ it('turns chat on when its deployment succeeds', async () => {
   expect(await stored()).toMatchObject([{ chat: true }])
 })
 
+it('takes a deployment without a status as a success', async () => {
+  const { handle } = setUp({ ...acme, chat: false })
+
+  await handle('chat.deployment.completed', {
+    organizationId: 'org_acme',
+    domain: 'acme.example.com',
+    deployment: {
+      deploymentId: 'deploy_1',
+      startedAt: '2026-10-05T08:50:00Z',
+      completedAt: '2026-10-05T09:00:00Z',
+      endpoints: {}
+    }
+  })
+
+  expect(await stored()).toMatchObject([{ chat: true }])
+})
+
 it('turns chat off when it is deprovisioned, whatever order the events come in', async () => {
   const { handle } = setUp(acme)
 

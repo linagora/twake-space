@@ -101,7 +101,8 @@ const onDeploymentCompleted: Handler<PlatformEvent> = async (
     event.body,
     event.routingKey
   )
-  if (deployment.status !== 'succeeded') {
+  // The control plane publishes only successes and sends no status yet.
+  if (deployment.status !== undefined && deployment.status !== 'succeeded') {
     log.info({ organizationId, status: deployment.status }, 'chat not deployed')
     return
   }
