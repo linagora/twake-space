@@ -29,6 +29,7 @@ import { controlPlaneHomeservers } from './modules/organizations/control-plane.t
 import { registerDirectoryRoutes } from './modules/organizations/directory.ts'
 import { configureHomeserver } from './modules/organizations/homeservers.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
+import { scheduleReconciliation } from './modules/spaces/reconcile.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
 import { registerSpaceRoutes } from './modules/spaces/routes.ts'
 import { registerSpaceWriteRoutes } from './modules/spaces/writes.ts'
@@ -83,11 +84,8 @@ const authorize = await setUpAuth(server, {
   directory
 })
 registerSpaceRoutes(server, { db, authorize })
-registerSpaceWriteRoutes(server, {
-  db,
-  authorize,
-  directory: ldapRestSpaces(ldapRest)
-})
+const spaceDirectory = ldapRestSpaces(ldapRest)
+registerSpaceWriteRoutes(server, { db, authorize, directory: spaceDirectory })
 registerTokenRoutes(server, { db, authorize, directory })
 registerDirectoryRoutes(server, { authorize, directory })
 registerNotificationRoutes(server, { db, authorize })
@@ -115,6 +113,7 @@ const consumer = await startConsumer(
   })
 )
 const stopPurge = schedulePurge(db, logger)
+const stopReconciliation = scheduleReconciliation(db, spaceDirectory, logger)
 const secretsKey = (config.homeserver ?? config.controlPlane)?.key
 const stopPosting = secretsKey
   ? schedulePosting(db, secretsKey, logger)
@@ -129,6 +128,7 @@ async function shutdown(signal: string): Promise<void> {
   accepting = false
   logger.info({ signal }, 'shutting down')
   stopPurge()
+  stopReconciliation()
   stopPosting()
   try {
     await consumer.disconnect()
