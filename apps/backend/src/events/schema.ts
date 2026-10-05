@@ -11,3 +11,9 @@ export const processedEvents = pgTable(
   },
   table => [primaryKey({ columns: [table.consumer, table.source, table.id] })]
 )
+
+// Kept after the object itself is removed, so a replayed event cannot bring it back.
+export const lastChanges = pgTable('last_changes', {
+  object: text().primaryKey(),
+  at: timestamptz('at').notNull()
+})

@@ -1,9 +1,12 @@
-import { and, eq, inArray, or, sql } from 'drizzle-orm'
+import { and, eq, gt, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { PlatformEvent } from '../../events/envelope.ts'
+import { fresh } from '../../events/freshness.ts'
+import { lastChanges } from '../../events/schema.ts'
 import { parseOrDrop, type Handler } from '../../events/router.ts'
 import type { Tx } from '../../infra/db.ts'
+import { resourceKey } from './resources.ts'
 import {
   spaceGroups,
   spaceMembers,
@@ -12,10 +15,25 @@ import {
   spaces
 } from './schema.ts'
 
+const timestamp = z.iso
+  .datetime({ offset: true })
+  .optional()
+  .transform(t => (t === undefined ? undefined : new Date(t)))
+
 const spaceEvent = z.looseObject({
   organizationId: z.string().min(1),
-  id: z.uuid()
+  id: z.uuid(),
+  timestamp
 })
+
+// Only created and deleted change it: a rename applied before a replayed creation must
+// not hold the creation back.
+const spaceKey = (spaceId: string) => `space:${spaceId}`
+const spaceNameKey = (spaceId: string) => `space:${spaceId}:name`
+const memberKey = (spaceId: string, user: string) =>
+  `space:${spaceId}:member:${user}`
+const groupKey = (spaceId: string, groupId: string) =>
+  `space:${spaceId}:group:${groupId}`
 
 const role = z.enum(spaceRole.enumValues)
 
@@ -110,13 +128,19 @@ async function withUserIds<T extends Person>(
 async function upsertGroups(
   tx: Tx,
   spaceId: string,
+  at: Date | undefined,
   groups: z.infer<typeof group>[]
 ) {
+  if (await deletedAfter(tx, spaceId, at)) return
+  const changed = await fresh(
+    tx,
+    at,
+    groups.map(g => groupKey(spaceId, g.id))
+  )
   const byId = new Map(
-    groups.map(({ id, name, role }) => [
-      id,
-      { spaceId, groupId: id, name, role }
-    ])
+    groups
+      .filter(g => changed.has(groupKey(spaceId, g.id)))
+      .map(({ id, name, role }) => [id, { spaceId, groupId: id, name, role }])
   )
   if (byId.size === 0) return
   await tx
@@ -132,16 +156,24 @@ async function upsertMembers(
   tx: Tx,
   log: Logger,
   spaceId: string,
+  at: Date | undefined,
   members: z.infer<typeof member>[]
 ) {
+  if (await deletedAfter(tx, spaceId, at)) return
+  const known = await withUserIds(tx, log, members)
+  const changed = await fresh(
+    tx,
+    at,
+    known.map(m => memberKey(spaceId, m.uuid))
+  )
   // One upsert cannot touch a row twice, so a member listed twice keeps its last entry.
   const byUser = new Map(
-    (await withUserIds(tx, log, members)).map(
-      ({ uuid, username, email, role }) => [
+    known
+      .filter(m => changed.has(memberKey(spaceId, m.uuid)))
+      .map(({ uuid, username, email, role }) => [
         uuid,
         { spaceId, userId: uuid, username, email, role }
-      ]
-    )
+      ])
   )
   if (byUser.size === 0) return
   await tx
@@ -157,26 +189,83 @@ async function upsertMembers(
     })
 }
 
+async function deletedAfter(tx: Tx, spaceId: string, at: Date | undefined) {
+  if (at === undefined) return false
+  const [deletion] = await tx
+    .select({ at: lastChanges.at })
+    .from(lastChanges)
+    .leftJoin(spaces, eq(spaces.spaceId, spaceId))
+    .where(
+      and(
+        eq(lastChanges.object, spaceKey(spaceId)),
+        gt(lastChanges.at, at),
+        isNull(spaces.spaceId)
+      )
+    )
+  return deletion !== undefined
+}
+
+// Each caller scopes `where` to one space or one user, so the pairs left after the
+// freshness check are the rows of the remaining user ids.
+async function removeMembers(
+  tx: Tx,
+  at: Date | undefined,
+  where: SQL | undefined
+) {
+  const named = await tx
+    .select({ spaceId: spaceMembers.spaceId, userId: spaceMembers.userId })
+    .from(spaceMembers)
+    .where(where)
+  const changed = await fresh(
+    tx,
+    at,
+    named.map(m => memberKey(m.spaceId, m.userId))
+  )
+  const removed = named.filter(m => changed.has(memberKey(m.spaceId, m.userId)))
+  if (removed.length === 0) return
+  await tx.delete(spaceMembers).where(
+    and(
+      where,
+      inArray(
+        spaceMembers.spaceId,
+        removed.map(m => m.spaceId)
+      ),
+      inArray(
+        spaceMembers.userId,
+        removed.map(m => m.userId)
+      )
+    )
+  )
+}
+
 const onCreated: Handler<PlatformEvent> = async (event, tx, log) => {
   const space = parseOrDrop(spaceCreated, event.body, event.routingKey)
-  await tx
-    .insert(spaces)
-    .values({
-      spaceId: space.id,
-      organizationId: space.organizationId,
-      name: space.name
-    })
-    .onConflictDoUpdate({
-      target: spaces.spaceId,
-      set: { name: space.name, updatedAt: sql`now()` }
-    })
-  await upsertMembers(tx, log, space.id, space.members)
-  await upsertGroups(tx, space.id, space.groups)
+  const at = space.timestamp
+  if (!(await fresh(tx, at, [spaceKey(space.id)])).size) return
+  const renamed = (await fresh(tx, at, [spaceNameKey(space.id)])).size > 0
+  const insert = tx.insert(spaces).values({
+    spaceId: space.id,
+    organizationId: space.organizationId,
+    name: space.name
+  })
+  await (renamed
+    ? insert.onConflictDoUpdate({
+        target: spaces.spaceId,
+        set: { name: space.name, updatedAt: sql`now()` }
+      })
+    : insert.onConflictDoNothing())
+  await upsertMembers(tx, log, space.id, at, space.members)
+  await upsertGroups(tx, space.id, at, space.groups)
 }
 
 const onUpdated: Handler<PlatformEvent> = async (event, tx) => {
-  const { id, name } = parseOrDrop(spaceUpdated, event.body, event.routingKey)
+  const { id, name, timestamp } = parseOrDrop(
+    spaceUpdated,
+    event.body,
+    event.routingKey
+  )
   if (name === undefined) return
+  if (!(await fresh(tx, timestamp, [spaceNameKey(id)])).size) return
   await tx
     .update(spaces)
     .set({ name, updatedAt: sql`now()` })
@@ -184,50 +273,82 @@ const onUpdated: Handler<PlatformEvent> = async (event, tx) => {
 }
 
 const onDeleted: Handler<PlatformEvent> = async (event, tx) => {
-  const { id } = parseOrDrop(spaceEvent, event.body, event.routingKey)
-  await tx.delete(spaceMembers).where(eq(spaceMembers.spaceId, id))
-  await tx.delete(spaceGroups).where(eq(spaceGroups.spaceId, id))
-  await tx.delete(spaceResources).where(eq(spaceResources.spaceId, id))
+  const { id, timestamp } = parseOrDrop(
+    spaceEvent,
+    event.body,
+    event.routingKey
+  )
+  if (!(await fresh(tx, timestamp, [spaceKey(id)])).size) return
+  const members = await tx
+    .delete(spaceMembers)
+    .where(eq(spaceMembers.spaceId, id))
+    .returning({ userId: spaceMembers.userId })
+  const groups = await tx
+    .delete(spaceGroups)
+    .where(eq(spaceGroups.spaceId, id))
+    .returning({ groupId: spaceGroups.groupId })
+  const resources = await tx
+    .delete(spaceResources)
+    .where(eq(spaceResources.spaceId, id))
+    .returning({ kind: spaceResources.kind })
+  // So a replayed event older than the deletion cannot bring them back.
+  await fresh(tx, timestamp, [
+    ...members.map(m => memberKey(id, m.userId)),
+    ...groups.map(g => groupKey(id, g.groupId)),
+    ...resources.map(r => resourceKey(id, r.kind))
+  ])
   await tx.delete(spaces).where(eq(spaces.spaceId, id))
 }
 
 const onMemberChanged: Handler<PlatformEvent> = async (event, tx, log) => {
-  const { id, members } = parseOrDrop(
+  const { id, timestamp, members } = parseOrDrop(
     memberChanged,
     event.body,
     event.routingKey
   )
-  await upsertMembers(tx, log, id, members)
+  await upsertMembers(tx, log, id, timestamp, members)
 }
 
 const onMemberRemoved: Handler<PlatformEvent> = async (event, tx, log) => {
-  const { id, members } = parseOrDrop(
+  const { id, timestamp, members } = parseOrDrop(
     memberRemoved,
     event.body,
     event.routingKey
   )
-  await tx
-    .delete(spaceMembers)
-    .where(and(eq(spaceMembers.spaceId, id), matching(log, members)))
+  await removeMembers(
+    tx,
+    timestamp,
+    and(eq(spaceMembers.spaceId, id), matching(log, members))
+  )
 }
 
 const onGroupChanged: Handler<PlatformEvent> = async (event, tx) => {
-  const { id, groups } = parseOrDrop(groupChanged, event.body, event.routingKey)
-  await upsertGroups(tx, id, groups)
+  const { id, timestamp, groups } = parseOrDrop(
+    groupChanged,
+    event.body,
+    event.routingKey
+  )
+  await upsertGroups(tx, id, timestamp, groups)
 }
 
 const onGroupUnlinked: Handler<PlatformEvent> = async (event, tx) => {
-  const { id, groups } = parseOrDrop(
+  const { id, timestamp, groups } = parseOrDrop(
     groupUnlinked,
     event.body,
     event.routingKey
   )
+  const changed = await fresh(
+    tx,
+    timestamp,
+    groups.map(g => groupKey(id, g.id))
+  )
+  if (changed.size === 0) return
   await tx.delete(spaceGroups).where(
     and(
       eq(spaceGroups.spaceId, id),
       inArray(
         spaceGroups.groupId,
-        groups.map(g => g.id)
+        groups.filter(g => changed.has(groupKey(id, g.id))).map(g => g.id)
       )
     )
   )
@@ -235,31 +356,40 @@ const onGroupUnlinked: Handler<PlatformEvent> = async (event, tx) => {
 
 const groupUpdated = z.looseObject({
   id: z.uuid(),
-  name: z.string().optional()
+  name: z.string().optional(),
+  timestamp
 })
 
 const onGroupUpdated: Handler<PlatformEvent> = async (event, tx) => {
-  const { id, name } = parseOrDrop(groupUpdated, event.body, event.routingKey)
+  const { id, name, timestamp } = parseOrDrop(
+    groupUpdated,
+    event.body,
+    event.routingKey
+  )
   if (!name) return
+  if (!(await fresh(tx, timestamp, [`group:${id}:name`])).size) return
   await tx.update(spaceGroups).set({ name }).where(eq(spaceGroups.groupId, id))
 }
 
 const userDeleted = z
   .looseObject({
     uuid: z.uuid().optional(),
-    internalEmail: z.email().optional()
+    internalEmail: z.email().optional(),
+    timestamp
   })
   .refine(u => u.uuid ?? u.internalEmail, 'needs a uuid or an internalEmail')
 
 const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
-  const { uuid, internalEmail } = parseOrDrop(
+  const { uuid, internalEmail, timestamp } = parseOrDrop(
     userDeleted,
     event.body,
     event.routingKey
   )
-  await tx
-    .delete(spaceMembers)
-    .where(matching(log, [{ uuid, email: internalEmail }]))
+  await removeMembers(
+    tx,
+    timestamp,
+    matching(log, [{ uuid, email: internalEmail }])
+  )
 }
 
 export const spacePlatformRoutes: ReadonlyMap<
