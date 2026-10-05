@@ -1,13 +1,18 @@
 import { randomBytes } from 'node:crypto'
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import { sha256 } from '../auth/authenticator.ts'
-import type { Authorize } from '../auth/index.ts'
-import { spaceMembers, spaces } from '../spaces/schema.ts'
-import { API_TOKEN_PREFIX } from './authenticator.ts'
+import type { Authorize, Caller } from '../auth/index.ts'
+import {
+  organizationMembers,
+  spaceMembers,
+  spaceRole,
+  spaces
+} from '../spaces/schema.ts'
+import { API_TOKEN_PREFIX, type Scope } from './authenticator.ts'
 import {
   apiTokens,
   apiTokenSpaces,
@@ -26,6 +31,7 @@ const createBody = z
     name,
     scopes: z.array(z.enum(tokenScope.enumValues)).min(1),
     spaces: z.union([z.literal('all'), z.array(z.uuid()).min(1)]),
+    role: z.enum(spaceRole.enumValues).optional(),
     expiresInDays: z.literal([7, 30, 90, 365]).optional(),
     // Null for a token that never expires.
     expiresAt: z.iso.datetime({ offset: true }).nullable().optional()
@@ -37,6 +43,13 @@ const createBody = z
 
 const tokenParams = z.object({ id: z.uuid() })
 
+const policyBody = z.object({
+  allowNoExpiry: z.boolean(),
+  maxLifetimeDays: z.int().positive().nullable()
+})
+
+const AUDIT_PAGE = 500
+
 function invalid(reply: FastifyReply, message: string) {
   return reply.code(400).send({ error: 'invalid_request', message })
 }
@@ -45,32 +58,159 @@ function forbidden(reply: FastifyReply, message: string) {
   return reply.code(403).send({ error: 'forbidden', message })
 }
 
-// The account whose tokens the caller manages, and who the audit log names.
-function accountOf(request: FastifyRequest) {
-  const caller = request.caller
-  if (!caller) throw new Error('authorize let a request through')
-  if (caller.userId === null) return null
+function callerOf(request: FastifyRequest): Caller {
+  if (!request.caller) throw new Error('authorize let a request through')
+  return request.caller
+}
+
+// The tokens a caller manages under one route prefix.
+interface Manager {
+  caller: Caller
+  // Who the audit log names.
+  actor: string
+  owner:
+    { ownerKind: 'account'; accountId: string } | { ownerKind: 'organization' }
+  owns: SQL | undefined
+  // The spaces among `spaceIds` that a new token may cover.
+  coverable: (spaceIds: string[]) => Promise<string[]>
+}
+
+type Manage = (request: FastifyRequest, db: Db) => Promise<Manager | string>
+
+const actorOf = (caller: Caller) =>
+  caller.kind === 'session' ? caller.userId : `token:${caller.tokenId}`
+
+const manageOwnAccount: Manage = (request, db) => {
+  const caller = callerOf(request)
+  const { userId } = caller
+  if (userId === null) return Promise.resolve('not an account token')
+  return Promise.resolve({
+    caller,
+    actor: actorOf(caller),
+    owner: { ownerKind: 'account', accountId: userId },
+    owns: and(
+      eq(apiTokens.organizationId, caller.organizationId),
+      eq(apiTokens.accountId, userId)
+    ),
+    coverable: async spaceIds =>
+      (
+        await db
+          .select({ spaceId: spaceMembers.spaceId })
+          .from(spaceMembers)
+          .innerJoin(spaces, eq(spaces.spaceId, spaceMembers.spaceId))
+          .where(
+            and(
+              eq(spaceMembers.userId, userId),
+              eq(spaces.organizationId, caller.organizationId),
+              inArray(spaceMembers.spaceId, spaceIds)
+            )
+          )
+      ).map(s => s.spaceId)
+  })
+}
+
+const manageOrganization: Manage = async (request, db) => {
+  const caller = callerOf(request)
+  const { userId, organizationId } = caller
+  if (userId === null) return 'an organization token manages no tokens'
+  const [admin] = await db
+    .select({ role: organizationMembers.role })
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.organizationId, organizationId),
+        eq(organizationMembers.userId, userId),
+        inArray(organizationMembers.role, ['owner', 'admin'])
+      )
+    )
+  if (!admin) return 'not an admin of the organization'
   return {
     caller,
-    userId: caller.userId,
-    actor: caller.kind === 'session' ? caller.userId : `token:${caller.tokenId}`
+    actor: actorOf(caller),
+    owner: { ownerKind: 'organization' },
+    owns: and(
+      eq(apiTokens.organizationId, organizationId),
+      eq(apiTokens.ownerKind, 'organization')
+    ),
+    coverable: async spaceIds =>
+      (
+        await db
+          .select({ spaceId: spaces.spaceId })
+          .from(spaces)
+          .where(
+            and(
+              eq(spaces.organizationId, organizationId),
+              inArray(spaces.spaceId, spaceIds)
+            )
+          )
+      ).map(s => s.spaceId)
   }
 }
 
-export function registerTokenRoutes(
-  app: HttpServer,
-  deps: { db: Db; authorize: Authorize }
-) {
-  const { db } = deps
-  const preHandler = deps.authorize('tokens:write')
+// Null when the organization's policy allows the expiry, else why not.
+async function refusedExpiry(
+  db: Db,
+  organizationId: string,
+  expiresAt: Date | null,
+  now: number
+): Promise<string | null> {
+  if (expiresAt && expiresAt.getTime() <= now) return 'expiresAt is in the past'
+  const [policy] = await db
+    .select()
+    .from(organizationTokenPolicy)
+    .where(eq(organizationTokenPolicy.organizationId, organizationId))
+  if (expiresAt === null && !policy?.allowNoExpiry) {
+    return 'the organization requires an expiry'
+  }
+  if (
+    expiresAt &&
+    policy?.maxLifetimeDays &&
+    expiresAt.getTime() > now + policy.maxLifetimeDays * DAY_MS
+  ) {
+    return `the organization caps tokens at ${String(policy.maxLifetimeDays)} days`
+  }
+  return null
+}
 
-  app.post('/tokens', { preHandler }, async (request, reply) => {
-    const account = accountOf(request)
-    if (!account) return forbidden(reply, 'not an account token')
-    const { caller, userId, actor } = account
+function exceeds(
+  caller: Caller,
+  scopes: Scope[],
+  spaceIds: string[] | null,
+  expiresAt: Date | null
+): boolean {
+  if (caller.kind !== 'token') return false
+  const covered = caller.spaceIds
+  return (
+    !scopes.every(s => caller.scopes.includes(s)) ||
+    (covered !== null &&
+      (!spaceIds || !spaceIds.every(s => covered.includes(s)))) ||
+    (caller.expiresAt !== null && (!expiresAt || expiresAt > caller.expiresAt))
+  )
+}
+
+function registerManagedTokens(
+  app: HttpServer,
+  db: Db,
+  prefix: string,
+  preHandler: ReturnType<Authorize>,
+  manage: Manage
+) {
+  app.post(prefix, { preHandler }, async (request, reply) => {
+    const manager = await manage(request, db)
+    if (typeof manager === 'string') return forbidden(reply, manager)
+    const { caller, actor } = manager
     const parsed = createBody.safeParse(request.body)
     if (!parsed.success) return invalid(reply, z.prettifyError(parsed.error))
     const body = parsed.data
+    const forOrganization = manager.owner.ownerKind === 'organization'
+    if (forOrganization !== (body.role !== undefined)) {
+      return invalid(
+        reply,
+        forOrganization
+          ? 'an organization token needs a role'
+          : 'only an organization token has a role'
+      )
+    }
 
     const now = Date.now()
     const expiresAt =
@@ -81,55 +221,24 @@ export function registerTokenRoutes(
           : new Date(
               now + (body.expiresInDays ?? DEFAULT_LIFETIME_DAYS) * DAY_MS
             )
-    if (expiresAt && expiresAt.getTime() <= now) {
-      return invalid(reply, 'expiresAt is in the past')
-    }
-    const [policy] = await db
-      .select()
-      .from(organizationTokenPolicy)
-      .where(eq(organizationTokenPolicy.organizationId, caller.organizationId))
-    if (expiresAt === null && !policy?.allowNoExpiry) {
-      return invalid(reply, 'the organization requires an expiry')
-    }
-    if (
-      expiresAt &&
-      policy?.maxLifetimeDays &&
-      expiresAt.getTime() > now + policy.maxLifetimeDays * DAY_MS
-    ) {
-      return invalid(
-        reply,
-        `the organization caps tokens at ${String(policy.maxLifetimeDays)} days`
-      )
-    }
+    const refused = await refusedExpiry(
+      db,
+      caller.organizationId,
+      expiresAt,
+      now
+    )
+    if (refused) return invalid(reply, refused)
 
     const scopes = [...new Set(body.scopes)]
     const spaceIds = body.spaces === 'all' ? null : [...new Set(body.spaces)]
-    if (spaceIds) {
-      const memberOf = await db
-        .select({ spaceId: spaceMembers.spaceId })
-        .from(spaceMembers)
-        .innerJoin(spaces, eq(spaces.spaceId, spaceMembers.spaceId))
-        .where(
-          and(
-            eq(spaceMembers.userId, userId),
-            eq(spaces.organizationId, caller.organizationId),
-            inArray(spaceMembers.spaceId, spaceIds)
-          )
-        )
-      if (memberOf.length !== spaceIds.length) {
-        return invalid(reply, 'spaces must be spaces of the account')
-      }
+    if (
+      spaceIds &&
+      (await manager.coverable(spaceIds)).length !== spaceIds.length
+    ) {
+      return invalid(reply, 'spaces must be spaces the owner can reach')
     }
-
-    if (caller.kind === 'token') {
-      const covered = caller.spaceIds
-      if (
-        !scopes.every(s => caller.scopes.includes(s)) ||
-        (covered && (!spaceIds || !spaceIds.every(s => covered.includes(s)))) ||
-        (caller.expiresAt && (!expiresAt || expiresAt > caller.expiresAt))
-      ) {
-        return forbidden(reply, 'more rights than the token creating it')
-      }
+    if (exceeds(caller, scopes, spaceIds, expiresAt)) {
+      return forbidden(reply, 'more rights than the token creating it')
     }
 
     const token = `${API_TOKEN_PREFIX}${randomBytes(32).toString('base64url')}`
@@ -138,8 +247,8 @@ export function registerTokenRoutes(
         .insert(apiTokens)
         .values({
           organizationId: caller.organizationId,
-          ownerKind: 'account',
-          accountId: userId,
+          ...manager.owner,
+          role: body.role,
           name: body.name,
           tokenHash: sha256(token),
           scopes,
@@ -165,31 +274,27 @@ export function registerTokenRoutes(
       token,
       scopes,
       spaces: spaceIds ?? 'all',
+      role: body.role ?? null,
       expiresAt
     })
   })
 
-  app.get('/tokens', { preHandler }, async (request, reply) => {
-    const account = accountOf(request)
-    if (!account) return forbidden(reply, 'not an account token')
+  app.get(prefix, { preHandler }, async (request, reply) => {
+    const manager = await manage(request, db)
+    if (typeof manager === 'string') return forbidden(reply, manager)
     const rows = await db
       .select({
         id: apiTokens.id,
         name: apiTokens.name,
         scopes: apiTokens.scopes,
         allSpaces: apiTokens.allSpaces,
+        role: apiTokens.role,
         expiresAt: apiTokens.expiresAt,
         lastUsedAt: apiTokens.lastUsedAt,
         createdAt: apiTokens.createdAt
       })
       .from(apiTokens)
-      .where(
-        and(
-          eq(apiTokens.organizationId, account.caller.organizationId),
-          eq(apiTokens.accountId, account.userId),
-          isNull(apiTokens.revokedAt)
-        )
-      )
+      .where(and(manager.owns, isNull(apiTokens.revokedAt)))
       .orderBy(asc(apiTokens.createdAt))
     const covered = await db
       .select()
@@ -210,24 +315,23 @@ export function registerTokenRoutes(
     }
   })
 
-  // An active token of the caller's account, or nothing.
-  const ownToken = (request: FastifyRequest) => {
-    const account = accountOf(request)
+  // An active token the caller manages, or nothing.
+  const managedToken = async (request: FastifyRequest) => {
+    const manager = await manage(request, db)
     const params = tokenParams.safeParse(request.params)
-    if (!account || !params.success) return null
+    if (typeof manager === 'string' || !params.success) return null
     return {
-      actor: account.actor,
+      actor: manager.actor,
       where: and(
         eq(apiTokens.id, params.data.id),
-        eq(apiTokens.organizationId, account.caller.organizationId),
-        eq(apiTokens.accountId, account.userId),
+        manager.owns,
         isNull(apiTokens.revokedAt)
       )
     }
   }
 
-  app.patch('/tokens/:id', { preHandler }, async (request, reply) => {
-    const target = ownToken(request)
+  app.patch(`${prefix}/:id`, { preHandler }, async (request, reply) => {
+    const target = await managedToken(request)
     if (!target) return reply.code(404).send({ error: 'not_found' })
     const parsed = z.object({ name }).safeParse(request.body)
     if (!parsed.success) return invalid(reply, z.prettifyError(parsed.error))
@@ -248,10 +352,10 @@ export function registerTokenRoutes(
     return reply.code(204).send()
   })
 
-  app.delete('/tokens/:id', { preHandler }, async (request, reply) => {
-    const target = ownToken(request)
+  app.delete(`${prefix}/:id`, { preHandler }, async (request, reply) => {
+    const target = await managedToken(request)
     if (!target) return reply.code(404).send({ error: 'not_found' })
-    const reason = 'revoked by its owner'
+    const reason = 'revoked by hand'
     const revoked = await db.transaction(async tx => {
       const [row] = await tx
         .update(apiTokens)
@@ -271,4 +375,88 @@ export function registerTokenRoutes(
     if (!revoked) return reply.code(404).send({ error: 'not_found' })
     return reply.code(204).send()
   })
+}
+
+export function registerTokenRoutes(
+  app: HttpServer,
+  deps: { db: Db; authorize: Authorize }
+) {
+  const { db } = deps
+  const preHandler = deps.authorize('tokens:write')
+  registerManagedTokens(app, db, '/tokens', preHandler, manageOwnAccount)
+  registerManagedTokens(
+    app,
+    db,
+    '/organization/tokens',
+    preHandler,
+    manageOrganization
+  )
+
+  app.get(
+    '/organization/token-policy',
+    { preHandler },
+    async (request, reply) => {
+      const manager = await manageOrganization(request, db)
+      if (typeof manager === 'string') return forbidden(reply, manager)
+      const [policy] = await db
+        .select({
+          allowNoExpiry: organizationTokenPolicy.allowNoExpiry,
+          maxLifetimeDays: organizationTokenPolicy.maxLifetimeDays
+        })
+        .from(organizationTokenPolicy)
+        .where(
+          eq(
+            organizationTokenPolicy.organizationId,
+            manager.caller.organizationId
+          )
+        )
+      return policy ?? { allowNoExpiry: false, maxLifetimeDays: null }
+    }
+  )
+
+  app.put(
+    '/organization/token-policy',
+    { preHandler },
+    async (request, reply) => {
+      const manager = await manageOrganization(request, db)
+      if (typeof manager === 'string') return forbidden(reply, manager)
+      const parsed = policyBody.safeParse(request.body)
+      if (!parsed.success) return invalid(reply, z.prettifyError(parsed.error))
+      await db
+        .insert(organizationTokenPolicy)
+        .values({
+          organizationId: manager.caller.organizationId,
+          ...parsed.data
+        })
+        .onConflictDoUpdate({
+          target: organizationTokenPolicy.organizationId,
+          set: parsed.data
+        })
+      return reply.code(204).send()
+    }
+  )
+
+  app.get(
+    '/organization/token-audit',
+    { preHandler },
+    async (request, reply) => {
+      const manager = await manageOrganization(request, db)
+      if (typeof manager === 'string') return forbidden(reply, manager)
+      const entries = await db
+        .select({
+          tokenId: tokenAudit.tokenId,
+          tokenName: apiTokens.name,
+          action: tokenAudit.action,
+          actor: tokenAudit.actor,
+          at: tokenAudit.at,
+          reason: tokenAudit.reason
+        })
+        .from(tokenAudit)
+        .innerJoin(apiTokens, eq(apiTokens.id, tokenAudit.tokenId))
+        .where(eq(apiTokens.organizationId, manager.caller.organizationId))
+        .orderBy(desc(tokenAudit.at))
+        .limit(AUDIT_PAGE)
+      return { entries }
+    }
+  )
 }
