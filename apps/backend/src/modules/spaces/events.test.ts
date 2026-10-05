@@ -14,7 +14,12 @@ import { lastChanges } from '../../events/schema.ts'
 import { MalformedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { spacePlatformRoutes } from './events.ts'
-import { spaceGroups, spaceMembers, spaces } from './schema.ts'
+import {
+  organizationMembers,
+  spaceGroups,
+  spaceMembers,
+  spaces
+} from './schema.ts'
 
 const SPACE_ID = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
 const JDOE_ID = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
@@ -41,6 +46,7 @@ beforeEach(async () => {
   await testDb.db.delete(spaceGroups)
   await testDb.db.delete(spaces)
   await testDb.db.delete(lastChanges)
+  await testDb.db.delete(organizationMembers)
 })
 
 function handle(routingKey: string, body: unknown) {
@@ -367,6 +373,84 @@ describe('group events', () => {
     await expect(group('twake.space.group.linked', [])).rejects.toBeInstanceOf(
       MalformedEventError
     )
+  })
+})
+
+describe('organization roles', () => {
+  const readRoles = () =>
+    testDb.db
+      .select({
+        organizationId: organizationMembers.organizationId,
+        userId: organizationMembers.userId,
+        role: organizationMembers.role
+      })
+      .from(organizationMembers)
+  const roleChanged = (body: Record<string, unknown>) =>
+    handle('b2b.member.role.changed', {
+      organizationId: 'evilcorp123',
+      username: 'jdoe',
+      email: jdoe.email,
+      workspaceUrl: 'jdoe.twake.app',
+      role: 'admin',
+      previousRole: 'member',
+      actor: 'owner@evilcorp.com',
+      timestamp: '2026-10-05T09:12:44.512Z',
+      ...body
+    })
+
+  it("stores a user's organization role", async () => {
+    await roleChanged({ uuid: JDOE_ID })
+
+    expect(await readRoles()).toEqual([
+      { organizationId: 'evilcorp123', userId: JDOE_ID, role: 'admin' }
+    ])
+  })
+
+  it("changes a user's organization role", async () => {
+    await roleChanged({ uuid: JDOE_ID })
+    await roleChanged({
+      uuid: JDOE_ID,
+      role: 'owner',
+      timestamp: '2026-10-05T10:00:00Z'
+    })
+
+    expect(await readRoles()).toMatchObject([{ role: 'owner' }])
+  })
+
+  it('ignores a role change older than the last one', async () => {
+    await roleChanged({ uuid: JDOE_ID, timestamp: '2026-10-05T10:00:00Z' })
+    await roleChanged({
+      uuid: JDOE_ID,
+      role: 'member',
+      timestamp: '2026-10-05T09:00:00Z'
+    })
+
+    expect(await readRoles()).toMatchObject([{ role: 'admin' }])
+  })
+
+  it('finds a user sent without a uuid by their email', async () => {
+    await created()
+
+    await roleChanged({})
+
+    expect(await readRoles()).toMatchObject([{ userId: JDOE_ID }])
+  })
+
+  it('removes the role of a deleted user', async () => {
+    await roleChanged({ uuid: JDOE_ID })
+
+    await handle('domain.user.deleted', {
+      uuid: JDOE_ID,
+      internalEmail: jdoe.email
+    })
+
+    expect(await readRoles()).toEqual([])
+  })
+
+  it('refuses an unknown role', async () => {
+    await expect(
+      roleChanged({ uuid: JDOE_ID, role: 'emperor' })
+    ).rejects.toBeInstanceOf(MalformedEventError)
   })
 })
 

@@ -8,6 +8,8 @@ import { parseOrDrop, type Handler } from '../../events/router.ts'
 import type { Tx } from '../../infra/db.ts'
 import { resourceKey } from './resources.ts'
 import {
+  organizationMembers,
+  organizationRole,
   spaceGroups,
   spaceMembers,
   spaceResources,
@@ -390,6 +392,52 @@ const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
     timestamp,
     matching(log, [{ uuid, email: internalEmail }])
   )
+  await tx
+    .delete(organizationMembers)
+    .where(
+      or(
+        uuid === undefined ? undefined : eq(organizationMembers.userId, uuid),
+        internalEmail === undefined
+          ? undefined
+          : eq(organizationMembers.email, internalEmail)
+      )
+    )
+}
+
+const organizationRoleChanged = z.looseObject({
+  organizationId: z.string().min(1),
+  uuid: z.uuid().optional(),
+  email: z.email(),
+  role: z.enum(organizationRole.enumValues),
+  timestamp
+})
+
+const onOrganizationRoleChanged: Handler<PlatformEvent> = async (
+  event,
+  tx,
+  log
+) => {
+  const change = parseOrDrop(
+    organizationRoleChanged,
+    event.body,
+    event.routingKey
+  )
+  const [user] = await withUserIds(tx, log, [change])
+  if (!user) return
+  const key = `organization:${user.organizationId}:member:${user.uuid}`
+  if (!(await fresh(tx, user.timestamp, [key])).size) return
+  await tx
+    .insert(organizationMembers)
+    .values({
+      organizationId: user.organizationId,
+      userId: user.uuid,
+      email: user.email,
+      role: user.role
+    })
+    .onConflictDoUpdate({
+      target: [organizationMembers.organizationId, organizationMembers.userId],
+      set: { email: user.email, role: user.role }
+    })
 }
 
 export const spacePlatformRoutes: ReadonlyMap<
@@ -397,6 +445,7 @@ export const spacePlatformRoutes: ReadonlyMap<
   Handler<PlatformEvent>
 > = new Map([
   ['twake.space.created', onCreated],
+  ['b2b.member.role.changed', onOrganizationRoleChanged],
   ['twake.space.updated', onUpdated],
   ['twake.space.deleted', onDeleted],
   ['twake.space.member.added', onMemberChanged],

@@ -55,6 +55,27 @@ export const spaceGroups = pgTable(
   ]
 )
 
+export const organizationRole = pgEnum('organization_role', [
+  'owner',
+  'admin',
+  'moderator',
+  'member'
+])
+
+export const organizationMembers = pgTable(
+  'organization_members',
+  {
+    organizationId: text('organization_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    email: text().notNull(),
+    role: organizationRole().notNull()
+  },
+  table => [
+    primaryKey({ columns: [table.organizationId, table.userId] }),
+    index().on(table.userId)
+  ]
+)
+
 export const spaceResourceKind = pgEnum('space_resource_kind', [
   'drive',
   'mailbox',
