@@ -9,6 +9,7 @@ import { startConsumer, startDeadLetterProducer } from './infra/kafka.ts'
 import { createLdapRestClient, ldapRestDirectory } from './infra/ldap-rest.ts'
 import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
+import { registerMetrics } from './modules/feed/metrics.ts'
 import { schedulePosting } from './modules/feed/poster.ts'
 import { schedulePurge } from './modules/feed/retention.ts'
 import { registerTransactionRoutes } from './modules/feed/transactions.ts'
@@ -77,6 +78,9 @@ await listenForRevocations(sql, sessionId => {
 })
 await listenForLive(sql, streams)
 await server.listen({ host: config.HTTP_HOST, port: config.HTTP_PORT })
+const metrics = createServer({ logger, isReady: () => Promise.resolve(true) })
+registerMetrics(metrics, { db })
+await metrics.listen({ host: config.HTTP_HOST, port: config.METRICS_PORT })
 
 const deadLetters = await startDeadLetterProducer(config, logger)
 const consumer = await startConsumer(
@@ -108,6 +112,7 @@ async function shutdown(signal: string): Promise<void> {
     await consumer.disconnect()
     await deadLetters.disconnect()
     await server.close()
+    await metrics.close()
     await sql.end({ timeout: 5 })
   } catch (error) {
     logger.error({ err: error }, 'shutdown failed')
