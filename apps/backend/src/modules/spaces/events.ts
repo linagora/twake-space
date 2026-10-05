@@ -23,6 +23,12 @@ const spaceCreated = spaceEvent.extend({
 
 const spaceUpdated = spaceEvent.extend({ name: z.string().min(1).optional() })
 
+const memberChanged = spaceEvent.extend({ members: z.array(member).min(1) })
+
+const memberRemoved = spaceEvent.extend({
+  members: z.array(z.looseObject({ username: z.string().min(1) })).min(1)
+})
+
 async function upsertMembers(
   tx: Tx,
   spaceId: string,
@@ -81,6 +87,32 @@ const onDeleted: Handler<PlatformEvent> = async (event, tx) => {
   await tx.delete(spaces).where(eq(spaces.spaceId, id))
 }
 
+const onMemberChanged: Handler<PlatformEvent> = async (event, tx) => {
+  const { id, members } = parseOrDrop(
+    memberChanged,
+    event.body,
+    event.routingKey
+  )
+  await upsertMembers(tx, id, members)
+}
+
+const onMemberRemoved: Handler<PlatformEvent> = async (event, tx) => {
+  const { id, members } = parseOrDrop(
+    memberRemoved,
+    event.body,
+    event.routingKey
+  )
+  await tx.delete(spaceMembers).where(
+    and(
+      eq(spaceMembers.spaceId, id),
+      inArray(
+        spaceMembers.username,
+        members.map(m => m.username)
+      )
+    )
+  )
+}
+
 const userDeleted = z.looseObject({
   organizationId: z.string().min(1),
   userId: z.string().min(1)
@@ -115,5 +147,8 @@ export const spacePlatformRoutes: ReadonlyMap<
   ['twake.space.created', onCreated],
   ['twake.space.updated', onUpdated],
   ['twake.space.deleted', onDeleted],
+  ['twake.space.member.added', onMemberChanged],
+  ['twake.space.member.role.changed', onMemberChanged],
+  ['twake.space.member.removed', onMemberRemoved],
   ['domain.user.deleted', onUserDeleted]
 ])
