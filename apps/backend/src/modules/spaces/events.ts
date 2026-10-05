@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { PlatformEvent } from '../../events/envelope.ts'
 import { MalformedEventError, type Handler } from '../../events/router.ts'
@@ -91,11 +91,35 @@ const onDeleted: Handler<PlatformEvent> = async (event, tx) => {
   await tx.delete(spaces).where(eq(spaces.spaceId, id))
 }
 
+const userDeleted = z.looseObject({
+  organizationId: z.string().min(1),
+  userId: z.string().min(1)
+})
+
+const onUserDeleted: Handler<PlatformEvent> = async (event, tx) => {
+  const { organizationId, userId } = parse(userDeleted, event)
+  await tx
+    .delete(spaceMembers)
+    .where(
+      and(
+        eq(spaceMembers.username, userId),
+        inArray(
+          spaceMembers.spaceId,
+          tx
+            .select({ spaceId: spaces.spaceId })
+            .from(spaces)
+            .where(eq(spaces.organizationId, organizationId))
+        )
+      )
+    )
+}
+
 export const spacePlatformRoutes: ReadonlyMap<
   string,
   Handler<PlatformEvent>
 > = new Map([
   ['twake.space.created', onCreated],
   ['twake.space.updated', onUpdated],
-  ['twake.space.deleted', onDeleted]
+  ['twake.space.deleted', onDeleted],
+  ['domain.user.deleted', onUserDeleted]
 ])

@@ -106,6 +106,28 @@ describe('space events', () => {
     expect(await readMembers()).toEqual([])
   })
 
+  it("removes a deleted user from their organization's spaces only", async () => {
+    const otherOrgSpace = '9d1c7a52-0b3e-4f6a-8c2d-5e4f3a2b1c0d'
+    await created()
+    await created({ id: otherOrgSpace, organizationId: 'acme' })
+    await handle('domain.user.deleted', {
+      emitter: 'ldap-rest',
+      type: 'user.deleted',
+      userId: 'jdoe',
+      internalEmail: 'jdoe@evilcorp.com',
+      organizationId: 'evilcorp123',
+      reason: 'user deleted'
+    })
+
+    expect(await readMembers()).toEqual([])
+    expect(
+      await testDb.db
+        .select()
+        .from(spaceMembers)
+        .where(eq(spaceMembers.spaceId, otherOrgSpace))
+    ).toHaveLength(1)
+  })
+
   it('refuses a space event without a space id', async () => {
     await expect(created({ id: 'not-a-uuid' })).rejects.toBeInstanceOf(
       MalformedEventError
