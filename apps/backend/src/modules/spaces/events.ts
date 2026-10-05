@@ -11,6 +11,7 @@ const spaceEvent = z.looseObject({
 })
 
 const member = z.looseObject({
+  uuid: z.uuid(),
   username: z.string().min(1),
   email: z.email(),
   role: z.enum(['viewer', 'editor', 'admin'])
@@ -26,7 +27,7 @@ const spaceUpdated = spaceEvent.extend({ name: z.string().min(1).optional() })
 const memberChanged = spaceEvent.extend({ members: z.array(member).min(1) })
 
 const memberRemoved = spaceEvent.extend({
-  members: z.array(z.looseObject({ username: z.string().min(1) })).min(1)
+  members: z.array(z.looseObject({ uuid: z.uuid() })).min(1)
 })
 
 async function upsertMembers(
@@ -35,19 +36,20 @@ async function upsertMembers(
   members: z.infer<typeof member>[]
 ) {
   // One upsert cannot touch a row twice, so a member listed twice keeps its last entry.
-  const byUsername = new Map(
-    members.map(({ username, email, role }) => [
-      username,
-      { spaceId, username, email, role }
+  const byUser = new Map(
+    members.map(({ uuid, username, email, role }) => [
+      uuid,
+      { spaceId, userId: uuid, username, email, role }
     ])
   )
-  if (byUsername.size === 0) return
+  if (byUser.size === 0) return
   await tx
     .insert(spaceMembers)
-    .values([...byUsername.values()])
+    .values([...byUser.values()])
     .onConflictDoUpdate({
-      target: [spaceMembers.spaceId, spaceMembers.username],
+      target: [spaceMembers.spaceId, spaceMembers.userId],
       set: {
+        username: sql`excluded.username`,
         email: sql`excluded.email`,
         role: sql`excluded.role`
       }
@@ -106,38 +108,18 @@ const onMemberRemoved: Handler<PlatformEvent> = async (event, tx) => {
     and(
       eq(spaceMembers.spaceId, id),
       inArray(
-        spaceMembers.username,
-        members.map(m => m.username)
+        spaceMembers.userId,
+        members.map(m => m.uuid)
       )
     )
   )
 }
 
-const userDeleted = z.looseObject({
-  organizationId: z.string().min(1),
-  userId: z.string().min(1)
-})
+const userDeleted = z.looseObject({ uuid: z.uuid() })
 
 const onUserDeleted: Handler<PlatformEvent> = async (event, tx) => {
-  const { organizationId, userId } = parseOrDrop(
-    userDeleted,
-    event.body,
-    event.routingKey
-  )
-  await tx
-    .delete(spaceMembers)
-    .where(
-      and(
-        eq(spaceMembers.username, userId),
-        inArray(
-          spaceMembers.spaceId,
-          tx
-            .select({ spaceId: spaces.spaceId })
-            .from(spaces)
-            .where(eq(spaces.organizationId, organizationId))
-        )
-      )
-    )
+  const { uuid } = parseOrDrop(userDeleted, event.body, event.routingKey)
+  await tx.delete(spaceMembers).where(eq(spaceMembers.userId, uuid))
 }
 
 export const spacePlatformRoutes: ReadonlyMap<
