@@ -5,7 +5,7 @@ import { discoverIdentityProvider, type OidcOptions } from './oidc.ts'
 import { registerAuth, type RequireIdentity } from './routes.ts'
 import { postgresAuthStore } from './store.ts'
 
-export type { Identity, SpaceRole } from './oidc.ts'
+export type { Identity } from './oidc.ts'
 export type { RequireIdentity } from './routes.ts'
 
 export async function setUpAuth(

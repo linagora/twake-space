@@ -1,12 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import * as client from 'openid-client'
 import { z } from 'zod'
-import { spaceRole } from '../spaces/schema.ts'
-
-export type SpaceRole = (typeof spaceRole.enumValues)[number]
-
-const organizationRole = z.enum(['owner', 'admin', 'moderator', 'member'])
-export type OrganizationRole = z.infer<typeof organizationRole>
 
 export interface Identity {
   subject: string
@@ -14,8 +8,6 @@ export interface Identity {
   sessionId: string
   expiresAt: Date
   organizationId: string | null
-  organizationRole: OrganizationRole | null
-  spaces: ReadonlyMap<string, SpaceRole>
 }
 
 export interface IdentityProvider {
@@ -36,24 +28,10 @@ const BACKCHANNEL_LOGOUT_EVENT =
 const userinfoSchema = z.object({
   sub: z.string().min(1),
   email: z.email(),
-  org_id: z.string().min(1).nullish(),
-  org_role: organizationRole.nullish().catch(null),
-  spaces: z.union([z.string(), z.array(z.string())]).nullish()
+  // LemonLDAP's introspection does not return the sid.
+  sid: z.string().min(1),
+  org_id: z.string().min(1).nullish()
 })
-
-const spaceClaimSchema = z.tuple([z.uuid(), z.enum(spaceRole.enumValues)])
-
-export function parseSpaces(
-  claim: string | string[] | null | undefined
-): Map<string, SpaceRole> {
-  const entries = typeof claim === 'string' ? [claim] : (claim ?? [])
-  const spaces = new Map<string, SpaceRole>()
-  for (const entry of entries) {
-    const parsed = spaceClaimSchema.safeParse(entry.split(':'))
-    if (parsed.success) spaces.set(parsed.data[0], parsed.data[1])
-  }
-  return spaces
-}
 
 function hasAudience(aud: string | string[] | undefined, audience: string) {
   return Array.isArray(aud) ? aud.includes(audience) : aud === audience
@@ -88,8 +66,7 @@ export async function discoverIdentityProvider(
         !token.active ||
         token.exp === undefined ||
         token.exp * 1000 <= Date.now() ||
-        !hasAudience(token.aud, options.audience) ||
-        token.sid === undefined
+        !hasAudience(token.aud, options.audience)
       ) {
         return null
       }
@@ -102,11 +79,9 @@ export async function discoverIdentityProvider(
       return {
         subject: claims.sub,
         email: claims.email,
-        sessionId: token.sid,
+        sessionId: claims.sid,
         expiresAt: new Date(token.exp * 1000),
-        organizationId: claims.org_id ?? null,
-        organizationRole: claims.org_role ?? null,
-        spaces: parseSpaces(claims.spaces)
+        organizationId: claims.org_id ?? null
       }
     },
 
