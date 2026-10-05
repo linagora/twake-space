@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import type { Db } from '../../infra/db.ts'
 import { matrixSender, type SendEvent } from '../../infra/matrix.ts'
@@ -15,6 +15,43 @@ interface StoredContent {
   object: { title: string }
   preview?: string
   state?: object
+}
+
+type StoredEvent = typeof activityEvents.$inferSelect
+
+function cardContent(card: StoredEvent) {
+  const content = card.content as StoredContent
+  return {
+    type: card.type,
+    id: card.eventId,
+    actor: card.actor,
+    object: content.object,
+    preview: content.preview,
+    state: content.state ?? {},
+    body: [content.object.title, content.preview].filter(Boolean).join('\n'),
+    'm.mentions': {}
+  }
+}
+
+async function firstCardOf(db: Db, spaceId: string, card: StoredEvent) {
+  const [first] = await db
+    .select({
+      matrixEventId: activityEvents.matrixEventId,
+      category: activityEvents.category
+    })
+    .from(activityEvents)
+    .where(
+      and(
+        eq(activityEvents.spaceId, spaceId),
+        eq(activityEvents.objectType, card.objectType),
+        eq(activityEvents.objectId, card.objectId),
+        isNotNull(activityEvents.matrixEventId),
+        ne(activityEvents.id, card.id)
+      )
+    )
+    .orderBy(asc(activityEvents.time), asc(activityEvents.id))
+    .limit(1)
+  return first
 }
 
 // Cards of a space go out in order, so a space stops at its first failure;
@@ -70,26 +107,33 @@ export async function postCards(
         .orderBy(asc(activityEvents.time), asc(activityEvents.id))
         .limit(CARDS_PER_SPACE)
       for (const card of cards) {
-        const content = card.content as StoredContent
         try {
+          const content = cardContent(card)
           const matrixEventId = await send(
             homeserver,
             space.roomId,
             `com.twake.feed.${card.category}`,
             card.id,
-            {
-              type: card.type,
-              id: card.eventId,
-              actor: card.actor,
-              object: content.object,
-              preview: content.preview,
-              state: content.state ?? {},
-              body: [content.object.title, content.preview]
-                .filter(Boolean)
-                .join('\n'),
-              'm.mentions': {}
-            }
+            content
           )
+          // Before storing the card's id, so a failed edit is retried with it.
+          const first = await firstCardOf(db, space.spaceId, card)
+          if (first?.matrixEventId) {
+            await send(
+              homeserver,
+              space.roomId,
+              `com.twake.feed.${first.category}`,
+              `${card.id}.edit`,
+              {
+                ...content,
+                'm.new_content': content,
+                'm.relates_to': {
+                  rel_type: 'm.replace',
+                  event_id: first.matrixEventId
+                }
+              }
+            )
+          }
           await db
             .update(activityEvents)
             .set({ matrixEventId })
