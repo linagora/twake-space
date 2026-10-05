@@ -6,9 +6,12 @@ import type { IdentityProvider } from './oidc.ts'
 import { registerAuth } from './routes.ts'
 import type { AuthStore } from './store.ts'
 import { anIdentity } from './testing.ts'
+import type { TokenCaller } from '../tokens/authenticator.ts'
 
 function setUp(
-  authenticate: Authenticate = () => Promise.resolve(anIdentity())
+  authenticate: Authenticate = () => Promise.resolve(anIdentity()),
+  authenticateToken: (token: string) => Promise<TokenCaller | null> = () =>
+    Promise.resolve(null)
 ) {
   const app = createServer({
     logger: pino({ level: 'silent' }),
@@ -29,7 +32,7 @@ function setUp(
   } satisfies AuthStore
   registerAuth(app, {
     authenticate,
-    authenticateToken: () => Promise.resolve(null),
+    authenticateToken,
     provider,
     store
   })
@@ -68,6 +71,20 @@ describe('POST /ws/ticket', () => {
       method: 'POST',
       url: '/ws/ticket',
       headers: { authorization: 'Bearer token' }
+    })
+
+    expect(response.statusCode).toBe(503)
+  })
+
+  it('answers 503 when an API token cannot be checked', async () => {
+    const { app } = setUp(undefined, () =>
+      Promise.reject(new Error('database down'))
+    )
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/ws/ticket',
+      headers: { authorization: 'Bearer tws_token' }
     })
 
     expect(response.statusCode).toBe(503)
