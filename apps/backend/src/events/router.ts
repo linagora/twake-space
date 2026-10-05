@@ -1,5 +1,5 @@
 import type { Logger } from 'pino'
-import type { Tx } from './db/client.ts'
+import type { Tx } from '../infra/db.ts'
 import type { Deduplicator, EventKey } from './dedupe.ts'
 import {
   PLATFORM_TOPIC,
@@ -8,7 +8,7 @@ import {
   type CloudEvent,
   type ParseResult,
   type PlatformEvent
-} from './events.ts'
+} from './envelope.ts'
 
 export type Handler<E> = (event: E, tx: Tx) => Promise<void>
 

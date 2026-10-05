@@ -3,7 +3,7 @@ import {
   NotFoundError,
   type User
 } from '@linagora/ldap-rest-client'
-import type { Config } from './config.ts'
+import type { Config } from '../config.ts'
 
 export interface Member {
   username: string

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseCloudEvent, parsePlatformEvent } from '../src/events.ts'
+import { parseCloudEvent, parsePlatformEvent } from './envelope.ts'
 
 const calendarAccepted = {
   specversion: '1.0',
