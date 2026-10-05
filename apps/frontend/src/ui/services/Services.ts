@@ -1,9 +1,11 @@
 import { createContext, use } from 'react'
 
+import type { LiveService } from '@/application/live'
 import type { SpacesService } from '@/application/spaces'
 
 export interface Services {
   spaces: SpacesService
+  live: LiveService
   tasksUrl: string | null
 }
 

@@ -9,7 +9,7 @@ import {
 import type { Space, SpaceSummary } from '@/application/spaces'
 import { useServices } from '@/ui/services/Services'
 
-const SPACES = ['spaces']
+export const SPACES = ['spaces']
 
 export function useSpaceList(): UseQueryResult<SpaceSummary[]> {
   const { spaces } = useServices()

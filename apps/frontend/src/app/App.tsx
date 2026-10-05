@@ -6,6 +6,7 @@ import { AppProviders } from '@/app/AppProviders'
 import { makeQueryClient } from '@/app/queryClient'
 import { routes } from '@/app/routes'
 import { findPreferredLanguage } from '@/ui/i18n/languages'
+import { useLiveUpdates } from '@/ui/live/useLiveUpdates'
 import type { Services } from '@/ui/services/Services'
 import { SessionGate } from '@/ui/session/SessionGate'
 
@@ -30,5 +31,6 @@ export function App({ session, services }: AppProps): ReactElement {
 // Created once signed in: the sign-in may move the browser off the redirect URI
 function AppRouter(): ReactElement {
   const [router] = useState(() => createBrowserRouter(routes))
+  useLiveUpdates()
   return <RouterProvider router={router} />
 }
