@@ -1,10 +1,10 @@
 import { createServer, type IncomingMessage } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { describe, expect, it } from 'vitest'
-import { matrixSender } from './matrix.ts'
+import { matrixClient } from './matrix.ts'
 
-describe('matrixSender', () => {
-  it('sends as the app service and returns the event id', async () => {
+describe('matrixClient', () => {
+  it('sends and joins as the app service', async () => {
     const requests: {
       method: string | undefined
       url: string | undefined
@@ -30,31 +30,39 @@ describe('matrixSender', () => {
     })
     await new Promise<void>(resolve => server.listen(0, resolve))
     const url = `http://127.0.0.1:${String((server.address() as AddressInfo).port)}`
-    const send = matrixSender()
+    const matrix = matrixClient()
+    const homeserver = { url, asToken: 'as-secret' }
 
     try {
-      const eventId = await send(
-        { url, asToken: 'as-secret' },
+      const eventId = await matrix.send(
+        homeserver,
         '!room:example.com',
         'com.twake.feed.files',
         'txn-1',
         { body: 'hi' }
       )
-      const broken = send(
-        { url, asToken: 'as-secret' },
+      const broken = matrix.send(
+        homeserver,
         '!broken:example.com',
         'com.twake.feed.files',
         'txn-2',
         {}
       )
+      await expect(broken).rejects.toThrow('500')
+
+      await matrix.join(homeserver, '!room:example.com')
 
       expect(eventId).toBe('$abc')
-      await expect(broken).rejects.toThrow('500')
       expect(requests[0]).toEqual({
         method: 'PUT',
         url: '/_matrix/client/v3/rooms/!room%3Aexample.com/send/com.twake.feed.files/txn-1',
         auth: 'Bearer as-secret',
         body: '{"body":"hi"}'
+      })
+      expect(requests.find(r => r.method === 'POST')).toMatchObject({
+        method: 'POST',
+        url: '/_matrix/client/v3/rooms/!room%3Aexample.com/join',
+        auth: 'Bearer as-secret'
       })
     } finally {
       server.close()
