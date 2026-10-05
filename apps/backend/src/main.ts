@@ -14,7 +14,11 @@ import {
 import { createDb, migrateDb } from './infra/db.ts'
 import { createServer } from './infra/http.ts'
 import { handleSignals } from './infra/lifecycle.ts'
-import { createLdapRestClient, ldapRestDirectory } from './infra/ldap-rest.ts'
+import {
+  createLdapRestClient,
+  ldapRestDirectory,
+  ldapRestSpaces
+} from './infra/ldap-rest.ts'
 import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
 import { registerMetrics } from './modules/feed/metrics.ts'
@@ -35,6 +39,7 @@ import { configureHomeserver } from './modules/organizations/homeservers.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
 import { registerSpaceRoutes } from './modules/spaces/routes.ts'
+import { registerSpaceWriteRoutes } from './modules/spaces/writes.ts'
 import { registerTokenRoutes } from './modules/tokens/routes.ts'
 
 // Readiness answers 503 this long before the server closes, so the load
@@ -57,7 +62,8 @@ if (config.homeserver) {
   homeserverId = await configureHomeserver(db, key, homeserver)
 }
 
-const directory = ldapRestDirectory(createLdapRestClient(config))
+const ldapRest = createLdapRestClient(config)
+const directory = ldapRestDirectory(ldapRest)
 const routes: Routes = {
   activity: {
     get: type => resourceActivityRoutes.get(type) ?? activityRoute.get(type)
@@ -97,6 +103,11 @@ const authorize = await setUpAuth(server, {
   directory
 })
 registerSpaceRoutes(server, { db, authorize })
+registerSpaceWriteRoutes(server, {
+  db,
+  authorize,
+  directory: ldapRestSpaces(ldapRest)
+})
 registerTokenRoutes(server, { db, authorize, directory })
 registerDirectoryRoutes(server, { authorize, directory })
 registerNotificationRoutes(server, { db, authorize })
