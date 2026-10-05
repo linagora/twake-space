@@ -18,13 +18,11 @@ const TYPES = {
   member: 'space_change'
 } as const satisfies Record<string, NotificationType>
 
-export const recipient = z.looseObject({
+const recipient = z.looseObject({
   uuid: z.uuid().optional(),
   email: z.email(),
   reason: z.enum(Object.keys(TYPES) as (keyof typeof TYPES)[])
 })
-
-const offByDefault = (type: NotificationType) => type === 'space_change'
 
 export async function notifyRecipients(
   tx: Tx,
@@ -34,8 +32,19 @@ export async function notifyRecipients(
     organizationId: string | null
     spaceId: string | null
   },
-  recipients: z.infer<typeof recipient>[]
+  sent: unknown[]
 ) {
+  // A bad entry costs that recipient only, not the card.
+  const recipients = sent.flatMap(r => {
+    const parsed = recipient.safeParse(r)
+    return parsed.success ? [parsed.data] : []
+  })
+  if (recipients.length < sent.length) {
+    log.warn(
+      { invalid: sent.length - recipients.length },
+      'skipping invalid recipients'
+    )
+  }
   const emails = recipients.flatMap(r => (r.uuid ? [] : [r.email]))
   const known = new Map<string, string>()
   if (emails.length > 0) {
@@ -73,7 +82,9 @@ export async function notifyRecipients(
     choices.map(c => [`${c.userId}|${c.type}`, c.enabled])
   )
   const rows = wanted
-    .filter(w => enabled.get(`${w.userId}|${w.type}`) ?? !offByDefault(w.type))
+    .filter(
+      w => enabled.get(`${w.userId}|${w.type}`) ?? w.type !== 'space_change'
+    )
     .map(w => ({
       ...w,
       organizationId: event.organizationId,
