@@ -14,6 +14,7 @@ import { timestamptz } from '../../infra/db.ts'
 export type Actor =
   | { type: 'user'; id: string | null; email: string | null }
   | { type: 'token'; id: string; name: string }
+  | { type: 'deleted_user' }
 
 export const feedCategory = pgEnum('feed_category', [
   'messages',
