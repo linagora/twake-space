@@ -17,6 +17,7 @@ import {
 
 import { spaceTabs } from '@/application/spaceTabs'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { TasksPanel } from '@/ui/space/TasksPanel'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
@@ -61,7 +62,7 @@ export function SpaceScreen(): ReactElement {
   const label = t(`tabs.${current.tab}`)
 
   return (
-    <main className="u-p-2">
+    <main className="u-p-2 u-flex u-flex-column u-h-100">
       <Link component={RouterLink} to="/">
         {t('space.back')}
       </Link>
@@ -90,9 +91,13 @@ export function SpaceScreen(): ReactElement {
         role="tabpanel"
         id={`panel-${current.tab}`}
         aria-labelledby={`tab-${current.tab}`}
+        className="u-flex u-flex-column u-flex-auto"
       >
         {current.state === 'preparing' && (
           <Typography>{t('space.preparing', { app: label })}</Typography>
+        )}
+        {current.state === 'ready' && current.tab === 'tasks' && (
+          <TasksPanel spaceId={spaceId} />
         )}
       </div>
     </main>

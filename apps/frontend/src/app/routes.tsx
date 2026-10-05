@@ -5,5 +5,5 @@ import { SpaceScreen } from '@/ui/space/SpaceScreen'
 
 export const routes: RouteObject[] = [
   { path: '/', element: <HomeScreen /> },
-  { path: '/spaces/:spaceId/:tab?', element: <SpaceScreen /> }
+  { path: '/spaces/:spaceId/:tab?/*', element: <SpaceScreen /> }
 ]

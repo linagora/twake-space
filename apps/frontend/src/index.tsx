@@ -24,7 +24,10 @@ if (!container) throw new Error('Root element #root not found')
 if (!window.API_URL) throw new Error('/.env.js must set API_URL')
 const apiUrl = new URL(window.API_URL, window.location.origin).href
 const session = oidcSession(readSsoConfig(window, apiUrl))
-const services = { spaces: httpSpaces(backend(apiUrl)) }
+const services = {
+  spaces: httpSpaces(backend(apiUrl)),
+  tasksUrl: window.TASKS_URL ?? null
+}
 
 const reportUncaughtError = Sentry.reactErrorHandler((error, info) => {
   console.error(error, info.componentStack)

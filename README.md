@@ -16,6 +16,7 @@ Fill in `LDAP_REST_SECRET` and `OIDC_CLIENT_SECRET` in `apps/backend/.env`, then
 
 ```js
 var API_URL = '/api'
+var TASKS_URL = 'https://tasks.twake.app/'
 var SSO_BASE_URL = 'https://sign-up.twake.app/'
 var SSO_CLIENT_ID = 'twakespace'
 var SSO_SCOPE = 'openid email profile'

@@ -43,5 +43,8 @@
     "chatOff": "Feed und Chat sind aus: Chat ist für deine Organisation nicht aktiviert.",
     "mailOff": "Mail ist aus: Die Mail-Domain deiner Organisation ist noch nicht bestätigt.",
     "preparing": "%{app} wird für diesen Space vorbereitet."
+  },
+  "tasks": {
+    "notSetUp": "Aufgaben ist für TwakeSpace nicht eingerichtet."
   }
 }

@@ -35,7 +35,7 @@ function renderAt(path: string, space: Space | null = roadmap) {
   return renderWithProviders(
     <>
       <Routes>
-        <Route path="/spaces/:spaceId/:tab?" element={<SpaceScreen />} />
+        <Route path="/spaces/:spaceId/:tab?/*" element={<SpaceScreen />} />
       </Routes>
       <Path />
     </>,
@@ -104,6 +104,15 @@ describe('SpaceScreen', () => {
       screen.getByRole('tab', { name: 'Drive', selected: true })
     ).toBeInTheDocument()
     expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/drive')
+  })
+
+  it('frames the board a Tasks link points at', async () => {
+    renderAt('/spaces/a1/tasks/boards/b1?task=T-1')
+
+    expect(await screen.findByTitle('Tasks')).toHaveAttribute(
+      'src',
+      'https://tasks.test/embed/spaces/a1/boards/b1?task=T-1'
+    )
   })
 
   it('shows a resource without an id as being prepared', async () => {
