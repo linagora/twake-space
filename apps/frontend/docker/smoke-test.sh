@@ -12,6 +12,7 @@ trap 'docker rm -f "$NAME" >/dev/null 2>&1 || true' EXIT
 docker run -d --name "$NAME" \
   --read-only --tmpfs /tmp --user 101 --cap-drop ALL --security-opt no-new-privileges \
   -p 127.0.0.1::8080 \
+  -e API_URL='https://api.example.com/v1' \
   -e SSO_BASE_URL='https://sso.example.com/' \
   -e SSO_CLIENT_ID='twake-space' \
   -e POSTHOG_HOST='https://posthog.example.com' \
@@ -53,7 +54,7 @@ script="$(body "$BASE/" | grep -o 'src="/static/js/index[^"]*"' | head -1 | cut 
 expect 'hashed assets are cached for a year' "$(header "$script" Cache-Control)" '*immutable'
 csp="$(header / Content-Security-Policy)"
 expect 'CSP sent' "$csp" "default-src 'self'; script-src 'self';*"
-expect 'CSP: SSO, PostHog and Sentry origins in connect-src' "$csp" "*connect-src 'self' https://sso.example.com https://posthog.example.com https://errors.example.com;*"
+expect 'CSP: API, SSO, PostHog and Sentry origins in connect-src' "$csp" "*connect-src 'self' https://api.example.com https://sso.example.com https://posthog.example.com https://errors.example.com;*"
 expect 'CSP: frame-ancestors from the environment' "$csp" "*frame-ancestors 'self' https://workplace.example.com;*"
 expect 'CSP on the SPA fallback too' "$(header /spaces/42 Content-Security-Policy)" "$csp"
 expect 'CSP on assets too' "$(header "$script" Content-Security-Policy)" "$csp"

@@ -4,6 +4,8 @@ import * as Sentry from '@sentry/react'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import { backend } from '@/adapters/http/backend'
+import { httpSpaces } from '@/adapters/http/httpSpaces'
 import { oidcSession, readSsoConfig } from '@/adapters/oidc/oidcSession'
 import { App } from '@/app/App'
 
@@ -19,7 +21,10 @@ Sentry.init({
 const container = document.getElementById('root')
 if (!container) throw new Error('Root element #root not found')
 
-const session = oidcSession(readSsoConfig(window, window.location.origin))
+if (!window.API_URL) throw new Error('/.env.js must set API_URL')
+const apiUrl = new URL(window.API_URL, window.location.origin).href
+const session = oidcSession(readSsoConfig(window, apiUrl))
+const services = { spaces: httpSpaces(backend(apiUrl)) }
 
 const reportUncaughtError = Sentry.reactErrorHandler((error, info) => {
   console.error(error, info.componentStack)
@@ -31,6 +36,6 @@ createRoot(container, {
   }
 }).render(
   <StrictMode>
-    <App session={session} />
+    <App session={session} services={services} />
   </StrictMode>
 )

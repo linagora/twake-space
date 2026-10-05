@@ -14,7 +14,14 @@ export default defineConfig({
   },
   server: {
     port: Number(process.env.PORT ?? 3000),
-    historyApiFallback: true
+    historyApiFallback: true,
+    // With API_URL = '/api' in public/.env.js, the backend answers on this origin.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        pathRewrite: { '^/api': '' }
+      }
+    }
   },
   output: {
     sourceMap: { js: false }

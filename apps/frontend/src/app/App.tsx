@@ -6,18 +6,20 @@ import { AppProviders } from '@/app/AppProviders'
 import { makeQueryClient } from '@/app/queryClient'
 import { routes } from '@/app/routes'
 import { findPreferredLanguage } from '@/ui/i18n/languages'
+import type { Services } from '@/ui/services/Services'
 import { SessionGate } from '@/ui/session/SessionGate'
 
 export interface AppProps {
   session: SessionService
+  services: Services
 }
 
-export function App({ session }: AppProps): ReactElement {
+export function App({ session, services }: AppProps): ReactElement {
   const [queryClient] = useState(makeQueryClient)
   const [lang] = useState(findPreferredLanguage)
 
   return (
-    <AppProviders lang={lang} queryClient={queryClient}>
+    <AppProviders lang={lang} queryClient={queryClient} services={services}>
       <SessionGate session={session}>
         <AppRouter />
       </SessionGate>

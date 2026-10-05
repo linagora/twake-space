@@ -12,9 +12,10 @@ docker compose up -d
 cp apps/backend/.env.example apps/backend/.env
 ```
 
-Fill in `LDAP_REST_SECRET` and `OIDC_CLIENT_SECRET` in `apps/backend/.env`, then put your SSO settings in `apps/frontend/public/.env.js`:
+Fill in `LDAP_REST_SECRET` and `OIDC_CLIENT_SECRET` in `apps/backend/.env`, then put your API and SSO settings in `apps/frontend/public/.env.js`. The dev server forwards `/api` to the backend:
 
 ```js
+var API_URL = '/api'
 var SSO_BASE_URL = 'https://sign-up.twake.app/'
 var SSO_CLIENT_ID = 'twakespace'
 var SSO_SCOPE = 'openid email profile'
