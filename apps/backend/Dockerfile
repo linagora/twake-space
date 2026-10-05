@@ -19,4 +19,4 @@ COPY --from=build /app/apps/backend/dist apps/backend/dist
 WORKDIR /app/apps/backend
 USER 1000:1000
 EXPOSE 8080
-CMD ["node", "dist/main.js"]
+CMD ["node", "--import", "./dist/instrument.js", "dist/main.js"]

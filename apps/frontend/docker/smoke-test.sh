@@ -15,6 +15,7 @@ docker run -d --name "$NAME" \
   -e SSO_BASE_URL='https://sso.example.com/' \
   -e SSO_CLIENT_ID='twake-space' \
   -e POSTHOG_HOST='https://posthog.example.com' \
+  -e SENTRY_DSN='https://public-key@errors.example.com/42' \
   -e CSP_FRAME_ANCESTORS="'self' https://workplace.example.com" \
   "$IMAGE" >/dev/null
 BASE="http://$(docker port "$NAME" 8080/tcp | head -1)"
@@ -52,7 +53,7 @@ script="$(body "$BASE/" | grep -o 'src="/static/js/index[^"]*"' | head -1 | cut 
 expect 'hashed assets are cached for a year' "$(header "$script" Cache-Control)" '*immutable'
 csp="$(header / Content-Security-Policy)"
 expect 'CSP sent' "$csp" "default-src 'self'; script-src 'self';*"
-expect 'CSP: SSO and PostHog origins in connect-src' "$csp" "*connect-src 'self' https://sso.example.com https://posthog.example.com;*"
+expect 'CSP: SSO, PostHog and Sentry origins in connect-src' "$csp" "*connect-src 'self' https://sso.example.com https://posthog.example.com https://errors.example.com;*"
 expect 'CSP: frame-ancestors from the environment' "$csp" "*frame-ancestors 'self' https://workplace.example.com;*"
 expect 'CSP on the SPA fallback too' "$(header /spaces/42 Content-Security-Policy)" "$csp"
 expect 'CSP on assets too' "$(header "$script" Content-Security-Policy)" "$csp"

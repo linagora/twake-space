@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node'
 import { pino } from 'pino'
 import { loadConfig } from './config.ts'
 import { postgresDeduplicator } from './events/dedupe.ts'
@@ -59,6 +60,7 @@ async function shutdown(signal: string): Promise<void> {
     logger.error({ err: error }, 'shutdown failed')
     process.exitCode = 1
   }
+  await Sentry.close(2000)
 }
 
 process.once('SIGTERM', signal => void shutdown(signal))
