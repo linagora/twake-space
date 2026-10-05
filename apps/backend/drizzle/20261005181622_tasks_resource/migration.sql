@@ -1,0 +1,1 @@
+ALTER TYPE "space_resource_kind" ADD VALUE 'tasks';
