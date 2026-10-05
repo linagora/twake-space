@@ -19,7 +19,15 @@ const BOB = 'c9f0f895-fb98-4b91-a1a4-7f3e2d1c0b5a'
 const DESIGN = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
 const SALES = '9d1c7a52-0b3e-4f6a-8c2d-5e4f3a2b1c0d'
 const HR = '6a1f3e2d-8c4b-4a5e-9f7d-2b3c4d5e6f70'
+const CI = '2d7e4b1a-9c3f-4e8d-b6a5-0f1e2d3c4b5a'
 const DAY = 24 * 60 * 60 * 1000
+
+const directory = {
+  isTechnicalAccount: (organizationId: string, accountId: string) =>
+    Promise.resolve(organizationId === 'org-1' && accountId === CI)
+}
+const authenticate = (token: string) =>
+  apiTokenAuthenticator(testDb.db, directory)(token)
 
 let testDb: TestDb
 beforeAll(async () => {
@@ -92,7 +100,7 @@ function setUp(tokenCaller: TokenCaller = aTokenCaller()) {
           : null,
     token => (token === 'tws_bot' ? tokenCaller : null)
   )
-  registerTokenRoutes(app, { db: testDb.db, authorize })
+  registerTokenRoutes(app, { db: testDb.db, authorize, directory })
   return (
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     url: string,
@@ -124,7 +132,7 @@ describe('POST /tokens', () => {
     const expiresIn = new Date(created.expiresAt).getTime() - Date.now()
     expect(Math.round(expiresIn / DAY)).toBe(30)
 
-    const caller = await apiTokenAuthenticator(testDb.db)(created.token)
+    const caller = await authenticate(created.token)
     expect(caller).toMatchObject({
       userId: ALICE,
       organizationId: 'org-1',
@@ -144,9 +152,7 @@ describe('POST /tokens', () => {
     )
 
     const { token } = created.json<{ token: string }>()
-    expect((await apiTokenAuthenticator(testDb.db)(token))?.spaceIds).toEqual([
-      SALES
-    ])
+    expect((await authenticate(token))?.spaceIds).toEqual([SALES])
     expect(outside.statusCode).toBe(400)
   })
 
@@ -287,7 +293,7 @@ describe('PATCH and DELETE /tokens/:id', () => {
     ).toBe(204)
     expect((await call('DELETE', `/tokens/${id}`)).statusCode).toBe(204)
 
-    expect(await apiTokenAuthenticator(testDb.db)(token)).toBeNull()
+    expect(await authenticate(token)).toBeNull()
     const [row] = await testDb.db
       .select({ name: apiTokens.name })
       .from(apiTokens)
@@ -319,9 +325,7 @@ describe('organization tokens', () => {
     const created = await call('POST', '/organization/tokens', orgToken())
 
     expect(created.statusCode).toBe(201)
-    const caller = await apiTokenAuthenticator(testDb.db)(
-      created.json<{ token: string }>().token
-    )
+    const caller = await authenticate(created.json<{ token: string }>().token)
     expect(caller).toMatchObject({
       userId: null,
       role: 'editor',
@@ -396,6 +400,80 @@ describe('organization tokens', () => {
     expect(
       (await call('DELETE', `/organization/tokens/${orgId}`)).statusCode
     ).toBe(204)
+  })
+})
+
+describe('technical account tokens', () => {
+  const url = `/organization/technical-accounts/${CI}/tokens`
+
+  it('acts for the technical account on the spaces it is in', async () => {
+    await testDb.db.insert(spaceMembers).values({
+      spaceId: HR,
+      userId: CI,
+      username: 'ci',
+      email: 'ci@example.com',
+      role: 'editor'
+    })
+    const call = setUp()
+
+    const outside = await call('POST', url, create({ spaces: [DESIGN] }))
+    const created = await call('POST', url, create({ spaces: [HR] }))
+
+    expect(outside.statusCode).toBe(400)
+    expect(created.statusCode).toBe(201)
+    expect(
+      await authenticate(created.json<{ token: string }>().token)
+    ).toMatchObject({ userId: CI, spaceIds: [HR] })
+    expect(
+      (await call('GET', url)).json<{ tokens: object[] }>().tokens
+    ).toHaveLength(1)
+    expect(
+      (await call('GET', '/tokens')).json<{ tokens: object[] }>().tokens
+    ).toEqual([])
+  })
+
+  it('is refused once the account leaves the directory', async () => {
+    const created = await setUp()('POST', url, create())
+    const { token } = created.json<{ token: string }>()
+
+    const gone = await apiTokenAuthenticator(testDb.db, {
+      isTechnicalAccount: () => Promise.resolve(false)
+    })(token)
+
+    expect(gone).toBeNull()
+  })
+
+  it('is managed by organization admins only', async () => {
+    const call = setUp()
+
+    const byMember = await call('POST', url, create(), 'bob')
+    const forPerson = await call(
+      'POST',
+      `/organization/technical-accounts/${BOB}/tokens`,
+      create()
+    )
+
+    expect(byMember.statusCode).toBe(403)
+    expect(forPerson.statusCode).toBe(403)
+  })
+
+  it('keeps the existence check on a token the account creates for itself', async () => {
+    const call = setUp(
+      aTokenCaller({ userId: CI, technical: true, scopes: ['tokens:write'] })
+    )
+
+    const created = await call(
+      'POST',
+      '/tokens',
+      create({ scopes: ['tokens:write'] }),
+      'tws_bot'
+    )
+
+    expect(created.statusCode).toBe(201)
+    const [row] = await testDb.db
+      .select({ technical: apiTokens.technical })
+      .from(apiTokens)
+    expect(row).toEqual({ technical: true })
   })
 })
 

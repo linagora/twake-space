@@ -38,6 +38,7 @@ export function aTokenCaller(
     name: 'release bot',
     organizationId: 'org-1',
     userId: '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e',
+    technical: false,
     role: null,
     scopes: ['space:read'],
     spaceIds: null,

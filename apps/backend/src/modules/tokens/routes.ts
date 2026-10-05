@@ -4,6 +4,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
+import type { Directory } from '../../infra/ldap-rest.ts'
 import { sha256 } from '../auth/authenticator.ts'
 import type { Authorize, Caller } from '../auth/index.ts'
 import {
@@ -69,7 +70,8 @@ interface Manager {
   // Who the audit log names.
   actor: string
   owner:
-    { ownerKind: 'account'; accountId: string } | { ownerKind: 'organization' }
+    | { ownerKind: 'account'; accountId: string; technical: boolean }
+    | { ownerKind: 'organization' }
   owns: SQL | undefined
   // The spaces among `spaceIds` that a new token may cover.
   coverable: (spaceIds: string[]) => Promise<string[]>
@@ -80,17 +82,19 @@ type Manage = (request: FastifyRequest, db: Db) => Promise<Manager | string>
 const actorOf = (caller: Caller) =>
   caller.kind === 'session' ? caller.userId : `token:${caller.tokenId}`
 
-const manageOwnAccount: Manage = (request, db) => {
-  const caller = callerOf(request)
-  const { userId } = caller
-  if (userId === null) return Promise.resolve('not an account token')
-  return Promise.resolve({
+function accountManager(
+  db: Db,
+  caller: Caller,
+  accountId: string,
+  technical: boolean
+): Manager {
+  return {
     caller,
     actor: actorOf(caller),
-    owner: { ownerKind: 'account', accountId: userId },
+    owner: { ownerKind: 'account', accountId, technical },
     owns: and(
       eq(apiTokens.organizationId, caller.organizationId),
-      eq(apiTokens.accountId, userId)
+      eq(apiTokens.accountId, accountId)
     ),
     coverable: async spaceIds =>
       (
@@ -100,13 +104,43 @@ const manageOwnAccount: Manage = (request, db) => {
           .innerJoin(spaces, eq(spaces.spaceId, spaceMembers.spaceId))
           .where(
             and(
-              eq(spaceMembers.userId, userId),
+              eq(spaceMembers.userId, accountId),
               eq(spaces.organizationId, caller.organizationId),
               inArray(spaceMembers.spaceId, spaceIds)
             )
           )
       ).map(s => s.spaceId)
-  })
+  }
+}
+
+const manageOwnAccount: Manage = (request, db) => {
+  const caller = callerOf(request)
+  const { userId } = caller
+  if (userId === null) return Promise.resolve('not an account token')
+  const technical = caller.kind === 'token' && caller.technical
+  return Promise.resolve(accountManager(db, caller, userId, technical))
+}
+
+const accountParams = z.object({ accountId: z.uuid() })
+
+function manageTechnicalAccount(
+  directory: Pick<Directory, 'isTechnicalAccount'>
+): Manage {
+  return async (request, db) => {
+    const admin = await manageOrganization(request, db)
+    if (typeof admin === 'string') return admin
+    const params = accountParams.safeParse(request.params)
+    if (
+      !params.success ||
+      !(await directory.isTechnicalAccount(
+        admin.caller.organizationId,
+        params.data.accountId
+      ))
+    ) {
+      return 'not a technical account of the organization'
+    }
+    return accountManager(db, admin.caller, params.data.accountId, true)
+  }
 }
 
 const manageOrganization: Manage = async (request, db) => {
@@ -379,7 +413,11 @@ function registerManagedTokens(
 
 export function registerTokenRoutes(
   app: HttpServer,
-  deps: { db: Db; authorize: Authorize }
+  deps: {
+    db: Db
+    authorize: Authorize
+    directory: Pick<Directory, 'isTechnicalAccount'>
+  }
 ) {
   const { db } = deps
   const preHandler = deps.authorize('tokens:write')
@@ -390,6 +428,13 @@ export function registerTokenRoutes(
     '/organization/tokens',
     preHandler,
     manageOrganization
+  )
+  registerManagedTokens(
+    app,
+    db,
+    '/organization/technical-accounts/:accountId/tokens',
+    preHandler,
+    manageTechnicalAccount(deps.directory)
   )
 
   app.get(

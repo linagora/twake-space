@@ -33,6 +33,8 @@ export const apiTokens = pgTable(
     ownerKind: tokenOwnerKind('owner_kind').notNull(),
     // The account's LDAP entryUUID, as space members are keyed.
     accountId: uuid('account_id'),
+    // A technical account sends no deletion event, so its tokens re-check it.
+    technical: boolean().notNull().default(false),
     name: text().notNull(),
     tokenHash: text('token_hash').notNull().unique(),
     scopes: tokenScope().array().notNull(),

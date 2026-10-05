@@ -1,5 +1,6 @@
 import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
+import type { Directory } from '../../infra/ldap-rest.ts'
 import { apiTokenAuthenticator } from '../tokens/authenticator.ts'
 import { createAuthenticator } from './authenticator.ts'
 import { discoverIdentityProvider, type OidcOptions } from './oidc.ts'
@@ -12,7 +13,7 @@ export { listenForRevocations } from './store.ts'
 
 export async function setUpAuth(
   app: HttpServer,
-  deps: { db: Db; oidc: OidcOptions }
+  deps: { db: Db; oidc: OidcOptions; directory: Directory }
 ): Promise<Authorize> {
   const provider = await discoverIdentityProvider(deps.oidc)
   const store = postgresAuthStore(deps.db)
@@ -20,6 +21,6 @@ export async function setUpAuth(
     provider,
     store,
     authenticate: createAuthenticator({ provider, store }),
-    authenticateToken: apiTokenAuthenticator(deps.db)
+    authenticateToken: apiTokenAuthenticator(deps.db, deps.directory)
   })
 }
