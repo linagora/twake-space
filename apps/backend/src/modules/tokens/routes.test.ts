@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm'
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createServer } from '../../infra/http.ts'
@@ -224,5 +225,70 @@ describe('POST /tokens', () => {
         actor: ALICE
       }
     ])
+  })
+})
+
+describe('GET /tokens', () => {
+  it('lists the active tokens of the account, never their secret', async () => {
+    const call = setUp()
+    await call('POST', '/tokens', create({ name: 'one' }))
+    const two = await call(
+      'POST',
+      '/tokens',
+      create({ name: 'two', spaces: [DESIGN] })
+    )
+    await call('POST', '/tokens', create({ name: 'bob' }), 'bob')
+    const revoked = await call('POST', '/tokens', create({ name: 'gone' }))
+    await call('DELETE', `/tokens/${revoked.json<{ id: string }>().id}`)
+
+    const response = await call('GET', '/tokens')
+
+    expect(response.json()).toEqual({
+      tokens: [
+        expect.objectContaining({ name: 'one', spaces: 'all' }),
+        expect.objectContaining({
+          id: two.json<{ id: string }>().id,
+          name: 'two',
+          scopes: ['space:read'],
+          spaces: [DESIGN],
+          lastUsedAt: null
+        })
+      ]
+    })
+    expect(response.body).not.toContain('tws_')
+  })
+})
+
+describe('PATCH and DELETE /tokens/:id', () => {
+  it('renames and revokes a token, in the audit log', async () => {
+    const call = setUp()
+    const created = await call('POST', '/tokens', create())
+    const { id, token } = created.json<{ id: string; token: string }>()
+
+    expect(
+      (await call('PATCH', `/tokens/${id}`, { name: 'deploy bot' })).statusCode
+    ).toBe(204)
+    expect((await call('DELETE', `/tokens/${id}`)).statusCode).toBe(204)
+
+    expect(await apiTokenAuthenticator(testDb.db)(token)).toBeNull()
+    const [row] = await testDb.db
+      .select({ name: apiTokens.name })
+      .from(apiTokens)
+      .where(eq(apiTokens.id, id))
+    expect(row?.name).toBe('deploy bot')
+    expect(
+      (await testDb.db.select().from(tokenAudit)).map(a => a.action).sort()
+    ).toEqual(['created', 'renamed', 'revoked'])
+  })
+
+  it('never touches another account token', async () => {
+    const call = setUp()
+    const created = await call('POST', '/tokens', create(), 'bob')
+    const { id } = created.json<{ id: string }>()
+
+    expect(
+      (await call('PATCH', `/tokens/${id}`, { name: 'mine' })).statusCode
+    ).toBe(404)
+    expect((await call('DELETE', `/tokens/${id}`)).statusCode).toBe(404)
   })
 })
