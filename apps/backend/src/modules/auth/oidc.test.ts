@@ -18,11 +18,9 @@ function json(body: unknown, status = 200) {
   })
 }
 
+// As LemonLDAP before 2.23 reads them: not URL-decoded.
 function basicCredentials(header: string | null) {
-  const [id = '', secret = ''] = atob(header?.replace(/^Basic /, '') ?? '')
-    .split(':')
-    .map(decodeURIComponent)
-  return `${id}:${secret}`
+  return atob(header?.replace(/^Basic /, '') ?? '')
 }
 
 function fakeSso(jwks: unknown, tokens: Map<string, FakeToken>) {
