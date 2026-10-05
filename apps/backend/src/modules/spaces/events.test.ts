@@ -334,6 +334,33 @@ describe('group events', () => {
     expect(await readGroups()).toEqual([])
   })
 
+  it('follows the rename of a linked group', async () => {
+    await created({ groups: [designers] })
+
+    await handle('b2b.group.updated', {
+      organizationId: 'evilcorp123',
+      id: DESIGNERS_ID,
+      name: 'Product design',
+      timestamp: '2026-10-05T09:12:44.512Z'
+    })
+
+    expect(await readGroups()).toMatchObject([{ name: 'Product design' }])
+  })
+
+  it('keeps the name of a group updated without a rename', async () => {
+    await created({ groups: [designers] })
+
+    await handle('b2b.group.updated', {
+      organizationId: 'evilcorp123',
+      id: DESIGNERS_ID,
+      name: '',
+      color: '#ff0000',
+      timestamp: '2026-10-05T09:12:44.512Z'
+    })
+
+    expect(await readGroups()).toMatchObject([{ name: 'Designers' }])
+  })
+
   it('refuses a group event without groups', async () => {
     await expect(group('twake.space.group.linked', [])).rejects.toBeInstanceOf(
       MalformedEventError
