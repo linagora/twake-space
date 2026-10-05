@@ -1,0 +1,95 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import type { CloudEvent } from '../../events/envelope.ts'
+import { MalformedEventError } from '../../events/router.ts'
+import { createTestDb, type TestDb } from '../../infra/testing.ts'
+import { resourceActivityRoutes } from './resources.ts'
+import { spaceResources } from './schema.ts'
+
+const SPACE_ID = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
+
+let testDb: TestDb
+beforeAll(async () => {
+  testDb = await createTestDb()
+})
+afterAll(() => testDb.drop())
+beforeEach(async () => {
+  await testDb.db.delete(spaceResources)
+})
+
+function provisioned(
+  app: string,
+  resource: Record<string, unknown>,
+  overrides: Partial<CloudEvent> = {}
+) {
+  const type = `com.twake.${app}.space.provisioned.v1`
+  const handler = resourceActivityRoutes.get(type)
+  if (!handler) throw new Error(`no handler for ${type}`)
+  const event: CloudEvent = {
+    specversion: '1.0',
+    id: '01J9Z7A2B3C4D5E6F7G8H9J0KM',
+    source: `twake://${app}`,
+    type,
+    twakeorg: 'linagora',
+    data: { space_id: SPACE_ID, resource },
+    ...overrides
+  }
+  return testDb.db.transaction(tx => handler(event, tx))
+}
+
+const readResources = () =>
+  testDb.db
+    .select({
+      spaceId: spaceResources.spaceId,
+      kind: spaceResources.kind,
+      organizationId: spaceResources.organizationId,
+      resourceId: spaceResources.resourceId
+    })
+    .from(spaceResources)
+
+describe('provisioned events', () => {
+  it('stores the resource id of a space', async () => {
+    await provisioned('drive', { kind: 'drive', id: 'a1f0c3e2d4b5' })
+
+    expect(await readResources()).toEqual([
+      {
+        spaceId: SPACE_ID,
+        kind: 'drive',
+        organizationId: 'linagora',
+        resourceId: 'a1f0c3e2d4b5'
+      }
+    ])
+  })
+
+  it('stores the tasks resource, whose id is the space id', async () => {
+    await provisioned('tasks', { kind: 'tasks', id: SPACE_ID })
+
+    expect(await readResources()).toMatchObject([
+      { kind: 'tasks', resourceId: SPACE_ID }
+    ])
+  })
+
+  it('keeps one resource per kind when provisioned again', async () => {
+    await provisioned('mail', { kind: 'mailbox', id: 'team-1' })
+    await provisioned('mail', { kind: 'mailbox', id: 'team-2' })
+
+    expect(await readResources()).toMatchObject([{ resourceId: 'team-2' }])
+  })
+
+  it('refuses an unknown kind', async () => {
+    await expect(
+      provisioned('drive', { kind: 'matrix_room', id: 'x' })
+    ).rejects.toBeInstanceOf(MalformedEventError)
+  })
+
+  it("refuses a kind that is not the app's own", async () => {
+    await expect(
+      provisioned('drive', { kind: 'mailbox', id: 'team-1' })
+    ).rejects.toBeInstanceOf(MalformedEventError)
+  })
+
+  it('refuses a provisioned event without an organization', async () => {
+    await expect(
+      provisioned('drive', { kind: 'drive', id: 'a1' }, { twakeorg: undefined })
+    ).rejects.toBeInstanceOf(MalformedEventError)
+  })
+})
