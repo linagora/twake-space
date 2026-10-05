@@ -12,6 +12,9 @@ import {
 
 export type Handler<E> = (event: E, tx: Tx) => Promise<void>
 
+// Thrown by a handler for an event it can never process, so the offset moves on.
+export class MalformedEventError extends Error {}
+
 export interface Routes {
   activity: ReadonlyMap<string, Handler<CloudEvent>>
   platform: ReadonlyMap<string, Handler<PlatformEvent>>
@@ -55,9 +58,17 @@ export function createMessageHandler(deps: {
       logger.debug({ ...context, key }, 'no handler for event')
       return 'unrouted'
     }
-    const processed = await dedupe.once(dedupeKey, tx =>
-      handler(parsed.event, tx)
-    )
+    let processed: boolean
+    try {
+      processed = await dedupe.once(dedupeKey, tx => handler(parsed.event, tx))
+    } catch (error) {
+      if (!(error instanceof MalformedEventError)) throw error
+      logger.error(
+        { ...context, key, ...dedupeKey, error: error.message },
+        'dropping malformed event'
+      )
+      return 'malformed'
+    }
     logger.info(
       { ...context, key, ...dedupeKey, duplicate: !processed },
       'event handled'
