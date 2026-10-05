@@ -8,6 +8,11 @@ import { parseOrDrop, type Handler } from '../../events/router.ts'
 import type { Tx } from '../../infra/db.ts'
 import { forgetActor } from '../feed/activity.ts'
 import { deleteNotificationsOf } from '../notifications/recipients.ts'
+import {
+  dropSpaceFromTokens,
+  revokeAccountTokens,
+  revokeOrganizationTokens
+} from '../tokens/revocation.ts'
 import { resourceKey } from './resources.ts'
 import {
   organizationMembers,
@@ -301,6 +306,10 @@ const onDeleted: Handler<PlatformEvent> = async (event, tx) => {
     ...groups.map(g => groupKey(id, g.groupId)),
     ...resources.map(r => resourceKey(id, r.kind))
   ])
+  await dropSpaceFromTokens(tx, id, {
+    actor: event.routingKey,
+    reason: 'its only space was deleted'
+  })
   await tx.delete(spaces).where(eq(spaces.spaceId, id))
 }
 
@@ -394,6 +403,11 @@ const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
   if (known) {
     await deleteNotificationsOf(tx, known.uuid)
     await forgetActor(tx, { uuid: known.uuid })
+    await revokeAccountTokens(
+      tx,
+      { accountId: known.uuid },
+      { actor: event.routingKey, reason: 'its account was deleted' }
+    )
   } else if (internalEmail) {
     await forgetActor(tx, { email: internalEmail })
   }
@@ -450,6 +464,48 @@ const onOrganizationRoleChanged: Handler<PlatformEvent> = async (
     })
 }
 
+const memberDisabled = z
+  .looseObject({
+    organizationId: z.string().min(1),
+    uuid: z.uuid().optional(),
+    email: z.email().optional(),
+    timestamp
+  })
+  .refine(m => m.uuid ?? m.email, 'needs a uuid or an email')
+
+const onMemberDisabled: Handler<PlatformEvent> = async (event, tx, log) => {
+  const disabled = parseOrDrop(memberDisabled, event.body, event.routingKey)
+  const [known] = await withUserIds(tx, log, [disabled])
+  if (!known) return
+  await revokeAccountTokens(
+    tx,
+    { accountId: known.uuid, organizationId: known.organizationId },
+    {
+      actor: event.routingKey,
+      reason: 'its account was disabled',
+      before: known.timestamp
+    }
+  )
+}
+
+const organizationDeleted = z.looseObject({
+  organizationId: z.string().min(1),
+  timestamp
+})
+
+const onOrganizationDeleted: Handler<PlatformEvent> = async (event, tx) => {
+  const { organizationId, timestamp } = parseOrDrop(
+    organizationDeleted,
+    event.body,
+    event.routingKey
+  )
+  await revokeOrganizationTokens(tx, organizationId, {
+    actor: event.routingKey,
+    reason: 'its organization was deleted',
+    before: timestamp
+  })
+}
+
 export const spacePlatformRoutes: ReadonlyMap<
   string,
   Handler<PlatformEvent>
@@ -465,5 +521,7 @@ export const spacePlatformRoutes: ReadonlyMap<
   ['twake.space.group.role.changed', onGroupChanged],
   ['twake.space.group.unlinked', onGroupUnlinked],
   ['b2b.group.updated', onGroupUpdated],
-  ['domain.user.deleted', onUserDeleted]
+  ['domain.user.deleted', onUserDeleted],
+  ['b2b.member.disabled', onMemberDisabled],
+  ['domain.organization.deleted', onOrganizationDeleted]
 ])
