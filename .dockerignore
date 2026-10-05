@@ -2,6 +2,7 @@
 **/dist
 **/coverage
 **/.env
+apps/frontend/public/.env.js
 **/*.tsbuildinfo
 .git
 .github

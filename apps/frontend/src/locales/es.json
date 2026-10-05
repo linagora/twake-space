@@ -1,5 +1,12 @@
 {
   "app": {
     "name": "Twake Space"
+  },
+  "session": {
+    "signingIn": "Iniciando sesión…",
+    "failed": "No se pudo iniciar sesión.",
+    "retry": "Reintentar",
+    "signedInAs": "Sesión iniciada como %{name}",
+    "signOut": "Cerrar sesión"
   }
 }
