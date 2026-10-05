@@ -5,7 +5,7 @@ import { postgresDeduplicator } from './events/dedupe.ts'
 import { createMessageHandler, type Routes } from './events/router.ts'
 import { createDb, migrateDb } from './infra/db.ts'
 import { createServer } from './infra/http.ts'
-import { startConsumer, startProducer } from './infra/kafka.ts'
+import { startConsumer } from './infra/kafka.ts'
 import { setUpAuth } from './modules/auth/index.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
@@ -37,7 +37,6 @@ await setUpAuth(server, {
 })
 await server.listen({ host: config.HTTP_HOST, port: config.HTTP_PORT })
 
-const producer = await startProducer(config, logger)
 const consumer = await startConsumer(
   config,
   logger,
@@ -58,7 +57,6 @@ async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'shutting down')
   try {
     await consumer.disconnect()
-    await producer.disconnect()
     await server.close()
     await sql.end({ timeout: 5 })
   } catch (error) {
