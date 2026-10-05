@@ -10,7 +10,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { timestamptz } from '../../infra/db.ts'
 
-// A user's id is null when only their email was sent and they are in no space.
+// A user's id is null when only their email was sent and no space member has it.
 export type Actor =
   | { type: 'user'; id: string | null; email: string | null }
   | { type: 'token'; id: string; name: string }
