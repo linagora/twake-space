@@ -275,6 +275,18 @@ describe('notifications', () => {
     ])
   })
 
+  it('skips an invalid recipient and keeps the event and the others', async () => {
+    await store(
+      withRecipients([
+        { uuid: BOB, email: 'bob@linagora.com', reason: 'cheered' },
+        { uuid: ALICE, email: 'alice@linagora.com', reason: 'mentioned' }
+      ])
+    )
+
+    expect(await stored()).toHaveLength(1)
+    expect(await readNotifications()).toMatchObject([{ userId: ALICE }])
+  })
+
   it('finds a recipient sent without a uuid by email', async () => {
     await store(
       withRecipients([{ email: 'alice@linagora.com', reason: 'mentioned' }])
