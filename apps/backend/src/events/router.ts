@@ -16,6 +16,16 @@ export type Handler<E> = (event: E, tx: Tx, log: Logger) => Promise<void>
 // Thrown by a handler for an event it can never process, so the offset moves on.
 export class MalformedEventError extends Error {}
 
+// Thrown by a handler for a well-formed event that contradicts the copy; kept on a
+// dead letter topic for someone to look at.
+export class RejectedEventError extends Error {}
+
+export type DeadLetter = (
+  topic: string,
+  message: IncomingMessage,
+  reason: string
+) => Promise<void>
+
 export function parseOrDrop<T extends z.ZodType>(
   schema: T,
   value: unknown,
@@ -28,25 +38,32 @@ export function parseOrDrop<T extends z.ZodType>(
   return result.data
 }
 
+interface Lookup<H> {
+  get(key: string): H | undefined
+}
+
 export interface Routes {
-  activity: ReadonlyMap<string, Handler<CloudEvent>>
-  platform: ReadonlyMap<string, Handler<PlatformEvent>>
+  activity: Lookup<Handler<CloudEvent>>
+  platform: Lookup<Handler<PlatformEvent>>
 }
 
 export interface IncomingMessage {
+  key?: Buffer | null
   value: Buffer | null
   offset: string
   headers?: Record<string, unknown>
 }
 
-export type Outcome = 'processed' | 'duplicate' | 'unrouted' | 'malformed'
+export type Outcome =
+  'processed' | 'duplicate' | 'unrouted' | 'malformed' | 'rejected'
 
 export function createMessageHandler(deps: {
   routes: Routes
   dedupe: Deduplicator
+  deadLetter: DeadLetter
   logger: Logger
 }) {
-  const { routes, dedupe, logger } = deps
+  const { routes, dedupe, deadLetter, logger } = deps
 
   async function dispatch<E>(
     topic: string,
@@ -77,6 +94,14 @@ export function createMessageHandler(deps: {
         handler(parsed.event, tx, logger.child({ ...context, key }))
       )
     } catch (error) {
+      if (error instanceof RejectedEventError) {
+        await deadLetter(`${topic}.dlq.twake-space`, message, error.message)
+        logger.warn(
+          { ...context, key, ...dedupeKey, reason: error.message },
+          'event sent to the dead letter topic'
+        )
+        return 'rejected'
+      }
       if (!(error instanceof MalformedEventError)) throw error
       logger.error(
         { ...context, key, ...dedupeKey, error: error.message },
