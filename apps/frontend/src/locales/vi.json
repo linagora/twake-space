@@ -8,5 +8,23 @@
     "retry": "Thử lại",
     "signedInAs": "Đã đăng nhập với tên %{name}",
     "signOut": "Đăng xuất"
+  },
+  "common": {
+    "cancel": "Hủy",
+    "create": "Tạo"
+  },
+  "roles": {
+    "viewer": "Người xem",
+    "editor": "Người chỉnh sửa",
+    "admin": "Quản trị viên"
+  },
+  "spaces": {
+    "title": "Không gian",
+    "loading": "Đang tải không gian…",
+    "loadFailed": "Không thể tải các không gian của bạn.",
+    "none": "Bạn chưa tham gia không gian nào.",
+    "create": "Tạo không gian",
+    "name": "Tên",
+    "createFailed": "Không thể tạo không gian."
   }
 }

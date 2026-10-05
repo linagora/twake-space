@@ -8,5 +8,23 @@
     "retry": "Riprova",
     "signedInAs": "Accesso effettuato come %{name}",
     "signOut": "Esci"
+  },
+  "common": {
+    "cancel": "Annulla",
+    "create": "Crea"
+  },
+  "roles": {
+    "viewer": "Lettore",
+    "editor": "Editor",
+    "admin": "Amministratore"
+  },
+  "spaces": {
+    "title": "Spazi",
+    "loading": "Caricamento degli spazi…",
+    "loadFailed": "Non è stato possibile caricare i tuoi spazi.",
+    "none": "Non sei ancora in nessuno spazio.",
+    "create": "Crea uno spazio",
+    "name": "Nome",
+    "createFailed": "Non è stato possibile creare lo spazio."
   }
 }
