@@ -10,6 +10,7 @@ import { createLdapRestClient, ldapRestDirectory } from './infra/ldap-rest.ts'
 import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
 import { schedulePurge } from './modules/feed/retention.ts'
+import { listenForLive } from './modules/live/notify.ts'
 import { registerLiveRoutes } from './modules/live/routes.ts'
 import { createStreams } from './modules/live/streams.ts'
 import { registerNotificationRoutes } from './modules/notifications/routes.ts'
@@ -72,6 +73,7 @@ registerLiveRoutes(server, { authorize, streams })
 await listenForRevocations(sql, sessionId => {
   streams.closeSession(sessionId)
 })
+await listenForLive(sql, streams)
 await server.listen({ host: config.HTTP_HOST, port: config.HTTP_PORT })
 
 const deadLetters = await startDeadLetterProducer(config, logger)

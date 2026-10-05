@@ -6,6 +6,9 @@ import type { Identity } from '../auth/index.ts'
 import { registerLiveRoutes } from './routes.ts'
 import { createStreams } from './streams.ts'
 
+const ALICE = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
+const BOB = 'c9f0f895-fb98-4b91-a1a4-7f3e2d1c0b5a'
+
 let app: HttpServer
 
 async function setUp(identity: Identity = anIdentity()) {
@@ -92,6 +95,31 @@ describe('GET /stream', () => {
     ])
     expect(next).toBe('still open')
     await reader.cancel()
+  })
+
+  it("pushes events to the user's streams only", async () => {
+    const { url, streams } = await setUp(anIdentity({ userId: ALICE }))
+    const { reader } = await open(url)
+    await reader.read()
+
+    streams.send(BOB, 'spaces', { spaceId: 'design' })
+    streams.send(ALICE, 'notification', {})
+
+    expect((await reader.read()).value).toBe(
+      'event: notification\ndata: {}\n\n'
+    )
+    await reader.cancel()
+  })
+
+  it('drops an event sent while the stream is closing', async () => {
+    const { url, streams } = await setUp(anIdentity({ userId: ALICE }))
+    const { reader } = await open(url)
+    await reader.read()
+
+    streams.closeSession('session-1')
+    streams.send(ALICE, 'notification', {})
+
+    expect((await reader.read()).done).toBe(true)
   })
 
   it('closes when the token it was opened with expires', async () => {

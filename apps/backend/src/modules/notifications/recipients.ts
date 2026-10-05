@@ -2,6 +2,7 @@ import { eq, inArray } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { Tx } from '../../infra/db.ts'
+import { tell } from '../live/notify.ts'
 import { spaceMembers } from '../spaces/schema.ts'
 import {
   notifications,
@@ -96,7 +97,17 @@ export async function notifyRecipients(
       payload: {}
     }))
   if (rows.length === 0) return
-  await tx.insert(notifications).values(rows).onConflictDoNothing()
+  const inserted = await tx
+    .insert(notifications)
+    .values(rows)
+    .onConflictDoNothing()
+    .returning({ userId: notifications.userId })
+  await tell(
+    tx,
+    'notification',
+    inserted.map(n => n.userId),
+    {}
+  )
 }
 
 export async function deleteNotificationsOf(tx: Tx, userId: string) {
