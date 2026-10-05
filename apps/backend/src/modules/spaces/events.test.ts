@@ -134,3 +134,53 @@ describe('space events', () => {
     )
   })
 })
+
+describe('member events', () => {
+  const member = (routingKey: string, members: unknown[]) =>
+    handle(routingKey, {
+      organizationId: 'evilcorp123',
+      id: SPACE_ID,
+      members,
+      actor: 'admin@evilcorp.com',
+      timestamp: '2026-10-05T09:12:44.512Z'
+    })
+  const asmith = { ...jdoe, username: 'asmith', email: 'asmith@evilcorp.com' }
+
+  it('adds a member with their role', async () => {
+    await created()
+
+    await member('twake.space.member.added', [{ ...asmith, role: 'viewer' }])
+
+    expect(await readMembers()).toContainEqual({
+      username: 'asmith',
+      email: 'asmith@evilcorp.com',
+      role: 'viewer'
+    })
+  })
+
+  it("changes a member's role", async () => {
+    await created()
+
+    await member('twake.space.member.role.changed', [
+      { ...jdoe, role: 'admin' }
+    ])
+
+    expect(await readMembers()).toMatchObject([
+      { username: 'jdoe', role: 'admin' }
+    ])
+  })
+
+  it('removes a member', async () => {
+    await created({ members: [jdoe, asmith] })
+
+    await member('twake.space.member.removed', [jdoe])
+
+    expect(await readMembers()).toMatchObject([{ username: 'asmith' }])
+  })
+
+  it('refuses a member event without members', async () => {
+    await expect(member('twake.space.member.added', [])).rejects.toBeInstanceOf(
+      MalformedEventError
+    )
+  })
+})
