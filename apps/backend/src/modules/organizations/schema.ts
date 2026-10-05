@@ -1,8 +1,8 @@
 import { boolean, bytea, pgTable, text, uuid } from 'drizzle-orm/pg-core'
 import { timestamptz } from '../../infra/db.ts'
 
-// A single installation has one homeserver for every organization, so a
-// transaction's organization comes from its room, never from the hs_token.
+// The hs_token tells which homeserver sent a transaction, never which
+// organization: one homeserver can serve several, so that comes from the room.
 export const homeservers = pgTable('homeservers', {
   id: uuid().primaryKey().defaultRandom(),
   url: text().notNull(),
