@@ -9,6 +9,7 @@ import { startConsumer, startDeadLetterProducer } from './infra/kafka.ts'
 import { createLdapRestClient, ldapRestDirectory } from './infra/ldap-rest.ts'
 import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
+import { schedulePosting } from './modules/feed/poster.ts'
 import { schedulePurge } from './modules/feed/retention.ts'
 import { listenForLive } from './modules/live/notify.ts'
 import { registerLiveRoutes } from './modules/live/routes.ts'
@@ -87,6 +88,9 @@ const consumer = await startConsumer(
   })
 )
 const stopPurge = schedulePurge(db, logger)
+const stopPosting = config.homeserver
+  ? schedulePosting(db, config.homeserver.key, logger)
+  : () => undefined
 accepting = true
 logger.info('twake-space backend started')
 
@@ -97,6 +101,7 @@ async function shutdown(signal: string): Promise<void> {
   accepting = false
   logger.info({ signal }, 'shutting down')
   stopPurge()
+  stopPosting()
   try {
     await consumer.disconnect()
     await deadLetters.disconnect()
