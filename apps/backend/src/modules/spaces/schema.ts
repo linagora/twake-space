@@ -45,7 +45,8 @@ export const spaceGroups = pgTable(
   'space_groups',
   {
     spaceId: uuid('space_id').notNull(),
-    groupId: text('group_id').notNull(),
+    groupId: uuid('group_id').notNull(),
+    name: text().notNull(),
     role: spaceRole().notNull()
   },
   table => [

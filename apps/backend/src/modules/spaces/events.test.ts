@@ -4,7 +4,7 @@ import type { PlatformEvent } from '../../events/envelope.ts'
 import { MalformedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { spacePlatformRoutes } from './events.ts'
-import { spaceMembers, spaces } from './schema.ts'
+import { spaceGroups, spaceMembers, spaces } from './schema.ts'
 
 const SPACE_ID = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
 const JDOE_ID = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
@@ -24,6 +24,7 @@ beforeAll(async () => {
 afterAll(() => testDb.drop())
 beforeEach(async () => {
   await testDb.db.delete(spaceMembers)
+  await testDb.db.delete(spaceGroups)
   await testDb.db.delete(spaces)
 })
 
@@ -58,6 +59,18 @@ const readMembers = () =>
     })
     .from(spaceMembers)
     .where(eq(spaceMembers.spaceId, SPACE_ID))
+const readGroups = () =>
+  testDb.db
+    .select({
+      groupId: spaceGroups.groupId,
+      name: spaceGroups.name,
+      role: spaceGroups.role
+    })
+    .from(spaceGroups)
+    .where(eq(spaceGroups.spaceId, SPACE_ID))
+
+const DESIGNERS_ID = 'c2a8e1f0-7b3d-4e9a-8f61-2d5b9c0e4a17'
+const designers = { id: DESIGNERS_ID, name: 'Designers', role: 'viewer' }
 
 describe('space events', () => {
   it('stores a created space with its members', async () => {
@@ -208,6 +221,57 @@ describe('member events', () => {
 
   it('refuses a member event without members', async () => {
     await expect(member('twake.space.member.added', [])).rejects.toBeInstanceOf(
+      MalformedEventError
+    )
+  })
+})
+
+describe('group events', () => {
+  const group = (routingKey: string, groups: unknown[]) =>
+    handle(routingKey, {
+      organizationId: 'evilcorp123',
+      id: SPACE_ID,
+      groups,
+      actor: 'admin@evilcorp.com',
+      timestamp: '2026-10-05T09:12:44.512Z'
+    })
+
+  it('stores the linked groups of a created space', async () => {
+    await created({ groups: [designers] })
+
+    expect(await readGroups()).toEqual([
+      { groupId: DESIGNERS_ID, name: 'Designers', role: 'viewer' }
+    ])
+  })
+
+  it('links a group with its role', async () => {
+    await created()
+
+    await group('twake.space.group.linked', [designers])
+
+    expect(await readGroups()).toMatchObject([{ groupId: DESIGNERS_ID }])
+  })
+
+  it("changes a linked group's role", async () => {
+    await created({ groups: [designers] })
+
+    await group('twake.space.group.role.changed', [
+      { ...designers, role: 'editor' }
+    ])
+
+    expect(await readGroups()).toMatchObject([{ role: 'editor' }])
+  })
+
+  it('unlinks a group', async () => {
+    await created({ groups: [designers] })
+
+    await group('twake.space.group.unlinked', [{ id: DESIGNERS_ID }])
+
+    expect(await readGroups()).toEqual([])
+  })
+
+  it('refuses a group event without groups', async () => {
+    await expect(group('twake.space.group.linked', [])).rejects.toBeInstanceOf(
       MalformedEventError
     )
   })
