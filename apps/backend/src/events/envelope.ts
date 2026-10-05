@@ -10,7 +10,6 @@ export const APPS = [
 ] as const
 export const ACTIVITY_TOPICS = APPS.map(app => `twake.${app}.events.v1`)
 export const PLATFORM_TOPIC = 'twake.platform.events.v1'
-export const SPACE_TOPIC = 'twake.space.events.v1'
 
 const cloudEvent = z.looseObject({
   specversion: z.literal('1.0'),
@@ -29,8 +28,6 @@ const cloudEvent = z.looseObject({
 })
 
 export type CloudEvent = z.infer<typeof cloudEvent>
-
-export type SpaceEvent = CloudEvent & { data: { object: { space_id: string } } }
 
 export interface PlatformEvent {
   routingKey: string

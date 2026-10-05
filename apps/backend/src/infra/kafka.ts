@@ -1,18 +1,12 @@
 import { KafkaJS } from '@confluentinc/kafka-javascript'
 import type { Logger } from 'pino'
 import type { Config } from '../config.ts'
-import {
-  ACTIVITY_TOPICS,
-  PLATFORM_TOPIC,
-  SPACE_TOPIC,
-  type SpaceEvent
-} from '../events/envelope.ts'
+import { ACTIVITY_TOPICS, PLATFORM_TOPIC } from '../events/envelope.ts'
 import type { IncomingMessage, Outcome } from '../events/router.ts'
 
-type GlobalConfig = KafkaJS.ProducerConstructorConfig &
-  KafkaJS.ConsumerConstructorConfig
-
-export function connectionConfig(config: Config): GlobalConfig {
+export function connectionConfig(
+  config: Config
+): KafkaJS.ConsumerConstructorConfig {
   const common = {
     'bootstrap.servers': config.KAFKA_BOOTSTRAP,
     'client.id': 'twake-space'
@@ -86,41 +80,4 @@ export async function startConsumer(
     }
   })
   return consumer
-}
-
-export interface SpaceEventProducer {
-  publish(event: SpaceEvent): Promise<void>
-  disconnect(): Promise<void>
-}
-
-export async function startProducer(
-  config: Config,
-  logger: Logger
-): Promise<SpaceEventProducer> {
-  const producer = new KafkaJS.Kafka().producer({
-    ...connectionConfig(config),
-    'enable.idempotence': true,
-    acks: -1,
-    kafkaJS: { logger: kafkaLogger(logger) }
-  })
-  await producer.connect()
-  return {
-    async publish(event) {
-      await producer.send({
-        topic: SPACE_TOPIC,
-        messages: [
-          {
-            key: event.data.object.space_id,
-            value: JSON.stringify(event),
-            headers: { 'content-type': 'application/cloudevents+json' }
-          }
-        ]
-      })
-      logger.info(
-        { topic: SPACE_TOPIC, type: event.type, id: event.id },
-        'space event published'
-      )
-    },
-    disconnect: () => producer.disconnect()
-  }
 }
