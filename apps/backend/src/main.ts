@@ -11,6 +11,7 @@ import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
 import { schedulePosting } from './modules/feed/poster.ts'
 import { schedulePurge } from './modules/feed/retention.ts'
+import { registerTransactionRoutes } from './modules/feed/transactions.ts'
 import { listenForLive } from './modules/live/notify.ts'
 import { registerLiveRoutes } from './modules/live/routes.ts'
 import { createStreams } from './modules/live/streams.ts'
@@ -68,6 +69,7 @@ const authorize = await setUpAuth(server, {
 registerSpaceRoutes(server, { db, authorize })
 registerTokenRoutes(server, { db, authorize, directory })
 registerNotificationRoutes(server, { db, authorize })
+registerTransactionRoutes(server, { db })
 const streams = createStreams()
 registerLiveRoutes(server, { authorize, streams })
 await listenForRevocations(sql, sessionId => {
