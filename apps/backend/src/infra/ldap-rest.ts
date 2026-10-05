@@ -44,6 +44,127 @@ export interface Organization {
   mail: boolean
 }
 
+export type SpaceRole = 'viewer' | 'editor' | 'admin'
+
+export interface Person {
+  uuid: string
+  username: string
+  email: string
+}
+
+// `actor` is the acting user's email, so ldap-rest's events name them; null
+// when an organization token acts.
+export interface SpaceDirectory {
+  person(
+    orgId: string,
+    by: 'username' | 'id',
+    value: string
+  ): Promise<Person | undefined>
+  create(
+    orgId: string,
+    space: { name: string; members: { username: string; role: SpaceRole }[] },
+    actor: string | null
+  ): Promise<{ id: string }>
+  rename(
+    orgId: string,
+    spaceId: string,
+    name: string,
+    actor: string | null
+  ): Promise<void>
+  delete(orgId: string, spaceId: string, actor: string | null): Promise<void>
+  addMembers(
+    orgId: string,
+    spaceId: string,
+    usernames: string[],
+    role: SpaceRole,
+    actor: string | null
+  ): Promise<void>
+  setMemberRole(
+    orgId: string,
+    spaceId: string,
+    username: string,
+    role: SpaceRole,
+    actor: string | null
+  ): Promise<void>
+  removeMember(
+    orgId: string,
+    spaceId: string,
+    username: string,
+    actor: string | null
+  ): Promise<void>
+  linkGroups(
+    orgId: string,
+    spaceId: string,
+    groupIds: string[],
+    role: SpaceRole,
+    actor: string | null
+  ): Promise<void>
+  setGroupRole(
+    orgId: string,
+    spaceId: string,
+    groupId: string,
+    role: SpaceRole,
+    actor: string | null
+  ): Promise<void>
+  unlinkGroup(
+    orgId: string,
+    spaceId: string,
+    groupId: string,
+    actor: string | null
+  ): Promise<void>
+  groups(
+    orgId: string,
+    spaceId: string
+  ): Promise<{ id: string; name: string; role: SpaceRole }[]>
+}
+
+export function ldapRestSpaces(
+  client: Pick<LdapRestClient, 'organizations' | 'spaces'>
+): SpaceDirectory {
+  const { spaces } = client
+  const as = (actor: string | null) => actor ?? undefined
+  return {
+    async person(orgId, by, value) {
+      const user = await notFoundAsUndefined(
+        client.organizations.getUser(orgId, { by, value })
+      )
+      if (!user?._id || !user.uid) return undefined
+      return { uuid: user._id, username: user.uid, email: user.mail }
+    },
+    async create(orgId, space, actor) {
+      const { id } = await spaces.create(orgId, space, as(actor))
+      return { id }
+    },
+    async rename(orgId, spaceId, name, actor) {
+      await spaces.rename(orgId, spaceId, name, as(actor))
+    },
+    async delete(orgId, spaceId, actor) {
+      await spaces.delete(orgId, spaceId, as(actor))
+    },
+    async addMembers(orgId, spaceId, usernames, role, actor) {
+      await spaces.addMembers(orgId, spaceId, { usernames, role }, as(actor))
+    },
+    async setMemberRole(orgId, spaceId, username, role, actor) {
+      await spaces.setMemberRole(orgId, spaceId, username, role, as(actor))
+    },
+    async removeMember(orgId, spaceId, username, actor) {
+      await spaces.removeMember(orgId, spaceId, username, as(actor))
+    },
+    async linkGroups(orgId, spaceId, groupIds, role, actor) {
+      await spaces.linkGroups(orgId, spaceId, { groupIds, role }, as(actor))
+    },
+    async setGroupRole(orgId, spaceId, groupId, role, actor) {
+      await spaces.setGroupRole(orgId, spaceId, groupId, role, as(actor))
+    },
+    async unlinkGroup(orgId, spaceId, groupId, actor) {
+      await spaces.unlinkGroup(orgId, spaceId, groupId, as(actor))
+    },
+    async groups(orgId, spaceId) {
+      return (await spaces.listGroups(orgId, spaceId)).groups
+    }
+  }
+}
+
 export function createLdapRestClient(config: Config): LdapRestClient {
   return new LdapRestClient({
     baseUrl: config.LDAP_REST_URL,
