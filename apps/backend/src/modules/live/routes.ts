@@ -29,13 +29,19 @@ export function registerLiveRoutes(
     })
     response.write(': open\n\n')
 
-    const close = () => response.end()
-    const remove = streams.add({ sessionId: identity.sessionId, close })
     const heartbeat = setInterval(
       () => response.write(': heartbeat\n\n'),
       HEARTBEAT_MS
     )
+    // Stops the heartbeat before ending: 'close' fires later, and a write after
+    // end() is an uncaught error.
+    const close = () => {
+      clearInterval(heartbeat)
+      clearTimeout(expiry)
+      response.end()
+    }
     const expiry = setTimeout(close, identity.expiresAt.getTime() - Date.now())
+    const remove = streams.add({ sessionId: identity.sessionId, close })
     response.on('close', () => {
       clearInterval(heartbeat)
       clearTimeout(expiry)
