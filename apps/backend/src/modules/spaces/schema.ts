@@ -1,0 +1,72 @@
+import {
+  index,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  uuid
+} from 'drizzle-orm/pg-core'
+import { timestamptz } from '../../infra/db.ts'
+
+export const spaceRole = pgEnum('space_role', ['viewer', 'editor', 'admin'])
+
+export const spaces = pgTable(
+  'spaces',
+  {
+    spaceId: uuid('space_id').primaryKey(),
+    organizationId: text('organization_id').notNull(),
+    name: text().notNull(),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow()
+  },
+  table => [index().on(table.organizationId)]
+)
+
+// The tables below have no foreign key to spaces: they are fed by events that can be
+// consumed before the space event.
+
+export const spaceMembers = pgTable(
+  'space_members',
+  {
+    spaceId: uuid('space_id').notNull(),
+    username: text().notNull(),
+    email: text().notNull(),
+    role: spaceRole().notNull()
+  },
+  table => [
+    primaryKey({ columns: [table.spaceId, table.username] }),
+    index().on(table.username)
+  ]
+)
+
+export const spaceGroups = pgTable(
+  'space_groups',
+  {
+    spaceId: uuid('space_id').notNull(),
+    groupId: text('group_id').notNull(),
+    role: spaceRole().notNull()
+  },
+  table => [
+    primaryKey({ columns: [table.spaceId, table.groupId] }),
+    index().on(table.groupId)
+  ]
+)
+
+export const spaceResourceKind = pgEnum('space_resource_kind', [
+  'drive',
+  'mailbox',
+  'calendar',
+  'matrix_space'
+])
+
+export const spaceResources = pgTable(
+  'space_resources',
+  {
+    spaceId: uuid('space_id').notNull(),
+    kind: spaceResourceKind().notNull(),
+    organizationId: text('organization_id').notNull(),
+    resourceId: text('resource_id').notNull(),
+    provisionedAt: timestamptz('provisioned_at').notNull().defaultNow()
+  },
+  table => [primaryKey({ columns: [table.spaceId, table.kind] })]
+)
