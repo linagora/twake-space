@@ -59,21 +59,26 @@ beforeEach(async () => {
 })
 
 let n = 0
-async function stored(spaceId: string, minute: number, title = 'Q3 plan') {
+async function stored(
+  spaceId: string,
+  minute: number,
+  title = 'Q3 plan',
+  object = { type: 'file', category: 'files' as const, id: '' }
+) {
   n += 1
-  const id = String(n)
+  const objectId = object.id || `f${String(n)}`
   await testDb.db.insert(activityEvents).values({
     source: 'twake://drive',
-    eventId: `e${id}`,
+    eventId: `e${String(n)}`,
     organizationId: 'acme',
     spaceId,
-    type: 'com.twake.drive.file.created.v1',
-    category: 'files',
+    type: `com.twake.drive.${object.type}.changed.v1`,
+    category: object.category,
     actor: { type: 'user', id: null, email: 'alice@acme.example.com' },
-    objectType: 'file',
-    objectId: `f${id}`,
+    objectType: object.type,
+    objectId,
     content: {
-      object: { type: 'file', id: `f${id}`, title, url: 'https://drive' },
+      object: { type: object.type, id: objectId, title, url: 'https://drive' },
       preview: 'First draft'
     },
     time: new Date(`2026-10-05T09:${String(minute).padStart(2, '0')}:00Z`)
@@ -126,7 +131,7 @@ describe('postCards', () => {
       type: 'com.twake.feed.files',
       txnId: expect.any(String) as string,
       content: {
-        type: 'com.twake.drive.file.created.v1',
+        type: 'com.twake.drive.file.changed.v1',
         id: expect.stringMatching(/^e\d+$/) as string,
         actor: { type: 'user', id: null, email: 'alice@acme.example.com' },
         object: {
@@ -142,6 +147,35 @@ describe('postCards', () => {
       }
     })
     expect(rows.map(r => r.matrixEventId)).toEqual(['$card1', '$card2'])
+  })
+
+  it('edits the first card of an object with each later event about it', async () => {
+    await stored(DESIGN, 1, 'Q3 plan', {
+      type: 'file',
+      category: 'files',
+      id: 'f-q3'
+    })
+    await stored(DESIGN, 2, 'Q3 plan v2', {
+      type: 'file',
+      category: 'files',
+      id: 'f-q3'
+    })
+    const { sent, send } = recording()
+
+    await postCards(testDb.db, KEY, send, log)
+
+    const [, second, edit] = sent
+    expect(sent).toHaveLength(3)
+    expect(edit).toEqual({
+      roomId: `!${DESIGN}:example.com`,
+      type: 'com.twake.feed.files',
+      txnId: `${second?.txnId ?? ''}.edit`,
+      content: {
+        ...second?.content,
+        'm.new_content': second?.content,
+        'm.relates_to': { rel_type: 'm.replace', event_id: '$card1' }
+      }
+    })
   })
 
   it('uses the stored row id as transaction id, so a retry posts once', async () => {
