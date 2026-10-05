@@ -1,9 +1,16 @@
+import { randomBytes } from 'node:crypto'
 import { sql } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { notifications } from '../notifications/schema.ts'
+import { configureHomeserver } from '../organizations/homeservers.ts'
 import { purgeExpired } from './retention.ts'
-import { activityEvents, feedMessages, feedReactions } from './schema.ts'
+import {
+  activityEvents,
+  appServiceTransactions,
+  feedMessages,
+  feedReactions
+} from './schema.ts'
 
 const NOW = new Date('2026-10-05T12:00:00Z')
 const daysAgo = (days: number) =>
@@ -87,6 +94,27 @@ describe('purgeExpired', () => {
       reactions: 2,
       notifications: 1
     })
+  })
+
+  it('forgets app service transactions past 7 days', async () => {
+    const homeserverId = await configureHomeserver(testDb.db, randomBytes(32), {
+      url: 'https://matrix.example.com',
+      serverName: 'example.com',
+      asToken: 'as',
+      hsToken: 'hs'
+    })
+    await testDb.db.insert(appServiceTransactions).values([
+      { homeserverId, txnId: 'old', createdAt: daysAgo(8) },
+      { homeserverId, txnId: 'recent', createdAt: daysAgo(6) }
+    ])
+
+    await purgeExpired(testDb.db, NOW)
+
+    expect(
+      await testDb.db
+        .select({ txnId: appServiceTransactions.txnId })
+        .from(appServiceTransactions)
+    ).toEqual([{ txnId: 'recent' }])
   })
 
   it('leaves the purge to the replica already running it', async () => {
