@@ -389,14 +389,18 @@ const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
     event.body,
     event.routingKey
   )
-  // Before the members go: they are where a uuid is found from an email.
+  // Before removing members: the email-to-uuid lookup reads them.
   const [known] = await withUserIds(tx, log, [{ uuid, email: internalEmail }])
-  if (known) await deleteNotificationsOf(tx, known.uuid)
-  await forgetActor(tx, { uuid: known?.uuid, email: internalEmail })
+  if (known) {
+    await deleteNotificationsOf(tx, known.uuid)
+    await forgetActor(tx, { uuid: known.uuid })
+  } else if (internalEmail) {
+    await forgetActor(tx, { email: internalEmail })
+  }
   await removeMembers(
     tx,
     timestamp,
-    matching(log, [{ uuid, email: internalEmail }])
+    matching(log, [known ?? { uuid, email: internalEmail }])
   )
   await tx
     .delete(organizationMembers)
