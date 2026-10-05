@@ -6,7 +6,7 @@ import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { configureHomeserver } from '../organizations/homeservers.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
 import { spaceResources, spaces } from '../spaces/schema.ts'
-import type { SendEvent } from '../../infra/matrix.ts'
+import type { Matrix } from '../../infra/matrix.ts'
 import { postCards } from './poster.ts'
 import { activityEvents } from './schema.ts'
 
@@ -101,25 +101,33 @@ function recording(fail: (roomId: string) => boolean = () => false) {
     txnId: string
     content: object
   }[] = []
-  const send: SendEvent = (homeserver, roomId, type, txnId, content) => {
-    expect(homeserver).toEqual({
-      url: 'https://matrix.example.com',
-      asToken: 'as-secret'
-    })
-    if (fail(roomId)) return Promise.reject(new Error('synapse down'))
-    sent.push({ roomId, type, txnId, content })
-    return Promise.resolve(`$card${String(sent.length)}`)
+  const joined: string[] = []
+  const matrix: Matrix = {
+    send(homeserver, roomId, type, txnId, content) {
+      expect(homeserver).toEqual({
+        url: 'https://matrix.example.com',
+        asToken: 'as-secret'
+      })
+      if (fail(roomId)) return Promise.reject(new Error('synapse down'))
+      sent.push({ roomId, type, txnId, content })
+      return Promise.resolve(`$card${String(sent.length)}`)
+    },
+    join(_homeserver, roomId) {
+      if (fail(roomId)) return Promise.reject(new Error('not invited'))
+      joined.push(roomId)
+      return Promise.resolve()
+    }
   }
-  return { sent, send }
+  return { sent, joined, matrix }
 }
 
 describe('postCards', () => {
   it('posts each stored event as a card, oldest first, and keeps its Matrix id', async () => {
     await stored(DESIGN, 2, 'later')
     await stored(DESIGN, 1, 'earlier')
-    const { sent, send } = recording()
+    const { sent, matrix } = recording()
 
-    await postCards(testDb.db, KEY, send, log)
+    await postCards(testDb.db, KEY, matrix, log)
 
     const [rows, first] = [await posted(), sent[0]]
     expect(sent.map(s => s.content)).toMatchObject([
@@ -160,9 +168,9 @@ describe('postCards', () => {
       category: 'files',
       id: 'f-q3'
     })
-    const { sent, send } = recording()
+    const { sent, matrix } = recording()
 
-    await postCards(testDb.db, KEY, send, log)
+    await postCards(testDb.db, KEY, matrix, log)
 
     const [, second, edit] = sent
     expect(sent).toHaveLength(3)
@@ -180,9 +188,9 @@ describe('postCards', () => {
 
   it('uses the stored row id as transaction id, so a retry posts once', async () => {
     await stored(DESIGN, 1)
-    const { sent, send } = recording()
+    const { sent, matrix } = recording()
 
-    await postCards(testDb.db, KEY, send, log)
+    await postCards(testDb.db, KEY, matrix, log)
 
     const [row] = await testDb.db
       .select({ id: activityEvents.id })
@@ -196,9 +204,9 @@ describe('postCards', () => {
     await stored(SALES, 3)
     const down = recording(roomId => roomId.includes(DESIGN))
 
-    await postCards(testDb.db, KEY, down.send, log)
+    await postCards(testDb.db, KEY, down.matrix, log)
     const afterFailure = await posted()
-    await postCards(testDb.db, KEY, recording().send, log)
+    await postCards(testDb.db, KEY, recording().matrix, log)
 
     expect(afterFailure.map(r => [r.spaceId, r.matrixEventId])).toEqual([
       [DESIGN, null],
@@ -208,11 +216,55 @@ describe('postCards', () => {
     expect((await posted()).every(r => r.matrixEventId !== null)).toBe(true)
   })
 
+  it('joins each Matrix space once before posting there', async () => {
+    await stored(DESIGN, 1)
+    await stored(SALES, 2)
+    const { joined, matrix } = recording()
+    const already = new Set<string>()
+
+    await postCards(testDb.db, KEY, matrix, log, already)
+    await stored(DESIGN, 3)
+    await postCards(testDb.db, KEY, matrix, log, already)
+
+    expect(joined.sort()).toEqual(
+      [`!${DESIGN}:example.com`, `!${SALES}:example.com`].sort()
+    )
+  })
+
+  it('joins a space again after a card fails there', async () => {
+    await stored(DESIGN, 1)
+    const already = new Set([
+      `https://matrix.example.com|!${DESIGN}:example.com`
+    ])
+    const { joined, matrix } = recording()
+
+    await postCards(
+      testDb.db,
+      KEY,
+      recording(roomId => roomId.includes(DESIGN)).matrix,
+      log,
+      already
+    )
+    await postCards(testDb.db, KEY, matrix, log, already)
+
+    expect(joined).toEqual([`!${DESIGN}:example.com`])
+  })
+
+  it('keeps the cards of a space it cannot join yet', async () => {
+    await stored(DESIGN, 1)
+    const { sent, matrix } = recording(roomId => roomId.includes(DESIGN))
+
+    await postCards(testDb.db, KEY, matrix, log)
+
+    expect(sent).toEqual([])
+    expect(await posted()).toMatchObject([{ matrixEventId: null }])
+  })
+
   it('keeps the events of an organization without chat', async () => {
     await stored(HR, 1)
-    const { sent, send } = recording()
+    const { sent, matrix } = recording()
 
-    await postCards(testDb.db, KEY, send, log)
+    await postCards(testDb.db, KEY, matrix, log)
 
     expect(sent).toEqual([])
     expect(await posted()).toMatchObject([{ matrixEventId: null }])
@@ -221,9 +273,9 @@ describe('postCards', () => {
   it('waits for the Matrix space of a space', async () => {
     await testDb.db.delete(spaceResources)
     await stored(DESIGN, 1)
-    const { sent, send } = recording()
+    const { sent, matrix } = recording()
 
-    await postCards(testDb.db, KEY, send, log)
+    await postCards(testDb.db, KEY, matrix, log)
 
     expect(sent).toEqual([])
   })

@@ -1,7 +1,7 @@
 import { and, asc, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import type { Db } from '../../infra/db.ts'
-import { matrixSender, type SendEvent } from '../../infra/matrix.ts'
+import { matrixClient, type Matrix } from '../../infra/matrix.ts'
 import { decrypt } from '../../infra/secrets.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
 import { spaceResources, spaces } from '../spaces/schema.ts'
@@ -59,8 +59,9 @@ async function firstCardOf(db: Db, spaceId: string, card: StoredEvent) {
 export async function postCards(
   db: Db,
   key: Buffer,
-  send: SendEvent,
-  log: Logger
+  matrix: Matrix,
+  log: Logger,
+  joined = new Set<string>()
 ): Promise<void> {
   const waiting = await db
     .selectDistinct({
@@ -106,10 +107,15 @@ export async function postCards(
         )
         .orderBy(asc(activityEvents.time), asc(activityEvents.id))
         .limit(CARDS_PER_SPACE)
+      const room = `${space.url}|${space.roomId}`
       for (const card of cards) {
         try {
+          if (!joined.has(room)) {
+            await matrix.join(homeserver, space.roomId)
+            joined.add(room)
+          }
           const content = cardContent(card)
-          const matrixEventId = await send(
+          const matrixEventId = await matrix.send(
             homeserver,
             space.roomId,
             `com.twake.feed.${card.category}`,
@@ -119,7 +125,7 @@ export async function postCards(
           // Before storing the card's id, so a failed edit is retried with it.
           const first = await firstCardOf(db, space.spaceId, card)
           if (first?.matrixEventId) {
-            await send(
+            await matrix.send(
               homeserver,
               space.roomId,
               `com.twake.feed.${first.category}`,
@@ -139,6 +145,8 @@ export async function postCards(
             .set({ matrixEventId })
             .where(eq(activityEvents.id, card.id))
         } catch (error) {
+          // The bot may have been kicked; join again on the next pass.
+          joined.delete(room)
           log.warn(
             { err: error, spaceId: space.spaceId },
             'card not posted, retrying'
@@ -153,7 +161,8 @@ export async function postCards(
 // One replica posts at a time: the lock holds while the pass runs, and the
 // Matrix ids commit on their own as each card is posted.
 export function schedulePosting(db: Db, key: Buffer, log: Logger): () => void {
-  const send = matrixSender()
+  const matrix = matrixClient()
+  const joined = new Set<string>()
   let timer: NodeJS.Timeout | undefined
   let stopped = false
   const pass = async () => {
@@ -161,7 +170,7 @@ export function schedulePosting(db: Db, key: Buffer, log: Logger): () => void {
       const [lock] = await tx.execute<{ locked: boolean }>(
         sql`select pg_try_advisory_xact_lock(hashtext('poster')) as locked`
       )
-      if (lock?.locked) await postCards(db, key, send, log)
+      if (lock?.locked) await postCards(db, key, matrix, log, joined)
     })
   }
   const loop = () => {
