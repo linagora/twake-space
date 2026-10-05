@@ -2,11 +2,12 @@ import { KafkaJS } from '@confluentinc/kafka-javascript'
 import type { Logger } from 'pino'
 import type { Config } from '../config.ts'
 import { ACTIVITY_TOPICS, PLATFORM_TOPIC } from '../events/envelope.ts'
-import type { IncomingMessage, Outcome } from '../events/router.ts'
+import type { DeadLetter, IncomingMessage, Outcome } from '../events/router.ts'
 
-export function connectionConfig(
-  config: Config
-): KafkaJS.ConsumerConstructorConfig {
+type GlobalConfig = KafkaJS.ProducerConstructorConfig &
+  KafkaJS.ConsumerConstructorConfig
+
+export function connectionConfig(config: Config): GlobalConfig {
   const common = {
     'bootstrap.servers': config.KAFKA_BOOTSTRAP,
     'client.id': 'twake-space'
@@ -80,4 +81,40 @@ export async function startConsumer(
     }
   })
   return consumer
+}
+
+export interface DeadLetterProducer {
+  send: DeadLetter
+  disconnect(): Promise<void>
+}
+
+export async function startDeadLetterProducer(
+  config: Config,
+  logger: Logger
+): Promise<DeadLetterProducer> {
+  const producer = new KafkaJS.Kafka().producer({
+    ...connectionConfig(config),
+    'enable.idempotence': true,
+    acks: -1,
+    kafkaJS: { logger: kafkaLogger(logger) }
+  })
+  await producer.connect()
+  return {
+    async send(topic, message, reason) {
+      await producer.send({
+        topic,
+        messages: [
+          {
+            key: message.key ?? null,
+            value: message.value,
+            headers: {
+              ...(message.headers as KafkaJS.IHeaders | undefined),
+              'twake-space-reason': reason
+            }
+          }
+        ]
+      })
+    },
+    disconnect: () => producer.disconnect()
+  }
 }

@@ -6,6 +6,8 @@ import type { CloudEvent, PlatformEvent } from './envelope.ts'
 import {
   createMessageHandler,
   MalformedEventError,
+  RejectedEventError,
+  type DeadLetter,
   type Handler
 } from './router.ts'
 
@@ -30,6 +32,7 @@ function memoryDeduplicator(): Deduplicator & { keys: EventKey[] } {
 function setup() {
   const activity = vi.fn<Handler<CloudEvent>>().mockResolvedValue()
   const platform = vi.fn<Handler<PlatformEvent>>().mockResolvedValue()
+  const deadLetter = vi.fn<DeadLetter>().mockResolvedValue()
   const dedupe = memoryDeduplicator()
   const handle = createMessageHandler({
     routes: {
@@ -37,9 +40,10 @@ function setup() {
       platform: new Map([['b2b.group.created', platform]])
     },
     dedupe,
+    deadLetter,
     logger: pino({ level: 'silent' })
   })
-  return { handle, activity, platform, dedupe }
+  return { handle, activity, platform, deadLetter, dedupe }
 }
 
 const fileCreated = {
@@ -141,6 +145,20 @@ describe('createMessageHandler', () => {
     expect(await handle('twake.drive.events.v1', message(fileCreated))).toBe(
       'malformed'
     )
+  })
+
+  it('sends an event its handler rejects to the dead letter topic', async () => {
+    const { handle, activity, deadLetter, dedupe } = setup()
+    activity.mockRejectedValueOnce(new RejectedEventError('not a member'))
+    const incoming = message(fileCreated)
+
+    expect(await handle('twake.drive.events.v1', incoming)).toBe('rejected')
+    expect(deadLetter).toHaveBeenCalledWith(
+      'twake.drive.events.v1.dlq.twake-space',
+      incoming,
+      'not a member'
+    )
+    expect(dedupe.keys).toEqual([])
   })
 
   it('propagates a handler failure so the offset is not committed', async () => {
