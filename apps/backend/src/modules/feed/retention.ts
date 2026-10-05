@@ -6,11 +6,6 @@ import { activityEvents, feedMessages, feedReactions } from './schema.ts'
 
 const PURGE_EVERY_MS = 60 * 60 * 1000
 
-const monthsBefore = (now: Date, months: number) => {
-  const date = new Date(now)
-  date.setUTCMonth(date.getUTCMonth() - months)
-  return date
-}
 const daysBefore = (now: Date, days: number) =>
   new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
 
@@ -21,7 +16,7 @@ export function purgeExpired(db: Db, now = new Date()): Promise<boolean> {
       sql`select pg_try_advisory_xact_lock(hashtext('purge')) as locked`
     )
     if (!lock?.locked) return false
-    const feedLimit = monthsBefore(now, 12)
+    const feedLimit = daysBefore(now, 365)
     await tx
       .delete(activityEvents)
       .where(lt(activityEvents.createdAt, feedLimit))
@@ -35,11 +30,14 @@ export function purgeExpired(db: Db, now = new Date()): Promise<boolean> {
 }
 
 export function schedulePurge(db: Db, logger: Logger): () => void {
-  const timer = setInterval(() => {
+  const purge = () => {
     purgeExpired(db).catch((error: unknown) => {
       logger.error({ err: error }, 'purge failed')
     })
-  }, PURGE_EVERY_MS)
+  }
+  // Also at startup, so pods restarted more often than hourly still purge.
+  purge()
+  const timer = setInterval(purge, PURGE_EVERY_MS)
   return () => {
     clearInterval(timer)
   }
