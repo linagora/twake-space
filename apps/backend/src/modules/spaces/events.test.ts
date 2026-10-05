@@ -1,5 +1,14 @@
 import { eq } from 'drizzle-orm'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { pino } from 'pino'
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi
+} from 'vitest'
 import type { PlatformEvent } from '../../events/envelope.ts'
 import { MalformedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
@@ -22,7 +31,11 @@ beforeAll(async () => {
   testDb = await createTestDb()
 })
 afterAll(() => testDb.drop())
+const log = pino({ level: 'silent' })
+const warn = vi.spyOn(log, 'warn')
+
 beforeEach(async () => {
+  warn.mockClear()
   await testDb.db.delete(spaceMembers)
   await testDb.db.delete(spaceGroups)
   await testDb.db.delete(spaces)
@@ -32,7 +45,7 @@ function handle(routingKey: string, body: unknown) {
   const handler = spacePlatformRoutes.get(routingKey)
   if (!handler) throw new Error(`no handler for ${routingKey}`)
   const event: PlatformEvent = { routingKey, messageId: 'msg-1', body }
-  return testDb.db.transaction(tx => handler(event, tx))
+  return testDb.db.transaction(tx => handler(event, tx, log))
 }
 
 function created(overrides: Record<string, unknown> = {}) {
@@ -151,6 +164,21 @@ describe('space events', () => {
     ).toHaveLength(1)
   })
 
+  it('removes a deleted user sent without a uuid by their email', async () => {
+    await created()
+    await handle('domain.user.deleted', {
+      emitter: 'ldap-rest',
+      type: 'user.deleted',
+      userId: 'jdoe',
+      internalEmail: 'jdoe@evilcorp.com',
+      organizationId: 'evilcorp123',
+      reason: 'user deleted'
+    })
+
+    expect(await readMembers()).toEqual([])
+    expect(warn).toHaveBeenCalled()
+  })
+
   it('refuses a space event without a space id', async () => {
     await expect(created({ id: 'not-a-uuid' })).rejects.toBeInstanceOf(
       MalformedEventError
@@ -217,6 +245,42 @@ describe('member events', () => {
     await member('twake.space.member.removed', [jdoe])
 
     expect(await readMembers()).toMatchObject([{ username: 'asmith' }])
+  })
+
+  it('finds a member sent without a uuid by their email', async () => {
+    await created()
+
+    await member('twake.space.member.role.changed', [
+      { ...jdoe, uuid: undefined, role: 'admin' }
+    ])
+
+    expect(await readMembers()).toMatchObject([
+      { userId: JDOE_ID, role: 'admin' }
+    ])
+    expect(warn).toHaveBeenCalled()
+  })
+
+  it('skips a member sent without a uuid who is not in the copy', async () => {
+    await created()
+
+    await member('twake.space.member.added', [{ ...asmith, uuid: undefined }])
+
+    expect(await readMembers()).toMatchObject([{ username: 'jdoe' }])
+    expect(warn).toHaveBeenCalled()
+  })
+
+  it('removes a member sent with only an email', async () => {
+    await created({ members: [jdoe, asmith] })
+
+    await member('twake.space.member.removed', [{ email: jdoe.email }])
+
+    expect(await readMembers()).toMatchObject([{ username: 'asmith' }])
+  })
+
+  it('refuses a removed member with neither a uuid nor an email', async () => {
+    await expect(
+      member('twake.space.member.removed', [{ username: 'jdoe' }])
+    ).rejects.toBeInstanceOf(MalformedEventError)
   })
 
   it('refuses a member event without members', async () => {

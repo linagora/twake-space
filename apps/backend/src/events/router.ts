@@ -11,7 +11,7 @@ import {
   type PlatformEvent
 } from './envelope.ts'
 
-export type Handler<E> = (event: E, tx: Tx) => Promise<void>
+export type Handler<E> = (event: E, tx: Tx, log: Logger) => Promise<void>
 
 // Thrown by a handler for an event it can never process, so the offset moves on.
 export class MalformedEventError extends Error {}
@@ -73,7 +73,9 @@ export function createMessageHandler(deps: {
     }
     let processed: boolean
     try {
-      processed = await dedupe.once(dedupeKey, tx => handler(parsed.event, tx))
+      processed = await dedupe.once(dedupeKey, tx =>
+        handler(parsed.event, tx, logger.child({ ...context, key }))
+      )
     } catch (error) {
       if (!(error instanceof MalformedEventError)) throw error
       logger.error(

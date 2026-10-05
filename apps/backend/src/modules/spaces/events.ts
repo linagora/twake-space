@@ -1,4 +1,5 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, or, sql } from 'drizzle-orm'
+import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { PlatformEvent } from '../../events/envelope.ts'
 import { parseOrDrop, type Handler } from '../../events/router.ts'
@@ -19,7 +20,7 @@ const spaceEvent = z.looseObject({
 const role = z.enum(spaceRole.enumValues)
 
 const member = z.looseObject({
-  uuid: z.uuid(),
+  uuid: z.uuid().optional(),
   username: z.string().min(1),
   email: z.email(),
   role
@@ -41,8 +42,12 @@ const spaceUpdated = spaceEvent.extend({ name: z.string().min(1).optional() })
 
 const memberChanged = spaceEvent.extend({ members: z.array(member).min(1) })
 
+const person = z
+  .looseObject({ uuid: z.uuid().optional(), email: z.email().optional() })
+  .refine(p => p.uuid ?? p.email, 'needs a uuid or an email')
+
 const memberRemoved = spaceEvent.extend({
-  members: z.array(z.looseObject({ uuid: z.uuid() })).min(1)
+  members: z.array(person).min(1)
 })
 
 const groupChanged = spaceEvent.extend({ groups: z.array(group).min(1) })
@@ -50,6 +55,57 @@ const groupChanged = spaceEvent.extend({ groups: z.array(group).min(1) })
 const groupUnlinked = spaceEvent.extend({
   groups: z.array(z.looseObject({ id: z.uuid() })).min(1)
 })
+
+interface Person {
+  uuid?: string | undefined
+  email?: string | undefined
+}
+
+// ldap-rest does not send the uuid yet, so a person without one is matched in
+// the copy by email. Remove withoutUuid and its uses once it does.
+function withoutUuid(log: Logger, people: Person[]) {
+  const emails = people.flatMap(p => (!p.uuid && p.email ? [p.email] : []))
+  if (emails.length > 0) {
+    log.warn(
+      { withoutUuid: emails.length },
+      'matching people sent without a uuid by email'
+    )
+  }
+  return emails
+}
+
+function matching(log: Logger, people: Person[]) {
+  return or(
+    inArray(
+      spaceMembers.userId,
+      people.flatMap(p => (p.uuid ? [p.uuid] : []))
+    ),
+    inArray(spaceMembers.email, withoutUuid(log, people))
+  )
+}
+
+async function withUserIds<T extends Person>(
+  tx: Tx,
+  log: Logger,
+  people: T[]
+): Promise<(T & { uuid: string })[]> {
+  const emails = withoutUuid(log, people)
+  const known = new Map<string, string>()
+  if (emails.length > 0) {
+    const rows = await tx
+      .selectDistinct({
+        email: spaceMembers.email,
+        userId: spaceMembers.userId
+      })
+      .from(spaceMembers)
+      .where(inArray(spaceMembers.email, emails))
+    for (const row of rows) known.set(row.email, row.userId)
+  }
+  return people.flatMap(p => {
+    const uuid = p.uuid ?? (p.email ? known.get(p.email) : undefined)
+    return uuid ? [{ ...p, uuid }] : []
+  })
+}
 
 async function upsertGroups(
   tx: Tx,
@@ -74,15 +130,18 @@ async function upsertGroups(
 
 async function upsertMembers(
   tx: Tx,
+  log: Logger,
   spaceId: string,
   members: z.infer<typeof member>[]
 ) {
   // One upsert cannot touch a row twice, so a member listed twice keeps its last entry.
   const byUser = new Map(
-    members.map(({ uuid, username, email, role }) => [
-      uuid,
-      { spaceId, userId: uuid, username, email, role }
-    ])
+    (await withUserIds(tx, log, members)).map(
+      ({ uuid, username, email, role }) => [
+        uuid,
+        { spaceId, userId: uuid, username, email, role }
+      ]
+    )
   )
   if (byUser.size === 0) return
   await tx
@@ -98,7 +157,7 @@ async function upsertMembers(
     })
 }
 
-const onCreated: Handler<PlatformEvent> = async (event, tx) => {
+const onCreated: Handler<PlatformEvent> = async (event, tx, log) => {
   const space = parseOrDrop(spaceCreated, event.body, event.routingKey)
   await tx
     .insert(spaces)
@@ -111,7 +170,7 @@ const onCreated: Handler<PlatformEvent> = async (event, tx) => {
       target: spaces.spaceId,
       set: { name: space.name, updatedAt: sql`now()` }
     })
-  await upsertMembers(tx, space.id, space.members)
+  await upsertMembers(tx, log, space.id, space.members)
   await upsertGroups(tx, space.id, space.groups)
 }
 
@@ -132,30 +191,24 @@ const onDeleted: Handler<PlatformEvent> = async (event, tx) => {
   await tx.delete(spaces).where(eq(spaces.spaceId, id))
 }
 
-const onMemberChanged: Handler<PlatformEvent> = async (event, tx) => {
+const onMemberChanged: Handler<PlatformEvent> = async (event, tx, log) => {
   const { id, members } = parseOrDrop(
     memberChanged,
     event.body,
     event.routingKey
   )
-  await upsertMembers(tx, id, members)
+  await upsertMembers(tx, log, id, members)
 }
 
-const onMemberRemoved: Handler<PlatformEvent> = async (event, tx) => {
+const onMemberRemoved: Handler<PlatformEvent> = async (event, tx, log) => {
   const { id, members } = parseOrDrop(
     memberRemoved,
     event.body,
     event.routingKey
   )
-  await tx.delete(spaceMembers).where(
-    and(
-      eq(spaceMembers.spaceId, id),
-      inArray(
-        spaceMembers.userId,
-        members.map(m => m.uuid)
-      )
-    )
-  )
+  await tx
+    .delete(spaceMembers)
+    .where(and(eq(spaceMembers.spaceId, id), matching(log, members)))
 }
 
 const onGroupChanged: Handler<PlatformEvent> = async (event, tx) => {
@@ -180,11 +233,22 @@ const onGroupUnlinked: Handler<PlatformEvent> = async (event, tx) => {
   )
 }
 
-const userDeleted = z.looseObject({ uuid: z.uuid() })
+const userDeleted = z
+  .looseObject({
+    uuid: z.uuid().optional(),
+    internalEmail: z.email().optional()
+  })
+  .refine(u => u.uuid ?? u.internalEmail, 'needs a uuid or an internalEmail')
 
-const onUserDeleted: Handler<PlatformEvent> = async (event, tx) => {
-  const { uuid } = parseOrDrop(userDeleted, event.body, event.routingKey)
-  await tx.delete(spaceMembers).where(eq(spaceMembers.userId, uuid))
+const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
+  const { uuid, internalEmail } = parseOrDrop(
+    userDeleted,
+    event.body,
+    event.routingKey
+  )
+  await tx
+    .delete(spaceMembers)
+    .where(matching(log, [{ uuid, email: internalEmail }]))
 }
 
 export const spacePlatformRoutes: ReadonlyMap<
