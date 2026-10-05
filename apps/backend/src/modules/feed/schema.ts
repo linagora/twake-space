@@ -13,7 +13,8 @@ export const activityEvents = pgTable(
   'activity_events',
   {
     id: text().primaryKey(),
-    organizationId: text('organization_id').notNull(),
+    // Null for a B2C user's event.
+    organizationId: text('organization_id'),
     // Null for an object outside any space: used for personal notifications only.
     spaceId: uuid('space_id'),
     type: text().notNull(),

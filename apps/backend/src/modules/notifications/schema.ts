@@ -26,7 +26,7 @@ export const notifications = pgTable(
   'notifications',
   {
     id: uuid().primaryKey().defaultRandom(),
-    organizationId: text('organization_id').notNull(),
+    organizationId: text('organization_id'),
     recipient: text().notNull(),
     type: notificationType().notNull(),
     spaceId: uuid('space_id'),
