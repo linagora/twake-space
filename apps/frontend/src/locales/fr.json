@@ -43,5 +43,8 @@
     "chatOff": "Le fil et le chat sont désactivés : le chat n'est pas activé pour votre organisation.",
     "mailOff": "Le mail est désactivé : le domaine mail de votre organisation n'est pas encore validé.",
     "preparing": "%{app} est en cours de préparation pour cet espace."
+  },
+  "tasks": {
+    "notSetUp": "Tâches n'est pas configuré pour TwakeSpace."
   }
 }

@@ -17,19 +17,21 @@ export function renderWithProviders(
     lang = 'en',
     session = fakeSession(),
     spaces = fakeSpaces(),
-    path = '/'
+    path = '/',
+    tasksUrl = 'https://tasks.test/'
   }: {
     lang?: SupportedLanguage
     session?: SessionService
     spaces?: SpacesService
     path?: string
+    tasksUrl?: string | null
   } = {}
 ): RenderResult {
   return render(
     <AppProviders
       lang={lang}
       queryClient={makeQueryClient()}
-      services={{ spaces }}
+      services={{ spaces, tasksUrl }}
     >
       <SessionGate session={session}>
         <MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>

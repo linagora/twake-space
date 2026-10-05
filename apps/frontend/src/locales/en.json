@@ -43,5 +43,8 @@
     "chatOff": "Feed and Chat are off: chat is not turned on for your organization.",
     "mailOff": "Mail is off: your organization's mail domain is not validated yet.",
     "preparing": "%{app} is being prepared for this space."
+  },
+  "tasks": {
+    "notSetUp": "Tasks is not set up for TwakeSpace."
   }
 }

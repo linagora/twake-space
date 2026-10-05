@@ -43,5 +43,8 @@
     "chatOff": "Feed e Chat sono disattivati: la chat non è attiva per la tua organizzazione.",
     "mailOff": "Mail è disattivato: il dominio mail della tua organizzazione non è ancora convalidato.",
     "preparing": "%{app} è in preparazione per questo spazio."
+  },
+  "tasks": {
+    "notSetUp": "Attività non è configurato per TwakeSpace."
   }
 }

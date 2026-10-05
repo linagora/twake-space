@@ -43,5 +43,8 @@
     "chatOff": "Novedades y Chat están desactivados: el chat no está activado para tu organización.",
     "mailOff": "Correo está desactivado: el dominio de correo de tu organización aún no está validado.",
     "preparing": "%{app} se está preparando para este espacio."
+  },
+  "tasks": {
+    "notSetUp": "Tareas no está configurado para TwakeSpace."
   }
 }

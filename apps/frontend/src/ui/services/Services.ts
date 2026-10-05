@@ -4,6 +4,7 @@ import type { SpacesService } from '@/application/spaces'
 
 export interface Services {
   spaces: SpacesService
+  tasksUrl: string | null
 }
 
 export const ServicesContext = createContext<Services | null>(null)
