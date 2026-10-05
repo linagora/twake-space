@@ -1,0 +1,347 @@
+import { LdapRestError } from '@linagora/ldap-rest-client'
+import { and, eq } from 'drizzle-orm'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import { z } from 'zod'
+import type { Db } from '../../infra/db.ts'
+import type { HttpServer } from '../../infra/http.ts'
+import type { SpaceDirectory } from '../../infra/ldap-rest.ts'
+import type { Authorize, Caller } from '../auth/index.ts'
+import {
+  createSpace,
+  deleteSpace,
+  removeSpaceMembers,
+  renameSpace,
+  unlinkGroups,
+  upsertGroups,
+  upsertMembers
+} from './events.ts'
+import { reachableSpaces } from './routes.ts'
+import { spaceMembers, spaceRole } from './schema.ts'
+
+const role = z.enum(spaceRole.enumValues)
+const name = z.string().trim().min(1).max(255)
+const spaceParams = z.object({ id: z.uuid() })
+const memberParams = spaceParams.extend({ userId: z.uuid() })
+const groupParams = spaceParams.extend({ groupId: z.uuid() })
+
+class Refusal extends Error {
+  readonly status: number
+
+  constructor(status: number, error: string) {
+    super(error)
+    this.status = status
+  }
+}
+
+function callerOf(request: FastifyRequest) {
+  if (!request.caller) throw new Error('authorize let a request through')
+  return request.caller
+}
+
+function parse<T extends z.ZodType>(schema: T, value: unknown): z.output<T> {
+  const result = schema.safeParse(value)
+  if (!result.success) throw new Refusal(400, 'invalid_request')
+  return result.data
+}
+
+// ldap-rest's refusals (last admin, unknown user, member with another role)
+// reach the caller as they are. A 401 refuses this service's credentials, not
+// the caller; Fastify would answer any other error with its statusCode, so it
+// is wrapped to answer 500.
+async function ldapRest<T>(write: () => Promise<T>): Promise<T> {
+  try {
+    return await write()
+  } catch (error) {
+    if (!(error instanceof LdapRestError)) throw error
+    const status = error.statusCode
+    if (
+      status !== undefined &&
+      status >= 400 &&
+      status < 500 &&
+      status !== 401
+    ) {
+      throw new Refusal(status, error.code ?? 'ldap_rest_refused')
+    }
+    throw new Error('ldap-rest failed the write', { cause: error })
+  }
+}
+
+type Route = (request: FastifyRequest, reply: FastifyReply) => Promise<unknown>
+
+function refusing(route: Route): Route {
+  return async (request, reply) => {
+    try {
+      return await route(request, reply)
+    } catch (error) {
+      if (error instanceof Refusal) {
+        return reply.code(error.status).send({ error: error.message })
+      }
+      throw error
+    }
+  }
+}
+
+export function registerSpaceWriteRoutes(
+  app: HttpServer,
+  deps: { db: Db; authorize: Authorize; directory: SpaceDirectory }
+) {
+  const { db, authorize, directory } = deps
+
+  async function actorOf(caller: Caller) {
+    if (caller.userId === null) return undefined
+    return directory.person(caller.organizationId, 'id', caller.userId)
+  }
+
+  async function administered(request: FastifyRequest, spaceId: string) {
+    const caller = callerOf(request)
+    const [space] = await reachableSpaces(db, caller, spaceId)
+    if (!space) throw new Refusal(404, 'not_found')
+    if (space.role !== 'admin') throw new Refusal(403, 'not_space_admin')
+    const actor = await actorOf(caller)
+    return { orgId: caller.organizationId, actor: actor?.email ?? null }
+  }
+
+  async function memberOf(spaceId: string, userId: string) {
+    const [member] = await db
+      .select({
+        uuid: spaceMembers.userId,
+        username: spaceMembers.username,
+        email: spaceMembers.email
+      })
+      .from(spaceMembers)
+      .where(
+        and(eq(spaceMembers.spaceId, spaceId), eq(spaceMembers.userId, userId))
+      )
+    if (!member) throw new Refusal(404, 'not_found')
+    return member
+  }
+
+  // Linked groups come back from ldap-rest with their names.
+  async function copyGroups(
+    orgId: string,
+    spaceId: string,
+    groupIds: string[],
+    at: Date
+  ) {
+    const wanted = new Set(groupIds)
+    const groups = (await directory.groups(orgId, spaceId)).filter(g =>
+      wanted.has(g.id)
+    )
+    await db.transaction(tx => upsertGroups(tx, spaceId, at, groups))
+  }
+
+  // ldap-rest already took the write and its event brings the copy, so a
+  // failure here must not answer 500 and invite a retry of the write.
+  async function copy(request: FastifyRequest, write: () => Promise<unknown>) {
+    try {
+      await write()
+    } catch (error) {
+      request.log.error({ err: error }, 'copying a write ldap-rest took')
+    }
+  }
+
+  const writeSpace = { preHandler: authorize('space:write') }
+  const writeMembers = { preHandler: authorize('members:write') }
+
+  // Each route stamps the copy after ldap-rest answered, so the event ldap-rest
+  // sent for the same write is older and changes nothing.
+
+  app.post(
+    '/spaces',
+    writeSpace,
+    refusing(async (request, reply) => {
+      const body = parse(z.object({ name }), request.body)
+      const caller = callerOf(request)
+      const creator = await actorOf(caller)
+      if (!creator) throw new Refusal(403, 'needs_an_account')
+      const orgId = caller.organizationId
+      const { id } = await ldapRest(() =>
+        directory.create(
+          orgId,
+          {
+            name: body.name,
+            members: [{ username: creator.username, role: 'admin' }]
+          },
+          creator.email
+        )
+      )
+      const at = new Date()
+      await copy(request, () =>
+        db.transaction(tx =>
+          createSpace(
+            tx,
+            request.log,
+            {
+              id,
+              organizationId: orgId,
+              name: body.name,
+              members: [{ ...creator, role: 'admin' }],
+              groups: []
+            },
+            at
+          )
+        )
+      )
+      return reply.code(201).send({ id, name: body.name, role: 'admin' })
+    })
+  )
+
+  app.patch(
+    '/spaces/:id',
+    writeSpace,
+    refusing(async (request, reply) => {
+      const { id } = parse(spaceParams, request.params)
+      const body = parse(z.object({ name }), request.body)
+      const { orgId, actor } = await administered(request, id)
+      await ldapRest(() => directory.rename(orgId, id, body.name, actor))
+      const at = new Date()
+      await copy(request, () =>
+        db.transaction(tx => renameSpace(tx, id, body.name, at))
+      )
+      return reply.code(204).send()
+    })
+  )
+
+  app.delete(
+    '/spaces/:id',
+    writeSpace,
+    refusing(async (request, reply) => {
+      const { id } = parse(spaceParams, request.params)
+      const { orgId, actor } = await administered(request, id)
+      await ldapRest(() => directory.delete(orgId, id, actor))
+      const at = new Date()
+      await copy(request, () =>
+        db.transaction(tx => deleteSpace(tx, id, at, actor ?? `token:${orgId}`))
+      )
+      return reply.code(204).send()
+    })
+  )
+
+  app.post(
+    '/spaces/:id/members',
+    writeMembers,
+    refusing(async (request, reply) => {
+      const { id } = parse(spaceParams, request.params)
+      const body = parse(
+        z.object({
+          usernames: z.array(z.string().min(1)).min(1).max(100),
+          role
+        }),
+        request.body
+      )
+      const { orgId, actor } = await administered(request, id)
+      await ldapRest(() =>
+        directory.addMembers(orgId, id, body.usernames, body.role, actor)
+      )
+      const at = new Date()
+      await copy(request, async () => {
+        const people = await Promise.all(
+          body.usernames.map(u => directory.person(orgId, 'username', u))
+        )
+        await db.transaction(tx =>
+          upsertMembers(
+            tx,
+            request.log,
+            id,
+            at,
+            people.flatMap(p => (p ? [{ ...p, role: body.role }] : []))
+          )
+        )
+      })
+      return reply.code(204).send()
+    })
+  )
+
+  app.patch(
+    '/spaces/:id/members/:userId',
+    writeMembers,
+    refusing(async (request, reply) => {
+      const { id, userId } = parse(memberParams, request.params)
+      const body = parse(z.object({ role }), request.body)
+      const { orgId, actor } = await administered(request, id)
+      const member = await memberOf(id, userId)
+      await ldapRest(() =>
+        directory.setMemberRole(orgId, id, member.username, body.role, actor)
+      )
+      const at = new Date()
+      await copy(request, () =>
+        db.transaction(tx =>
+          upsertMembers(tx, request.log, id, at, [
+            { ...member, role: body.role }
+          ])
+        )
+      )
+      return reply.code(204).send()
+    })
+  )
+
+  app.delete(
+    '/spaces/:id/members/:userId',
+    writeMembers,
+    refusing(async (request, reply) => {
+      const { id, userId } = parse(memberParams, request.params)
+      const { orgId, actor } = await administered(request, id)
+      const member = await memberOf(id, userId)
+      await ldapRest(() =>
+        directory.removeMember(orgId, id, member.username, actor)
+      )
+      const at = new Date()
+      await copy(request, () =>
+        db.transaction(tx =>
+          removeSpaceMembers(tx, request.log, id, at, [{ uuid: userId }])
+        )
+      )
+      return reply.code(204).send()
+    })
+  )
+
+  app.post(
+    '/spaces/:id/groups',
+    writeMembers,
+    refusing(async (request, reply) => {
+      const { id } = parse(spaceParams, request.params)
+      const body = parse(
+        z.object({ groupIds: z.array(z.uuid()).min(1).max(100), role }),
+        request.body
+      )
+      const { orgId, actor } = await administered(request, id)
+      await ldapRest(() =>
+        directory.linkGroups(orgId, id, body.groupIds, body.role, actor)
+      )
+      const at = new Date()
+      await copy(request, () => copyGroups(orgId, id, body.groupIds, at))
+      return reply.code(204).send()
+    })
+  )
+
+  app.patch(
+    '/spaces/:id/groups/:groupId',
+    writeMembers,
+    refusing(async (request, reply) => {
+      const { id, groupId } = parse(groupParams, request.params)
+      const body = parse(z.object({ role }), request.body)
+      const { orgId, actor } = await administered(request, id)
+      await ldapRest(() =>
+        directory.setGroupRole(orgId, id, groupId, body.role, actor)
+      )
+      const at = new Date()
+      await copy(request, () => copyGroups(orgId, id, [groupId], at))
+      return reply.code(204).send()
+    })
+  )
+
+  app.delete(
+    '/spaces/:id/groups/:groupId',
+    writeMembers,
+    refusing(async (request, reply) => {
+      const { id, groupId } = parse(groupParams, request.params)
+      const { orgId, actor } = await administered(request, id)
+      await ldapRest(() => directory.unlinkGroup(orgId, id, groupId, actor))
+      const at = new Date()
+      await copy(request, () =>
+        db.transaction(tx => unlinkGroups(tx, id, at, [groupId]))
+      )
+      return reply.code(204).send()
+    })
+  )
+}
