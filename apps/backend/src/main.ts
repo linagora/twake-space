@@ -11,6 +11,7 @@ import { activityRoute } from './modules/feed/activity.ts'
 import { schedulePurge } from './modules/feed/retention.ts'
 import { registerLiveRoutes } from './modules/live/routes.ts'
 import { createStreams } from './modules/live/streams.ts'
+import { registerNotificationRoutes } from './modules/notifications/routes.ts'
 import { configureHomeserver } from './modules/organizations/homeservers.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
@@ -50,6 +51,7 @@ const authorize = await setUpAuth(server, {
 })
 registerSpaceRoutes(server, { db, authorize })
 registerTokenRoutes(server, { db, authorize })
+registerNotificationRoutes(server, { db, authorize })
 const streams = createStreams()
 registerLiveRoutes(server, { authorize, streams })
 await listenForRevocations(sql, sessionId => {
