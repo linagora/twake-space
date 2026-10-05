@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { HttpServer } from '../../infra/http.ts'
@@ -7,7 +6,7 @@ import {
   type Scope,
   type TokenCaller
 } from '../tokens/authenticator.ts'
-import { sha256, type Authenticate } from './authenticator.ts'
+import type { Authenticate } from './authenticator.ts'
 import type { Identity, IdentityProvider } from './oidc.ts'
 import type { AuthStore } from './store.ts'
 
@@ -23,7 +22,6 @@ declare module 'fastify' {
   }
 }
 
-const TICKET_TTL_MS = 60_000
 // Longer than any access token issued in the revoked session can live.
 const REVOCATION_TTL_MS = 24 * 60 * 60 * 1000
 
@@ -112,25 +110,6 @@ export function registerAuth(
     await deps.store.revoke(sessionId, new Date(Date.now() + REVOCATION_TTL_MS))
     return reply.code(200).send()
   })
-
-  app.post(
-    '/ws/ticket',
-    { preHandler: authorize() },
-    async (request, reply) => {
-      const identity = request.caller
-      if (identity?.kind !== 'session') return unauthorized(reply, null)
-      const ticket = randomBytes(32).toString('base64url')
-      await deps.store.saveTicket({
-        hash: sha256(ticket),
-        email: identity.email,
-        sessionId: identity.sessionId,
-        organizationId: identity.organizationId,
-        tokenExpiresAt: identity.expiresAt,
-        expiresAt: new Date(Date.now() + TICKET_TTL_MS)
-      })
-      return reply.header('cache-control', 'no-store').send({ ticket })
-    }
-  )
 
   return authorize
 }

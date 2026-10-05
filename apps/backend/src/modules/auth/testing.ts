@@ -13,7 +13,7 @@ export function fakeAuth(
     authenticate: token => Promise.resolve(identityOf(token)),
     authenticateToken: token => Promise.resolve(tokenOf(token)),
     provider: { identify: unused, verifyLogoutToken: unused },
-    store: { isRevoked: unused, revoke: unused, saveTicket: unused }
+    store: { isRevoked: unused, revoke: unused }
   })
 }
 
