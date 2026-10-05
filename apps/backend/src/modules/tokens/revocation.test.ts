@@ -135,6 +135,21 @@ it("revokes a disabled member's tokens in that organization", async () => {
   expect(await active()).toEqual(['alice elsewhere'])
 })
 
+it('finds a disabled member sent without an email by their username', async () => {
+  await token('alice', { accountId: ALICE })
+
+  await handle('b2b.member.disabled', {
+    organizationId: 'org-1',
+    username: 'alice'
+  })
+  await handle('b2b.member.disabled', {
+    organizationId: 'org-2',
+    username: 'alice'
+  })
+
+  expect(await active()).toEqual([])
+})
+
 it('spares tokens created after a replayed disable', async () => {
   await token(
     'new',

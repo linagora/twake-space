@@ -89,8 +89,8 @@ interface Person {
   email?: string | undefined
 }
 
-// ldap-rest does not send the uuid yet, so a person without one is matched in
-// the copy by email. Remove withoutUuid and its uses once it does.
+// ldap-rest lifecycle events carry no entryUUID, so a person without one is
+// matched in the copy by email.
 function withoutUuid(log: Logger, people: Person[]) {
   const emails = people.flatMap(p => (!p.uuid && p.email ? [p.email] : []))
   if (emails.length > 0) {
@@ -482,26 +482,48 @@ const onOrganizationRoleChanged: Handler<PlatformEvent> = async (
     })
 }
 
-const memberDisabled = z
-  .looseObject({
-    organizationId: z.string().min(1),
-    uuid: z.uuid().optional(),
-    email: z.email().optional(),
-    timestamp
-  })
-  .refine(m => m.uuid ?? m.email, 'needs a uuid or an email')
+const memberDisabled = z.looseObject({
+  organizationId: z.string().min(1),
+  username: z.string().min(1),
+  uuid: z.uuid().optional(),
+  email: z.email().optional(),
+  timestamp
+})
+
+// ldap-rest sends no uuid on member events, and no email when the entry has
+// no mail, but always the username.
+async function accountByUsername(
+  tx: Tx,
+  organizationId: string,
+  username: string
+) {
+  const [row] = await tx
+    .selectDistinct({ userId: spaceMembers.userId })
+    .from(spaceMembers)
+    .innerJoin(spaces, eq(spaces.spaceId, spaceMembers.spaceId))
+    .where(
+      and(
+        eq(spaces.organizationId, organizationId),
+        eq(spaceMembers.username, username)
+      )
+    )
+  return row?.userId
+}
 
 const onMemberDisabled: Handler<PlatformEvent> = async (event, tx, log) => {
   const disabled = parseOrDrop(memberDisabled, event.body, event.routingKey)
   const [known] = await withUserIds(tx, log, [disabled])
-  if (!known) return
+  const accountId =
+    known?.uuid ??
+    (await accountByUsername(tx, disabled.organizationId, disabled.username))
+  if (!accountId) return
   await revokeAccountTokens(
     tx,
-    { accountId: known.uuid, organizationId: known.organizationId },
+    { accountId, organizationId: disabled.organizationId },
     {
       actor: event.routingKey,
       reason: 'its account was disabled',
-      before: known.timestamp
+      before: disabled.timestamp
     }
   )
 }
