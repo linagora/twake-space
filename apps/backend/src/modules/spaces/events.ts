@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { PlatformEvent } from '../../events/envelope.ts'
-import { MalformedEventError, type Handler } from '../../events/router.ts'
+import { parseOrDrop, type Handler } from '../../events/router.ts'
 import type { Tx } from '../../infra/db.ts'
 import { spaceGroups, spaceMembers, spaceResources, spaces } from './schema.ts'
 
@@ -22,16 +22,6 @@ const spaceCreated = spaceEvent.extend({
 })
 
 const spaceUpdated = spaceEvent.extend({ name: z.string().min(1).optional() })
-
-function parse<T extends z.ZodType>(schema: T, event: PlatformEvent) {
-  const result = schema.safeParse(event.body)
-  if (!result.success) {
-    throw new MalformedEventError(
-      `${event.routingKey}: ${z.prettifyError(result.error)}`
-    )
-  }
-  return result.data
-}
 
 async function upsertMembers(
   tx: Tx,
@@ -59,7 +49,7 @@ async function upsertMembers(
 }
 
 const onCreated: Handler<PlatformEvent> = async (event, tx) => {
-  const space = parse(spaceCreated, event)
+  const space = parseOrDrop(spaceCreated, event.body, event.routingKey)
   await tx
     .insert(spaces)
     .values({
@@ -75,7 +65,7 @@ const onCreated: Handler<PlatformEvent> = async (event, tx) => {
 }
 
 const onUpdated: Handler<PlatformEvent> = async (event, tx) => {
-  const { id, name } = parse(spaceUpdated, event)
+  const { id, name } = parseOrDrop(spaceUpdated, event.body, event.routingKey)
   if (name === undefined) return
   await tx
     .update(spaces)
@@ -84,7 +74,7 @@ const onUpdated: Handler<PlatformEvent> = async (event, tx) => {
 }
 
 const onDeleted: Handler<PlatformEvent> = async (event, tx) => {
-  const { id } = parse(spaceEvent, event)
+  const { id } = parseOrDrop(spaceEvent, event.body, event.routingKey)
   await tx.delete(spaceMembers).where(eq(spaceMembers.spaceId, id))
   await tx.delete(spaceGroups).where(eq(spaceGroups.spaceId, id))
   await tx.delete(spaceResources).where(eq(spaceResources.spaceId, id))
@@ -97,7 +87,11 @@ const userDeleted = z.looseObject({
 })
 
 const onUserDeleted: Handler<PlatformEvent> = async (event, tx) => {
-  const { organizationId, userId } = parse(userDeleted, event)
+  const { organizationId, userId } = parseOrDrop(
+    userDeleted,
+    event.body,
+    event.routingKey
+  )
   await tx
     .delete(spaceMembers)
     .where(
