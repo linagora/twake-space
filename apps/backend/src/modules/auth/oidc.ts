@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 export interface Identity {
   subject: string
+  userId: string
   email: string
   sessionId: string
   expiresAt: Date
@@ -27,6 +28,7 @@ const BACKCHANNEL_LOGOUT_EVENT =
 
 const userinfoSchema = z.object({
   sub: z.string().min(1),
+  uuid: z.uuid(),
   email: z.email(),
   // LemonLDAP's introspection does not return the sid.
   sid: z.string().min(1),
@@ -86,6 +88,7 @@ export async function discoverIdentityProvider(
 
       return {
         subject: claims.sub,
+        userId: claims.uuid,
         email: claims.email,
         sessionId: claims.sid,
         expiresAt: new Date(token.exp * 1000),
