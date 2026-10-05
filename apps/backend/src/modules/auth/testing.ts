@@ -41,6 +41,7 @@ export function aTokenCaller(
     role: null,
     scopes: ['space:read'],
     spaceIds: null,
+    expiresAt: null,
     ...overrides
   }
 }
