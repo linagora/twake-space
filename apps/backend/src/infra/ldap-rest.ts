@@ -30,6 +30,13 @@ export interface Directory {
     value: string
   ): Promise<Member | undefined>
   organizationOf(email: string): Promise<string | undefined>
+  organization(orgId: string): Promise<Organization | undefined>
+}
+
+export interface Organization {
+  domain: string
+  chat: boolean
+  mail: boolean
 }
 
 export function createLdapRestClient(config: Config): LdapRestClient {
@@ -53,6 +60,17 @@ export function ldapRestDirectory(
         client.users.fetch({ by: 'email', value: email })
       )
       return user?.organizationId
+    },
+    async organization(orgId) {
+      const organization = await notFoundAsUndefined(
+        client.organizations.get(orgId)
+      )
+      if (!organization || organization.status === 'deleted') return undefined
+      return {
+        domain: organization.domain,
+        chat: organization.metadata?.['isChatServerDeployed'] === true,
+        mail: organization.metadata?.['isMailDomainValid'] === true
+      }
     },
     async listMembers(orgId, query) {
       const { users, pagination } = await client.organizations.listUsers(
