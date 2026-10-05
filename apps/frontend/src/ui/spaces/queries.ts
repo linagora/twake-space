@@ -6,7 +6,7 @@ import {
   type UseQueryResult
 } from '@tanstack/react-query'
 
-import type { SpaceSummary } from '@/application/spaces'
+import type { Space, SpaceSummary } from '@/application/spaces'
 import { useServices } from '@/ui/services/Services'
 
 const SPACES = ['spaces']
@@ -14,6 +14,11 @@ const SPACES = ['spaces']
 export function useSpaceList(): UseQueryResult<SpaceSummary[]> {
   const { spaces } = useServices()
   return useQuery({ queryKey: SPACES, queryFn: () => spaces.list() })
+}
+
+export function useSpace(id: string): UseQueryResult<Space> {
+  const { spaces } = useServices()
+  return useQuery({ queryKey: [...SPACES, id], queryFn: () => spaces.get(id) })
 }
 
 export function useCreateSpace(): UseMutationResult<

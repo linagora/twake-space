@@ -16,11 +16,13 @@ export function renderWithProviders(
   {
     lang = 'en',
     session = fakeSession(),
-    spaces = fakeSpaces()
+    spaces = fakeSpaces(),
+    path = '/'
   }: {
     lang?: SupportedLanguage
     session?: SessionService
     spaces?: SpacesService
+    path?: string
   } = {}
 ): RenderResult {
   return render(
@@ -30,7 +32,7 @@ export function renderWithProviders(
       services={{ spaces }}
     >
       <SessionGate session={session}>
-        <MemoryRouter>{ui}</MemoryRouter>
+        <MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>
       </SessionGate>
     </AppProviders>
   )

@@ -26,5 +26,22 @@
     "create": "Crear un espacio",
     "name": "Nombre",
     "createFailed": "No se pudo crear el espacio."
+  },
+  "tabs": {
+    "feed": "Novedades",
+    "chat": "Chat",
+    "tasks": "Tareas",
+    "drive": "Drive",
+    "mail": "Correo",
+    "calendar": "Calendario"
+  },
+  "space": {
+    "back": "Todos los espacios",
+    "loading": "Cargando el espacio…",
+    "notFound": "Este espacio no existe o no formas parte de él.",
+    "loadFailed": "No se pudo cargar el espacio.",
+    "chatOff": "Novedades y Chat están desactivados: el chat no está activado para tu organización.",
+    "mailOff": "Correo está desactivado: el dominio de correo de tu organización aún no está validado.",
+    "preparing": "%{app} se está preparando para este espacio."
   }
 }
