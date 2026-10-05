@@ -6,6 +6,8 @@ import { fresh } from '../../events/freshness.ts'
 import { lastChanges } from '../../events/schema.ts'
 import { parseOrDrop, type Handler } from '../../events/router.ts'
 import type { Tx } from '../../infra/db.ts'
+import { forgetActor } from '../feed/activity.ts'
+import { deleteNotificationsOf } from '../notifications/recipients.ts'
 import { resourceKey } from './resources.ts'
 import {
   organizationMembers,
@@ -387,6 +389,10 @@ const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
     event.body,
     event.routingKey
   )
+  // Before the members go: they are where a uuid is found from an email.
+  const [known] = await withUserIds(tx, log, [{ uuid, email: internalEmail }])
+  if (known) await deleteNotificationsOf(tx, known.uuid)
+  await forgetActor(tx, { uuid: known?.uuid, email: internalEmail })
   await removeMembers(
     tx,
     timestamp,

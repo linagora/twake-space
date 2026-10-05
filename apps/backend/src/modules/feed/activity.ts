@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, or, sql } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { CloudEvent } from '../../events/envelope.ts'
@@ -163,6 +163,29 @@ function store(category: Category): Handler<CloudEvent> {
 const handlers = new Map(
   Object.entries(CATEGORIES).map(([app, category]) => [app, store(category)])
 )
+
+export async function forgetActor(
+  tx: Tx,
+  user: { uuid: string | undefined; email: string | undefined }
+) {
+  const deletedUser: Actor = { type: 'deleted_user' }
+  await tx
+    .update(activityEvents)
+    .set({ actor: deletedUser })
+    .where(
+      and(
+        sql`${activityEvents.actor}->>'type' = 'user'`,
+        or(
+          user.uuid
+            ? sql`${activityEvents.actor}->>'id' = ${user.uuid}`
+            : undefined,
+          user.email
+            ? sql`${activityEvents.actor}->>'email' = ${user.email}`
+            : undefined
+        )
+      )
+    )
+}
 
 export const activityRoute = {
   get(type: string): Handler<CloudEvent> | undefined {

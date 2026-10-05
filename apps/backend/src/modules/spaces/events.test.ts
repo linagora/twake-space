@@ -13,6 +13,8 @@ import type { PlatformEvent } from '../../events/envelope.ts'
 import { lastChanges } from '../../events/schema.ts'
 import { MalformedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
+import { activityEvents } from '../feed/schema.ts'
+import { notifications } from '../notifications/schema.ts'
 import { spacePlatformRoutes } from './events.ts'
 import {
   organizationMembers,
@@ -185,6 +187,68 @@ describe('space events', () => {
 
     expect(await readMembers()).toEqual([])
     expect(warn).toHaveBeenCalled()
+  })
+
+  describe('a deleted user', () => {
+    const deleted = (body: Record<string, unknown>) =>
+      handle('domain.user.deleted', {
+        emitter: 'ldap-rest',
+        type: 'user.deleted',
+        userId: 'jdoe',
+        internalEmail: 'jdoe@evilcorp.com',
+        organizationId: 'evilcorp123',
+        reason: 'user deleted',
+        ...body
+      })
+
+    async function seed() {
+      await created()
+      const [event] = await testDb.db
+        .insert(activityEvents)
+        .values({
+          source: 'twake://drive',
+          eventId: 'e1',
+          spaceId: SPACE_ID,
+          type: 'com.twake.drive.file.created.v1',
+          category: 'files',
+          actor: { type: 'user', id: JDOE_ID, email: jdoe.email },
+          objectType: 'file',
+          objectId: 'f1',
+          content: {},
+          time: new Date()
+        })
+        .returning()
+      await testDb.db.insert(notifications).values({
+        userId: JDOE_ID,
+        type: 'card_mention',
+        activityEventId: event?.id,
+        payload: {}
+      })
+    }
+
+    beforeEach(async () => {
+      await testDb.db.delete(notifications)
+      await testDb.db.delete(activityEvents)
+    })
+
+    it.each([
+      ['their uuid', { uuid: JDOE_ID }],
+      ['only their email', {}]
+    ])(
+      'drops their notifications and their name from events, sent with %s',
+      async (_, body) => {
+        await seed()
+
+        await deleted(body)
+
+        expect(await testDb.db.select().from(notifications)).toEqual([])
+        expect(
+          await testDb.db
+            .select({ actor: activityEvents.actor })
+            .from(activityEvents)
+        ).toEqual([{ actor: { type: 'deleted_user' } }])
+      }
+    )
   })
 
   it('refuses a space event without a space id', async () => {

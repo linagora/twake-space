@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { Tx } from '../../infra/db.ts'
@@ -94,4 +94,8 @@ export async function notifyRecipients(
     }))
   if (rows.length === 0) return
   await tx.insert(notifications).values(rows).onConflictDoNothing()
+}
+
+export async function deleteNotificationsOf(tx: Tx, userId: string) {
+  await tx.delete(notifications).where(eq(notifications.userId, userId))
 }
