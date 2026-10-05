@@ -1,4 +1,5 @@
 import type { Logger } from 'pino'
+import { z } from 'zod'
 import type { Tx } from '../infra/db.ts'
 import type { Deduplicator, EventKey } from './dedupe.ts'
 import {
@@ -14,6 +15,18 @@ export type Handler<E> = (event: E, tx: Tx) => Promise<void>
 
 // Thrown by a handler for an event it can never process, so the offset moves on.
 export class MalformedEventError extends Error {}
+
+export function parseOrDrop<T extends z.ZodType>(
+  schema: T,
+  value: unknown,
+  label: string
+): z.output<T> {
+  const result = schema.safeParse(value)
+  if (!result.success) {
+    throw new MalformedEventError(`${label}: ${z.prettifyError(result.error)}`)
+  }
+  return result.data
+}
 
 export interface Routes {
   activity: ReadonlyMap<string, Handler<CloudEvent>>

@@ -43,6 +43,22 @@ describe('parseCloudEvent', () => {
     expect(parseCloudEvent(JSON.stringify(event)).ok).toBe(true)
   })
 
+  it('accepts an event without actor nor object, as a provisioned event', () => {
+    const event = {
+      specversion: '1.0',
+      id: '01J9Z7A2B3C4D5E6F7G8H9J0KM',
+      source: 'twake://drive',
+      type: 'com.twake.drive.space.provisioned.v1',
+      twakeorg: 'linagora',
+      data: {
+        space_id: '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091',
+        resource: { kind: 'drive', id: 'a1f0c3e2d4b5' }
+      }
+    }
+
+    expect(parseCloudEvent(JSON.stringify(event)).ok).toBe(true)
+  })
+
   it.each([
     ['invalid JSON', '{'],
     ['an empty message', null],

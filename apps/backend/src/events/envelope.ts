@@ -21,9 +21,10 @@ const cloudEvent = z.looseObject({
   subject: z.string().optional(),
   // A B2C user has no organization.
   twakeorg: z.string().min(1).optional(),
-  twakeactor: z.email(),
+  // Left out for an action made with an organization token.
+  twakeactor: z.email().optional(),
   data: z.looseObject({
-    object: z.looseObject({ space_id: z.uuid().optional() })
+    object: z.looseObject({ space_id: z.uuid().optional() }).optional()
   })
 })
 
