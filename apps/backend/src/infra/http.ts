@@ -23,3 +23,5 @@ export function createServer(deps: {
 
   return app
 }
+
+export type HttpServer = ReturnType<typeof createServer>

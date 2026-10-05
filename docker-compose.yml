@@ -71,6 +71,8 @@ services:
       LDAP_REST_URL: http://ldap-rest:8081
       LDAP_REST_SERVICE_ID: twake-space
       LDAP_REST_SECRET: local-development-secret-not-for-production
+      OIDC_ISSUER: ${OIDC_ISSUER:-https://sign-up.twake.app/}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-local-development-secret}
 
   frontend:
     profiles: [app]
