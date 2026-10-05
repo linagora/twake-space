@@ -8,5 +8,23 @@
     "retry": "Erneut versuchen",
     "signedInAs": "Angemeldet als %{name}",
     "signOut": "Abmelden"
+  },
+  "common": {
+    "cancel": "Abbrechen",
+    "create": "Erstellen"
+  },
+  "roles": {
+    "viewer": "Leser",
+    "editor": "Bearbeiter",
+    "admin": "Administrator"
+  },
+  "spaces": {
+    "title": "Spaces",
+    "loading": "Spaces werden geladen…",
+    "loadFailed": "Deine Spaces konnten nicht geladen werden.",
+    "none": "Du bist noch in keinem Space.",
+    "create": "Space erstellen",
+    "name": "Name",
+    "createFailed": "Der Space konnte nicht erstellt werden."
   }
 }

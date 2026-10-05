@@ -8,5 +8,23 @@
     "retry": "Reintentar",
     "signedInAs": "Sesión iniciada como %{name}",
     "signOut": "Cerrar sesión"
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "create": "Crear"
+  },
+  "roles": {
+    "viewer": "Lector",
+    "editor": "Editor",
+    "admin": "Administrador"
+  },
+  "spaces": {
+    "title": "Espacios",
+    "loading": "Cargando espacios…",
+    "loadFailed": "No se pudieron cargar tus espacios.",
+    "none": "Todavía no estás en ningún espacio.",
+    "create": "Crear un espacio",
+    "name": "Nombre",
+    "createFailed": "No se pudo crear el espacio."
   }
 }
