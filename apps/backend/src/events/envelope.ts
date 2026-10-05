@@ -19,7 +19,8 @@ const cloudEvent = z.looseObject({
   type: z.string().min(1),
   time: z.iso.datetime({ offset: true }).optional(),
   subject: z.string().optional(),
-  twakeorg: z.string().min(1),
+  // A B2C user has no organization.
+  twakeorg: z.string().min(1).optional(),
   twakeactor: z.email(),
   data: z.looseObject({
     object: z.looseObject({ space_id: z.uuid().optional() })
