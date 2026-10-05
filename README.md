@@ -31,7 +31,7 @@ To run the production images locally: `docker compose --profile app up --build`.
 Each app has its own Dockerfile and workflows (`.github/workflows/<app>-*.yml`):
 
 - a pull request checks the app and builds its image
-- a push to `main` publishes `twake-space-<app>:latest` to Harbor
+- a push to `main` publishes `ghcr.io/linagora/twake-space-<app>:latest`
 - a tag `<app>-vX.Y.Z` that matches `apps/<app>/package.json` publishes `twake-space-<app>:X.Y.Z` and a GitHub release
 
 The frontend image writes `/.env.js` and its Content-Security-Policy from the environment at startup (`SSO_*`, `POSTHOG_*`, `CSP_CONNECT_SRC`, `CSP_FRAME_SRC`, `CSP_FRAME_ANCESTORS`, `PERMISSIONS_POLICY`). It runs as a non-root user with a read-only root filesystem.
