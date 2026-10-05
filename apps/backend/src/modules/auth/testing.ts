@@ -7,8 +7,6 @@ export function anIdentity(overrides: Partial<Identity> = {}): Identity {
     sessionId: 'session-1',
     expiresAt: new Date(Date.now() + 300_000),
     organizationId: 'org-1',
-    organizationRole: 'member',
-    spaces: new Map(),
     ...overrides
   }
 }

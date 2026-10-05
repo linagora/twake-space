@@ -1,9 +1,8 @@
 import { exportJWK, generateKeyPair, SignJWT, type CryptoKey } from 'jose'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { discoverIdentityProvider, parseSpaces } from './oidc.ts'
+import { discoverIdentityProvider } from './oidc.ts'
 
 const ISSUER = 'https://sso.test/'
-const SPACE_ID = '0b9d4c4e-2f4a-4c55-9a3e-8a1f4f3b6d21'
 const BACKCHANNEL_LOGOUT_EVENT =
   'http://schemas.openid.net/event/backchannel-logout'
 
@@ -88,16 +87,14 @@ function validToken(): FakeToken {
     introspection: {
       active: true,
       sub: 'alice@example.com',
-      sid: 'session-1',
       exp: now() + 300,
       aud: ['twakespace']
     },
     userinfo: {
       sub: 'alice@example.com',
       email: 'alice@example.com',
-      org_id: 'org-1',
-      org_role: 'member',
-      spaces: [`${SPACE_ID}:editor`]
+      sid: 'session-1',
+      org_id: 'org-1'
     }
   }
 }
@@ -156,10 +153,8 @@ describe('identify', () => {
       subject: 'alice@example.com',
       email: 'alice@example.com',
       sessionId: 'session-1',
-      organizationId: 'org-1',
-      organizationRole: 'member'
+      organizationId: 'org-1'
     })
-    expect(identity?.spaces.get(SPACE_ID)).toBe('editor')
   })
 
   it.each([
@@ -167,7 +162,6 @@ describe('identify', () => {
     ['expired', { exp: now() - 1 }],
     ['without aud', { aud: undefined }],
     ['for another audience', { aud: 'tmail' }],
-    ['without sid', { sid: undefined }],
     ['for another subject', { sub: 'bob@example.com' }]
   ])('refuses a token %s', async (_case, override) => {
     const token = validToken()
@@ -177,22 +171,15 @@ describe('identify', () => {
     await expect(provider.identify('token')).resolves.toBeNull()
   })
 
-  it('refuses a token whose userinfo has no email', async () => {
+  it.each([
+    ['no email', { email: undefined }],
+    ['no sid', { sid: undefined }]
+  ])('refuses a token whose userinfo has %s', async (_case, override) => {
     const token = validToken()
-    token.userinfo = { ...token.userinfo, email: undefined }
+    token.userinfo = { ...token.userinfo, ...override }
     const { provider } = await setUp({ token })
 
     await expect(provider.identify('token')).resolves.toBeNull()
-  })
-
-  it('drops an organization role it does not know', async () => {
-    const token = validToken()
-    token.userinfo = { ...token.userinfo, org_role: 'superuser' }
-    const { provider } = await setUp({ token })
-
-    const identity = await provider.identify('token')
-
-    expect(identity?.organizationRole).toBeNull()
   })
 
   it('refuses an unknown token', async () => {
@@ -229,21 +216,5 @@ describe('verifyLogoutToken', () => {
     const { provider } = await setUp()
 
     await expect(provider.verifyLogoutToken(await token())).rejects.toThrow()
-  })
-})
-
-describe('parseSpaces', () => {
-  it('reads a single value or a list and skips malformed entries', () => {
-    expect(parseSpaces(`${SPACE_ID}:admin`)).toEqual(
-      new Map([[SPACE_ID, 'admin']])
-    )
-    expect(
-      parseSpaces([
-        `${SPACE_ID}:viewer`,
-        'not-a-uuid:admin',
-        `${SPACE_ID}:owner`
-      ])
-    ).toEqual(new Map([[SPACE_ID, 'viewer']]))
-    expect(parseSpaces(null)).toEqual(new Map())
   })
 })
