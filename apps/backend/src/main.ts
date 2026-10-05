@@ -8,6 +8,7 @@ import { createServer } from './infra/http.ts'
 import { startConsumer, startDeadLetterProducer } from './infra/kafka.ts'
 import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
+import { schedulePurge } from './modules/feed/retention.ts'
 import { registerLiveRoutes } from './modules/live/routes.ts'
 import { createStreams } from './modules/live/streams.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
@@ -62,6 +63,7 @@ const consumer = await startConsumer(
     logger
   })
 )
+const stopPurge = schedulePurge(db, logger)
 accepting = true
 logger.info('twake-space backend started')
 
@@ -71,6 +73,7 @@ async function shutdown(signal: string): Promise<void> {
   stopping = true
   accepting = false
   logger.info({ signal }, 'shutting down')
+  stopPurge()
   try {
     await consumer.disconnect()
     await deadLetters.disconnect()
