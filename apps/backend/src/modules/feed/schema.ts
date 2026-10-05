@@ -1,5 +1,13 @@
 import { sql } from 'drizzle-orm'
-import { index, jsonb, pgEnum, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import {
+  index,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  unique,
+  uuid
+} from 'drizzle-orm/pg-core'
 import { timestamptz } from '../../infra/db.ts'
 
 export const feedCategory = pgEnum('feed_category', [
@@ -12,7 +20,10 @@ export const feedCategory = pgEnum('feed_category', [
 export const activityEvents = pgTable(
   'activity_events',
   {
-    id: text().primaryKey(),
+    // Also the Matrix transaction id of the card: CloudEvent ids are only unique per source.
+    id: uuid().primaryKey().defaultRandom(),
+    source: text().notNull(),
+    eventId: text('event_id').notNull(),
     // Null for a B2C user's event.
     organizationId: text('organization_id'),
     // Null for an object outside any space: used for personal notifications only.
@@ -28,6 +39,7 @@ export const activityEvents = pgTable(
     createdAt: timestamptz('created_at').notNull().defaultNow()
   },
   table => [
+    unique().on(table.source, table.eventId),
     index('activity_events_unposted_idx')
       .on(table.spaceId, table.time)
       .where(
