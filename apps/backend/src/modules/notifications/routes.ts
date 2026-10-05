@@ -1,0 +1,178 @@
+import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import type { FastifyRequest } from 'fastify'
+import { z } from 'zod'
+import type { Db } from '../../infra/db.ts'
+import type { HttpServer } from '../../infra/http.ts'
+import type { Authorize } from '../auth/index.ts'
+import { activityEvents } from '../feed/schema.ts'
+import { enabledByDefault } from './recipients.ts'
+import {
+  notifications,
+  notificationSettings,
+  notificationType
+} from './schema.ts'
+
+const PAGE = 50
+
+const listQuery = z.object({
+  // The id of the last notification of the previous page.
+  before: z.uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(PAGE)
+})
+
+const notificationParams = z.object({ id: z.uuid() })
+
+const settingsBody = z.partialRecord(
+  z.enum(notificationType.enumValues),
+  z.boolean()
+)
+
+function userOf(request: FastifyRequest): string {
+  const caller = request.caller
+  if (caller?.kind !== 'session') {
+    throw new Error('authorize let a request through')
+  }
+  return caller.userId
+}
+
+export function registerNotificationRoutes(
+  app: HttpServer,
+  deps: { db: Db; authorize: Authorize }
+) {
+  const { db } = deps
+  const preHandler = deps.authorize()
+
+  app.get('/notifications', { preHandler }, async (request, reply) => {
+    const userId = userOf(request)
+    const query = listQuery.safeParse(request.query)
+    if (!query.success) {
+      return reply.code(400).send({ error: 'invalid_request' })
+    }
+    const { before, limit } = query.data
+    const rows = await db
+      .select({
+        id: notifications.id,
+        type: notifications.type,
+        spaceId: notifications.spaceId,
+        readAt: notifications.readAt,
+        createdAt: notifications.createdAt,
+        activity: {
+          type: activityEvents.type,
+          category: activityEvents.category,
+          actor: activityEvents.actor,
+          content: activityEvents.content,
+          time: activityEvents.time
+        }
+      })
+      .from(notifications)
+      .leftJoin(
+        activityEvents,
+        eq(activityEvents.id, notifications.activityEventId)
+      )
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          before === undefined
+            ? undefined
+            : sql`(${notifications.createdAt}, ${notifications.id}) < (
+                select created_at, id from notifications
+                where id = ${before} and user_id = ${userId}
+              )`
+        )
+      )
+      .orderBy(desc(notifications.createdAt), desc(notifications.id))
+      .limit(limit)
+    const [unread] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(notifications)
+      .where(
+        and(eq(notifications.userId, userId), isNull(notifications.readAt))
+      )
+    return {
+      notifications: rows.map(({ readAt, ...row }) => ({
+        ...row,
+        read: readAt !== null
+      })),
+      unread: unread?.count ?? 0
+    }
+  })
+
+  app.post('/notifications/read', { preHandler }, async (request, reply) => {
+    await db
+      .update(notifications)
+      .set({ readAt: sql`now()` })
+      .where(
+        and(
+          eq(notifications.userId, userOf(request)),
+          isNull(notifications.readAt)
+        )
+      )
+    return reply.code(204).send()
+  })
+
+  app.post(
+    '/notifications/:id/read',
+    { preHandler },
+    async (request, reply) => {
+      const params = notificationParams.safeParse(request.params)
+      if (!params.success) return reply.code(404).send({ error: 'not_found' })
+      const [row] = await db
+        .update(notifications)
+        .set({ readAt: sql`coalesce(${notifications.readAt}, now())` })
+        .where(
+          and(
+            eq(notifications.id, params.data.id),
+            eq(notifications.userId, userOf(request))
+          )
+        )
+        .returning({ id: notifications.id })
+      if (!row) return reply.code(404).send({ error: 'not_found' })
+      return reply.code(204).send()
+    }
+  )
+
+  app.get('/notifications/settings', { preHandler }, async request => {
+    const choices = await db
+      .select({
+        type: notificationSettings.type,
+        enabled: notificationSettings.enabled
+      })
+      .from(notificationSettings)
+      .where(eq(notificationSettings.userId, userOf(request)))
+    const chosen = new Map(choices.map(c => [c.type, c.enabled]))
+    return {
+      settings: Object.fromEntries(
+        notificationType.enumValues.map(type => [
+          type,
+          chosen.get(type) ?? enabledByDefault(type)
+        ])
+      )
+    }
+  })
+
+  app.put('/notifications/settings', { preHandler }, async (request, reply) => {
+    const body = settingsBody.safeParse(request.body)
+    if (!body.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        message: z.prettifyError(body.error)
+      })
+    }
+    const userId = userOf(request)
+    const rows = Object.entries(body.data).map(([type, enabled]) => ({
+      userId,
+      type: type as (typeof notificationType.enumValues)[number],
+      enabled
+    }))
+    if (rows.length > 0) {
+      await db
+        .insert(notificationSettings)
+        .values(rows)
+        .onConflictDoUpdate({
+          target: [notificationSettings.userId, notificationSettings.type],
+          set: { enabled: sql`excluded.enabled` }
+        })
+    }
+    return reply.code(204).send()
+  })
+}

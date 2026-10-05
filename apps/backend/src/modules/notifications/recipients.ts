@@ -9,7 +9,10 @@ import {
   type notificationType
 } from './schema.ts'
 
-type NotificationType = (typeof notificationType.enumValues)[number]
+export type NotificationType = (typeof notificationType.enumValues)[number]
+
+export const enabledByDefault = (type: NotificationType) =>
+  type !== 'space_change'
 
 const TYPES = {
   mentioned: 'card_mention',
@@ -83,7 +86,7 @@ export async function notifyRecipients(
   )
   const rows = wanted
     .filter(
-      w => enabled.get(`${w.userId}|${w.type}`) ?? w.type !== 'space_change'
+      w => enabled.get(`${w.userId}|${w.type}`) ?? enabledByDefault(w.type)
     )
     .map(w => ({
       ...w,
