@@ -6,7 +6,7 @@ export const APPS = [
   'drive',
   'calendar',
   'meet',
-  'kanban'
+  'tasks'
 ] as const
 export const ACTIVITY_TOPICS = APPS.map(app => `twake.${app}.events.v1`)
 export const PLATFORM_TOPIC = 'twake.platform.events.v1'
