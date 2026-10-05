@@ -1,7 +1,7 @@
 import { pino } from 'pino'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createServer, type HttpServer } from '../../infra/http.ts'
-import { anIdentity, fakeAuth } from '../auth/testing.ts'
+import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
 import type { Identity } from '../auth/index.ts'
 import { registerLiveRoutes } from './routes.ts'
 import { createStreams } from './streams.ts'
@@ -13,11 +13,13 @@ async function setUp(identity: Identity = anIdentity()) {
     logger: pino({ level: 'silent' }),
     isReady: () => Promise.resolve(true)
   })
-  const requireIdentity = fakeAuth(app, token =>
-    token === 'good' ? identity : null
+  const authorize = fakeAuth(
+    app,
+    token => (token === 'good' ? identity : null),
+    token => (token === 'tws_bot' ? aTokenCaller() : null)
   )
   const streams = createStreams()
-  registerLiveRoutes(app, { requireIdentity, streams })
+  registerLiveRoutes(app, { authorize, streams })
   const address = await app.listen({ host: '127.0.0.1', port: 0 })
   return { streams, url: `${address}/stream` }
 }
@@ -40,6 +42,16 @@ describe('GET /stream', () => {
     const response = await fetch(url)
 
     expect(response.status).toBe(401)
+  })
+
+  it('refuses API tokens', async () => {
+    const { url } = await setUp()
+
+    const response = await fetch(url, {
+      headers: { authorization: 'Bearer tws_bot' }
+    })
+
+    expect(response.status).toBe(403)
   })
 
   it('opens a server-sent event stream', async () => {

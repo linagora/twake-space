@@ -29,7 +29,7 @@ const server = createServer({
   logger,
   isReady: async () => accepting && (await sql`select 1`).length === 1
 })
-const requireIdentity = await setUpAuth(server, {
+const authorize = await setUpAuth(server, {
   db,
   oidc: {
     issuer: new URL(config.OIDC_ISSUER),
@@ -38,9 +38,9 @@ const requireIdentity = await setUpAuth(server, {
     audience: config.OIDC_AUDIENCE
   }
 })
-registerSpaceRoutes(server, { db, requireIdentity })
+registerSpaceRoutes(server, { db, authorize })
 const streams = createStreams()
-registerLiveRoutes(server, { requireIdentity, streams })
+registerLiveRoutes(server, { authorize, streams })
 await listenForRevocations(sql, sessionId => {
   streams.closeSession(sessionId)
 })

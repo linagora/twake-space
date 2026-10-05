@@ -1,8 +1,9 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, inArray } from 'drizzle-orm'
+import type { FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
-import type { RequireIdentity } from '../auth/index.ts'
+import type { Authorize, Caller } from '../auth/index.ts'
 import {
   spaceGroups,
   spaceMembers,
@@ -13,59 +14,66 @@ import {
 
 const spaceParams = z.object({ id: z.uuid() })
 
+// The spaces a caller reaches, with the role it acts with in each: its account's
+// membership, or an organization token's own role on every space it covers.
+function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
+  const covered = and(
+    eq(spaces.organizationId, caller.organizationId),
+    spaceId === undefined ? undefined : eq(spaces.spaceId, spaceId),
+    caller.kind === 'token' && caller.spaceIds
+      ? inArray(spaces.spaceId, caller.spaceIds)
+      : undefined
+  )
+  const fields = { id: spaces.spaceId, name: spaces.name }
+  const { userId } = caller
+  if (userId === null) {
+    const role = caller.kind === 'token' ? caller.role : null
+    if (!role) throw new Error('an organization token has no role')
+    return db
+      .select(fields)
+      .from(spaces)
+      .where(covered)
+      .orderBy(asc(spaces.name))
+      .then(rows => rows.map(row => ({ ...row, role })))
+  }
+  return db
+    .select({ ...fields, role: spaceMembers.role })
+    .from(spaces)
+    .innerJoin(
+      spaceMembers,
+      and(
+        eq(spaceMembers.spaceId, spaces.spaceId),
+        eq(spaceMembers.userId, userId)
+      )
+    )
+    .where(covered)
+    .orderBy(asc(spaces.name))
+}
+
+function callerOf(request: FastifyRequest) {
+  if (!request.caller) throw new Error('authorize let a request through')
+  return request.caller
+}
+
 export function registerSpaceRoutes(
   app: HttpServer,
-  deps: { db: Db; requireIdentity: RequireIdentity }
+  deps: { db: Db; authorize: Authorize }
 ) {
-  const { db, requireIdentity } = deps
+  const { db, authorize } = deps
 
-  app.get('/spaces', { preHandler: requireIdentity }, async request => {
-    const identity = request.identity
-    if (!identity) throw new Error('requireIdentity let a request through')
-    const rows = await db
-      .select({
-        id: spaces.spaceId,
-        name: spaces.name,
-        role: spaceMembers.role
-      })
-      .from(spaceMembers)
-      .innerJoin(spaces, eq(spaces.spaceId, spaceMembers.spaceId))
-      .where(
-        and(
-          eq(spaceMembers.userId, identity.userId),
-          eq(spaces.organizationId, identity.organizationId)
-        )
-      )
-      .orderBy(asc(spaces.name))
-    return { spaces: rows }
+  app.get('/spaces', { preHandler: authorize('space:read') }, async request => {
+    return { spaces: await reachableSpaces(db, callerOf(request)) }
   })
 
   app.get(
     '/spaces/:id',
-    { preHandler: requireIdentity },
+    { preHandler: authorize('space:read') },
     async (request, reply) => {
-      const identity = request.identity
-      if (!identity) throw new Error('requireIdentity let a request through')
       const params = spaceParams.safeParse(request.params)
       if (!params.success) return reply.code(404).send({ error: 'not_found' })
       const spaceId = params.data.id
 
-      const [space] = await db
-        .select({ name: spaces.name, role: spaceMembers.role })
-        .from(spaces)
-        .innerJoin(
-          spaceMembers,
-          and(
-            eq(spaceMembers.spaceId, spaces.spaceId),
-            eq(spaceMembers.userId, identity.userId)
-          )
-        )
-        .where(
-          and(
-            eq(spaces.spaceId, spaceId),
-            eq(spaces.organizationId, identity.organizationId)
-          )
-        )
+      const [space] = await reachableSpaces(db, callerOf(request), spaceId)
       if (!space) {
         return reply.code(404).send({ error: 'not_found' })
       }
@@ -98,7 +106,6 @@ export function registerSpaceRoutes(
       const resourceIds = new Map(resources.map(r => [r.kind, r.id]))
 
       return {
-        id: spaceId,
         ...space,
         members,
         groups,

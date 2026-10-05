@@ -2,7 +2,8 @@ import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createServer } from '../../infra/http.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
-import { anIdentity, fakeAuth } from '../auth/testing.ts'
+import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
+import type { TokenCaller } from '../tokens/authenticator.ts'
 import { registerSpaceRoutes } from './routes.ts'
 import { spaceGroups, spaceMembers, spaceResources, spaces } from './schema.ts'
 
@@ -62,22 +63,80 @@ beforeEach(async () => {
   })
 })
 
-function setUp() {
+function setUp(tokenCaller: TokenCaller = aTokenCaller()) {
   const app = createServer({
     logger: pino({ level: 'silent' }),
     isReady: () => Promise.resolve(true)
   })
-  const requireIdentity = fakeAuth(app, token =>
-    token === 'alice' ? anIdentity({ userId: ALICE }) : null
+  const authorize = fakeAuth(
+    app,
+    token => (token === 'alice' ? anIdentity({ userId: ALICE }) : null),
+    token => (token === 'tws_bot' ? tokenCaller : null)
   )
-  registerSpaceRoutes(app, { db: testDb.db, requireIdentity })
-  return (url: string) =>
+  registerSpaceRoutes(app, { db: testDb.db, authorize })
+  return (url: string, token = 'alice') =>
     app.inject({
       method: 'GET',
       url,
-      headers: { authorization: 'Bearer alice' }
+      headers: { authorization: `Bearer ${token}` }
     })
 }
+
+describe('API tokens', () => {
+  it('reaches the spaces of the account it acts for', async () => {
+    const response = await setUp(aTokenCaller({ userId: BOB }))(
+      '/spaces',
+      'tws_bot'
+    )
+
+    expect(response.json()).toEqual({
+      spaces: [
+        { id: DESIGN, name: 'Design', role: 'viewer' },
+        { id: SALES, name: 'Sales', role: 'admin' }
+      ]
+    })
+  })
+
+  it('reaches only the spaces it covers', async () => {
+    const get = setUp(aTokenCaller({ userId: BOB, spaceIds: [SALES] }))
+
+    expect((await get('/spaces', 'tws_bot')).json()).toEqual({
+      spaces: [{ id: SALES, name: 'Sales', role: 'admin' }]
+    })
+    expect((await get(`/spaces/${DESIGN}`, 'tws_bot')).statusCode).toBe(404)
+  })
+
+  it('acts with its own role as an organization token', async () => {
+    const response = await setUp(
+      aTokenCaller({ userId: null, role: 'editor' })
+    )('/spaces', 'tws_bot')
+
+    expect(response.json()).toEqual({
+      spaces: [
+        { id: DESIGN, name: 'Design', role: 'editor' },
+        { id: SALES, name: 'Sales', role: 'editor' }
+      ]
+    })
+  })
+
+  it('needs the space:read scope', async () => {
+    const response = await setUp(aTokenCaller({ scopes: ['feed:read'] }))(
+      '/spaces',
+      'tws_bot'
+    )
+
+    expect(response.statusCode).toBe(403)
+    expect(response.headers['www-authenticate']).toBe(
+      'Bearer error="insufficient_scope", scope="space:read"'
+    )
+  })
+
+  it('refuses an unknown token', async () => {
+    const response = await setUp()('/spaces', 'tws_unknown')
+
+    expect(response.statusCode).toBe(401)
+  })
+})
 
 describe('GET /spaces', () => {
   it("lists the caller's spaces in their organization, with their role", async () => {
@@ -135,7 +194,7 @@ it('asks for a bearer token', async () => {
   })
   registerSpaceRoutes(app, {
     db: testDb.db,
-    requireIdentity: fakeAuth(app, () => null)
+    authorize: fakeAuth(app, () => null)
   })
 
   const response = await app.inject({ method: 'GET', url: '/spaces' })

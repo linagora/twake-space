@@ -2,15 +2,24 @@ import { randomBytes } from 'node:crypto'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { HttpServer } from '../../infra/http.ts'
+import {
+  API_TOKEN_PREFIX,
+  type Scope,
+  type TokenCaller
+} from '../tokens/authenticator.ts'
 import { sha256, type Authenticate } from './authenticator.ts'
 import type { Identity, IdentityProvider } from './oidc.ts'
 import type { AuthStore } from './store.ts'
 
-export type OrganizationMember = Identity & { organizationId: string }
+export type SessionCaller = Identity & {
+  kind: 'session'
+  organizationId: string
+}
+export type Caller = SessionCaller | TokenCaller
 
 declare module 'fastify' {
   interface FastifyRequest {
-    identity: OrganizationMember | null
+    caller: Caller | null
   }
 }
 
@@ -27,20 +36,24 @@ function unauthorized(reply: FastifyReply, error: string | null) {
     .send({ error: 'unauthorized' })
 }
 
-export type RequireIdentity = (
+type PreHandler = (
   request: FastifyRequest,
   reply: FastifyReply
 ) => Promise<FastifyReply | undefined>
+
+// With a scope, API tokens holding it are let in too; without, only sessions.
+export type Authorize = (scope?: Scope) => PreHandler
 
 export function registerAuth(
   app: HttpServer,
   deps: {
     authenticate: Authenticate
+    authenticateToken: (token: string) => Promise<TokenCaller | null>
     provider: IdentityProvider
     store: AuthStore
   }
-): RequireIdentity {
-  app.decorateRequest('identity', null)
+): Authorize {
+  app.decorateRequest('caller', null)
   app.addContentTypeParser(
     'application/x-www-form-urlencoded',
     { parseAs: 'string' },
@@ -49,11 +62,28 @@ export function registerAuth(
     }
   )
 
-  const requireIdentity: RequireIdentity = async (request, reply) => {
+  const authorize: Authorize = scope => async (request, reply) => {
     const [scheme, token] = request.headers.authorization?.split(' ') ?? []
     if (scheme?.toLowerCase() !== 'bearer' || !token) {
       return unauthorized(reply, null)
     }
+
+    if (token.startsWith(API_TOKEN_PREFIX)) {
+      const caller = await deps.authenticateToken(token)
+      if (!caller) return unauthorized(reply, 'invalid_token')
+      if (!scope || !caller.scopes.includes(scope)) {
+        return reply
+          .code(403)
+          .header(
+            'www-authenticate',
+            `Bearer error="insufficient_scope"${scope ? `, scope="${scope}"` : ''}`
+          )
+          .send({ error: 'insufficient_scope' })
+      }
+      request.caller = caller
+      return
+    }
+
     let identity: Identity | null
     try {
       identity = await deps.authenticate(token)
@@ -64,7 +94,7 @@ export function registerAuth(
     if (!identity) return unauthorized(reply, 'invalid_token')
     const { organizationId } = identity
     if (!organizationId) return reply.code(403).send({ error: 'forbidden' })
-    request.identity = { ...identity, organizationId }
+    request.caller = { ...identity, kind: 'session', organizationId }
   }
 
   app.post('/auth/backchannel-logout', async (request, reply) => {
@@ -84,10 +114,10 @@ export function registerAuth(
 
   app.post(
     '/ws/ticket',
-    { preHandler: requireIdentity },
+    { preHandler: authorize() },
     async (request, reply) => {
-      const identity = request.identity
-      if (!identity) return unauthorized(reply, null)
+      const identity = request.caller
+      if (identity?.kind !== 'session') return unauthorized(reply, null)
       const ticket = randomBytes(32).toString('base64url')
       await deps.store.saveTicket({
         hash: sha256(ticket),
@@ -101,5 +131,5 @@ export function registerAuth(
     }
   )
 
-  return requireIdentity
+  return authorize
 }
