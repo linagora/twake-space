@@ -73,7 +73,8 @@ describe('createMessageHandler', () => {
     )
     expect(activity).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'evt-1' }),
-      tx
+      tx,
+      expect.anything()
     )
     expect(dedupe.keys).toEqual([{ source: 'twake://drive', id: 'evt-1' }])
   })
@@ -126,7 +127,8 @@ describe('createMessageHandler', () => {
         messageId: 'm-1',
         body: { groupId: 'g1' }
       },
-      tx
+      tx,
+      expect.anything()
     )
     expect(activity).not.toHaveBeenCalled()
     expect(dedupe.keys).toEqual([{ source: 'amqp', id: 'm-1' }])
