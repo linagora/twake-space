@@ -19,6 +19,7 @@ export interface TokenCaller {
   scopes: Scope[]
   // Null when the token covers every space.
   spaceIds: string[] | null
+  expiresAt: Date | null
 }
 
 export function apiTokenAuthenticator(db: Db) {
@@ -40,7 +41,8 @@ export function apiTokenAuthenticator(db: Db) {
         userId: apiTokens.accountId,
         role: apiTokens.role,
         scopes: apiTokens.scopes,
-        allSpaces: apiTokens.allSpaces
+        allSpaces: apiTokens.allSpaces,
+        expiresAt: apiTokens.expiresAt
       })
     if (!row) return null
     const { allSpaces, ...caller } = row
