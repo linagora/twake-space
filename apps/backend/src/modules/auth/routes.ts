@@ -68,10 +68,19 @@ export function registerAuth(
       return unauthorized(reply, null)
     }
 
-    if (token.startsWith(API_TOKEN_PREFIX)) {
-      const caller = await deps.authenticateToken(token)
-      if (!caller) return unauthorized(reply, 'invalid_token')
-      if (!scope || !caller.scopes.includes(scope)) {
+    let identity: Identity | TokenCaller | null
+    try {
+      identity = token.startsWith(API_TOKEN_PREFIX)
+        ? await deps.authenticateToken(token)
+        : await deps.authenticate(token)
+    } catch (error) {
+      request.log.error({ err: error }, 'access token check failed')
+      return reply.code(503).send({ error: 'unavailable' })
+    }
+    if (!identity) return unauthorized(reply, 'invalid_token')
+
+    if ('kind' in identity) {
+      if (!scope || !identity.scopes.includes(scope)) {
         return reply
           .code(403)
           .header(
@@ -80,18 +89,10 @@ export function registerAuth(
           )
           .send({ error: 'insufficient_scope' })
       }
-      request.caller = caller
+      request.caller = identity
       return
     }
 
-    let identity: Identity | null
-    try {
-      identity = await deps.authenticate(token)
-    } catch (error) {
-      request.log.error({ err: error }, 'access token check failed')
-      return reply.code(503).send({ error: 'unavailable' })
-    }
-    if (!identity) return unauthorized(reply, 'invalid_token')
     const { organizationId } = identity
     if (!organizationId) return reply.code(403).send({ error: 'forbidden' })
     request.caller = { ...identity, kind: 'session', organizationId }
