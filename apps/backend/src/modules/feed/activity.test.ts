@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { CloudEvent } from '../../events/envelope.ts'
 import { RejectedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
+import { notifications, notificationSettings } from '../notifications/schema.ts'
 import { spaceGroups, spaceMembers, spaces } from '../spaces/schema.ts'
 import { activityRoute } from './activity.ts'
 import { activityEvents } from './schema.ts'
@@ -217,5 +218,106 @@ describe('activity events', () => {
       activityRoute.get('com.twake.meet.space.provisioned.v1')
     ).toBeUndefined()
     expect(activityRoute.get('com.acme.drive.file.created.v1')).toBeUndefined()
+  })
+})
+
+describe('notifications', () => {
+  const readNotifications = () =>
+    testDb.db
+      .select({
+        userId: notifications.userId,
+        type: notifications.type,
+        spaceId: notifications.spaceId,
+        organizationId: notifications.organizationId
+      })
+      .from(notifications)
+      .orderBy(notifications.type)
+
+  beforeEach(async () => {
+    await testDb.db.delete(notifications)
+    await testDb.db.delete(notificationSettings)
+  })
+
+  function withRecipients(recipients: unknown[], type?: string) {
+    const event = anEvent(type ? { type } : {})
+    event.data.recipients = recipients
+    return event
+  }
+
+  it('notifies each recipient with the type of its reason', async () => {
+    await store(
+      withRecipients([
+        { uuid: BOB, email: 'bob@linagora.com', reason: 'mentioned' },
+        { uuid: BOB, email: 'bob@linagora.com', reason: 'invited' },
+        { uuid: ALICE, email: 'alice@linagora.com', reason: 'attendee' }
+      ])
+    )
+
+    expect(await readNotifications()).toEqual([
+      {
+        userId: BOB,
+        type: 'card_mention',
+        spaceId: SPACE_ID,
+        organizationId: 'linagora'
+      },
+      {
+        userId: BOB,
+        type: 'invitation',
+        spaceId: SPACE_ID,
+        organizationId: 'linagora'
+      },
+      {
+        userId: ALICE,
+        type: 'attended_event_change',
+        spaceId: SPACE_ID,
+        organizationId: 'linagora'
+      }
+    ])
+  })
+
+  it('finds a recipient sent without a uuid by email', async () => {
+    await store(
+      withRecipients([{ email: 'alice@linagora.com', reason: 'mentioned' }])
+    )
+
+    expect(await readNotifications()).toMatchObject([{ userId: ALICE }])
+  })
+
+  it('skips a recipient it cannot find', async () => {
+    await store(
+      withRecipients([{ email: 'nobody@linagora.com', reason: 'mentioned' }])
+    )
+
+    expect(await readNotifications()).toEqual([])
+  })
+
+  it('makes none from task events', async () => {
+    await store(
+      withRecipients(
+        [{ uuid: BOB, email: 'bob@linagora.com', reason: 'mentioned' }],
+        'com.twake.tasks.task.assigned.v1'
+      )
+    )
+
+    expect(await readNotifications()).toEqual([])
+  })
+
+  it('leaves out a type the recipient turned off, and space changes by default', async () => {
+    await testDb.db.insert(notificationSettings).values([
+      { userId: BOB, type: 'card_mention', enabled: false },
+      { userId: ALICE, type: 'space_change', enabled: true }
+    ])
+
+    await store(
+      withRecipients([
+        { uuid: BOB, email: 'bob@linagora.com', reason: 'mentioned' },
+        { uuid: BOB, email: 'bob@linagora.com', reason: 'member' },
+        { uuid: ALICE, email: 'alice@linagora.com', reason: 'member' }
+      ])
+    )
+
+    expect(await readNotifications()).toMatchObject([
+      { userId: ALICE, type: 'space_change' }
+    ])
   })
 })
