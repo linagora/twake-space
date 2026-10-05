@@ -17,7 +17,7 @@ const user = {
   userPassword: 'hash',
   privateKey: 'secret',
   organizationId: 'org_acme'
-} as User & { uid: string }
+} as User
 
 const member = {
   username: 'jdoe',

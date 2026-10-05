@@ -128,7 +128,7 @@ export function ldapRestSpaces(
       const user = await notFoundAsUndefined(
         client.organizations.getUser(orgId, { by, value })
       )
-      if (!user?._id || !user.uid) return undefined
+      if (!user?._id) return undefined
       return { uuid: user._id, username: user.uid, email: user.mail }
     },
     async create(orgId, space, actor) {
@@ -252,11 +252,9 @@ async function notFoundAsUndefined<T>(
   }
 }
 
-// ldap-rest puts the username in uid and the display name in cn; the client
-// does not type uid yet.
 function toMember(user: User): Member {
   return {
-    username: (user as User & { uid: string }).uid,
+    username: user.uid,
     email: user.mail,
     displayName: user.displayName,
     firstName: user.givenName,
