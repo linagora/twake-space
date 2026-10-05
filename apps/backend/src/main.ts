@@ -12,6 +12,7 @@ import { createStreams } from './modules/live/streams.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
 import { registerSpaceRoutes } from './modules/spaces/routes.ts'
+import { registerTokenRoutes } from './modules/tokens/routes.ts'
 
 const config = loadConfig()
 const logger = pino({ level: config.LOG_LEVEL })
@@ -39,6 +40,7 @@ const authorize = await setUpAuth(server, {
   }
 })
 registerSpaceRoutes(server, { db, authorize })
+registerTokenRoutes(server, { db, authorize })
 const streams = createStreams()
 registerLiveRoutes(server, { authorize, streams })
 await listenForRevocations(sql, sessionId => {
