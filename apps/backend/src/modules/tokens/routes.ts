@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db } from '../../infra/db.ts'
@@ -34,6 +34,8 @@ const createBody = z
     body => body.expiresInDays === undefined || body.expiresAt === undefined,
     'expiresInDays or expiresAt, not both'
   )
+
+const tokenParams = z.object({ id: z.uuid() })
 
 function invalid(reply: FastifyReply, message: string) {
   return reply.code(400).send({ error: 'invalid_request', message })
@@ -165,5 +167,108 @@ export function registerTokenRoutes(
       spaces: spaceIds ?? 'all',
       expiresAt
     })
+  })
+
+  app.get('/tokens', { preHandler }, async (request, reply) => {
+    const account = accountOf(request)
+    if (!account) return forbidden(reply, 'not an account token')
+    const rows = await db
+      .select({
+        id: apiTokens.id,
+        name: apiTokens.name,
+        scopes: apiTokens.scopes,
+        allSpaces: apiTokens.allSpaces,
+        expiresAt: apiTokens.expiresAt,
+        lastUsedAt: apiTokens.lastUsedAt,
+        createdAt: apiTokens.createdAt
+      })
+      .from(apiTokens)
+      .where(
+        and(
+          eq(apiTokens.organizationId, account.caller.organizationId),
+          eq(apiTokens.accountId, account.userId),
+          isNull(apiTokens.revokedAt)
+        )
+      )
+      .orderBy(asc(apiTokens.createdAt))
+    const covered = await db
+      .select()
+      .from(apiTokenSpaces)
+      .where(
+        inArray(
+          apiTokenSpaces.tokenId,
+          rows.map(r => r.id)
+        )
+      )
+    return {
+      tokens: rows.map(({ allSpaces, ...row }) => ({
+        ...row,
+        spaces: allSpaces
+          ? 'all'
+          : covered.filter(c => c.tokenId === row.id).map(c => c.spaceId)
+      }))
+    }
+  })
+
+  // An active token of the caller's account, or nothing.
+  const ownToken = (request: FastifyRequest) => {
+    const account = accountOf(request)
+    const params = tokenParams.safeParse(request.params)
+    if (!account || !params.success) return null
+    return {
+      actor: account.actor,
+      where: and(
+        eq(apiTokens.id, params.data.id),
+        eq(apiTokens.organizationId, account.caller.organizationId),
+        eq(apiTokens.accountId, account.userId),
+        isNull(apiTokens.revokedAt)
+      )
+    }
+  }
+
+  app.patch('/tokens/:id', { preHandler }, async (request, reply) => {
+    const target = ownToken(request)
+    if (!target) return reply.code(404).send({ error: 'not_found' })
+    const parsed = z.object({ name }).safeParse(request.body)
+    if (!parsed.success) return invalid(reply, z.prettifyError(parsed.error))
+    const renamed = await db.transaction(async tx => {
+      const [row] = await tx
+        .update(apiTokens)
+        .set({ name: parsed.data.name })
+        .where(target.where)
+        .returning({ id: apiTokens.id })
+      if (row) {
+        await tx
+          .insert(tokenAudit)
+          .values({ tokenId: row.id, action: 'renamed', actor: target.actor })
+      }
+      return row
+    })
+    if (!renamed) return reply.code(404).send({ error: 'not_found' })
+    return reply.code(204).send()
+  })
+
+  app.delete('/tokens/:id', { preHandler }, async (request, reply) => {
+    const target = ownToken(request)
+    if (!target) return reply.code(404).send({ error: 'not_found' })
+    const reason = 'revoked by its owner'
+    const revoked = await db.transaction(async tx => {
+      const [row] = await tx
+        .update(apiTokens)
+        .set({ revokedAt: sql`now()`, revokedReason: reason })
+        .where(target.where)
+        .returning({ id: apiTokens.id })
+      if (row) {
+        await tx.insert(tokenAudit).values({
+          tokenId: row.id,
+          action: 'revoked',
+          actor: target.actor,
+          reason
+        })
+      }
+      return row
+    })
+    if (!revoked) return reply.code(404).send({ error: 'not_found' })
+    return reply.code(204).send()
   })
 }
