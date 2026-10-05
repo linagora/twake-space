@@ -37,6 +37,12 @@ describe('parseCloudEvent', () => {
     expect(parseCloudEvent(JSON.stringify(event)).ok).toBe(true)
   })
 
+  it('accepts an event without an organization', () => {
+    const event = { ...calendarAccepted, twakeorg: undefined }
+
+    expect(parseCloudEvent(JSON.stringify(event)).ok).toBe(true)
+  })
+
   it.each([
     ['invalid JSON', '{'],
     ['an empty message', null],
@@ -46,8 +52,8 @@ describe('parseCloudEvent', () => {
     ],
     ['a missing id', JSON.stringify({ ...calendarAccepted, id: undefined })],
     [
-      'a missing twakeorg',
-      JSON.stringify({ ...calendarAccepted, twakeorg: undefined })
+      'an empty twakeorg',
+      JSON.stringify({ ...calendarAccepted, twakeorg: '' })
     ],
     [
       'a twakeactor that is not an email',
