@@ -1,4 +1,18 @@
+import type { HttpServer } from '../../infra/http.ts'
 import type { Identity } from './oidc.ts'
+import { registerAuth, type RequireIdentity } from './routes.ts'
+
+export function fakeAuth(
+  app: HttpServer,
+  identityOf: (token: string) => Identity | null
+): RequireIdentity {
+  const unused = () => Promise.reject(new Error('not used in this test'))
+  return registerAuth(app, {
+    authenticate: token => Promise.resolve(identityOf(token)),
+    provider: { identify: unused, verifyLogoutToken: unused },
+    store: { isRevoked: unused, revoke: unused, saveTicket: unused }
+  })
+}
 
 export function anIdentity(overrides: Partial<Identity> = {}): Identity {
   return {

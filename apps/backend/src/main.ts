@@ -9,6 +9,7 @@ import { startConsumer } from './infra/kafka.ts'
 import { setUpAuth } from './modules/auth/index.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
+import { registerSpaceRoutes } from './modules/spaces/routes.ts'
 
 const config = loadConfig()
 const logger = pino({ level: config.LOG_LEVEL })
@@ -26,7 +27,7 @@ const server = createServer({
   logger,
   isReady: async () => accepting && (await sql`select 1`).length === 1
 })
-await setUpAuth(server, {
+const requireIdentity = await setUpAuth(server, {
   db,
   oidc: {
     issuer: new URL(config.OIDC_ISSUER),
@@ -35,6 +36,7 @@ await setUpAuth(server, {
     audience: config.OIDC_AUDIENCE
   }
 })
+registerSpaceRoutes(server, { db, requireIdentity })
 await server.listen({ host: config.HTTP_HOST, port: config.HTTP_PORT })
 
 const consumer = await startConsumer(
