@@ -27,7 +27,8 @@ export const notifications = pgTable(
   {
     id: uuid().primaryKey().defaultRandom(),
     organizationId: text('organization_id'),
-    recipient: text().notNull(),
+    // The recipient's LDAP entryUUID.
+    userId: uuid('user_id').notNull(),
     type: notificationType().notNull(),
     spaceId: uuid('space_id'),
     activityEventId: uuid('activity_event_id'),
@@ -42,13 +43,13 @@ export const notifications = pgTable(
       sql`(${table.activityEventId} is null) <> (${table.matrixEventId} is null)`
     ),
     uniqueIndex('notifications_activity_event_idx')
-      .on(table.recipient, table.type, table.activityEventId)
+      .on(table.userId, table.type, table.activityEventId)
       .where(sql`${table.activityEventId} is not null`),
     uniqueIndex('notifications_matrix_event_idx')
-      .on(table.recipient, table.type, table.matrixEventId)
+      .on(table.userId, table.type, table.matrixEventId)
       .where(sql`${table.matrixEventId} is not null`),
-    index('notifications_recipient_idx').on(
-      table.recipient,
+    index('notifications_user_idx').on(
+      table.userId,
       sql`(${table.readAt} is null)`,
       table.createdAt
     ),
@@ -60,9 +61,9 @@ export const notifications = pgTable(
 export const notificationSettings = pgTable(
   'notification_settings',
   {
-    email: text().notNull(),
+    userId: uuid('user_id').notNull(),
     type: notificationType().notNull(),
     enabled: boolean().notNull()
   },
-  table => [primaryKey({ columns: [table.email, table.type] })]
+  table => [primaryKey({ columns: [table.userId, table.type] })]
 )
