@@ -290,6 +290,7 @@ const onUpdated: Handler<PlatformEvent> = async (event, tx) => {
     .update(spaces)
     .set({ name, updatedAt: sql`now()` })
     .where(eq(spaces.spaceId, id))
+  await tellSpaceMembers(tx, id)
 }
 
 const onDeleted: Handler<PlatformEvent> = async (event, tx) => {

@@ -103,6 +103,22 @@ it('tells every member when the space is deleted', async () => {
   )
 })
 
+it('tells every member when the space is renamed', async () => {
+  await handle('twake.space.updated', {
+    organizationId: 'org-1',
+    id: SPACE_ID,
+    name: 'Launch',
+    timestamp: next()
+  })
+
+  expect(await told(2)).toEqual(
+    expect.arrayContaining([
+      [ALICE, 'spaces', space],
+      [BOB, 'spaces', space]
+    ])
+  )
+})
+
 it('tells every member when a group role changes', async () => {
   await handle('twake.space.group.linked', {
     organizationId: 'org-1',
