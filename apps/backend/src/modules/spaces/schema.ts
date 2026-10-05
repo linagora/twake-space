@@ -76,6 +76,11 @@ export const organizationMembers = pgTable(
   ]
 )
 
+export const spaceReconciliations = pgTable('space_reconciliations', {
+  organizationId: text('organization_id').primaryKey(),
+  ranAt: timestamptz('ran_at').notNull()
+})
+
 export const spaceResourceKind = pgEnum('space_resource_kind', [
   'drive',
   'mailbox',
