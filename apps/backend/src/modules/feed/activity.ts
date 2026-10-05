@@ -8,6 +8,7 @@ import {
   type Handler
 } from '../../events/router.ts'
 import type { Tx } from '../../infra/db.ts'
+import { notifyRecipients, recipient } from '../notifications/recipients.ts'
 import { spaceGroups, spaceMembers, spaces } from '../spaces/schema.ts'
 import { activityEvents, type Actor, type feedCategory } from './schema.ts'
 
@@ -44,7 +45,8 @@ const activity = z.looseObject({
         id: z.string().min(1),
         name: z.string().min(1)
       })
-      .optional()
+      .optional(),
+    recipients: z.array(recipient).default([])
   })
 })
 
@@ -127,19 +129,32 @@ function store(category: Category): Handler<CloudEvent> {
       ? { type: 'token', id: data.actor.id, name: data.actor.name }
       : await findUser(tx, spaceId, twakeactorid, twakeactor)
     if (spaceId) await checkSpace(tx, log, spaceId, twakeorg, actor)
-    await tx.insert(activityEvents).values({
-      source: event.source,
-      eventId: event.id,
-      organizationId: twakeorg ?? null,
-      spaceId: spaceId ?? null,
-      type: event.type,
-      category,
-      actor,
-      objectType: data.object.type,
-      objectId: data.object.id,
-      content: data,
-      time: event.time ? new Date(event.time) : new Date()
-    })
+    // The card shows the content, and recipients are none of its viewers' business.
+    const { recipients, ...content } = data
+    const [stored] = await tx
+      .insert(activityEvents)
+      .values({
+        source: event.source,
+        eventId: event.id,
+        organizationId: twakeorg ?? null,
+        spaceId: spaceId ?? null,
+        type: event.type,
+        category,
+        actor,
+        objectType: data.object.type,
+        objectId: data.object.id,
+        content,
+        time: event.time ? new Date(event.time) : new Date()
+      })
+      .returning({
+        id: activityEvents.id,
+        organizationId: activityEvents.organizationId,
+        spaceId: activityEvents.spaceId
+      })
+    if (!stored) throw new Error('insert returned no row')
+    // Twake Tasks notifies its own users.
+    if (event.type.startsWith('com.twake.tasks.')) return
+    await notifyRecipients(tx, log, stored, recipients)
   }
 }
 
