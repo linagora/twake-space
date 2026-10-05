@@ -30,7 +30,7 @@ export const notifications = pgTable(
     recipient: text().notNull(),
     type: notificationType().notNull(),
     spaceId: uuid('space_id'),
-    activityEventId: text('activity_event_id'),
+    activityEventId: uuid('activity_event_id'),
     matrixEventId: text('matrix_event_id'),
     payload: jsonb().notNull(),
     readAt: timestamptz('read_at'),
