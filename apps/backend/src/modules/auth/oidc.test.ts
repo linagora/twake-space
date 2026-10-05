@@ -82,6 +82,8 @@ function fakeSso(jwks: unknown, tokens: Map<string, FakeToken>) {
 
 const now = () => Math.floor(Date.now() / 1000)
 
+const USER_ID = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
+
 function validToken(): FakeToken {
   return {
     introspection: {
@@ -92,6 +94,7 @@ function validToken(): FakeToken {
     },
     userinfo: {
       sub: 'alice@example.com',
+      uuid: USER_ID,
       email: 'alice@example.com',
       sid: 'session-1',
       org_id: 'org-1'
@@ -151,6 +154,7 @@ describe('identify', () => {
 
     expect(identity).toMatchObject({
       subject: 'alice@example.com',
+      userId: USER_ID,
       email: 'alice@example.com',
       sessionId: 'session-1',
       organizationId: 'org-1'
@@ -173,7 +177,9 @@ describe('identify', () => {
 
   it.each([
     ['no email', { email: undefined }],
-    ['no sid', { sid: undefined }]
+    ['no sid', { sid: undefined }],
+    ['no uuid', { uuid: undefined }],
+    ['a uuid that is not one', { uuid: 'alice' }]
   ])('refuses a token whose userinfo has %s', async (_case, override) => {
     const token = validToken()
     token.userinfo = { ...token.userinfo, ...override }
