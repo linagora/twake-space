@@ -33,6 +33,14 @@ const userinfoSchema = z.object({
   org_id: z.string().min(1).nullish()
 })
 
+// openid-client URL-encodes the credentials (RFC 6749 2.3.1), and LemonLDAP before
+// 2.23 does not decode them: "twakespace-backend" would arrive as "twakespace%2Dbackend".
+function rawClientSecretBasic(id: string, secret: string): client.ClientAuth {
+  return (_as, _client, _body, headers) => {
+    headers.set('authorization', `Basic ${btoa(`${id}:${secret}`)}`)
+  }
+}
+
 function hasAudience(aud: string | string[] | undefined, audience: string) {
   return Array.isArray(aud) ? aud.includes(audience) : aud === audience
 }
@@ -44,7 +52,7 @@ export async function discoverIdentityProvider(
     options.issuer,
     options.clientId,
     undefined,
-    client.ClientSecretBasic(options.clientSecret),
+    rawClientSecretBasic(options.clientId, options.clientSecret),
     { timeout: 5 }
   )
   const metadata = config.serverMetadata()
