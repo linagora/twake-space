@@ -5,7 +5,7 @@ set -eu
 
 ME=$(basename "$0")
 OUT=/tmp/nginx
-RUNTIME_KEYS="SSO_BASE_URL SSO_CLIENT_ID SSO_SCOPE SSO_REDIRECT_URI SSO_POST_LOGOUT_REDIRECT POSTHOG_KEY POSTHOG_HOST SENTRY_DSN SENTRY_ENVIRONMENT"
+RUNTIME_KEYS="API_URL SSO_BASE_URL SSO_CLIENT_ID SSO_SCOPE SSO_REDIRECT_URI SSO_POST_LOGOUT_REDIRECT POSTHOG_KEY POSTHOG_HOST SENTRY_DSN SENTRY_ENVIRONMENT"
 
 fail() {
   echo "$ME: error: $*" >&2
@@ -44,8 +44,11 @@ for key in $RUNTIME_KEYS; do
 done
 
 connect_src="'self'"
-for url in "${SSO_BASE_URL:-}" "${POSTHOG_HOST:-}" "${SENTRY_DSN:-}"; do
-  [ -n "$url" ] && connect_src="$connect_src $(origin "$url")"
+# A relative API_URL is on 'self' already.
+for url in "${API_URL:-}" "${SSO_BASE_URL:-}" "${POSTHOG_HOST:-}" "${SENTRY_DSN:-}"; do
+  case "$url" in
+    http://* | https://*) connect_src="$connect_src $(origin "$url")" ;;
+  esac
 done
 [ -n "${CSP_CONNECT_SRC:-}" ] && connect_src="$connect_src $CSP_CONNECT_SRC"
 frame_src=${CSP_FRAME_SRC:-"'self'"}
