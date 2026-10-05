@@ -1,6 +1,17 @@
-import { eq, lt } from 'drizzle-orm'
+import { eq, lt, sql } from 'drizzle-orm'
+import type postgres from 'postgres'
 import type { Db } from '../../infra/db.ts'
 import { oidcRevokedSessions, wsTickets } from './schema.ts'
+
+const SESSION_REVOKED = 'session_revoked'
+
+// Every replica hears it, so each closes the streams it holds for the session.
+export async function listenForRevocations(
+  client: postgres.Sql,
+  onRevoked: (sessionId: string) => void
+): Promise<void> {
+  await client.listen(SESSION_REVOKED, onRevoked)
+}
 
 export interface Ticket {
   hash: string
@@ -37,6 +48,9 @@ export function postgresAuthStore(db: Db): AuthStore {
           .insert(oidcRevokedSessions)
           .values({ sid: sessionId, expiresAt: until })
           .onConflictDoNothing()
+        await tx.execute(
+          sql`select pg_notify(${SESSION_REVOKED}, ${sessionId})`
+        )
       })
     },
 
