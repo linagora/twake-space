@@ -5,8 +5,9 @@ import { postgresDeduplicator } from './events/dedupe.ts'
 import { createMessageHandler, type Routes } from './events/router.ts'
 import { createDb, migrateDb } from './infra/db.ts'
 import { createServer } from './infra/http.ts'
-import { startConsumer } from './infra/kafka.ts'
+import { startConsumer, startDeadLetterProducer } from './infra/kafka.ts'
 import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
+import { activityRoute } from './modules/feed/activity.ts'
 import { registerLiveRoutes } from './modules/live/routes.ts'
 import { createStreams } from './modules/live/streams.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
@@ -18,7 +19,9 @@ const config = loadConfig()
 const logger = pino({ level: config.LOG_LEVEL })
 
 const routes: Routes = {
-  activity: resourceActivityRoutes,
+  activity: {
+    get: type => resourceActivityRoutes.get(type) ?? activityRoute.get(type)
+  },
   platform: spacePlatformRoutes
 }
 
@@ -48,12 +51,14 @@ await listenForRevocations(sql, sessionId => {
 })
 await server.listen({ host: config.HTTP_HOST, port: config.HTTP_PORT })
 
+const deadLetters = await startDeadLetterProducer(config, logger)
 const consumer = await startConsumer(
   config,
   logger,
   createMessageHandler({
     routes,
     dedupe: postgresDeduplicator(db, config.KAFKA_GROUP_ID),
+    deadLetter: deadLetters.send,
     logger
   })
 )
@@ -68,6 +73,7 @@ async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'shutting down')
   try {
     await consumer.disconnect()
+    await deadLetters.disconnect()
     await server.close()
     await sql.end({ timeout: 5 })
   } catch (error) {

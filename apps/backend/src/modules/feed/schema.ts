@@ -10,6 +10,11 @@ import {
 } from 'drizzle-orm/pg-core'
 import { timestamptz } from '../../infra/db.ts'
 
+// A user's id is null when only their email was sent and they are in no space.
+export type Actor =
+  | { type: 'user'; id: string | null; email: string | null }
+  | { type: 'token'; id: string; name: string }
+
 export const feedCategory = pgEnum('feed_category', [
   'messages',
   'files',
@@ -30,7 +35,8 @@ export const activityEvents = pgTable(
     spaceId: uuid('space_id'),
     type: text().notNull(),
     category: feedCategory().notNull(),
-    actor: text().notNull(),
+    // Null for an event no one in particular made.
+    actor: jsonb().$type<Actor>(),
     objectType: text('object_type').notNull(),
     objectId: text('object_id').notNull(),
     content: jsonb().notNull(),
