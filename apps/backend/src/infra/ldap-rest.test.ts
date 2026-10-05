@@ -28,6 +28,7 @@ const member = {
 
 function setup() {
   const organizations = {
+    get: vi.fn<LdapRestClient['organizations']['get']>(),
     listUsers: vi.fn<LdapRestClient['organizations']['listUsers']>(),
     getUser: vi.fn<LdapRestClient['organizations']['getUser']>()
   }
@@ -110,6 +111,41 @@ describe('ldapRestDirectory', () => {
 
     expect(await directory.organizationOf('ghost@example.com')).toBeUndefined()
     expect(await directory.organizationOf('b2c@example.com')).toBeUndefined()
+  })
+
+  it("reads an organization's domain and whether chat and mail are on", async () => {
+    const { directory, organizations } = setup()
+    organizations.get.mockResolvedValue({
+      id: 'org_acme',
+      name: 'Acme',
+      domain: 'acme.example.com',
+      baseDN: 'ou=org_acme,dc=example,dc=com',
+      status: 'active',
+      createdAt: new Date(),
+      metadata: { isChatServerDeployed: true, isMailDomainValid: 'yes' }
+    })
+
+    expect(await directory.organization('org_acme')).toEqual({
+      domain: 'acme.example.com',
+      chat: true,
+      mail: false
+    })
+  })
+
+  it('has no unknown or deleted organization', async () => {
+    const { directory, organizations } = setup()
+    organizations.get.mockRejectedValueOnce(new NotFoundError('not found'))
+    organizations.get.mockResolvedValueOnce({
+      id: 'org_gone',
+      name: 'Gone',
+      domain: 'gone.example.com',
+      baseDN: 'ou=org_gone,dc=example,dc=com',
+      status: 'deleted',
+      createdAt: new Date()
+    })
+
+    expect(await directory.organization('org_ghost')).toBeUndefined()
+    expect(await directory.organization('org_gone')).toBeUndefined()
   })
 
   it('propagates other ldap-rest failures', async () => {
