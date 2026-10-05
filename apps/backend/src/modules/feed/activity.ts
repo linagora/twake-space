@@ -36,7 +36,7 @@ const activity = z.looseObject({
     }),
     preview: z
       .string()
-      .transform(p => p.slice(0, 280))
+      .transform(p => Array.from(p).slice(0, 280).join(''))
       .optional(),
     actor: z
       .looseObject({
@@ -110,7 +110,7 @@ async function checkSpace(
     throw new RejectedEventError(`actor is not a member of space ${spaceId}`)
   }
   log.warn(
-    { spaceId, actor },
+    { spaceId, actorId: actor.id },
     'actor not a direct member of a space with linked groups'
   )
 }
