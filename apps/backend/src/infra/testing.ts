@@ -8,6 +8,7 @@ const SERVER_URL =
 
 export interface TestDb {
   db: Db
+  sql: postgres.Sql
   drop(): Promise<void>
 }
 
@@ -22,6 +23,7 @@ export async function createTestDb(): Promise<TestDb> {
   await migrateDb(db)
   return {
     db,
+    sql,
     async drop() {
       await sql.end()
       await server.unsafe(`drop database ${name}`)

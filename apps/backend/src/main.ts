@@ -6,7 +6,9 @@ import { createMessageHandler, type Routes } from './events/router.ts'
 import { createDb, migrateDb } from './infra/db.ts'
 import { createServer } from './infra/http.ts'
 import { startConsumer } from './infra/kafka.ts'
-import { setUpAuth } from './modules/auth/index.ts'
+import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
+import { registerLiveRoutes } from './modules/live/routes.ts'
+import { createStreams } from './modules/live/streams.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
 import { registerSpaceRoutes } from './modules/spaces/routes.ts'
@@ -37,6 +39,11 @@ const requireIdentity = await setUpAuth(server, {
   }
 })
 registerSpaceRoutes(server, { db, requireIdentity })
+const streams = createStreams()
+registerLiveRoutes(server, { requireIdentity, streams })
+await listenForRevocations(sql, sessionId => {
+  streams.closeSession(sessionId)
+})
 await server.listen({ host: config.HTTP_HOST, port: config.HTTP_PORT })
 
 const consumer = await startConsumer(
