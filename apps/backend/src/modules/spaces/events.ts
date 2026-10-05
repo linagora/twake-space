@@ -1,5 +1,5 @@
 import { and, eq, gt, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
-import type { Logger } from 'pino'
+import type { Logger as Pino } from 'pino'
 import { z } from 'zod'
 import type { PlatformEvent } from '../../events/envelope.ts'
 import { fresh } from '../../events/freshness.ts'
@@ -102,6 +102,9 @@ interface Person {
   organizationId?: string
 }
 
+// Writes through ldap-rest log with the request's logger.
+type Logger = Pick<Pino, 'warn'>
+
 // ldap-rest lifecycle events carry no entryUUID, so a person without one is
 // matched in the copy by email.
 function withoutUuid(log: Logger, people: Person[]) {
@@ -200,7 +203,7 @@ async function deletedUsers(
   )
 }
 
-async function upsertGroups(
+export async function upsertGroups(
   tx: Tx,
   spaceId: string,
   at: Date | undefined,
@@ -247,7 +250,7 @@ async function upsertGroups(
   await tellSpaceMembers(tx, spaceId)
 }
 
-async function upsertMembers(
+export async function upsertMembers(
   tx: Tx,
   log: Logger,
   spaceId: string,
@@ -351,7 +354,21 @@ async function removeMembers(
 
 const onCreated: Handler<PlatformEvent> = async (event, tx, log) => {
   const space = parseOrDrop(spaceCreated, event.body, event.routingKey)
-  const at = space.timestamp
+  await createSpace(tx, log, space, space.timestamp)
+}
+
+export async function createSpace(
+  tx: Tx,
+  log: Logger,
+  space: {
+    id: string
+    organizationId: string
+    name: string
+    members: z.infer<typeof member>[]
+    groups: z.infer<typeof group>[]
+  },
+  at: Date | undefined
+) {
   if (!(await fresh(tx, at, [spaceKey(space.id)])).size) return
   const renamed = (await fresh(tx, at, [spaceNameKey(space.id)])).size > 0
   const insert = tx.insert(spaces).values({
@@ -376,7 +393,16 @@ const onUpdated: Handler<PlatformEvent> = async (event, tx) => {
     event.routingKey
   )
   if (name === undefined) return
-  if (!(await fresh(tx, timestamp, [spaceNameKey(id)])).size) return
+  await renameSpace(tx, id, name, timestamp)
+}
+
+export async function renameSpace(
+  tx: Tx,
+  id: string,
+  name: string,
+  at: Date | undefined
+) {
+  if (!(await fresh(tx, at, [spaceNameKey(id)])).size) return
   const renamed = await tx
     .update(spaces)
     .set({ name, updatedAt: sql`now()` })
@@ -400,6 +426,15 @@ const onDeleted: Handler<PlatformEvent> = async (event, tx) => {
     event.body,
     event.routingKey
   )
+  await deleteSpace(tx, id, timestamp, event.routingKey)
+}
+
+export async function deleteSpace(
+  tx: Tx,
+  id: string,
+  timestamp: Date | undefined,
+  actor: string
+) {
   if (!(await fresh(tx, timestamp, [spaceKey(id)])).size) return
   const members = await tx
     .delete(spaceMembers)
@@ -420,7 +455,7 @@ const onDeleted: Handler<PlatformEvent> = async (event, tx) => {
     ...resources.map(r => resourceKey(id, r.kind))
   ])
   await dropSpaceFromTokens(tx, id, {
-    actor: event.routingKey,
+    actor,
     reason: 'its only space was deleted'
   })
   await tx.delete(spaces).where(eq(spaces.spaceId, id))
@@ -447,12 +482,22 @@ const onMemberRemoved: Handler<PlatformEvent> = async (event, tx, log) => {
     event.body,
     event.routingKey
   )
-  const people = await withUserIds(tx, log, members)
+  await removeSpaceMembers(tx, log, id, timestamp, members)
+}
+
+export async function removeSpaceMembers(
+  tx: Tx,
+  log: Logger,
+  spaceId: string,
+  at: Date | undefined,
+  people: Person[]
+) {
+  const identified = await withUserIds(tx, log, people)
   await removeMembers(
     tx,
-    timestamp,
-    and(eq(spaceMembers.spaceId, id), matching(log, members)),
-    people.map(p => memberKey(id, p.uuid))
+    at,
+    and(eq(spaceMembers.spaceId, spaceId), matching(log, people)),
+    identified.map(p => memberKey(spaceId, p.uuid))
   )
 }
 
@@ -471,10 +516,24 @@ const onGroupUnlinked: Handler<PlatformEvent> = async (event, tx) => {
     event.body,
     event.routingKey
   )
+  await unlinkGroups(
+    tx,
+    id,
+    timestamp,
+    groups.map(g => g.id)
+  )
+}
+
+export async function unlinkGroups(
+  tx: Tx,
+  id: string,
+  at: Date | undefined,
+  groupIds: string[]
+) {
   const changed = await fresh(
     tx,
-    timestamp,
-    groups.map(g => groupKey(id, g.id))
+    at,
+    groupIds.map(g => groupKey(id, g))
   )
   if (changed.size === 0) return
   await tx.delete(spaceGroups).where(
@@ -482,7 +541,7 @@ const onGroupUnlinked: Handler<PlatformEvent> = async (event, tx) => {
       eq(spaceGroups.spaceId, id),
       inArray(
         spaceGroups.groupId,
-        groups.filter(g => changed.has(groupKey(id, g.id))).map(g => g.id)
+        groupIds.filter(g => changed.has(groupKey(id, g)))
       )
     )
   )

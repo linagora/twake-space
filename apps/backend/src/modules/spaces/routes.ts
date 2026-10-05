@@ -17,7 +17,7 @@ const spaceParams = z.object({ id: z.uuid() })
 
 // The spaces a caller reaches, with the role it acts with in each: its account's
 // membership, or an organization token's own role on every space it covers.
-function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
+export function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
   const covered = and(
     eq(spaces.organizationId, caller.organizationId),
     spaceId === undefined ? undefined : eq(spaces.spaceId, spaceId),
