@@ -71,6 +71,21 @@ export async function notifyRecipients(
       'recipients not found in the copy'
     )
   }
+  await notifyUsers(tx, wanted, {
+    organizationId: event.organizationId,
+    spaceId: event.spaceId,
+    activityEventId: event.id
+  })
+}
+
+export async function notifyUsers(
+  tx: Tx,
+  wanted: { userId: string; type: NotificationType }[],
+  source: {
+    organizationId: string | null
+    spaceId: string | null
+  } & ({ activityEventId: string } | { matrixEventId: string })
+) {
   if (wanted.length === 0) return
 
   const choices = await tx
@@ -89,13 +104,7 @@ export async function notifyRecipients(
     .filter(
       w => enabled.get(`${w.userId}|${w.type}`) ?? enabledByDefault(w.type)
     )
-    .map(w => ({
-      ...w,
-      organizationId: event.organizationId,
-      spaceId: event.spaceId,
-      activityEventId: event.id,
-      payload: {}
-    }))
+    .map(w => ({ ...w, ...source, payload: {} }))
   if (rows.length === 0) return
   const inserted = await tx
     .insert(notifications)
