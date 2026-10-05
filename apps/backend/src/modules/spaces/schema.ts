@@ -68,5 +68,8 @@ export const spaceResources = pgTable(
     resourceId: text('resource_id').notNull(),
     provisionedAt: timestamptz('provisioned_at').notNull().defaultNow()
   },
-  table => [primaryKey({ columns: [table.spaceId, table.kind] })]
+  table => [
+    primaryKey({ columns: [table.spaceId, table.kind] }),
+    index().on(table.kind, table.resourceId)
+  ]
 )
