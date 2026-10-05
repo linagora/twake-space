@@ -4,7 +4,7 @@ import {
   type User
 } from '@linagora/ldap-rest-client'
 import { describe, expect, it, vi } from 'vitest'
-import { ldapRestDirectory } from '../src/directory.ts'
+import { ldapRestDirectory } from './ldap-rest.ts'
 
 const user = {
   _id: '3f2a',

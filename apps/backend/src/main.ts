@@ -1,10 +1,10 @@
 import { pino } from 'pino'
 import { loadConfig } from './config.ts'
-import { createDb, migrateDb } from './db/client.ts'
-import { postgresDeduplicator } from './dedupe.ts'
-import { createServer } from './http.ts'
-import { startConsumer, startProducer } from './kafka.ts'
-import { createMessageHandler, type Routes } from './router.ts'
+import { postgresDeduplicator } from './events/dedupe.ts'
+import { createMessageHandler, type Routes } from './events/router.ts'
+import { createDb, migrateDb } from './infra/db.ts'
+import { createServer } from './infra/http.ts'
+import { startConsumer, startProducer } from './infra/kafka.ts'
 
 const config = loadConfig()
 const logger = pino({ level: config.LOG_LEVEL })

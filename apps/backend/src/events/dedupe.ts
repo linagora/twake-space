@@ -1,5 +1,5 @@
-import type { Db, Tx } from './db/client.ts'
-import { processedEvents } from './db/schema.ts'
+import type { Db, Tx } from '../infra/db.ts'
+import { processedEvents } from '../infra/schema.ts'
 
 export interface EventKey {
   source: string

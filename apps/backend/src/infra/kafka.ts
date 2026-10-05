@@ -1,13 +1,13 @@
 import { KafkaJS } from '@confluentinc/kafka-javascript'
 import type { Logger } from 'pino'
-import type { Config } from './config.ts'
+import type { Config } from '../config.ts'
 import {
   ACTIVITY_TOPICS,
   PLATFORM_TOPIC,
   SPACE_TOPIC,
   type SpaceEvent
-} from './events.ts'
-import type { IncomingMessage, Outcome } from './router.ts'
+} from '../events/envelope.ts'
+import type { IncomingMessage, Outcome } from '../events/router.ts'
 
 type GlobalConfig = KafkaJS.ProducerConstructorConfig &
   KafkaJS.ConsumerConstructorConfig

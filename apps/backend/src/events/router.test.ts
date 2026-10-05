@@ -1,9 +1,9 @@
 import { pino } from 'pino'
 import { describe, expect, it, vi } from 'vitest'
-import type { Tx } from '../src/db/client.ts'
-import type { Deduplicator, EventKey } from '../src/dedupe.ts'
-import type { CloudEvent, PlatformEvent } from '../src/events.ts'
-import { createMessageHandler, type Handler } from '../src/router.ts'
+import type { Tx } from '../infra/db.ts'
+import type { Deduplicator, EventKey } from './dedupe.ts'
+import type { CloudEvent, PlatformEvent } from './envelope.ts'
+import { createMessageHandler, type Handler } from './router.ts'
 
 const tx = {} as Tx
 
