@@ -1,6 +1,7 @@
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { CloudEvent } from '../../events/envelope.ts'
+import { lastChanges } from '../../events/schema.ts'
 import { MalformedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { resourceActivityRoutes } from './resources.ts'
@@ -15,6 +16,7 @@ beforeAll(async () => {
 afterAll(() => testDb.drop())
 beforeEach(async () => {
   await testDb.db.delete(spaceResources)
+  await testDb.db.delete(lastChanges)
 })
 
 function provisioned(
@@ -94,5 +96,21 @@ describe('provisioned events', () => {
     await expect(
       provisioned('drive', { kind: 'drive', id: 'a1' }, { twakeorg: undefined })
     ).rejects.toBeInstanceOf(MalformedEventError)
+  })
+
+  it('ignores a provisioned event older than the last one', async () => {
+    await provisioned(
+      'drive',
+      { kind: 'drive', id: 'new' },
+      { time: '2026-10-05T10:00:00Z' }
+    )
+
+    await provisioned(
+      'drive',
+      { kind: 'drive', id: 'old' },
+      { time: '2026-10-05T09:00:00Z' }
+    )
+
+    expect(await readResources()).toMatchObject([{ resourceId: 'new' }])
   })
 })

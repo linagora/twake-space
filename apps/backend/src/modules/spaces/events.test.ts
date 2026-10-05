@@ -10,6 +10,7 @@ import {
   vi
 } from 'vitest'
 import type { PlatformEvent } from '../../events/envelope.ts'
+import { lastChanges } from '../../events/schema.ts'
 import { MalformedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { spacePlatformRoutes } from './events.ts'
@@ -39,6 +40,7 @@ beforeEach(async () => {
   await testDb.db.delete(spaceMembers)
   await testDb.db.delete(spaceGroups)
   await testDb.db.delete(spaces)
+  await testDb.db.delete(lastChanges)
 })
 
 function handle(routingKey: string, body: unknown) {
@@ -365,5 +367,111 @@ describe('group events', () => {
     await expect(group('twake.space.group.linked', [])).rejects.toBeInstanceOf(
       MalformedEventError
     )
+  })
+})
+
+describe('stale events', () => {
+  const at = (time: string) => `2026-10-05T${time}Z`
+  const space = (routingKey: string, time: string, body = {}) =>
+    handle(routingKey, {
+      organizationId: 'evilcorp123',
+      id: SPACE_ID,
+      timestamp: at(time),
+      ...body
+    })
+
+  it('ignores a member event older than the last change to that member', async () => {
+    await space('twake.space.created', '09:00:00', {
+      name: 'Design Sprint',
+      members: [jdoe]
+    })
+    await space('twake.space.member.removed', '10:00:00', { members: [jdoe] })
+
+    await space('twake.space.member.added', '09:30:00', { members: [jdoe] })
+
+    expect(await readMembers()).toEqual([])
+  })
+
+  it('ignores a removal older than the last change to that member', async () => {
+    await space('twake.space.created', '09:00:00', {
+      name: 'Design Sprint',
+      members: [jdoe]
+    })
+    await space('twake.space.member.role.changed', '10:00:00', {
+      members: [{ ...jdoe, role: 'admin' }]
+    })
+
+    await space('twake.space.member.removed', '09:30:00', { members: [jdoe] })
+
+    expect(await readMembers()).toMatchObject([{ role: 'admin' }])
+  })
+
+  it('ignores a rename older than the last one', async () => {
+    await space('twake.space.created', '09:00:00', { name: 'Design Sprint' })
+    await space('twake.space.updated', '10:00:00', { name: 'Design' })
+
+    await space('twake.space.updated', '09:30:00', { name: 'Sprint' })
+
+    expect(await readSpace()).toMatchObject([{ name: 'Design' }])
+  })
+
+  it('does not bring back a deleted space or its members', async () => {
+    await space('twake.space.created', '09:00:00', {
+      name: 'Design Sprint',
+      members: [jdoe],
+      groups: [designers]
+    })
+    await space('twake.space.deleted', '10:00:00')
+
+    await space('twake.space.created', '09:00:00', {
+      name: 'Design Sprint',
+      members: [jdoe]
+    })
+    await space('twake.space.member.added', '09:30:00', { members: [jdoe] })
+    await space('twake.space.group.linked', '09:30:00', { groups: [designers] })
+
+    expect(await readSpace()).toEqual([])
+    expect(await readMembers()).toEqual([])
+    expect(await readGroups()).toEqual([])
+  })
+
+  it('stores a replayed creation older than a rename', async () => {
+    await space('twake.space.updated', '10:00:00', { name: 'Design' })
+
+    await space('twake.space.created', '09:00:00', {
+      name: 'Design Sprint',
+      members: [jdoe]
+    })
+
+    expect(await readSpace()).toMatchObject([{ name: 'Design Sprint' }])
+    expect(await readMembers()).toHaveLength(1)
+  })
+
+  it('does not add a member to a space deleted after the event', async () => {
+    await space('twake.space.created', '09:00:00', { name: 'Design Sprint' })
+    await space('twake.space.deleted', '10:00:00')
+
+    await space('twake.space.member.added', '09:30:00', { members: [jdoe] })
+
+    expect(await readMembers()).toEqual([])
+  })
+
+  it('ignores a group rename older than the last one', async () => {
+    await space('twake.space.created', '09:00:00', {
+      name: 'Design Sprint',
+      groups: [designers]
+    })
+    const renamed = (time: string, name: string) =>
+      handle('b2b.group.updated', {
+        organizationId: 'evilcorp123',
+        id: DESIGNERS_ID,
+        name,
+        timestamp: at(time)
+      })
+    await renamed('10:00:00', 'Product design')
+
+    await renamed('09:30:00', 'UX')
+
+    expect(await readGroups()).toMatchObject([{ name: 'Product design' }])
   })
 })
