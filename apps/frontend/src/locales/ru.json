@@ -46,5 +46,9 @@
   },
   "tasks": {
     "notSetUp": "Задачи не настроены для TwakeSpace."
+  },
+  "feed": {
+    "signingIn": "Вход в чат",
+    "signInFailed": "Не удалось войти в чат."
   }
 }

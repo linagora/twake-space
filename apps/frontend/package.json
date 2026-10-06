@@ -26,6 +26,7 @@
     "@sentry/react": "^11.4.0",
     "@tanstack/react-query": "^5.104.1",
     "ky": "^1.14.3",
+    "matrix-js-sdk": "^43.0.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router": "^8.4.0",

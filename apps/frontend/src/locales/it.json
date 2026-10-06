@@ -46,5 +46,9 @@
   },
   "tasks": {
     "notSetUp": "Attività non è configurato per TwakeSpace."
+  },
+  "feed": {
+    "signingIn": "Accesso alla chat",
+    "signInFailed": "Impossibile accedere alla chat."
   }
 }

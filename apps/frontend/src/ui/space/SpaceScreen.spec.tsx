@@ -3,6 +3,7 @@ import { Route, Routes, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Space } from '@/application/spaces'
+import { fakeMatrix } from '@/testing/fakeMatrix'
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { SpaceScreen } from '@/ui/space/SpaceScreen'
@@ -13,6 +14,7 @@ const roadmap: Space = {
   role: 'editor',
   chat: false,
   mail: true,
+  serverName: null,
   resources: [
     { kind: 'tasks', id: 'board-1' },
     { kind: 'drive', id: null },
@@ -25,7 +27,18 @@ function Path() {
   return <output aria-label="path">{useLocation().pathname}</output>
 }
 
-function renderAt(path: string, space: Space | null = roadmap) {
+const withChat: Space = {
+  ...roadmap,
+  chat: true,
+  serverName: 'acme.test',
+  resources: [...roadmap.resources, { kind: 'matrix_space', id: '!s:acme' }]
+}
+
+function renderAt(
+  path: string,
+  space: Space | null = roadmap,
+  matrix = fakeMatrix()
+) {
   const spaces = fakeSpaces()
   vi.mocked(spaces.get).mockImplementation(id =>
     space?.id === id
@@ -39,7 +52,7 @@ function renderAt(path: string, space: Space | null = roadmap) {
       </Routes>
       <Path />
     </>,
-    { spaces, path }
+    { spaces, path, matrix }
   )
 }
 
@@ -113,6 +126,28 @@ describe('SpaceScreen', () => {
       'src',
       'https://tasks.test/embed/spaces/a1/boards/b1?task=T-1'
     )
+  })
+
+  it("signs in to the organization's homeserver on the Feed tab", async () => {
+    const matrix = fakeMatrix()
+
+    renderAt('/spaces/a1/feed', withChat, matrix)
+
+    expect(
+      await screen.findByRole('tab', { name: 'Feed', selected: true })
+    ).toBeInTheDocument()
+    expect(matrix.signIn).toHaveBeenCalledWith('acme.test')
+  })
+
+  it('says so when the chat sign-in fails', async () => {
+    const matrix = fakeMatrix()
+    vi.mocked(matrix.signIn).mockRejectedValue(new Error('no homeserver'))
+
+    renderAt('/spaces/a1/feed', withChat, matrix)
+
+    expect(
+      await screen.findByText('Could not sign in to chat.')
+    ).toBeInTheDocument()
   })
 
   it('shows a resource without an id as being prepared', async () => {
