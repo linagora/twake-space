@@ -25,7 +25,7 @@ What mock mode doesn't do:
 
 - Changes vanish on reload.
 - Nothing arrives live, and signing out only reloads the page.
-- The Tasks tab says Tasks isn't set up unless `apps/frontend/public/.env.js` sets `TASKS_URL`.
+- The Tasks tab says Tasks isn't set up unless `apps/frontend/public/.env.js` sets `TASKS_URL`, and the Mail tab likewise with `MAIL_URL`.
 - Card links in the feed point nowhere.
 
 ## Run it against the backend
@@ -60,6 +60,7 @@ ESLint enforces these boundaries, and a few more rules: named exports only, UI f
 - `matrix`: sign in to the organization's homeserver before opening the feed.
 - `live`: the backend's live updates. `useLiveUpdates` already refreshes the spaces queries when a space changes.
 - `tasksUrl`: where the Tasks tab embeds Twake Tasks, or null.
+- `mailUrl`: where the Mail tab embeds Twake Mail's team mailbox, or null.
 
 A refused request rejects with a `Refusal`: the HTTP `status`, and the backend's reason as `code` (for example `not_space_admin`). Check it with `isRefusal` from `application/spaces.ts` to explain the refusal to the user. The [HTTP API](api.md) lists every route and its refusals.
 

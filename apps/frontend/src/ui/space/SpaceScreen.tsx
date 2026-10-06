@@ -21,6 +21,7 @@ import { NameAvatar } from '@/ds/AppFrame'
 import { LoadingRows, Page, SpaceHeader } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { FeedPanel } from '@/ui/space/FeedPanel'
+import { MailPanel } from '@/ui/space/MailPanel'
 import { MembersPanel } from '@/ui/space/MembersPanel'
 import { SpaceActions } from '@/ui/space/SpaceActions'
 import { TasksPanel } from '@/ui/space/TasksPanel'
@@ -88,6 +89,7 @@ export function SpaceScreen(): ReactElement {
     space.data.resources.find(r => r.kind === kind)?.id
   const matrixSpace = resource('matrix_space')
   const project = resource('project')
+  const mailbox = resource('mailbox')
 
   return (
     <Page>
@@ -185,6 +187,9 @@ export function SpaceScreen(): ReactElement {
           )}
         {current.state === 'ready' && current.tab === 'tasks' && project && (
           <TasksPanel spaceId={spaceId} projectId={project} />
+        )}
+        {current.state === 'ready' && current.tab === 'mail' && mailbox && (
+          <MailPanel spaceId={spaceId} mailboxId={mailbox} />
         )}
         {current.tab === 'members' && <MembersPanel space={space.data} />}
       </div>

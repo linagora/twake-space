@@ -13,6 +13,7 @@ export interface Services {
   matrix: MatrixService
   feed: FeedService
   tasksUrl: string | null
+  mailUrl: string | null
 }
 
 export const ServicesContext = createContext<Services | null>(null)

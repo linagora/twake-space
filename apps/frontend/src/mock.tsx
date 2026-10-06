@@ -36,7 +36,8 @@ const services = {
     signOut: () => Promise.resolve()
   },
   feed: memoryFeed(seedFeed),
-  tasksUrl: window.TASKS_URL ?? null
+  tasksUrl: window.TASKS_URL ?? null,
+  mailUrl: window.MAIL_URL ?? null
 }
 
 createRoot(container).render(

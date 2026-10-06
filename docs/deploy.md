@@ -19,6 +19,7 @@ flowchart LR
   hs[Matrix homeserver]
   cp[Chat control plane<br/>SaaS only]
   tasks[Tasks app]
+  mail[Mail app]
   sentry[Sentry]
   posthog[PostHog]
 
@@ -27,6 +28,7 @@ flowchart LR
   fe -.->|/api, with API_UPSTREAM| be
   browser -->|SSO_BASE_URL| oidc
   browser -->|TASKS_URL, in a frame| tasks
+  browser -->|MAIL_URL, in a frame| mail
   browser -.-> sentry
   browser -.-> posthog
   be --> pg
@@ -75,6 +77,7 @@ The entrypoint script `40-twake-space-runtime.sh` reads the environment at conta
 - `API_URL`: the backend base URL, absolute or relative to the page origin. Required: the app throws at startup without it. With `API_UPSTREAM`, set it to `/api`.
 - `SSO_BASE_URL`, `SSO_CLIENT_ID`, `SSO_SCOPE`, `SSO_REDIRECT_URI`, `SSO_POST_LOGOUT_REDIRECT`: the OIDC login settings. All five are required: the app throws without any of them.
 - `TASKS_URL`: the Tasks app, embedded in a frame. Optional.
+- `MAIL_URL`: the Mail app, whose team mailbox embed fills the Mail tab. Optional.
 - `SENTRY_DSN`, `SENTRY_ENVIRONMENT`: browser error reporting. Optional.
 - `POSTHOG_KEY`, `POSTHOG_HOST`: written to `/.env.js`. See the open questions.
 
@@ -86,7 +89,7 @@ The script also writes the security headers, sent on every path except `/healthz
 
 - `Content-Security-Policy` has a fixed part: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'`. `style-src` allows inline styles because MUI injects its styles at runtime.
 - `connect-src` is `'self'` plus the origin of each of `API_URL`, `SSO_BASE_URL`, `POSTHOG_HOST` and `SENTRY_DSN` that is an absolute `http` or `https` URL. The origin drops the user info, so the Sentry public key stays out of the header. `CSP_CONNECT_SRC` appends more sources.
-- `frame-src` is `CSP_FRAME_SRC` (default `'self'`) plus the origin of `TASKS_URL` when set.
+- `frame-src` is `CSP_FRAME_SRC` (default `'self'`) plus the origin of `TASKS_URL` when set. With `MAIL_URL`, it also gets the origins of `MAIL_URL` and `SSO_BASE_URL`, because the Mail embed signs in through a frame on the SSO.
 - `frame-ancestors` is `CSP_FRAME_ANCESTORS` (default `'self'`). Set it when another app embeds Twake Space.
 - `Permissions-Policy` is `PERMISSIONS_POLICY`, by default `accelerometer=(), geolocation=(), gyroscope=(), magnetometer=(), payment=(), usb=()`.
 - `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin` are fixed.
