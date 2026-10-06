@@ -55,7 +55,7 @@ describe('TasksPanel', () => {
     )
     expect(frame()).toHaveAttribute(
       'sandbox',
-      'allow-scripts allow-same-origin allow-popups allow-forms'
+      'allow-scripts allow-same-origin allow-popups allow-forms allow-downloads'
     )
   })
 

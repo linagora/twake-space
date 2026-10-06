@@ -109,7 +109,7 @@ describe('MailPanel', () => {
     expect(frame).toHaveAttribute('src', `${MAIL}/embed/team-mailboxes/m%2F1`)
     expect(frame).toHaveAttribute(
       'sandbox',
-      'allow-scripts allow-same-origin allow-popups allow-forms'
+      'allow-scripts allow-same-origin allow-popups allow-forms allow-downloads'
     )
   })
 
@@ -197,7 +197,7 @@ describe('MailPanel', () => {
     expect(overlay()).toHaveAttribute('src', `${MAIL}/embed/overlay.html`)
     expect(overlay()).toHaveAttribute(
       'sandbox',
-      'allow-scripts allow-same-origin allow-popups allow-forms'
+      'allow-scripts allow-same-origin allow-popups allow-forms allow-downloads'
     )
     expect(frame()).toHaveAttribute('allow', 'clipboard-read; clipboard-write')
     expect(overlay()).toHaveAttribute(
