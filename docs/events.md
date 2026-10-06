@@ -60,7 +60,10 @@ The dedupe claim and the handler run in the same Postgres transaction, so a hand
 - Events can arrive out of order or be replayed. `last_changes` keeps, per object key, the time of the last change applied.
 - A change applies only if its time is at or after the stored one. An event without a time applies to every object.
 - `last_changes` rows stay after the object is removed, so a replayed older event cannot bring it back.
-- Object keys look like `space:<id>`, `space:<id>:name`, `space:<id>:member:<user>`, `space:<id>:group:<group>`, `space:<id>:resource:<kind>`, `organization:<id>:chat`, `organization:<id>:member:<user>`, `group:<id>:name`.
+- Object keys look like `space:<id>`, `space:<id>:name`, `space:<id>:member:<user>`, `space:<id>:group:<group>`, `space:<id>:resource:<kind>`, `organization:<id>:chat`, `organization:<id>:member:<user>`, `user:<uuid>:deleted`, `email:<email>:deleted`.
+- A removal records the member's key even when the copy does not hold them yet, so their older addition stays out.
+- A deleted user, matched by uuid or email, is not added back by an older member or role event. A newer one adds them, since an email can be given to a new user.
+- A group's newest name is kept in `group_names` even while no space links it, so a link older than a rename takes the new name.
 
 ## Platform events
 
@@ -79,8 +82,8 @@ Every platform handler is wrapped: when the body has an `organizationId` the cop
 
 ### Space copy
 
-- `twake.space.created`: inserts the space, its members and its linked groups. A rename handled earlier wins over the creation's name.
-- `twake.space.updated`: renames the space.
+- `twake.space.created`: inserts the space, its members and its linked groups.
+- `twake.space.updated`: renames the space. A rename of a space not created yet is parked until the creation arrives, and a rename of a deleted space is dropped.
 - `twake.space.deleted`: removes the space, its members, groups and resources, records their keys in `last_changes`, and drops the space from API tokens.
 - `twake.space.member.added`, `twake.space.member.role.changed`: upsert members.
 - `twake.space.member.removed`: removes members.
@@ -108,7 +111,7 @@ Upserts and removals of members, groups and names send a `spaces` live event to 
 - `chat` -> `matrix_space` (the room id the bot posts cards to)
 - `tasks` -> `tasks`
 
-It needs `twakeorg`, upserts `space_resources`, and sends a `spaces` live event to the space's members.
+It needs `twakeorg`, upserts `space_resources`, and sends a `spaces` live event to the space's members. It is ignored when the space was deleted after the event's `time`.
 
 ### Activity that becomes a card
 

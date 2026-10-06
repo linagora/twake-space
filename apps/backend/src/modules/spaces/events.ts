@@ -4,7 +4,11 @@ import { z } from 'zod'
 import type { PlatformEvent } from '../../events/envelope.ts'
 import { fresh } from '../../events/freshness.ts'
 import { lastChanges } from '../../events/schema.ts'
-import { parseOrDrop, type Handler } from '../../events/router.ts'
+import {
+  NotYetKnownError,
+  parseOrDrop,
+  type Handler
+} from '../../events/router.ts'
 import type { Tx } from '../../infra/db.ts'
 import { forgetActor } from '../feed/activity.ts'
 import { tell, tellSpaceMembers } from '../live/notify.ts'
@@ -14,16 +18,19 @@ import {
   revokeAccountTokens,
   revokeOrganizationTokens
 } from '../tokens/revocation.ts'
-import { resourceKey } from './resources.ts'
 import {
+  groupNames,
   organizationMembers,
   organizationRole,
   spaceGroups,
   spaceMembers,
+  spaceResourceKind,
   spaceResources,
   spaceRole,
   spaces
 } from './schema.ts'
+
+type SpaceResourceKind = (typeof spaceResourceKind.enumValues)[number]
 
 const timestamp = z.iso
   .datetime({ offset: true })
@@ -44,6 +51,11 @@ const memberKey = (spaceId: string, user: string) =>
   `space:${spaceId}:member:${user}`
 const groupKey = (spaceId: string, groupId: string) =>
   `space:${spaceId}:group:${groupId}`
+export const resourceKey = (spaceId: string, kind: SpaceResourceKind) =>
+  `space:${spaceId}:resource:${kind}`
+// An email can be given to a new user later, so its marker only holds back older events.
+const deletedUserKey = (uuid: string) => `user:${uuid}:deleted`
+const deletedEmailKey = (email: string) => `email:${email}:deleted`
 
 const role = z.enum(spaceRole.enumValues)
 
@@ -135,6 +147,39 @@ async function withUserIds<T extends Person>(
   })
 }
 
+async function deletedUsers(
+  tx: Tx,
+  at: Date | undefined,
+  people: { uuid: string; email: string }[]
+): Promise<Set<string>> {
+  if (at === undefined || people.length === 0) return new Set()
+  const rows = await tx
+    .select({ object: lastChanges.object })
+    .from(lastChanges)
+    .where(
+      and(
+        inArray(
+          lastChanges.object,
+          people.flatMap(p => [
+            deletedUserKey(p.uuid),
+            deletedEmailKey(p.email)
+          ])
+        ),
+        gt(lastChanges.at, at)
+      )
+    )
+  const deleted = new Set(rows.map(row => row.object))
+  return new Set(
+    people
+      .filter(
+        p =>
+          deleted.has(deletedUserKey(p.uuid)) ||
+          deleted.has(deletedEmailKey(p.email))
+      )
+      .map(p => p.uuid)
+  )
+}
+
 async function upsertGroups(
   tx: Tx,
   spaceId: string,
@@ -147,10 +192,29 @@ async function upsertGroups(
     at,
     groups.map(g => groupKey(spaceId, g.id))
   )
+  const renamed =
+    at === undefined || groups.length === 0
+      ? []
+      : await tx
+          .select({ groupId: groupNames.groupId, name: groupNames.name })
+          .from(groupNames)
+          .where(
+            and(
+              inArray(
+                groupNames.groupId,
+                groups.map(g => g.id)
+              ),
+              gt(groupNames.renamedAt, at)
+            )
+          )
+  const newestName = new Map(renamed.map(r => [r.groupId, r.name]))
   const byId = new Map(
     groups
       .filter(g => changed.has(groupKey(spaceId, g.id)))
-      .map(({ id, name, role }) => [id, { spaceId, groupId: id, name, role }])
+      .map(({ id, name, role }) => [
+        id,
+        { spaceId, groupId: id, name: newestName.get(id) ?? name, role }
+      ])
   )
   if (byId.size === 0) return
   await tx
@@ -171,7 +235,9 @@ async function upsertMembers(
   members: z.infer<typeof member>[]
 ) {
   if (await deletedAfter(tx, spaceId, at)) return
-  const known = await withUserIds(tx, log, members)
+  const identified = await withUserIds(tx, log, members)
+  const deleted = await deletedUsers(tx, at, identified)
+  const known = identified.filter(m => !deleted.has(m.uuid))
   const changed = await fresh(
     tx,
     at,
@@ -201,7 +267,11 @@ async function upsertMembers(
   await tell(tx, 'spaces', [...byUser.keys()], { spaceId })
 }
 
-async function deletedAfter(tx: Tx, spaceId: string, at: Date | undefined) {
+export async function deletedAfter(
+  tx: Tx,
+  spaceId: string,
+  at: Date | undefined
+) {
   if (at === undefined) return false
   const [deletion] = await tx
     .select({ at: lastChanges.at })
@@ -218,21 +288,22 @@ async function deletedAfter(tx: Tx, spaceId: string, at: Date | undefined) {
 }
 
 // Each caller scopes `where` to one space or one user, so the pairs left after the
-// freshness check are the rows of the remaining user ids.
+// freshness check are the rows of the remaining user ids. `absent` marks members
+// not in the copy yet, so their older addition stays out.
 async function removeMembers(
   tx: Tx,
   at: Date | undefined,
-  where: SQL | undefined
+  where: SQL | undefined,
+  absent: string[] = []
 ) {
   const named = await tx
     .select({ spaceId: spaceMembers.spaceId, userId: spaceMembers.userId })
     .from(spaceMembers)
     .where(where)
-  const changed = await fresh(
-    tx,
-    at,
-    named.map(m => memberKey(m.spaceId, m.userId))
-  )
+  const changed = await fresh(tx, at, [
+    ...named.map(m => memberKey(m.spaceId, m.userId)),
+    ...absent
+  ])
   const removed = named.filter(m => changed.has(memberKey(m.spaceId, m.userId)))
   if (removed.length === 0) return
   await tx.delete(spaceMembers).where(
@@ -286,10 +357,20 @@ const onUpdated: Handler<PlatformEvent> = async (event, tx) => {
   )
   if (name === undefined) return
   if (!(await fresh(tx, timestamp, [spaceNameKey(id)])).size) return
-  await tx
+  const renamed = await tx
     .update(spaces)
     .set({ name, updatedAt: sql`now()` })
     .where(eq(spaces.spaceId, id))
+    .returning({ spaceId: spaces.spaceId })
+  if (renamed.length === 0) {
+    // Created and then deleted, or not created yet.
+    const [seen] = await tx
+      .select({ at: lastChanges.at })
+      .from(lastChanges)
+      .where(eq(lastChanges.object, spaceKey(id)))
+    if (seen) return
+    throw new NotYetKnownError(`unknown space ${id}`)
+  }
   await tellSpaceMembers(tx, id)
 }
 
@@ -346,10 +427,12 @@ const onMemberRemoved: Handler<PlatformEvent> = async (event, tx, log) => {
     event.body,
     event.routingKey
   )
+  const people = await withUserIds(tx, log, members)
   await removeMembers(
     tx,
     timestamp,
-    and(eq(spaceMembers.spaceId, id), matching(log, members))
+    and(eq(spaceMembers.spaceId, id), matching(log, members)),
+    people.map(p => memberKey(id, p.uuid))
   )
 }
 
@@ -399,7 +482,18 @@ const onGroupUpdated: Handler<PlatformEvent> = async (event, tx) => {
     event.routingKey
   )
   if (!name) return
-  if (!(await fresh(tx, timestamp, [`group:${id}:name`])).size) return
+  if (timestamp) {
+    const [newest] = await tx
+      .insert(groupNames)
+      .values({ groupId: id, name, renamedAt: timestamp })
+      .onConflictDoUpdate({
+        target: groupNames.groupId,
+        set: { name, renamedAt: timestamp },
+        setWhere: sql`${groupNames.renamedAt} <= excluded.renamed_at`
+      })
+      .returning({ groupId: groupNames.groupId })
+    if (!newest) return
+  }
   await tx.update(spaceGroups).set({ name }).where(eq(spaceGroups.groupId, id))
 }
 
@@ -419,6 +513,10 @@ const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
   )
   // Before removing members: the email-to-uuid lookup reads them.
   const [known] = await withUserIds(tx, log, [{ uuid, email: internalEmail }])
+  await fresh(tx, timestamp, [
+    ...(known ? [deletedUserKey(known.uuid)] : []),
+    ...(internalEmail ? [deletedEmailKey(internalEmail)] : [])
+  ])
   if (known) {
     await deleteNotificationsOf(tx, known.uuid)
     await forgetActor(tx, { uuid: known.uuid })
@@ -466,7 +564,7 @@ const onOrganizationRoleChanged: Handler<PlatformEvent> = async (
     event.routingKey
   )
   const [user] = await withUserIds(tx, log, [change])
-  if (!user) return
+  if (!user || (await deletedUsers(tx, user.timestamp, [user])).size) return
   const key = `organization:${user.organizationId}:member:${user.uuid}`
   if (!(await fresh(tx, user.timestamp, [key])).size) return
   await tx

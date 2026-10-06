@@ -52,6 +52,21 @@ const readResources = () =>
     .from(spaceResources)
 
 describe('provisioned events', () => {
+  it('does not bring back a resource of a space deleted after the event', async () => {
+    await testDb.db.insert(lastChanges).values({
+      object: `space:${SPACE_ID}`,
+      at: new Date('2026-10-05T10:00:00Z')
+    })
+
+    await provisioned(
+      'drive',
+      { kind: 'drive', id: 'a1f0c3e2d4b5' },
+      { time: '2026-10-05T09:30:00Z' }
+    )
+
+    expect(await readResources()).toEqual([])
+  })
+
   it('stores the resource id of a space', async () => {
     await provisioned('drive', { kind: 'drive', id: 'a1f0c3e2d4b5' })
 
