@@ -24,11 +24,12 @@
     "title": "Spaces",
     "loading": "Spaces werden geladen…",
     "loadFailed": "Deine Spaces konnten nicht geladen werden.",
-    "none": "Du bist noch in keinem Space.",
-    "noneHint": "Erstelle einen, um Chat, Dateien und Aufgaben mit deinem Team zu teilen.",
+    "none": "Erstellen Sie Ihren ersten Bereich",
+    "noneHint": "Bereiche bringen Ihr Team, Ihre Dateien, Aufgaben und Unterhaltungen an einem Ort zusammen. Erstellen Sie einen, um loszulegen.",
     "create": "Space erstellen",
     "name": "Name",
-    "createFailed": "Der Space konnte nicht erstellt werden."
+    "createFailed": "Der Space konnte nicht erstellt werden.",
+    "channelsHint": "Ein Bereich kann mehrere Kanäle für verschiedene Themen oder Teams enthalten"
   },
   "tabs": {
     "feed": "Feed",

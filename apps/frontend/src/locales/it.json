@@ -24,11 +24,12 @@
     "title": "Spazi",
     "loading": "Caricamento degli spazi…",
     "loadFailed": "Non è stato possibile caricare i tuoi spazi.",
-    "none": "Non sei ancora in nessuno spazio.",
-    "noneHint": "Creane uno per condividere chat, file e attività con il tuo team.",
+    "none": "Crea il tuo primo spazio",
+    "noneHint": "Gli spazi riuniscono il tuo team, i file, le attività e le conversazioni in un unico posto. Creane uno per iniziare.",
     "create": "Crea uno spazio",
     "name": "Nome",
-    "createFailed": "Non è stato possibile creare lo spazio."
+    "createFailed": "Non è stato possibile creare lo spazio.",
+    "channelsHint": "Uno spazio può contenere più canali per argomenti o team diversi"
   },
   "tabs": {
     "feed": "Feed",

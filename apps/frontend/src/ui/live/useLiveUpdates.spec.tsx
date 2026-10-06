@@ -33,7 +33,7 @@ describe('useLiveUpdates', () => {
     const live = fakeLive()
     const spaces = fakeSpaces()
     renderWithProviders(<Home />, { spaces, live })
-    await screen.findByText('You are not in any space yet.')
+    await screen.findByText('Create your first space')
 
     await spaces.create('Launch')
     act(() => {
@@ -48,7 +48,7 @@ describe('useLiveUpdates', () => {
   it('closes the stream when unmounted', async () => {
     const live = fakeLive()
     const { unmount } = renderWithProviders(<Home />, { live })
-    await screen.findByText('You are not in any space yet.')
+    await screen.findByText('Create your first space')
 
     unmount()
 
