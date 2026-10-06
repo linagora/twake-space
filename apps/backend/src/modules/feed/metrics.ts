@@ -1,4 +1,4 @@
-import { and, asc, count, eq, isNull } from 'drizzle-orm'
+import { and, asc, count, eq, isNull, sql } from 'drizzle-orm'
 import { parkedEvents } from '../../events/schema.ts'
 import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
@@ -21,7 +21,8 @@ export function registerMetrics(
     const waiting = await db
       .select({
         organizationId: organizations.organizationId,
-        cards: count(activityEvents.id)
+        cards: sql<number>`(count(${activityEvents.id}) filter (where ${activityEvents.postFailedAt} is null))::int`,
+        failed: count(activityEvents.postFailedAt)
       })
       .from(organizations)
       .leftJoin(spaces, eq(spaces.organizationId, organizations.organizationId))
@@ -45,6 +46,12 @@ export function registerMetrics(
           ...waiting.map(
             w =>
               `twake_space_cards_waiting{organization="${label(w.organizationId)}"} ${String(w.cards)}`
+          ),
+          '# HELP twake_space_cards_failed Stored events the homeserver refused for good.',
+          '# TYPE twake_space_cards_failed gauge',
+          ...waiting.map(
+            w =>
+              `twake_space_cards_failed{organization="${label(w.organizationId)}"} ${String(w.failed)}`
           ),
           '# HELP twake_space_events_total Kafka messages handled, by outcome.',
           '# TYPE twake_space_events_total counter',

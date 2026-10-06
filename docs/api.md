@@ -372,6 +372,9 @@ Metrics server only. Prometheus text format, no authentication.
 # HELP twake_space_cards_waiting Stored events not posted to Matrix yet.
 # TYPE twake_space_cards_waiting gauge
 twake_space_cards_waiting{organization="<org id>"} 0
+# HELP twake_space_cards_failed Stored events the homeserver refused for good.
+# TYPE twake_space_cards_failed gauge
+twake_space_cards_failed{organization="<org id>"} 0
 # HELP twake_space_events_total Kafka messages handled, by outcome.
 # TYPE twake_space_events_total counter
 twake_space_events_total{outcome="processed"} 0
@@ -380,7 +383,7 @@ twake_space_events_total{outcome="processed"} 0
 twake_space_parked_events 0
 ```
 
-- `twake_space_cards_waiting`: every organization with chat available reports a value, 0 included.
+- `twake_space_cards_waiting` and `twake_space_cards_failed`: every organization with chat available reports a value, 0 included. A failed card is not counted as waiting.
 - `twake_space_events_total`: one series per outcome seen since the process started (`processed`, `duplicate`, `unrouted`, `malformed`, `rejected`, `parked`, `failed`), as listed in [events.md](events.md). Counts messages read from Kafka, not parked events retried.
 - `twake_space_parked_events`: rows in `parked_events`, for every replica.
 

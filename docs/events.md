@@ -172,10 +172,12 @@ sequenceDiagram
 
 - The poster runs every second under a Postgres advisory lock, so one replica posts at a time.
 - A space is picked when it has unposted cards, a `matrix_space` resource, and its organization has chat available and a homeserver. Up to 50 spaces per pass, 50 cards per space, oldest first.
-- Spaces post in parallel. Within a space, cards go in order and the space stops at its first failure until the next pass.
+- Spaces post in parallel. Within a space, cards go in order and the space stops at its first failure.
+- A failing space waits before its next try: 1 second, doubling up to 5 minutes, reset by a pass where all its cards post. Other spaces post meanwhile.
+- A card the homeserver refuses for good (400 or 413) gets `post_failed_at`, is not retried, and the next card posts. When only the edit of the first card is refused, the card stays posted and the first card is left as it was.
 - The transaction id is the card's `id`, so a retried send does not post twice.
 - A card without a `space_id` is never posted. It exists for personal notifications only.
-- `twake_space_cards_waiting{organization}` on the metrics port counts unposted cards per organization with chat.
+- `twake_space_cards_waiting{organization}` on the metrics port counts unposted cards per organization with chat, and `twake_space_cards_failed{organization}` the refused ones.
 
 ### Card content
 

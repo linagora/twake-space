@@ -45,6 +45,8 @@ export const activityEvents = pgTable(
     content: jsonb().notNull(),
     time: timestamptz('time').notNull(),
     matrixEventId: text('matrix_event_id'),
+    // Set when the homeserver refused the card for good; it is not retried.
+    postFailedAt: timestamptz('post_failed_at'),
     createdAt: timestamptz('created_at').notNull().defaultNow()
   },
   table => [
@@ -52,7 +54,7 @@ export const activityEvents = pgTable(
     index('activity_events_unposted_idx')
       .on(table.spaceId, table.time)
       .where(
-        sql`${table.matrixEventId} is null and ${table.spaceId} is not null`
+        sql`${table.matrixEventId} is null and ${table.postFailedAt} is null and ${table.spaceId} is not null`
       ),
     index().on(table.spaceId, table.objectType, table.objectId, table.time),
     index().on(table.createdAt)
