@@ -152,6 +152,17 @@ describe('consumerAlive', () => {
     connectedNow = false
     expect(alive()).toBe(true)
   })
+
+  it('is dead when a reconnect fails to restore the subscription', () => {
+    const stats = consumerStats()
+    const alive = consumerAlive(connected, stats)
+
+    stats.reconnected({ subscriptionsFailed: 0 })
+    expect(alive()).toBe(true)
+
+    stats.reconnected({ subscriptionsFailed: 1 })
+    expect(alive()).toBe(false)
+  })
 })
 
 describe('subscription', () => {
