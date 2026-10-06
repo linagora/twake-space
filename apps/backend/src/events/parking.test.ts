@@ -12,7 +12,7 @@ import {
 import { createTestDb, type TestDb } from '../infra/testing.ts'
 import { postgresDeduplicator } from './dedupe.ts'
 import type { PlatformEvent } from './envelope.ts'
-import { parkIn, retryParked } from './parking.ts'
+import { parkIn, retryParked, scheduleParkedRetries } from './parking.ts'
 import {
   createMessageHandler,
   NotYetKnownError,
@@ -126,5 +126,35 @@ describe('parked events', () => {
 
     expect(deadLetter).toHaveBeenCalledTimes(2)
     expect(await parked()).toHaveLength(1)
+  })
+
+  it('stops only once the running pass has finished', async () => {
+    const { handler, handle, deadLetter } = setup()
+    await handle(memberAdded())
+    let finish: () => void = () => undefined
+    let started: () => void = () => undefined
+    const running = new Promise<void>(resolve => {
+      started = resolve
+    })
+    handler.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          started()
+          finish = resolve
+        })
+    )
+    const stop = scheduleParkedRetries(testDb.db, handle, deadLetter, log)
+    await running
+
+    let stopped = false
+    const stopping = stop().then(() => {
+      stopped = true
+    })
+    await new Promise(resolve => setTimeout(resolve, 50))
+    expect(stopped).toBe(false)
+
+    finish()
+    await stopping
+    expect(await parked()).toEqual([])
   })
 })
