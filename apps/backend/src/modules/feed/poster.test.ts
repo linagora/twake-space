@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { asc } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { pino } from 'pino'
 import {
   afterAll,
@@ -11,7 +11,10 @@ import {
   vi
 } from 'vitest'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
-import { configureHomeserver } from '../organizations/homeservers.ts'
+import {
+  configureHomeserver,
+  linkHomeserver
+} from '../organizations/homeservers.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
 import { spaceResources, spaces } from '../spaces/schema.ts'
 import { MatrixError, type Matrix } from '../../infra/matrix.ts'
@@ -213,6 +216,48 @@ describe('postCards', () => {
             ].event_id
         )
     ).toEqual(['$card1', '$card1'])
+  })
+
+  it('never edits the feed back to an older event that arrives late', async () => {
+    const q3 = { type: 'file', category: 'files' as const, id: 'f-q3' }
+    await stored(DESIGN, 1, 'Q3 plan', q3)
+    await stored(DESIGN, 3, 'Q3 plan v3', q3)
+    const { sent, matrix } = recording()
+    await postCards(testDb.db, KEY, matrix, log)
+    const editsBefore = sent.filter(s => s.txnId.endsWith('.edit')).length
+
+    await stored(DESIGN, 2, 'Q3 plan v2', q3)
+    await postCards(testDb.db, KEY, matrix, log)
+
+    expect(editsBefore).toBe(1)
+    expect(sent.filter(s => s.txnId.endsWith('.edit'))).toHaveLength(1)
+    expect((await posted()).every(r => r.matrixEventId !== null)).toBe(true)
+  })
+
+  it('backs off a space it cannot even prepare and posts the others', async () => {
+    await testDb.db
+      .update(organizations)
+      .set({ chatAvailable: true, homeserverId: null })
+      .where(eq(organizations.organizationId, 'globex'))
+    await testDb.db.transaction(tx =>
+      linkHomeserver(tx, randomBytes(32), 'globex', {
+        url: 'https://matrix.globex.example.com',
+        serverName: 'globex.example.com',
+        asToken: 'sealed with another key',
+        hsToken: 'hs-globex'
+      })
+    )
+    await stored(HR, 1)
+    await stored(DESIGN, 2)
+    const state = posterState()
+
+    await postCards(testDb.db, KEY, recording().matrix, log, state)
+
+    expect(await posted()).toMatchObject([
+      { spaceId: HR, matrixEventId: null },
+      { spaceId: DESIGN, matrixEventId: '$card1' }
+    ])
+    expect(state.backoff.get(HR)?.failures).toBe(1)
   })
 
   it('uses the stored row id as transaction id, so a retry posts once', async () => {
