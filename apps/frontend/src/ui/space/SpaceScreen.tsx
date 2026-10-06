@@ -12,6 +12,7 @@ import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
 import { KeptAlive, KeptAliveStack } from '@/ds/KeptAlive'
 import { LoadingRows, Page, SpaceHeader, TabPanel } from '@/ds/Page'
+import { useSpaceTabTag } from '@/ui/feedback/useSpaceTabTag'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 import { MailPanel } from '@/ui/space/MailPanel'
@@ -84,6 +85,7 @@ export function SpaceScreen(): ReactElement {
       ? tab
       : null
   const opened = useOpenedFrames(spaceId, readyTab)
+  useSpaceTabTag(readyTab)
 
   if (space.isPending) {
     return (
