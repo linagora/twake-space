@@ -110,9 +110,11 @@ async function notFoundAsUndefined<T>(
   }
 }
 
+// ldap-rest puts the username in uid and the display name in cn; the client
+// does not type uid yet.
 function toMember(user: User): Member {
   return {
-    username: user.cn,
+    username: (user as User & { uid: string }).uid,
     email: user.mail,
     displayName: user.displayName,
     firstName: user.givenName,
