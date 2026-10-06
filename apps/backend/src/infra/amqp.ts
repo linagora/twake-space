@@ -123,7 +123,7 @@ export function deadLetterQueue(
         ...(message.messageId !== undefined && {
           messageId: message.messageId
         }),
-        // Keeps the parked row when the queue is gone.
+        // An unroutable publish then fails, which keeps the parked row.
         mandatory: true,
         headers: {
           'x-twake-space-exchange': message.exchange,
