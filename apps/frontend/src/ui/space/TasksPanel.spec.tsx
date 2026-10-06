@@ -18,7 +18,7 @@ function renderAt(path: string, tasksUrl: string | null = `${TASKS}/`) {
       <Routes>
         <Route
           path="/spaces/:spaceId/tasks/*"
-          element={<TasksPanel spaceId="a1" />}
+          element={<TasksPanel spaceId="a1" projectId="p1" />}
         />
       </Routes>
       <Path />
@@ -46,12 +46,12 @@ function postFromFrame(data: unknown, origin = TASKS) {
 }
 
 describe('TasksPanel', () => {
-  it("frames Tasks' embed for the space", async () => {
+  it("frames Tasks' embed for the space's project", async () => {
     renderAt('/spaces/a1/tasks')
 
     expect(await screen.findByTitle('Tasks')).toHaveAttribute(
       'src',
-      `${TASKS}/embed/spaces/a1`
+      `${TASKS}/embed/projects/p1`
     )
     expect(frame()).toHaveAttribute(
       'sandbox',
@@ -64,7 +64,7 @@ describe('TasksPanel', () => {
 
     expect(await screen.findByTitle('Tasks')).toHaveAttribute(
       'src',
-      `${TASKS}/embed/spaces/a1/boards/b1?task=T-1`
+      `${TASKS}/embed/projects/p1/boards/b1?task=T-1`
     )
   })
 
@@ -74,24 +74,24 @@ describe('TasksPanel', () => {
 
     postFromFrame({
       type: 'twake-tasks:path',
-      path: '/embed/spaces/a1/boards/b2?task=T-9'
+      path: '/embed/projects/p1/boards/b2?task=T-9'
     })
 
     expect(screen.getByLabelText('path')).toHaveTextContent(
       '/spaces/a1/tasks/boards/b2?task=T-9'
     )
-    expect(frame()).toHaveAttribute('src', `${TASKS}/embed/spaces/a1`)
+    expect(frame()).toHaveAttribute('src', `${TASKS}/embed/projects/p1`)
   })
 
-  it('ignores a path from another origin or for another space', async () => {
+  it('ignores a path from another origin or for another project', async () => {
     renderAt('/spaces/a1/tasks')
     await screen.findByTitle('Tasks')
 
     postFromFrame(
-      { type: 'twake-tasks:path', path: '/embed/spaces/a1/boards/b2' },
+      { type: 'twake-tasks:path', path: '/embed/projects/p1/boards/b2' },
       'https://evil.test'
     )
-    postFromFrame({ type: 'twake-tasks:path', path: '/embed/spaces/zz' })
+    postFromFrame({ type: 'twake-tasks:path', path: '/embed/projects/p12' })
 
     expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/tasks')
   })

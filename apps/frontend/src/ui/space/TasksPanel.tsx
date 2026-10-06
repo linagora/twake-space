@@ -11,18 +11,28 @@ function framedPath(data: unknown): string | null {
   return type === 'twake-tasks:path' && typeof path === 'string' ? path : null
 }
 
-export function TasksPanel({ spaceId }: { spaceId: string }): ReactElement {
+export function TasksPanel({
+  spaceId,
+  projectId
+}: {
+  spaceId: string
+  projectId: string
+}): ReactElement {
   const { t } = useI18n()
   const { tasksUrl } = useServices()
   if (!tasksUrl) return <Typography>{t('tasks.notSetUp')}</Typography>
-  return <TasksFrame spaceId={spaceId} tasksUrl={tasksUrl} />
+  return (
+    <TasksFrame spaceId={spaceId} projectId={projectId} tasksUrl={tasksUrl} />
+  )
 }
 
 function TasksFrame({
   spaceId,
+  projectId,
   tasksUrl
 }: {
   spaceId: string
+  projectId: string
   tasksUrl: string
 }): ReactElement {
   const { t } = useI18n()
@@ -32,7 +42,7 @@ function TasksFrame({
   const { mode, systemMode } = useColorScheme()
   const theme = (mode === 'system' ? systemMode : mode) ?? 'light'
   const frame = useRef<HTMLIFrameElement>(null)
-  const embed = `/embed/spaces/${spaceId}`
+  const embed = `/embed/projects/${projectId}`
   const origin = new URL(tasksUrl).origin
   // Set once: the frame navigates by itself, and a new src would reload it.
   const [src] = useState(
@@ -57,10 +67,10 @@ function TasksFrame({
       }
       const path = framedPath(event.data)
       if (!path?.startsWith(embed)) return
-      const inSpace = path.slice(embed.length)
-      // '/embed/spaces/a1b' is another space.
-      if (!/^([/?]|$)/.test(inSpace)) return
-      void navigate(`/spaces/${spaceId}/tasks${inSpace}`, { replace: true })
+      const inProject = path.slice(embed.length)
+      // '/embed/projects/p12' is another project.
+      if (!/^([/?]|$)/.test(inProject)) return
+      void navigate(`/spaces/${spaceId}/tasks${inProject}`, { replace: true })
     }
     window.addEventListener('message', onMessage)
     return () => {
