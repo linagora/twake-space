@@ -140,13 +140,20 @@ describe('TasksPanel', () => {
     ).toBeInTheDocument()
   })
 
-  it('frames Tasks without an overlay', async () => {
+  it('frames Tasks with its overlay', async () => {
     renderAt('/spaces/a1/tasks')
 
     expect(await screen.findByTitle('Tasks')).toHaveAttribute(
       'name',
       'twake-embed-tasks'
     )
-    expect(screen.queryByTitle('Tasks windows')).not.toBeInTheDocument()
+    expect(screen.getByTitle('Tasks windows')).toHaveAttribute(
+      'name',
+      'twake-embed-tasks:overlay'
+    )
+    expect(screen.getByTitle('Tasks windows')).toHaveAttribute(
+      'src',
+      `${TASKS}/embed/overlay.html`
+    )
   })
 })
