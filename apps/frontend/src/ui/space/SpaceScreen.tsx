@@ -197,7 +197,7 @@ export function SpaceScreen(): ReactElement {
         )}
         {current.tab === 'feed' && <FeedPanel space={space.data} />}
         {current.tab === 'members' && <MembersPanel space={space.data} />}
-        <KeptAliveStack>
+        <KeptAliveStack active={framed}>
           {opened.has('tasks') && project && (
             <KeptAlive active={current.tab === 'tasks'}>
               <TasksPanel
