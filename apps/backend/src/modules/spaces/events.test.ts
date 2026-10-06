@@ -11,7 +11,7 @@ import {
 } from 'vitest'
 import type { PlatformEvent } from '../../events/envelope.ts'
 import { lastChanges } from '../../events/schema.ts'
-import { MalformedEventError } from '../../events/router.ts'
+import { MalformedEventError, NotYetKnownError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { activityEvents } from '../feed/schema.ts'
 import { notifications } from '../notifications/schema.ts'
@@ -511,6 +511,17 @@ describe('organization roles', () => {
     expect(await readRoles()).toEqual([])
   })
 
+  it('does not bring back a deleted user with an older role change', async () => {
+    await handle('domain.user.deleted', {
+      uuid: JDOE_ID,
+      timestamp: '2026-10-05T10:00:00Z'
+    })
+
+    await roleChanged({ uuid: JDOE_ID, timestamp: '2026-10-05T09:30:00Z' })
+
+    expect(await readRoles()).toEqual([])
+  })
+
   it('refuses an unknown role', async () => {
     await expect(
       roleChanged({ uuid: JDOE_ID, role: 'emperor' })
@@ -583,16 +594,81 @@ describe('stale events', () => {
     expect(await readGroups()).toEqual([])
   })
 
-  it('stores a replayed creation older than a rename', async () => {
-    await space('twake.space.updated', '10:00:00', { name: 'Design' })
+  it('waits for the creation of a space renamed before it arrives', async () => {
+    await expect(
+      space('twake.space.updated', '10:00:00', { name: 'Design' })
+    ).rejects.toThrow(NotYetKnownError)
 
     await space('twake.space.created', '09:00:00', {
       name: 'Design Sprint',
       members: [jdoe]
     })
+    await space('twake.space.updated', '10:00:00', { name: 'Design' })
 
-    expect(await readSpace()).toMatchObject([{ name: 'Design Sprint' }])
+    expect(await readSpace()).toMatchObject([{ name: 'Design' }])
     expect(await readMembers()).toHaveLength(1)
+  })
+
+  it('drops the rename of a deleted space', async () => {
+    await space('twake.space.created', '09:00:00', { name: 'Design Sprint' })
+    await space('twake.space.deleted', '10:00:00')
+
+    await space('twake.space.updated', '09:30:00', { name: 'Design' })
+
+    expect(await readSpace()).toEqual([])
+  })
+
+  it('keeps out a member removed before their addition arrives', async () => {
+    await space('twake.space.created', '09:00:00', { name: 'Design Sprint' })
+    await space('twake.space.member.removed', '10:00:00', { members: [jdoe] })
+
+    await space('twake.space.member.added', '09:30:00', { members: [jdoe] })
+
+    expect(await readMembers()).toEqual([])
+  })
+
+  it.each([
+    ['uuid', { uuid: JDOE_ID }],
+    ['email', { internalEmail: jdoe.email }]
+  ])(
+    'keeps a user deleted by %s out of a space they were added to before',
+    async (_by, user) => {
+      await space('twake.space.created', '09:00:00', { name: 'Design Sprint' })
+      await handle('domain.user.deleted', {
+        ...user,
+        timestamp: at('10:00:00')
+      })
+
+      await space('twake.space.member.added', '09:30:00', { members: [jdoe] })
+
+      expect(await readMembers()).toEqual([])
+    }
+  )
+
+  it('adds a user deleted by email when the addition is newer', async () => {
+    await space('twake.space.created', '09:00:00', { name: 'Design Sprint' })
+    await handle('domain.user.deleted', {
+      internalEmail: jdoe.email,
+      timestamp: at('10:00:00')
+    })
+
+    await space('twake.space.member.added', '11:00:00', { members: [jdoe] })
+
+    expect(await readMembers()).toHaveLength(1)
+  })
+
+  it('names a group renamed before it is linked by its newest name', async () => {
+    await space('twake.space.created', '09:00:00', { name: 'Design Sprint' })
+    await handle('b2b.group.updated', {
+      organizationId: 'evilcorp123',
+      id: DESIGNERS_ID,
+      name: 'Product design',
+      timestamp: at('10:00:00')
+    })
+
+    await space('twake.space.group.linked', '09:30:00', { groups: [designers] })
+
+    expect(await readGroups()).toMatchObject([{ name: 'Product design' }])
   })
 
   it('does not add a member to a space deleted after the event', async () => {

@@ -55,6 +55,14 @@ export const spaceGroups = pgTable(
   ]
 )
 
+// The newest name of a group, kept even while no space links it, so a link older
+// than a rename takes the new name.
+export const groupNames = pgTable('group_names', {
+  groupId: uuid('group_id').primaryKey(),
+  name: text().notNull(),
+  renamedAt: timestamptz('renamed_at').notNull()
+})
+
 export const organizationRole = pgEnum('organization_role', [
   'owner',
   'admin',
