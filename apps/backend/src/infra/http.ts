@@ -1,5 +1,14 @@
-import Fastify, { LogController } from 'fastify'
+import Fastify, { LogController, type FastifyRequest } from 'fastify'
 import type { Logger } from 'pino'
+
+// Synapse may send its hs_token as access_token in the query string.
+function loggedUrl(url: string) {
+  const [path, query] = url.split('?', 2)
+  if (query === undefined) return url
+  const params = new URLSearchParams(query)
+  if (params.has('access_token')) params.set('access_token', '[redacted]')
+  return `${path ?? ''}?${params.toString()}`
+}
 
 export function createServer(deps: {
   logger: Logger
@@ -7,10 +16,29 @@ export function createServer(deps: {
   isAlive?: () => boolean
 }) {
   const app = Fastify({
-    loggerInstance: deps.logger,
+    loggerInstance: deps.logger.child(
+      {},
+      {
+        serializers: {
+          req: (request: FastifyRequest) => ({
+            method: request.method,
+            url: loggedUrl(request.url),
+            host: request.host,
+            remoteAddress: request.ip
+          })
+        }
+      }
+    ),
     logController: new LogController({
       disableRequestLogging: request => request.url.startsWith('/health/')
     })
+  })
+
+  app.setErrorHandler((error: { statusCode?: number }, request, reply) => {
+    const status = error.statusCode ?? 500
+    if (status < 500) return reply.send(error)
+    request.log.error({ err: error }, 'request failed')
+    return reply.code(500).send({ error: 'internal' })
   })
 
   app.get('/health/live', (_request, reply) => {

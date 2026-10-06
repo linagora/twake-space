@@ -46,7 +46,7 @@ const tokenParams = z.object({ id: z.uuid() })
 
 const policyBody = z.object({
   allowNoExpiry: z.boolean(),
-  maxLifetimeDays: z.int().positive().nullable()
+  maxLifetimeDays: z.int().positive().max(3650).nullable()
 })
 
 const AUDIT_PAGE = 500

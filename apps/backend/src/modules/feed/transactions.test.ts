@@ -298,6 +298,26 @@ describe('PUT /_matrix/app/v1/transactions/:txnId', () => {
     expect(await readMessages()).toEqual([])
   })
 
+  it('refuses an unknown hs_token before reading the body', async () => {
+    const app = createServer({
+      logger: pino({ level: 'silent' }),
+      isReady: () => Promise.resolve(true)
+    })
+    registerTransactionRoutes(app, { db: testDb.db, localpart: 'uid' })
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/_matrix/app/v1/transactions/t1',
+      headers: {
+        authorization: 'Bearer nope',
+        'content-type': 'application/json'
+      },
+      payload: '{ not json'
+    })
+
+    expect(response.statusCode).toBe(403)
+  })
+
   describe('mentions', () => {
     const mentioning = (...userIds: string[]) =>
       message('look', {

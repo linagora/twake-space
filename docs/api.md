@@ -58,8 +58,8 @@ The refusals look like this.
 - Error bodies are JSON with an `error` code, sometimes with a human `message`: `{"error":"invalid_request","message":"..."}`.
 - `400 invalid_request` means the query or body failed its schema. The token routes and `PUT /notifications/settings` add a `message`.
 - `404 not_found` covers both a resource that does not exist and one the caller cannot reach. A malformed id in the path also answers 404 on the read routes.
-- No custom error handler is registered, so any other thrown error, including an ldap-rest failure on the directory routes, falls to Fastify's default 500 response.
-- The Matrix transaction route uses Matrix error bodies instead: `{"errcode":"M_FORBIDDEN","error":"..."}`.
+- Any other thrown error, including an ldap-rest failure on the directory routes, answers `500 {"error":"internal"}`. The error itself goes to the log only.
+- The Matrix transaction route uses Matrix error bodies instead: `{"errcode":"M_FORBIDDEN","error":"..."}`. It checks the `hs_token` before reading the body.
 
 ## Spaces
 
@@ -310,7 +310,7 @@ Revokes the token. Answers `204`, or `404 not_found` under the same conditions a
 ### PUT /organization/token-policy
 
 - Caller: organization admin.
-- Body: `allowNoExpiry` (boolean) and `maxLifetimeDays` (positive integer or null). Both are required.
+- Body: `allowNoExpiry` (boolean) and `maxLifetimeDays` (integer from 1 to 3650, or null). Both are required.
 - Answers `204`.
 
 ### GET /organization/token-audit
@@ -452,4 +452,4 @@ Unlinks the group. Answers `204`.
 - @rezk2ll The read routes answer 404 on a malformed path id, the PR #87 write routes answer 400. Is that difference intended?
 - @rezk2ll `GET /organization/groups` returns group `id`s from ldap-rest, and `POST /spaces/:id/groups` requires `groupIds` to be UUIDs. Are ldap-rest group ids always UUIDs?
 - @rezk2ll On `/organization/tokens`, PATCH and DELETE answer 404 to a non admin while GET and POST answer 403. Is that intended?
-- @rezk2ll An ldap-rest failure on the directory routes answers Fastify's default 500. Should it map to `503 unavailable` like the auth check?
+- @rezk2ll An ldap-rest failure on the directory routes answers `500 internal`. Should it map to `503 unavailable` like the auth check?

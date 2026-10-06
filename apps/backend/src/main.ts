@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises'
 import * as Sentry from '@sentry/node'
 import { pino } from 'pino'
 import { loadConfig } from './config.ts'
@@ -6,6 +7,7 @@ import { parkIn, scheduleParkedRetries } from './events/parking.ts'
 import { createMessageHandler, type Routes } from './events/router.ts'
 import { createDb, migrateDb } from './infra/db.ts'
 import { createServer } from './infra/http.ts'
+import { handleSignals } from './infra/lifecycle.ts'
 import {
   consumerAlive,
   consumerStats,
@@ -35,8 +37,17 @@ import { resourceActivityRoutes } from './modules/spaces/resources.ts'
 import { registerSpaceRoutes } from './modules/spaces/routes.ts'
 import { registerTokenRoutes } from './modules/tokens/routes.ts'
 
+// Readiness answers 503 this long before the server closes, so the load
+// balancer stops routing here first. Both fit the default 30 s grace period.
+const DRAIN_MS = 5000
+const SHUTDOWN_DEADLINE_MS = 25_000
+
 const config = loadConfig()
 const logger = pino({ level: config.LOG_LEVEL })
+const lifecycle = handleSignals({
+  log: logger,
+  deadlineMs: SHUTDOWN_DEADLINE_MS
+})
 
 const { sql, db } = createDb(config.DATABASE_URL)
 await migrateDb(sql)
@@ -118,29 +129,20 @@ const stopPosting = secretsKey
   ? schedulePosting(db, secretsKey, logger)
   : () => undefined
 accepting = true
-logger.info('twake-space backend started')
-
-let stopping = false
-async function shutdown(signal: string): Promise<void> {
-  if (stopping) return
-  stopping = true
+lifecycle.started(async () => {
   accepting = false
-  logger.info({ signal }, 'shutting down')
   stopParked()
   stopPurge()
   stopPosting()
   try {
     await consumer.disconnect()
     await deadLetters.disconnect()
+    await delay(DRAIN_MS)
     await server.close()
     await metrics.close()
     await sql.end({ timeout: 5 })
-  } catch (error) {
-    logger.error({ err: error }, 'shutdown failed')
-    process.exitCode = 1
+  } finally {
+    await Sentry.close(2000)
   }
-  await Sentry.close(2000)
-}
-
-process.once('SIGTERM', signal => void shutdown(signal))
-process.once('SIGINT', signal => void shutdown(signal))
+})
+logger.info('twake-space backend started')

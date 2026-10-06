@@ -220,26 +220,35 @@ export function registerTransactionRoutes(
   deps: { db: Db; localpart: Localpart }
 ) {
   const { db, localpart } = deps
+  const callers = new WeakMap<FastifyRequest, Homeserver>()
 
   app.put(
     '/_matrix/app/v1/transactions/:txnId',
-    { bodyLimit: MAX_TRANSACTION_BYTES },
+    {
+      bodyLimit: MAX_TRANSACTION_BYTES,
+      // Runs before the body is read, so an unknown caller cannot make us parse 8 MB.
+      onRequest: async (request, reply) => {
+        const token = hsTokenOf(request)
+        if (!token) {
+          return reply
+            .code(401)
+            .send({ errcode: 'M_UNAUTHORIZED', error: 'missing hs_token' })
+        }
+        const [homeserver] = await db
+          .select({ id: homeservers.id, serverName: homeservers.serverName })
+          .from(homeservers)
+          .where(eq(homeservers.hsTokenHash, hashSecret(token)))
+        if (!homeserver) {
+          return reply
+            .code(403)
+            .send({ errcode: 'M_FORBIDDEN', error: 'unknown hs_token' })
+        }
+        callers.set(request, homeserver)
+      }
+    },
     async (request, reply) => {
-      const token = hsTokenOf(request)
-      if (!token) {
-        return reply
-          .code(401)
-          .send({ errcode: 'M_UNAUTHORIZED', error: 'missing hs_token' })
-      }
-      const [homeserver] = await db
-        .select({ id: homeservers.id, serverName: homeservers.serverName })
-        .from(homeservers)
-        .where(eq(homeservers.hsTokenHash, hashSecret(token)))
-      if (!homeserver) {
-        return reply
-          .code(403)
-          .send({ errcode: 'M_FORBIDDEN', error: 'unknown hs_token' })
-      }
+      const homeserver = callers.get(request)
+      if (!homeserver) throw new Error('transaction without a caller')
       const txnId = params.safeParse(request.params)
       const body = transaction.safeParse(request.body)
       if (!txnId.success || !body.success) {
