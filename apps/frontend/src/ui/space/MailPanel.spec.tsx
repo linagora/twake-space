@@ -199,6 +199,11 @@ describe('MailPanel', () => {
       'sandbox',
       'allow-scripts allow-same-origin allow-popups allow-forms'
     )
+    expect(frame()).toHaveAttribute('allow', 'clipboard-read; clipboard-write')
+    expect(overlay()).toHaveAttribute(
+      'allow',
+      'clipboard-read; clipboard-write'
+    )
   })
 
   it('shows nothing of the overlay until Mail draws there', async () => {
