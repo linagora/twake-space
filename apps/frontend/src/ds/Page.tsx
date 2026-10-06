@@ -34,41 +34,45 @@ export function SpaceHeader({
   title,
   tabs,
   meta,
-  actions
+  actions,
+  compact = false
 }: {
   avatar: ReactNode
   title: ReactNode
   tabs: ReactNode
   meta?: ReactNode
   actions?: ReactNode
+  compact?: boolean
 }): ReactElement {
   return (
-    <Box sx={{ mb: 2 }}>
-      <Box
-        sx={{
-          position: 'relative',
-          overflow: 'hidden',
-          height: { xs: 120, md: 211 },
-          borderRadius: '8px',
-          bgcolor: 'primary.dark',
-          containerType: 'size'
-        }}
-      >
-        {/* The artwork is portrait; turned, it spans the banner's width. */}
+    <Box sx={{ mb: compact ? 0 : 2 }}>
+      {!compact && (
         <Box
-          component="img"
-          src={cover}
-          alt=""
           sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            height: '100cqw',
-            maxWidth: 'none',
-            transform: 'translate(-50%, -50%) rotate(-90deg)'
+            position: 'relative',
+            overflow: 'hidden',
+            height: { xs: 120, md: 211 },
+            borderRadius: '8px',
+            bgcolor: 'primary.dark',
+            containerType: 'size'
           }}
-        />
-      </Box>
+        >
+          {/* The artwork is portrait; turned, it spans the banner's width. */}
+          <Box
+            component="img"
+            src={cover}
+            alt=""
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              height: '100cqw',
+              maxWidth: 'none',
+              transform: 'translate(-50%, -50%) rotate(-90deg)'
+            }}
+          />
+        </Box>
+      )}
       <Box
         sx={{
           display: 'flex',
