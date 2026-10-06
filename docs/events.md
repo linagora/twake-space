@@ -7,9 +7,9 @@ How events reach Twake Space, what the backend does with them, and how the resul
 - Platform event: a RabbitMQ message from ldap-rest or another platform service (exchanges `space`, `b2b`, `admin-panel`, `settings`). It has a routing key, a message id, and a JSON body.
 - Activity event: a CloudEvent (specversion `1.0`) an app publishes on the `activity` exchange, with the CloudEvent `type` as routing key.
 - Copy: the backend's Postgres copy of organizations, spaces, members, linked groups and resources.
-- Card: an activity event stored in `activity_events`, then posted to the space's Matrix space as a `com.twake.feed.<category>` event.
-- Bot: the application service user. It posts with the homeserver's `as_token`.
-- Live event: a message the backend pushes to a browser over SSE, either `spaces` or `notification`.
+- Card: a space feed item showing the activity events about one object, stored in `feed_cards` and pointing at the object's latest event in `activity_events`.
+- Post: a space feed item a member writes, stored in `feed_posts`.
+- Live event: a message the backend pushes to a browser over SSE: `spaces`, `notification`, `settings` or `feed`.
 
 ## Overview
 
@@ -26,10 +26,9 @@ flowchart LR
   R -->|dedupe + handler, one transaction| PG[(Postgres)]
   R -->|RejectedEventError| DLQ["twake-space.dlx → twake-space.dlq"]
   PG -->|pg_notify live| SSE[GET /stream]
-  PG -->|poster, every second| MX[Synapse: Matrix space]
-  MX -->|app service transactions| PG
+  MX[Synapse] -->|app service transactions| PG
   SSE --> B[Browser]
-  MX -->|sync| B
+  B -->|feed routes| PG
 ```
 
 ## Consuming RabbitMQ
@@ -128,7 +127,7 @@ The browser reads `GET /settings` once signed in, and applies the answer when it
 - `b2b.group.updated`: renames the group in every space.
 - `b2b.member.role.changed`: upserts the person's organization role.
 - `b2b.member.disabled`: revokes the account's tokens in that organization.
-- `domain.user.deleted`: deletes the person's notifications, turns them into `deleted_user` on stored cards, revokes their tokens, and removes them from every space and organization.
+- `domain.user.deleted`: deletes the person's notifications and reactions, turns them into `deleted_user` on stored cards and posts, revokes their tokens, and removes them from every space and organization.
 - `domain.organization.deleted`: revokes the organization's tokens.
 
 A person sent without a `uuid` (ldap-rest lifecycle events carry none) is matched in the copy by email, among space members and then among the organization roles (in the event's organization when it names one). `b2b.member.disabled` also falls back to the username, among space members only: organization roles hold no username.
@@ -144,7 +143,7 @@ Upserts and removals of members, groups and names send a `spaces` live event to 
 - `drive` -> `drive`
 - `mail` -> `mailbox`
 - `calendar` -> `calendar`
-- `chat` -> `matrix_space` (the room id the bot posts cards to)
+- `chat` -> `matrix_space` (the space's Matrix room id)
 - `tasks` -> `project` (the Tasks project id)
 
 - It needs `twakeorg`, and rejects the event when that is not the space's organization.
@@ -169,6 +168,7 @@ The CloudEvent fields the handler reads:
 - `twakeactorid`, `twakeactor`: the acting user's uuid and email.
 - `data.object`: `type`, `id`, `title`, and an optional `container` (`kind`, `id`): the app's own resource the object lives in. Apps send ids, never a link.
 - `data.preview`: optional text, cut to 280 characters.
+- `data.state`: optional, an object the card passes to the browser as is, such as a calendar event's time. The card shows the latest event's, so an app sends the whole state on every event.
 - `data.actor`: `{ type: 'token', id, name }` when an API token acted.
 - `data.recipients`: who to notify (see Notifications).
 
@@ -179,58 +179,32 @@ The actor stored on the card is one of:
 - `{ type: 'deleted_user' }` once the user is deleted.
 - null when the event names no actor.
 
-The space is the one whose resource of that kind has the container's id. An app publishes a resource's provisioned event before any activity on it, and both reach the same queue in that order, so a container no space has belongs to a person: the card is for personal notifications only. A container held only by another organization's space is rejected to the dead letter queue. A user actor who is not a member may only mean the platform event that adds them has not arrived yet, so the event is parked. A parked event is handled after the events that came after it in the queue. A space with linked groups accepts a non member actor with a warning, since the copy does not hold group members.
+The space is the one whose resource of that kind has the container's id. An app publishes a resource's provisioned event before any activity on it, and both reach the same queue in that order, so a container no space has belongs to a person: the card is for personal notifications only. A container held only by another organization's space is rejected to the dead letter queue. A user actor with a uuid who is not a member may only mean the platform event that adds them has not arrived yet, so the event is parked. An actor sent by email only that no member has is kept as is: someone outside the space, such as an attendee replying to a team calendar event. A parked event is handled after the events that came after it in the queue. A space with linked groups accepts a non member actor with a warning, since the copy does not hold group members.
 
 The card stores everything in `data` except `recipients`.
 
-## Posting cards to Matrix
+## The feed
 
 ```mermaid
 sequenceDiagram
   participant K as RabbitMQ
   participant BE as Backend
   participant PG as Postgres
-  participant S as Synapse
   participant FE as Browser
   K->>BE: activity event
-  BE->>PG: insert activity_events (matrix_event_id null)
-  loop every second, one replica
-    BE->>PG: spaces with unposted cards, matrix_space resource, chat available
-    BE->>S: join room (once per room)
-    BE->>S: PUT send com.twake.feed.<category>, txn id = card id
-    opt earlier card about the same object
-      BE->>S: PUT send m.replace edit of the first card
-    end
-    BE->>PG: set matrix_event_id
-  end
-  S-->>FE: sync (filtered timeline)
+  BE->>PG: insert activity_events
+  BE->>PG: upsert feed_cards (space, object type, object id)
+  BE->>PG: pg_notify live, feed added or changed
+  PG-->>FE: event: feed (GET /stream)
+  FE->>BE: GET /spaces/:spaceId/feed/items/:itemId
 ```
 
-- The poster runs every second under a Postgres advisory lock, so one replica posts at a time.
-- A space is picked when it has unposted cards, a `matrix_space` resource, and its organization has chat available and a homeserver. Up to 50 spaces per pass, 50 cards per space, oldest first.
-- Spaces post in parallel. Within a space, cards go in order and the space stops at its first failure, wherever it happens (reading its homeserver token, its cards, or Matrix). The pass, and the lock, end once every space is done.
-- A failing space waits before its next try: 1 second, doubling up to 5 minutes, reset by a pass where all its cards post. Other spaces post meanwhile.
-- A card the homeserver refuses for good (400 or 413) gets `post_failed_at`, is not retried, and the next card posts. When only the edit of the first card is refused, the card stays posted and the first card is left as it was.
-- The transaction id is the card's `id`, so a retried send does not post twice.
-- A card in no space is never posted. It exists for personal notifications only.
-- `twake_space_cards_waiting{organization}` on the metrics port counts unposted cards per organization with chat, and `twake_space_cards_failed{organization}` the refused ones.
-
-### Card content
-
-The event type is `com.twake.feed.<category>`, with `<category>` one of `messages`, `files`, `activities`, `events`. The content:
-
-- `type`: the CloudEvent type.
-- `id`: the CloudEvent id.
-- `actor`: the stored actor.
-- `object`: `type`, `id`, `title` and `container`. A `url` the app still sends is left out: cards are kept 12 months, longer than an app keeps its host and routes.
-- `preview`: the preview, when sent.
-- `state`: `data.state` when the app sent one, else `{}`.
-- `body`: the title and the preview, one per line, for Matrix clients that only read `body`.
-- `m.mentions`: `{}`.
-
-### Edits
-
-When a card is about an object (same space, `object.type`, `object.id`) that already has a posted card, the bot posts the new card, then edits the first card with the new content (`m.new_content`, `m.relates_to` with `rel_type: m.replace`). The edit uses the first card's event type and the transaction id `<card id>.edit`. A card older (by `time`) than another posted card about the object is posted without the edit, so the first card keeps the latest content.
+- A space's feed is its cards and its posts, newest first. The routes are in the [HTTP API](api.md#feed).
+- A card exists per object: space, `object.type` and `object.id`. Its time is the object's first event, so later events change the card without moving it. It shows the latest event (by CloudEvent `time`) whatever order the events arrive in.
+- An event in no space makes no card. It exists for personal notifications only.
+- Posts are plain text, from editors and admins. Their authors edit and delete them. Every member reacts to cards and posts.
+- Each new or changed card, post or reaction sends a `feed` live event to the space's members.
+- Nothing is posted to Matrix: the poster that sent cards to the space's Matrix room is off.
 
 ## Matrix events back into Postgres
 
@@ -326,7 +300,8 @@ sequenceDiagram
 
 A purge runs at startup and every hour, under an advisory lock so one replica purges at a time:
 
-- `activity_events`, `feed_messages`, `feed_reactions`: 365 days after they were stored.
+- `activity_events`, `feed_messages`, `feed_reactions`, `feed_item_reactions`: 365 days after they were stored. A card goes with its latest event.
+- `feed_posts`: 365 days after they were written. Their reactions go with them.
 - `notifications`: 90 days.
 - `app_service_transactions`: 7 days.
 
@@ -340,9 +315,7 @@ The purge does not touch the copy, `processed_events` or `last_changes`, nor the
 ## Open questions
 
 - @rezk2ll In SaaS, which exchange carries `chat.deployment.completed`? The queue binds it on `b2b` for now (ADR 008 leaves it open).
-- @rezk2ll A second card about the same object is posted as a new card and also edits the first one. Should the feed show both, or should the later card only be an edit?
-- @rezk2ll The card content carries `state`, which the activity schema does not declare and the frontend does not read. What is it for, and what shape should apps send?
 - @rezk2ll The frontend ignores the `notification` live event and has no notifications view yet. Is that planned under #90?
 - @rezk2ll `processed_events` and `last_changes` grow without a purge. Is that intended?
 - @rezk2ll A recipient `uuid` the copy does not hold is notified, because the copy has no full list of an organization's members. Should the backend check it against the directory instead, or should apps only name people of the event's organization?
-- @rezk2ll Cards stored while an organization has no chat stay unposted (up to the 365 day purge). When chat is turned on, the poster posts that whole backlog into each Matrix space. Should cards older than chat be skipped instead?
+- @rezk2ll An actor outside the space (an email no member has) shows with no name. Should the card show their email, which the team calendar already shows to its members?

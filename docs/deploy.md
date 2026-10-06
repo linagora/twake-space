@@ -131,7 +131,7 @@ Optional, with defaults:
 - `SPACE_APPS`: the apps that prepare a resource for each space on this deployment, comma separated, among `chat`, `tasks`, `drive`, `mail` and `calendar`. Default: all five. A space shows no tab for an app left out. Chat also needs a Matrix homeserver (below), or it is left out too.
 - `SENTRY_DSN`, `SENTRY_ENVIRONMENT`: error reporting. Unset `SENTRY_DSN` disables it.
 
-Matrix homeserver, in one of two modes. Without either, the backend runs but posts nothing to Matrix.
+Matrix homeserver, in one of two modes. Without either, the backend runs without chat.
 
 - Single installation: set all of `MATRIX_HOMESERVER_URL`, `MATRIX_SERVER_NAME`, `MATRIX_AS_TOKEN` and `MATRIX_HS_TOKEN`. This one homeserver serves every organization.
 - SaaS: set both `CHAT_CONTROL_PLANE_URL` and `CHAT_CONTROL_PLANE_TOKEN`. The control plane gives each organization its homeserver.
@@ -183,8 +183,6 @@ Health requests are not logged. The metrics port answers `/health/live` and `/he
 
 `GET /metrics` on `METRICS_PORT` returns Prometheus text format, described in [api.md](api.md). Worth alerting on:
 
-- `twake_space_cards_waiting{organization="<id>"}` growing: cards are not reaching Matrix. Organizations with nothing waiting report 0, so alerts resolve.
-- `twake_space_cards_failed{organization="<id>"}` above 0: the homeserver refused cards for good.
 - `twake_space_parked_events` growing: events wait for a space or member the platform never announced.
 
 ### Logs and Sentry
@@ -200,7 +198,7 @@ Health requests are not logged. The metrics port answers `/health/live` and `/he
 - Holds all state and the migrations.
 - Uses `LISTEN` and `NOTIFY` for live updates and session revocations across replicas.
 - Uses advisory locks so only one replica runs the hourly purge and the single installation homeserver setup at a time.
-- The hourly purge deletes feed events, messages and reactions after 365 days, notifications after 90 days, and Matrix app service transactions after 7 days.
+- The hourly purge deletes feed events, cards, posts, messages and reactions after 365 days, notifications after 90 days, and Matrix app service transactions after 7 days.
 
 ### RabbitMQ
 
@@ -222,7 +220,7 @@ The directory: organizations, users, groups and technical accounts. Calls are au
 
 ### Matrix homeserver
 
-- The backend posts feed cards and joins rooms through the client-server API (`/_matrix/client/v3/...`) with the app service token, 10 second timeout. The poster runs every second, only when a homeserver or control plane is set.
+- The backend posts nothing to Matrix: the feed lives in Postgres.
 - The homeserver pushes app service transactions to `PUT /_matrix/app/v1/transactions/:txnId` on the API port, authenticated with the homeserver token (bearer header or `access_token` query). The homeserver must reach the backend.
 
 ### Chat control plane (SaaS)
