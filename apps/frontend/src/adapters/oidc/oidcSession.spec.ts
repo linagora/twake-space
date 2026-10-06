@@ -40,14 +40,23 @@ describe('readSsoConfig', () => {
 describe('oidcSession', () => {
   it('finishes the sign-in on the redirect URI and goes back', async () => {
     window.history.replaceState(null, '', '/auth/callback?code=c&state=s')
+    const userinfo: LoginResult['userinfo'] = {
+      sub: 'alice',
+      uuid: 'uuid-alice',
+      name: 'Alice Martin'
+    }
     vi.mocked(completeLogin).mockResolvedValue({
-      userinfo: { sub: 'alice', name: 'Alice Martin' },
+      userinfo,
       returnTo: '/spaces?tab=2'
     } as LoginResult)
 
     const user = await oidcSession(config).start()
 
-    expect(user).toEqual({ name: 'Alice Martin', email: null })
+    expect(user).toEqual({
+      id: 'uuid-alice',
+      name: 'Alice Martin',
+      email: null
+    })
     expect(window.location.pathname + window.location.search).toBe(
       '/spaces?tab=2'
     )

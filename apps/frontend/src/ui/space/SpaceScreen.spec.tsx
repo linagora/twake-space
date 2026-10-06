@@ -3,7 +3,6 @@ import { Route, Routes, useLocation, useNavigate } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Space } from '@/application/spaces'
-import { fakeMatrix } from '@/testing/fakeMatrix'
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { SpaceScreen } from '@/ui/space/SpaceScreen'
@@ -34,20 +33,7 @@ function Path() {
   return <output aria-label="path">{useLocation().pathname}</output>
 }
 
-const withChat: Space = {
-  ...roadmap,
-  chat: true,
-  homeserverUrl: 'https://matrix.acme.test',
-  resources: roadmap.resources.map(r =>
-    r.kind === 'matrix_space' ? { ...r, id: '!s:acme' } : r
-  )
-}
-
-function renderAt(
-  path: string,
-  space: Space | null = roadmap,
-  matrix = fakeMatrix()
-) {
+function renderAt(path: string, space: Space | null = roadmap) {
   const spaces = fakeSpaces()
   vi.mocked(spaces.get).mockImplementation(id =>
     space?.id === id
@@ -61,7 +47,7 @@ function renderAt(
       </Routes>
       <Path />
     </>,
-    { spaces, path, matrix }
+    { spaces, path }
   )
   return spaces
 }
@@ -96,7 +82,7 @@ function renderSpaces(path: string, spaces: Space[]) {
       <Path />
       <Go to="/spaces/b2/mail" />
     </>,
-    { spaces: service, path, matrix: fakeMatrix() }
+    { spaces: service, path }
   )
 }
 
@@ -142,7 +128,7 @@ describe('SpaceScreen', () => {
   })
 
   it('opens on the first tab that is on', async () => {
-    renderAt('/spaces/a1')
+    renderAt('/spaces/a1', { ...roadmap, apps: ['chat', 'tasks'] })
 
     expect(
       await screen.findByRole('tab', { name: 'Tasks', selected: true })
@@ -150,15 +136,15 @@ describe('SpaceScreen', () => {
     expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/tasks')
   })
 
-  it('turns Feed and Chat off without chat and says why', async () => {
+  it('turns Chat off without chat and says why', async () => {
     renderAt('/spaces/a1/tasks')
 
-    expect(await screen.findByRole('tab', { name: 'Feed' })).toBeDisabled()
-    expect(screen.getByRole('tab', { name: 'Chat' })).toBeDisabled()
+    expect(await screen.findByRole('tab', { name: 'Chat' })).toBeDisabled()
+    expect(screen.getByRole('tab', { name: 'Feed' })).toBeEnabled()
     expect(screen.getByRole('tab', { name: 'Mail' })).toBeEnabled()
     expect(
       screen.getByText(
-        'Feed and Chat are off: chat is not turned on for your organization.'
+        'Chat is off: it is not turned on for your organization.'
       )
     ).toBeInTheDocument()
   })
@@ -178,9 +164,9 @@ describe('SpaceScreen', () => {
     renderAt('/spaces/a1/chat')
 
     expect(
-      await screen.findByRole('tab', { name: 'Tasks', selected: true })
+      await screen.findByRole('tab', { name: 'Feed', selected: true })
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/tasks')
+    expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/feed')
   })
 
   it('keeps the tab in the URL', async () => {
@@ -227,25 +213,14 @@ describe('SpaceScreen', () => {
     }
   )
 
-  it("signs in to the organization's homeserver on the Feed tab", async () => {
-    const matrix = fakeMatrix()
-
-    renderAt('/spaces/a1/feed', withChat, matrix)
+  it("shows the space's feed on the Feed tab, chat or not", async () => {
+    renderAt('/spaces/a1/feed')
 
     expect(
       await screen.findByRole('tab', { name: 'Feed', selected: true })
     ).toBeInTheDocument()
-    expect(matrix.signIn).toHaveBeenCalledWith('https://matrix.acme.test')
-  })
-
-  it('says so when the chat sign-in fails', async () => {
-    const matrix = fakeMatrix()
-    vi.mocked(matrix.signIn).mockRejectedValue(new Error('no homeserver'))
-
-    renderAt('/spaces/a1/feed', withChat, matrix)
-
     expect(
-      await screen.findByText('Could not sign in to chat.')
+      await screen.findByRole('textbox', { name: 'Text message' })
     ).toBeInTheDocument()
   })
 

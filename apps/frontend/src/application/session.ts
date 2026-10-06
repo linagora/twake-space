@@ -1,4 +1,6 @@
 export interface User {
+  /** The backend's user id, the SSO's `uuid` claim. */
+  id: string | null
   name: string | null
   email: string | null
 }

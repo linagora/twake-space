@@ -128,7 +128,7 @@
     "loading": "Chargement de l'espace…",
     "notFound": "Cet espace n'existe pas, ou vous n'en faites pas partie.",
     "loadFailed": "L'espace n'a pas pu être chargé.",
-    "chatOff": "Le fil et le chat sont désactivés : le chat n'est pas activé pour votre organisation.",
+    "chatOff": "Le chat est désactivé : il n'est pas activé pour votre organisation.",
     "mailOff": "Le mail est désactivé : le domaine mail de votre organisation n'est pas encore validé.",
     "preparing": "%{app} est en cours de préparation pour cet espace.",
     "stalled": "%{app} n'est pas encore prêt. Réessayez plus tard, et prévenez votre administrateur si cela persiste.",
@@ -141,8 +141,57 @@
     "notSetUp": "Mail n'est pas configuré pour TwakeSpace."
   },
   "feed": {
-    "signingIn": "Connexion au chat",
-    "signInFailed": "Impossible de se connecter au chat.",
+    "composer": "Message",
+    "send": "Envoyer",
+    "postFailed": "Impossible d'envoyer le message.",
+    "more": "Plus d'actions",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "edited": "modifié",
+    "changeFailed": "Impossible de modifier le message.",
+    "react": "Ajouter une réaction",
+    "reaction": "%{emoji} %{count}",
+    "open": {
+      "tasks": "Ouvrir dans Tâches",
+      "mail": "Ouvrir dans Mail",
+      "calendar": "Voir l'événement",
+      "drive": "Ouvrir dans Drive",
+      "chat": "Ouvrir dans le chat"
+    },
+    "verbs": {
+      "other": "a publié une mise à jour",
+      "tasks": {
+        "created": "a créé une tâche",
+        "updated": "a modifié une tâche",
+        "assigned": "a assigné une tâche",
+        "unassigned": "a désassigné une tâche",
+        "moved": "a déplacé une tâche",
+        "completed": "a terminé une tâche",
+        "reopened": "a rouvert une tâche",
+        "deleted": "a supprimé une tâche",
+        "restored": "a restauré une tâche"
+      },
+      "mail": {
+        "received": "Nouvel e-mail reçu",
+        "sent": "E-mail envoyé"
+      },
+      "calendar": {
+        "created": "a créé un événement",
+        "updated": "a modifié un événement",
+        "rescheduled": "a déplacé un événement",
+        "accepted": "a accepté un événement",
+        "declined": "a refusé un événement",
+        "proposed": "a proposé un autre horaire"
+      }
+    },
+    "event": {
+      "allDay": "Toute la journée",
+      "movedFrom": "Déplacé depuis %{time}",
+      "proposed": "%{by} propose %{time}",
+      "rsvp": "%{accepted} oui · %{tentative} peut-être · %{declined} non · %{pending} en attente"
+    },
     "loading": "Chargement du fil",
     "loadFailed": "Impossible de charger le fil.",
     "empty": "Rien pour l'instant.",
@@ -154,7 +203,7 @@
     },
     "loadOlder": "Charger les plus anciens",
     "loadOlderFailed": "Impossible de charger les plus anciens.",
-    "filter": "Afficher",
+    "filter": "Filtrer par",
     "filters": {
       "all": "Tout",
       "messages": "Messages",
@@ -166,7 +215,6 @@
       "mail": "Mail",
       "drive": "Drive",
       "calendar": "Agenda",
-      "meet": "Visio",
       "tasks": "Tâches"
     },
     "deletedUser": "Utilisateur supprimé",

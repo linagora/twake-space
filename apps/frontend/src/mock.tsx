@@ -15,7 +15,7 @@ import {
 import { App } from '@/app/App'
 import { NO_SETTINGS } from '@/application/settings'
 
-// `npm run dev:mock`: the app on seed data, with no backend, SSO or homeserver.
+// `npm run dev:mock`: the app on seed data, with no backend or SSO.
 const container = document.getElementById('root')
 if (!container) throw new Error('Root element #root not found')
 
@@ -33,11 +33,10 @@ const services = {
   directory: memoryDirectory(seedOrganization),
   settings: { get: () => Promise.resolve(NO_SETTINGS) },
   live: { subscribe: () => () => undefined },
-  matrix: {
-    signIn: () => Promise.resolve(true),
-    signOut: () => Promise.resolve()
-  },
-  feed: memoryFeed(seedFeed),
+  feed: memoryFeed(seedFeed, {
+    me: { id: 'uuid-alice', name: seedUser.name },
+    roles: Object.fromEntries(seedSpaces.map(space => [space.id, space.role]))
+  }),
   tasksUrl: window.TASKS_URL ?? null,
   mailUrl: window.MAIL_URL ?? null
 }

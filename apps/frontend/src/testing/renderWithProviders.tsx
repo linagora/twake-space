@@ -5,7 +5,6 @@ import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
 import type { DirectoryService } from '@/application/directory'
 import type { FeedService } from '@/application/feed'
 import type { LiveService } from '@/application/live'
-import type { MatrixService } from '@/application/matrix'
 import type { SessionService } from '@/application/session'
 import type { SettingsService } from '@/application/settings'
 import type { SpacesService } from '@/application/spaces'
@@ -15,7 +14,6 @@ import { routes } from '@/app/routes'
 import { fakeDirectory } from '@/testing/fakeDirectory'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeLive } from '@/testing/fakeLive'
-import { fakeMatrix } from '@/testing/fakeMatrix'
 import { fakeSession } from '@/testing/fakeSession'
 import { fakeSettings } from '@/testing/fakeSettings'
 import { fakeSpaces } from '@/testing/fakeSpaces'
@@ -30,7 +28,6 @@ interface Options {
   settings?: SettingsService
   directory?: DirectoryService
   live?: LiveService
-  matrix?: MatrixService
   feed?: FeedService
   path?: string
   tasksUrl?: string | null
@@ -46,7 +43,6 @@ function withProviders(
     settings = fakeSettings(),
     directory = fakeDirectory(),
     live = fakeLive(),
-    matrix = fakeMatrix(),
     feed = fakeFeed(),
     tasksUrl = 'https://tasks.test/',
     mailUrl = 'https://mail.test/'
@@ -61,7 +57,6 @@ function withProviders(
         settings,
         directory,
         live,
-        matrix,
         feed,
         tasksUrl,
         mailUrl

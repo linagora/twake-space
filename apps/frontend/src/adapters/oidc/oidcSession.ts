@@ -61,7 +61,9 @@ export function oidcSession(config: AuthConfig): SessionService {
         const login = await completeLogin()
         if (login) {
           window.history.replaceState(null, '', login.returnTo)
+          const { uuid } = login.userinfo
           return {
+            id: typeof uuid === 'string' ? uuid : null,
             name: login.userinfo.name ?? null,
             email: login.userinfo.email ?? null
           }

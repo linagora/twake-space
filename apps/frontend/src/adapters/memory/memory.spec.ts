@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { memoryDirectory } from '@/adapters/memory/memoryDirectory'
 import { memoryFeed } from '@/adapters/memory/memoryFeed'
 import { memorySpaces } from '@/adapters/memory/memorySpaces'
-import type { FeedEntry, FeedPage } from '@/application/feed'
+import type { FeedItem } from '@/application/feed'
 import type { Space } from '@/application/spaces'
 
 const roadmap: Space = {
@@ -46,24 +46,33 @@ const people = [
 ]
 const groups = [{ id: 'g-designers', name: 'Designers' }]
 
-const message = (ts: number): FeedEntry => ({
-  kind: 'message',
-  id: `$m${String(ts)}`,
-  ts,
-  sender: '@bob:acme.test',
-  senderName: 'Bob',
-  body: `Message ${String(ts)}`
+const at = (minute: number) =>
+  new Date(Date.UTC(2026, 9, 7, 8, minute)).toISOString()
+
+const message = (minute: number): FeedItem => ({
+  id: `m${String(minute)}`,
+  kind: 'post',
+  category: 'messages',
+  time: at(minute),
+  updatedAt: at(minute),
+  reactions: [],
+  author: { type: 'user', id: 'u-bob', name: 'Bob Durand' },
+  body: `Message ${String(minute)}`,
+  editedAt: null
 })
 
-const file: FeedEntry = {
+const file: FeedItem = {
+  id: 'file',
   kind: 'card',
-  id: '$file',
-  ts: 50,
   category: 'files',
-  app: 'drive',
-  actor: { type: 'user', id: 'u-bob', email: 'bob@acme.test' },
+  time: at(50),
+  updatedAt: at(50),
+  reactions: [],
+  type: 'com.twake.drive.file.created.v1',
+  actor: { type: 'user', id: 'u-bob', name: 'Bob Durand' },
   object: { type: 'file', id: 'f-1', title: 'brief.pdf', container: null },
-  preview: null
+  preview: null,
+  state: {}
 }
 
 describe('memorySpaces', () => {
@@ -151,45 +160,69 @@ describe('memorySpaces', () => {
 })
 
 describe('memoryFeed', () => {
-  const feed = memoryFeed(
-    {
-      '!roadmap:acme.test': [
-        ...Array.from({ length: 12 }, (_, i) => message(i + 1)),
-        file
-      ]
-    },
-    { pageSize: 10 }
-  )
+  const seed = {
+    roadmap: [...Array.from({ length: 12 }, (_, i) => message(i + 1)), file]
+  }
+  const feedFor = (role: 'admin' | 'viewer') =>
+    memoryFeed(seed, {
+      me: { id: 'u-bob', name: 'Bob Durand' },
+      roles: { roadmap: role },
+      pageSize: 10
+    })
 
-  it('opens on the newest page of the filtered entries', async () => {
-    const pages: FeedPage[] = []
+  it('reads the newest page of a category, then the older one', async () => {
+    const feed = feedFor('admin')
 
-    await feed.open('!roadmap:acme.test', 'messages', page => pages.push(page))
-
-    expect(pages.at(-1)?.entries.map(entry => entry.ts)).toEqual([
-      3, 4, 5, 6, 7, 8, 9, 10, 11, 12
-    ])
-    expect(pages.at(-1)?.hasOlder).toBe(true)
-  })
-
-  it('loads older entries until none are left', async () => {
-    const pages: FeedPage[] = []
-    const view = await feed.open('!roadmap:acme.test', 'messages', page =>
-      pages.push(page)
+    const first = await feed.list('roadmap', { category: 'messages' })
+    expect(first.items.map(item => item.id)).toEqual(
+      Array.from({ length: 10 }, (_, i) => `m${String(12 - i)}`)
     )
 
-    await view.loadOlder()
+    const older = await feed.list('roadmap', {
+      category: 'messages',
+      before: first.next ?? ''
+    })
+    expect(older).toEqual({ items: [message(2), message(1)], next: null })
+  })
 
-    expect(pages.at(-1)?.entries).toHaveLength(12)
-    expect(pages.at(-1)?.hasOlder).toBe(false)
+  it('reads nothing before an item that is gone', async () => {
+    expect(await feedFor('admin').list('roadmap', { before: 'gone' })).toEqual({
+      items: [],
+      next: null
+    })
   })
 
   it('keeps only the cards of a category', async () => {
-    const pages: FeedPage[] = []
+    expect(
+      await feedFor('admin').list('roadmap', { category: 'files' })
+    ).toEqual({ items: [file], next: null })
+  })
 
-    await feed.open('!roadmap:acme.test', 'files', page => pages.push(page))
+  it("edits, reacts to and deletes the caller's own post", async () => {
+    const feed = feedFor('admin')
+    const post = await feed.post('roadmap', 'Hi all')
 
-    expect(pages.at(-1)).toEqual({ entries: [file], hasOlder: false })
+    await feed.edit('roadmap', post.id, 'Hello all')
+    await feed.react('roadmap', post.id, '🎉')
+
+    expect(await feed.item('roadmap', post.id)).toMatchObject({
+      body: 'Hello all',
+      reactions: [{ key: '🎉', userIds: ['u-bob'] }]
+    })
+
+    await feed.unreact('roadmap', post.id, '🎉')
+    expect((await feed.item('roadmap', post.id)).reactions).toEqual([])
+
+    await feed.remove('roadmap', post.id)
+    await expect(feed.item('roadmap', post.id)).rejects.toMatchObject({
+      status: 404
+    })
+  })
+
+  it('refuses a post from a viewer', async () => {
+    await expect(feedFor('viewer').post('roadmap', 'Hi')).rejects.toMatchObject(
+      { status: 403, code: 'cannot_post' }
+    )
   })
 })
 

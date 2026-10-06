@@ -17,8 +17,8 @@ export type TabState = 'off' | 'preparing' | 'stalled' | 'ready'
 /** How long an app may take to prepare a new space's resource. */
 export const PREPARING_MS = 2 * 60_000
 
-const RESOURCE: Record<Exclude<Tab, 'members'>, ResourceKind> = {
-  feed: 'matrix_space',
+// The feed and the members are TwakeSpace's own, with no app resource.
+const RESOURCE: Record<Exclude<Tab, 'feed' | 'members'>, ResourceKind> = {
   chat: 'matrix_space',
   tasks: 'project',
   drive: 'drive',
@@ -27,7 +27,7 @@ const RESOURCE: Record<Exclude<Tab, 'members'>, ResourceKind> = {
 }
 
 function isOn(space: Space, tab: Tab): boolean {
-  if (tab === 'feed' || tab === 'chat') return space.chat
+  if (tab === 'chat') return space.chat
   if (tab === 'mail') return space.mail
   return true
 }
@@ -40,6 +40,9 @@ export function spaceTabs(
     now < Date.parse(space.createdAt) + PREPARING_MS ? 'preparing' : 'stalled'
   return TABS.flatMap((tab): { tab: Tab; state: TabState }[] => {
     if (tab === 'members') return [{ tab, state: 'ready' }]
+    if (tab === 'feed') {
+      return space.apps.includes(tab) ? [{ tab, state: 'ready' }] : []
+    }
     const resource = space.resources.find(r => r.kind === RESOURCE[tab])
     if (!resource || !space.apps.includes(tab)) return []
     if (!isOn(space, tab)) return [{ tab, state: 'off' }]

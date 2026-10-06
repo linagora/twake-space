@@ -1,0 +1,37 @@
+import type { KyInstance } from 'ky'
+
+import type { FeedItem, FeedPage, FeedService } from '@/application/feed'
+
+export function httpFeed(api: KyInstance): FeedService {
+  const feed = (spaceId: string, ...rest: string[]) =>
+    ['spaces', spaceId, 'feed', ...rest].map(encodeURIComponent).join('/')
+  const send = async (request: Promise<unknown>) => {
+    await request
+  }
+
+  return {
+    list: (spaceId, { category, before }) =>
+      api
+        .get(feed(spaceId), {
+          searchParams: {
+            ...(category && { category }),
+            ...(before && { before })
+          }
+        })
+        .json<FeedPage>(),
+    item: (spaceId, itemId) =>
+      api.get(feed(spaceId, 'items', itemId)).json<FeedItem>(),
+    post: (spaceId, body) =>
+      api.post(feed(spaceId, 'posts'), { json: { body } }).json<FeedItem>(),
+    edit: (spaceId, postId, body) =>
+      api
+        .patch(feed(spaceId, 'posts', postId), { json: { body } })
+        .json<FeedItem>(),
+    remove: (spaceId, postId) =>
+      send(api.delete(feed(spaceId, 'posts', postId))),
+    react: (spaceId, itemId, key) =>
+      send(api.put(feed(spaceId, 'items', itemId, 'reactions', key))),
+    unreact: (spaceId, itemId, key) =>
+      send(api.delete(feed(spaceId, 'items', itemId, 'reactions', key)))
+  }
+}

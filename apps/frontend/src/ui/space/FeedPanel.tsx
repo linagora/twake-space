@@ -1,181 +1,200 @@
 import {
   Calendar,
+  Check,
   CheckList,
-  Drive,
+  Dots,
+  DropdownOpen,
   Icon,
   Mail,
+  Openwith,
+  Pen,
   PersonAdd,
   Task,
-  Videos,
+  Trash,
+  Drive,
   type IconProps
 } from '@linagora/twake-icons'
 import {
   Alert,
   Button,
-  Chip,
-  CircularProgress,
-  Link,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem
 } from '@linagora/twake-mui'
-import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState, type ReactElement } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useState, type ReactElement } from 'react'
 import { Link as RouterLink } from 'react-router'
 
 import {
+  cardAction,
+  cardApp,
   FEED_CATEGORIES,
+  toEventState,
   type Actor,
-  type FeedEntry,
+  type FeedCard,
   type FeedFilter,
-  type FeedPage,
-  type FeedView
+  type FeedItem,
+  type FeedPost,
+  withReaction
 } from '@/application/feed'
-import type { Member, Space } from '@/application/spaces'
+import type { Space } from '@/application/spaces'
 import { containerTab } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
-import { SetupPrompt } from '@/ds/Page'
-import { useI18n } from '@/ui/i18n/useI18n'
+import {
+  AppAvatar,
+  DateTile,
+  EventSummary,
+  FeedAction,
+  FeedBody,
+  FeedCentered,
+  FeedComposer,
+  FeedDetail,
+  FeedEditForm,
+  FeedFooter,
+  FeedHeader,
+  FeedLayout,
+  FeedRow,
+  FeedTitle,
+  ReactionChip,
+  ReactionPicker
+} from '@/ds/Feed'
+import { MenuEntry } from '@/ds/Menu'
+import { LoadingRows, SetupPrompt } from '@/ds/Page'
+import { useI18n, type TranslationKey } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
-
-type IconType = IconProps['icon']
+import { useSession } from '@/ui/session/SessionGate'
+import { useFeed, useFeedCache } from '@/ui/space/feedQueries'
 
 const FILTERS: FeedFilter[] = ['all', ...FEED_CATEGORIES]
 
-export function FeedPanel({
-  homeserverUrl,
-  roomId,
-  space
-}: {
-  homeserverUrl: string
-  roomId: string
-  space: Space
-}): ReactElement {
-  const { t } = useI18n()
-  const { matrix } = useServices()
-  const signIn = useQuery({
-    queryKey: ['matrix', homeserverUrl],
-    queryFn: () => matrix.signIn(homeserverUrl),
-    // A login token works once.
-    retry: false,
-    staleTime: Infinity
-  })
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '👀', '🙏']
 
-  if (signIn.isError) {
-    return <Alert severity="error">{t('feed.signInFailed')}</Alert>
-  }
-  if (!signIn.data) {
-    return <CircularProgress aria-label={t('feed.signingIn')} />
-  }
-  return <FeedTimeline roomId={roomId} space={space} />
-}
-
-function FeedTimeline({
-  roomId,
-  space
-}: {
-  roomId: string
-  space: Space
-}): ReactElement {
+export function FeedPanel({ space }: { space: Space }): ReactElement {
   const { t } = useI18n()
   const [filter, setFilter] = useState<FeedFilter>('all')
+  const feed = useFeed(space.id, filter)
+  const myId = useSession().user.id
+
+  const items = feed.data?.pages.flatMap(page => page.items).toReversed() ?? []
 
   return (
-    <section aria-label={t('tabs.feed')}>
-      <div role="group" aria-label={t('feed.filter')}>
-        {FILTERS.map(option => (
-          <Chip
-            key={option}
-            label={t(`feed.filters.${option}`)}
-            color={option === filter ? 'primary' : 'default'}
-            aria-pressed={option === filter}
+    <FeedLayout
+      toolbar={<FilterMenu filter={filter} onChange={setFilter} />}
+      composer={space.role !== 'viewer' && <Composer space={space} />}
+    >
+      {feed.isPending && <LoadingRows count={3} label={t('feed.loading')} />}
+      {feed.isError && !feed.isFetchNextPageError && (
+        <Alert severity="error">{t('feed.loadFailed')}</Alert>
+      )}
+      {feed.hasNextPage && (
+        <FeedCentered>
+          <Button
+            variant="text"
+            disabled={feed.isFetchingNextPage}
             onClick={() => {
-              setFilter(option)
+              void feed.fetchNextPage()
             }}
-          />
+          >
+            {t('feed.loadOlder')}
+          </Button>
+        </FeedCentered>
+      )}
+      {feed.isFetchNextPageError && (
+        <Alert severity="error">{t('feed.loadOlderFailed')}</Alert>
+      )}
+      {feed.isSuccess &&
+        items.length === 0 &&
+        (filter === 'all' ? (
+          <Setup space={space} />
+        ) : (
+          <Alert severity="info">{t('feed.empty')}</Alert>
         ))}
-      </div>
-      <FeedEntries key={filter} roomId={roomId} filter={filter} space={space} />
-    </section>
+      {items.map(item => (
+        <Item key={item.id} item={item} space={space} myId={myId} />
+      ))}
+    </FeedLayout>
   )
 }
 
-function FeedEntries({
-  roomId,
+function FilterMenu({
   filter,
-  space
+  onChange
 }: {
-  roomId: string
   filter: FeedFilter
-  space: Space
+  onChange: (filter: FeedFilter) => void
 }): ReactElement {
   const { t } = useI18n()
-  const { feed } = useServices()
-  const [page, setPage] = useState<FeedPage | null>(null)
-  const [view, setView] = useState<FeedView | null>(null)
-  const [failed, setFailed] = useState(false)
-  const [olderFailed, setOlderFailed] = useState(false)
-
-  useEffect(() => {
-    let opened: FeedView | null = null
-    let closed = false
-    feed
-      .open(roomId, filter, next => {
-        if (!closed) setPage(next)
-      })
-      .then(
-        next => {
-          if (closed) next.close()
-          else setView((opened = next))
-        },
-        () => {
-          if (!closed) setFailed(true)
-        }
-      )
-    return () => {
-      closed = true
-      opened?.close()
-    }
-  }, [feed, roomId, filter])
-
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   return (
     <>
-      {failed && <Alert severity="error">{t('feed.loadFailed')}</Alert>}
-      {!failed && !page && <CircularProgress aria-label={t('feed.loading')} />}
-      {page && (
-        <>
-          {page.hasOlder && view && (
-            <Button
-              onClick={() => {
-                setOlderFailed(false)
-                view.loadOlder().catch(() => {
-                  setOlderFailed(true)
-                })
-              }}
-            >
-              {t('feed.loadOlder')}
-            </Button>
-          )}
-          {olderFailed && (
-            <Alert severity="error">{t('feed.loadOlderFailed')}</Alert>
-          )}
-          {page.entries.length === 0 &&
-            !page.hasOlder &&
-            (filter === 'all' ? (
-              <Setup space={space} />
-            ) : (
-              <Alert severity="info">{t('feed.empty')}</Alert>
-            ))}
-          <List>
-            {page.entries.map(entry => (
-              <ListItem key={entry.id}>
-                <Entry entry={entry} space={space} />
-              </ListItem>
-            ))}
-          </List>
-        </>
-      )}
+      <Button
+        variant="text"
+        endIcon={<Icon icon={DropdownOpen} />}
+        aria-haspopup="menu"
+        aria-expanded={anchor !== null}
+        onClick={event => {
+          setAnchor(event.currentTarget)
+        }}
+      >
+        {t('feed.filter')}
+        {filter !== 'all' && `: ${t(`feed.filters.${filter}`)}`}
+      </Button>
+      <Menu
+        anchorEl={anchor}
+        open={anchor !== null}
+        onClose={() => {
+          setAnchor(null)
+        }}
+      >
+        {FILTERS.map(option => (
+          <MenuItem
+            key={option}
+            role="menuitemradio"
+            aria-checked={option === filter}
+            selected={option === filter}
+            onClick={() => {
+              onChange(option)
+              setAnchor(null)
+            }}
+          >
+            <ListItemIcon>
+              {option === filter && <Icon icon={Check} />}
+            </ListItemIcon>
+            <ListItemText>{t(`feed.filters.${option}`)}</ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
+  )
+}
+
+function Composer({ space }: { space: Space }): ReactElement {
+  const { t } = useI18n()
+  const { feed } = useServices()
+  const { add } = useFeedCache(space.id)
+  const [body, setBody] = useState('')
+  const send = useMutation({
+    mutationFn: (text: string) => feed.post(space.id, text),
+    onSuccess: item => {
+      add(item)
+      setBody('')
+    }
+  })
+  return (
+    <>
+      {send.isError && <Alert severity="error">{t('feed.postFailed')}</Alert>}
+      <FeedComposer
+        label={t('feed.composer')}
+        sendLabel={t('feed.send')}
+        value={body}
+        onChange={setBody}
+        onSend={() => {
+          send.mutate(body.trim())
+        }}
+        disabled={send.isPending}
+      />
     </>
   )
 }
@@ -216,21 +235,7 @@ function Setup({ space }: { space: Space }): ReactElement {
   )
 }
 
-const APP_ICONS = {
-  mail: Mail,
-  drive: Drive,
-  calendar: Calendar,
-  meet: Videos,
-  tasks: Task
-} satisfies Record<string, IconType>
-
-type App = keyof typeof APP_ICONS
-
-function isApp(app: string | null): app is App {
-  return app !== null && Object.hasOwn(APP_ICONS, app)
-}
-
-function useActorName(actor: Actor | null, members: Member[]): string | null {
+function useActorName(actor: Actor | null): string | null {
   const { t } = useI18n()
   switch (actor?.type) {
     case undefined:
@@ -239,78 +244,401 @@ function useActorName(actor: Actor | null, members: Member[]): string | null {
       return actor.name
     case 'deleted_user':
       return t('feed.deletedUser')
-    case 'user': {
-      const member = members.find(
-        m => m.id === actor.id || m.email === actor.email
-      )
-      return member?.username ?? actor.email ?? t('feed.someone')
-    }
+    case 'user':
+      return actor.name ?? t('feed.someone')
   }
 }
 
-function Entry({
-  entry,
-  space
+function useTime(): (iso: string) => string {
+  const { lang } = useI18n()
+  return iso => {
+    const date = new Date(iso)
+    const today = date.toDateString() === new Date().toDateString()
+    return new Intl.DateTimeFormat(lang, {
+      ...(!today && { day: 'numeric', month: 'short' }),
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(date)
+  }
+}
+
+function Item({
+  item,
+  space,
+  myId
 }: {
-  entry: FeedEntry
+  item: FeedItem
   space: Space
+  myId: string | null
 }): ReactElement {
-  if (entry.kind === 'card') return <Card entry={entry} space={space} />
+  return item.kind === 'post' ? (
+    <Post post={item} space={space} myId={myId} />
+  ) : (
+    <Card card={item} space={space} myId={myId} />
+  )
+}
+
+function Post({
+  post,
+  space,
+  myId
+}: {
+  post: FeedPost
+  space: Space
+  myId: string | null
+}): ReactElement {
+  const { t } = useI18n()
+  const { feed } = useServices()
+  const { replace, drop } = useFeedCache(space.id)
+  const time = useTime()
+  const author = useActorName(post.author) ?? t('feed.someone')
+  const mine = post.author.type === 'user' && post.author.id === myId
+  const [draft, setDraft] = useState<string | null>(null)
+  const edit = useMutation({
+    mutationFn: (body: string) => feed.edit(space.id, post.id, body),
+    onSuccess: item => {
+      replace(item)
+      setDraft(null)
+    }
+  })
+  const remove = useMutation({
+    mutationFn: () => feed.remove(space.id, post.id),
+    onSuccess: () => {
+      drop(post.id)
+    }
+  })
+
+  return (
+    <FeedRow label={author} avatar={<NameAvatar name={author} size="m" />}>
+      <FeedHeader
+        who={author}
+        what={post.editedAt && t('feed.edited')}
+        menu={
+          mine && (
+            <ItemMenu
+              onEdit={() => {
+                setDraft(post.body)
+              }}
+              onDelete={() => {
+                remove.mutate()
+              }}
+            />
+          )
+        }
+      />
+      {draft === null ? (
+        <FeedBody>{post.body}</FeedBody>
+      ) : (
+        <FeedEditForm
+          label={t('feed.edit')}
+          value={draft}
+          onChange={setDraft}
+          onSubmit={() => {
+            if (draft.trim()) edit.mutate(draft.trim())
+          }}
+          actions={
+            <>
+              <Button
+                variant="text"
+                onClick={() => {
+                  setDraft(null)
+                }}
+              >
+                {t('feed.cancel')}
+              </Button>
+              <Button type="submit" disabled={!draft.trim() || edit.isPending}>
+                {t('feed.save')}
+              </Button>
+            </>
+          }
+        />
+      )}
+      {(edit.isError || remove.isError) && (
+        <Alert severity="error">{t('feed.changeFailed')}</Alert>
+      )}
+      <FeedFooter time={time(post.time)}>
+        <Reactions item={post} spaceId={space.id} myId={myId} />
+      </FeedFooter>
+    </FeedRow>
+  )
+}
+
+function ItemMenu({
+  onEdit,
+  onDelete
+}: {
+  onEdit: () => void
+  onDelete: () => void
+}): ReactElement {
+  const { t } = useI18n()
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const close = () => {
+    setAnchor(null)
+  }
   return (
     <>
-      <ListItemAvatar>
-        <NameAvatar name={entry.senderName} size="s" />
-      </ListItemAvatar>
-      <ListItemText primary={entry.body} secondary={entry.senderName} />
+      <IconButton
+        size="small"
+        aria-label={t('feed.more')}
+        aria-haspopup="menu"
+        onClick={event => {
+          setAnchor(event.currentTarget)
+        }}
+      >
+        <Icon icon={Dots} size={16} />
+      </IconButton>
+      <Menu anchorEl={anchor} open={anchor !== null} onClose={close}>
+        <MenuEntry
+          icon={<Icon icon={Pen} />}
+          onClick={() => {
+            close()
+            onEdit()
+          }}
+        >
+          {t('feed.edit')}
+        </MenuEntry>
+        <MenuEntry
+          danger
+          icon={<Icon icon={Trash} />}
+          onClick={() => {
+            close()
+            onDelete()
+          }}
+        >
+          {t('feed.delete')}
+        </MenuEntry>
+      </Menu>
     </>
   )
 }
 
-function Card({
-  entry,
-  space
+function Reactions({
+  item,
+  spaceId,
+  myId
 }: {
-  entry: Extract<FeedEntry, { kind: 'card' }>
-  space: Space
+  item: FeedItem
+  spaceId: string
+  myId: string | null
 }): ReactElement {
   const { t } = useI18n()
-  const actor = useActorName(entry.actor, space.members)
-  // A card reaches the space's feed only when its container is one of the
-  // space's resources, so the container's tab shows it.
-  const { container } = entry.object
-  const tab = container && containerTab(space, container.kind)
+  const { feed } = useServices()
+  const { replace } = useFeedCache(spaceId)
+  // Shown at once; the live event that follows brings the stored reactions.
+  const toggle = useMutation({
+    mutationFn: ({ key, mine }: { key: string; mine: boolean }) =>
+      mine
+        ? feed.unreact(spaceId, item.id, key)
+        : feed.react(spaceId, item.id, key),
+    onMutate: ({ key, mine }) => {
+      if (myId) replace(withReaction(item, key, myId, !mine))
+      return item
+    },
+    onError: (_error, _vars, before) => {
+      if (before) replace(before)
+    }
+  })
+  const isMine = (key: string) =>
+    myId !== null &&
+    (item.reactions.find(r => r.key === key)?.userIds.includes(myId) ?? false)
+  const react = (key: string) => {
+    if (!toggle.isPending) toggle.mutate({ key, mine: isMine(key) })
+  }
+
   return (
     <>
-      {actor && (
-        <ListItemAvatar>
-          <NameAvatar name={actor} size="s" />
-        </ListItemAvatar>
-      )}
-      <ListItemText
-        primary={
-          <>
-            {isApp(entry.app) && (
-              <span role="img" aria-label={t(`feed.apps.${entry.app}`)}>
-                <Icon icon={APP_ICONS[entry.app]} />
-              </span>
-            )}{' '}
-            {tab ? (
-              <Link component={RouterLink} to={`/spaces/${space.id}/${tab}`}>
-                {entry.object.title}
-              </Link>
-            ) : (
-              entry.object.title
-            )}
-          </>
-        }
-        secondary={
-          <>
-            {actor}
-            {actor && entry.preview && ' · '}
-            {entry.preview}
-          </>
-        }
+      {item.reactions.map(reaction => (
+        <ReactionChip
+          key={reaction.key}
+          emoji={reaction.key}
+          count={reaction.userIds.length}
+          mine={isMine(reaction.key)}
+          label={t('feed.reaction', {
+            emoji: reaction.key,
+            count: reaction.userIds.length
+          })}
+          onClick={() => {
+            react(reaction.key)
+          }}
+        />
+      ))}
+      <ReactionPicker
+        label={t('feed.react')}
+        emojis={QUICK_REACTIONS}
+        onPick={react}
       />
     </>
+  )
+}
+
+const APPS = {
+  tasks: { icon: Task, color: '#4caf50' },
+  mail: { icon: Mail, color: '#0a84ff' },
+  calendar: { icon: Calendar, color: '#f67e35' },
+  drive: { icon: Drive, color: '#5c9ce6' }
+} satisfies Record<string, { icon: IconProps['icon']; color: string }>
+
+type App = keyof typeof APPS
+
+function isApp(app: string | null): app is App {
+  return app !== null && Object.hasOwn(APPS, app)
+}
+
+const OPEN: Record<string, TranslationKey> = {
+  tasks: 'feed.open.tasks',
+  mail: 'feed.open.mail',
+  calendar: 'feed.open.calendar',
+  drive: 'feed.open.drive',
+  chat: 'feed.open.chat'
+}
+
+const VERBS: Record<string, TranslationKey> = {
+  'tasks.created': 'feed.verbs.tasks.created',
+  'tasks.updated': 'feed.verbs.tasks.updated',
+  'tasks.assigned': 'feed.verbs.tasks.assigned',
+  'tasks.unassigned': 'feed.verbs.tasks.unassigned',
+  'tasks.moved': 'feed.verbs.tasks.moved',
+  'tasks.completed': 'feed.verbs.tasks.completed',
+  'tasks.reopened': 'feed.verbs.tasks.reopened',
+  'tasks.deleted': 'feed.verbs.tasks.deleted',
+  'tasks.restored': 'feed.verbs.tasks.restored',
+  'mail.received': 'feed.verbs.mail.received',
+  'mail.sent': 'feed.verbs.mail.sent',
+  'calendar.created': 'feed.verbs.calendar.created',
+  'calendar.updated': 'feed.verbs.calendar.updated',
+  'calendar.rescheduled': 'feed.verbs.calendar.rescheduled',
+  'calendar.accepted': 'feed.verbs.calendar.accepted',
+  'calendar.declined': 'feed.verbs.calendar.declined',
+  'calendar.proposed': 'feed.verbs.calendar.proposed'
+}
+
+function Card({
+  card,
+  space,
+  myId
+}: {
+  card: FeedCard
+  space: Space
+  myId: string | null
+}): ReactElement {
+  const { t } = useI18n()
+  const time = useTime()
+  const app = cardApp(card)
+  const actor = useActorName(card.actor)
+  const verb = VERBS[`${app ?? ''}.${cardAction(card) ?? ''}`]
+  const appName = isApp(app) ? t(`feed.apps.${app}`) : null
+  // A card reaches the space's feed only when its container is one of the
+  // space's resources, so the container's tab shows it.
+  const { container } = card.object
+  const tab = container && containerTab(space, container.kind)
+  const open = tab && OPEN[tab]
+  const label = [actor ?? appName, card.object.title].filter(Boolean).join(': ')
+
+  return (
+    <FeedRow
+      label={label}
+      avatar={
+        isApp(app) ? (
+          <AppAvatar
+            icon={APPS[app].icon}
+            color={APPS[app].color}
+            label={appName ?? ''}
+          />
+        ) : (
+          <NameAvatar name={actor ?? '?'} size="m" />
+        )
+      }
+    >
+      <FeedHeader
+        who={actor ?? appName}
+        what={verb ? t(verb) : t('feed.verbs.other')}
+      />
+      {app === 'calendar' ? (
+        <EventDetails card={card} />
+      ) : (
+        <FeedTitle>{card.object.title}</FeedTitle>
+      )}
+      {card.preview && <FeedDetail>{card.preview}</FeedDetail>}
+      <FeedFooter time={time(card.time)}>
+        <Reactions item={card} spaceId={space.id} myId={myId} />
+        {tab && open && (
+          <FeedAction
+            icon={Openwith}
+            component={RouterLink}
+            to={`/spaces/${space.id}/${tab}`}
+          >
+            {t(open)}
+          </FeedAction>
+        )}
+      </FeedFooter>
+    </FeedRow>
+  )
+}
+
+function EventDetails({ card }: { card: FeedCard }): ReactElement {
+  const { t, lang } = useI18n()
+  const event = toEventState(card.state)
+  if (!event) return <FeedTitle>{card.object.title}</FeedTitle>
+
+  // All-day times are plain dates: read them as such, not as UTC midnight.
+  const date = (value: string) =>
+    new Date(event.allDay ? `${value}T00:00:00` : value)
+  const day = (value: string) =>
+    new Intl.DateTimeFormat(lang, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    }).format(date(value))
+  const hour = (value: string) =>
+    new Intl.DateTimeFormat(lang, {
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(date(value))
+  const when = (range: { start: string; end: string }) =>
+    event.allDay
+      ? `${day(range.start)} · ${t('feed.event.allDay')}`
+      : `${day(range.start)} · ${hour(range.start)} – ${hour(range.end)}`
+  const start = date(event.start)
+
+  return (
+    <EventSummary
+      tile={
+        <DateTile
+          month={new Intl.DateTimeFormat(lang, { month: 'short' }).format(
+            start
+          )}
+          day={String(start.getDate())}
+        />
+      }
+    >
+      <FeedTitle>{card.object.title}</FeedTitle>
+      <FeedDetail>
+        {when(event)}
+        {event.location && ` · ${event.location}`}
+      </FeedDetail>
+      {event.previous && (
+        <FeedDetail>
+          {t('feed.event.movedFrom', { time: when(event.previous) })}
+        </FeedDetail>
+      )}
+      {event.proposed && (
+        <FeedDetail>
+          {t('feed.event.proposed', {
+            time: when(event.proposed),
+            by: event.proposed.by
+          })}
+        </FeedDetail>
+      )}
+      {event.rsvp && (
+        <FeedDetail>
+          {t('feed.event.rsvp', {
+            accepted: event.rsvp.accepted,
+            tentative: event.rsvp.tentative,
+            declined: event.rsvp.declined,
+            pending: event.rsvp.pending
+          })}
+        </FeedDetail>
+      )}
+    </EventSummary>
   )
 }

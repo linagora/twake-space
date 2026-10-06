@@ -128,7 +128,7 @@
     "loading": "Caricamento dello spazio…",
     "notFound": "Questo spazio non esiste, oppure non ne fai parte.",
     "loadFailed": "Non è stato possibile caricare lo spazio.",
-    "chatOff": "Feed e Chat sono disattivati: la chat non è attiva per la tua organizzazione.",
+    "chatOff": "La chat è disattivata: non è attiva per la tua organizzazione.",
     "mailOff": "Mail è disattivato: il dominio mail della tua organizzazione non è ancora convalidato.",
     "preparing": "%{app} è in preparazione per questo spazio.",
     "stalled": "%{app} non è ancora pronto. Riprova più tardi e avvisa l'amministratore se resta così.",
@@ -141,8 +141,57 @@
     "notSetUp": "Mail non è configurato per TwakeSpace."
   },
   "feed": {
-    "signingIn": "Accesso alla chat",
-    "signInFailed": "Impossibile accedere alla chat.",
+    "composer": "Messaggio",
+    "send": "Invia",
+    "postFailed": "Impossibile inviare il messaggio.",
+    "more": "Altre azioni",
+    "edit": "Modifica",
+    "delete": "Elimina",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "edited": "modificato",
+    "changeFailed": "Impossibile modificare il messaggio.",
+    "react": "Aggiungi una reazione",
+    "reaction": "%{emoji} %{count}",
+    "open": {
+      "tasks": "Apri in Attività",
+      "mail": "Apri in Posta",
+      "calendar": "Vedi evento",
+      "drive": "Apri in Drive",
+      "chat": "Apri nella chat"
+    },
+    "verbs": {
+      "other": "ha pubblicato un aggiornamento",
+      "tasks": {
+        "created": "ha creato un'attività",
+        "updated": "ha modificato un'attività",
+        "assigned": "ha assegnato un'attività",
+        "unassigned": "ha rimosso un'assegnazione",
+        "moved": "ha spostato un'attività",
+        "completed": "ha completato un'attività",
+        "reopened": "ha riaperto un'attività",
+        "deleted": "ha eliminato un'attività",
+        "restored": "ha ripristinato un'attività"
+      },
+      "mail": {
+        "received": "Nuova email ricevuta",
+        "sent": "Email inviata"
+      },
+      "calendar": {
+        "created": "ha creato un evento",
+        "updated": "ha modificato un evento",
+        "rescheduled": "ha spostato un evento",
+        "accepted": "ha accettato un evento",
+        "declined": "ha rifiutato un evento",
+        "proposed": "ha proposto un altro orario"
+      }
+    },
+    "event": {
+      "allDay": "Tutto il giorno",
+      "movedFrom": "Spostato da %{time}",
+      "proposed": "%{by} propone %{time}",
+      "rsvp": "%{accepted} sì · %{tentative} forse · %{declined} no · %{pending} in attesa"
+    },
     "loading": "Caricamento del feed",
     "loadFailed": "Impossibile caricare il feed.",
     "empty": "Ancora niente qui.",
@@ -154,7 +203,7 @@
     },
     "loadOlder": "Carica precedenti",
     "loadOlderFailed": "Impossibile caricare le voci precedenti.",
-    "filter": "Mostra",
+    "filter": "Filtra per",
     "filters": {
       "all": "Tutto",
       "messages": "Messaggi",
@@ -166,7 +215,6 @@
       "mail": "Posta",
       "drive": "Drive",
       "calendar": "Calendario",
-      "meet": "Meet",
       "tasks": "Attività"
     },
     "deletedUser": "Utente eliminato",

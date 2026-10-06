@@ -1,5 +1,5 @@
 import type { MemoryOrganization } from '@/adapters/memory/memoryDirectory'
-import type { FeedEntry } from '@/application/feed'
+import type { FeedItem } from '@/application/feed'
 import type { User } from '@/application/session'
 import type { Member, Space, SpaceApp, SpaceRole } from '@/application/spaces'
 
@@ -7,7 +7,6 @@ import type { Member, Space, SpaceApp, SpaceRole } from '@/application/spaces'
 // from the mock to the real backend changes nothing on screen.
 const DOMAIN = 'acme.twake.local'
 const HOMESERVER = `https://matrix.${DOMAIN}`
-const matrixId = (name: string) => `@${name}:${DOMAIN}`
 
 const person = (username: string, displayName: string) => ({
   id: `uuid-${username}`,
@@ -27,6 +26,7 @@ export const seedOrganization: MemoryOrganization = {
 }
 
 export const seedUser: User = {
+  id: 'uuid-alice',
   name: 'Alice Martin',
   email: `alice@${DOMAIN}`
 }
@@ -131,57 +131,72 @@ export const seedSpaces: Space[] = [
 const START = Date.UTC(2026, 9, 1, 8)
 const HOUR = 3_600_000
 const PEOPLE = ['alice', 'bob', 'carol', 'dave']
+const TASK_ACTIONS = ['created', 'assigned', 'moved', 'completed']
 
-function roadmapFeed(): FeedEntry[] {
-  return Array.from({ length: 24 }, (_, i): FeedEntry => {
-    const ts = START + i * HOUR
+const iso = (ms: number) => new Date(ms).toISOString()
+
+function roadmapFeed(): FeedItem[] {
+  return Array.from({ length: 24 }, (_, i): FeedItem => {
+    const time = iso(START + i * HOUR)
     const round = Math.floor(i / 4)
-    const person = PEOPLE[round % PEOPLE.length] ?? 'alice'
+    const username = PEOPLE[round % PEOPLE.length] ?? 'alice'
     const actor = {
       type: 'user' as const,
-      id: `uuid-${person}`,
-      email: `${person}@${DOMAIN}`
+      id: `uuid-${username}`,
+      name: member(username, 'editor').displayName
+    }
+    const base = {
+      id: `item-${String(i)}`,
+      time,
+      updatedAt: time,
+      reactions:
+        i % 5 === 0
+          ? [
+              { key: '👍', userIds: ['uuid-bob', 'uuid-alice'] },
+              { key: '🎉', userIds: ['uuid-carol'] }
+            ]
+          : []
     }
     switch (i % 4) {
       case 0:
         return {
+          ...base,
           kind: 'card',
-          id: `$task-${String(i)}`,
-          ts,
           category: 'activities',
-          app: 'tasks',
+          type: `com.twake.tasks.task.${TASK_ACTIONS[round % 4] ?? 'created'}.v1`,
           actor,
           object: {
             type: 'task',
-            id: `ROA-${String(i)}`,
-            title: `ROA-${String(i)} Draft the Q${String((round % 4) + 1)} milestones`,
+            id: `task-${String(i)}`,
+            title: `Draft the Q${String((round % 4) + 1)} milestones`,
             container: { kind: 'project', id: 'project-roadmap' }
           },
-          preview: 'Moved to In progress'
+          preview: null,
+          state: {}
         }
       case 1:
         return {
+          ...base,
           kind: 'card',
-          id: `$file-${String(i)}`,
-          ts,
-          category: 'files',
-          app: 'drive',
-          actor,
+          category: 'messages',
+          type: `com.twake.mail.message.${round % 2 ? 'sent' : 'received'}.v1`,
+          actor: null,
           object: {
-            type: 'file',
-            id: `file-${String(i)}`,
-            title: `roadmap-v${String(i)}.pdf`,
-            container: { kind: 'drive', id: 'drive-roadmap' }
+            type: 'message',
+            id: `message-${String(i)}`,
+            title: 'Q4 roadmap: partner feedback',
+            container: { kind: 'mailbox', id: `roadmap@${DOMAIN}` }
           },
-          preview: null
+          preview: null,
+          state: {}
         }
-      case 2:
+      case 2: {
+        const start = Date.UTC(2026, 9, 9 + round, 9)
         return {
+          ...base,
           kind: 'card',
-          id: `$event-${String(i)}`,
-          ts,
           category: 'events',
-          app: 'calendar',
+          type: `com.twake.calendar.event.${round % 2 ? 'rescheduled' : 'created'}.v1`,
           actor,
           object: {
             type: 'event',
@@ -189,22 +204,33 @@ function roadmapFeed(): FeedEntry[] {
             title: 'Roadmap review',
             container: { kind: 'calendar', id: 'calendar-roadmap' }
           },
-          preview: 'Thursday, 10:00'
+          preview: null,
+          state: {
+            start: iso(start),
+            end: iso(start + HOUR),
+            allDay: false,
+            location: 'Room 4',
+            ...(round % 2 && {
+              previous: { start: iso(start - HOUR), end: iso(start) }
+            }),
+            rsvp: { accepted: 2, declined: 0, tentative: 1, pending: 1 }
+          }
         }
+      }
       default:
         return {
-          kind: 'message',
-          id: `$message-${String(i)}`,
-          ts,
-          sender: matrixId(person),
-          senderName: person.charAt(0).toUpperCase() + person.slice(1),
-          body: `Update ${String(i)}: the release notes are ready for review.`
+          ...base,
+          kind: 'post',
+          category: 'messages',
+          author: actor,
+          body: `Update ${String(i)}: the release notes are ready for review.`,
+          editedAt: null
         }
     }
   })
 }
 
-export const seedFeed: Record<string, FeedEntry[]> = {
-  [ROADMAP_ROOM]: roadmapFeed(),
-  [DESIGN_ROOM]: []
+export const seedFeed: Record<string, FeedItem[]> = {
+  roadmap: roadmapFeed(),
+  'design-sprint': []
 }

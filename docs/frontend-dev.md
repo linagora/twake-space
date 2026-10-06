@@ -37,14 +37,14 @@ The main README covers the backend and `public/.env.js`. Signing in for real nee
 ```mermaid
 flowchart LR
   ui["ui/<br>screens and hooks"] --> application["application/<br>types and service interfaces"]
-  adapters["adapters/<br>http, oidc, matrix, memory"] --> application
+  adapters["adapters/<br>http, oidc, memory"] --> application
   app["app/<br>providers and routes"] --> ui
   roots["index.tsx, mock.tsx"] --> app
   roots --> adapters
 ```
 
 - `application/` holds the types and the service interfaces (`SpacesService`, `FeedService`, and so on). It imports no framework.
-- `adapters/` implements those interfaces: `http/` for the backend, `oidc/` for the SSO, `matrix/` for the homeserver, `memory/` for mock mode.
+- `adapters/` implements those interfaces: `http/` for the backend, `oidc/` for the SSO, `memory/` for mock mode.
 - `ui/` renders screens and reaches services only through `useServices()`, never through an adapter.
 - `index.tsx` wires the real adapters, and `mock.tsx` wires the memory ones. Rsbuild picks `mock.tsx` when `MOCK=1`, so production builds never include the seed.
 
@@ -56,9 +56,8 @@ ESLint enforces these boundaries, and a few more rules: named exports only, UI f
 
 - `spaces`: list, read and create spaces. A space admin also renames or deletes a space, and adds, changes and removes its members and linked groups.
 - `directory`: search the organization's people and groups, 20 per page, to pick new members from.
-- `feed`: open a space's feed with a filter, follow it live, and load older entries.
-- `matrix`: sign in to the organization's homeserver before opening the feed.
-- `live`: the backend's live updates. `useLiveUpdates` already refreshes the spaces queries when a space changes.
+- `feed`: read a space's feed by filter and page, post, edit and delete your own posts, and react.
+- `live`: the backend's live updates. `useLiveUpdates` refreshes the spaces queries when a space changes, and applies `feed` events to the feeds already loaded.
 - `tasksUrl`: where the Tasks tab embeds Twake Tasks, or null.
 - `mailUrl`: where the Mail tab embeds Twake Mail's team mailbox, or null.
 

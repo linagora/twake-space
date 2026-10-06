@@ -3,7 +3,6 @@ import { createContext, use } from 'react'
 import type { DirectoryService } from '@/application/directory'
 import type { FeedService } from '@/application/feed'
 import type { LiveService } from '@/application/live'
-import type { MatrixService } from '@/application/matrix'
 import type { SettingsService } from '@/application/settings'
 import type { SpacesService } from '@/application/spaces'
 
@@ -12,7 +11,6 @@ export interface Services {
   settings: SettingsService
   directory: DirectoryService
   live: LiveService
-  matrix: MatrixService
   feed: FeedService
   tasksUrl: string | null
   mailUrl: string | null
