@@ -105,7 +105,12 @@
     "noGroupMatches": "No group matches.",
     "more": "Show more",
     "refused": "The change was refused (%{code}).",
-    "failed": "The change could not be saved."
+    "failed": "The change could not be saved.",
+    "refusal": {
+      "lastAdmin": "A space needs at least one admin. Make someone else an admin first.",
+      "memberExists": "This person is already a member with another role. Change their role in the list instead.",
+      "groupAlreadyLinked": "This group is already linked with another role. Change its role in the list instead."
+    }
   },
   "space": {
     "back": "All spaces",

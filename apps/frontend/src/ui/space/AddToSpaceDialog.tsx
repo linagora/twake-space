@@ -13,11 +13,12 @@ import {
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useId, useState, type ReactElement } from 'react'
 
-import { isRefusal, type Space, type SpaceRole } from '@/application/spaces'
+import type { Space, SpaceRole } from '@/application/spaces'
 import { DialogHeader } from '@/ds/Dialog'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { RoleSelect } from '@/ui/space/RoleSelect'
+import { WriteError } from '@/ui/space/WriteError'
 import { useSpaceWrite } from '@/ui/spaces/queries'
 
 interface Candidate {
@@ -103,13 +104,7 @@ export function AddToSpaceDialog({
       />
       <DialogContent>
         <Stack spacing={2}>
-          {write.error && (
-            <Alert severity="error">
-              {isRefusal(write.error) && write.error.code
-                ? t('members.refused', { code: write.error.code })
-                : t('members.failed')}
-            </Alert>
-          )}
+          <WriteError error={write.error} />
           <TextField
             label={t('members.search')}
             value={search}

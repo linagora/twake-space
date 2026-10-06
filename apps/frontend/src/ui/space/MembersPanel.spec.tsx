@@ -207,10 +207,10 @@ describe('MembersPanel', () => {
     expect(screen.queryByText('No one matches.')).not.toBeInTheDocument()
   })
 
-  it('shows why a write was refused', async () => {
+  it('says why removing the last admin was refused', async () => {
     const spaces = fakeSpaces()
     vi.mocked(spaces.removeMember).mockRejectedValue(
-      Object.assign(new Error('refused'), { status: 409, code: 'last_admin' })
+      Object.assign(new Error('refused'), { status: 409, code: 'LAST_ADMIN' })
     )
     renderWithProviders(<MembersPanel space={admin} />, { spaces })
 
@@ -219,7 +219,25 @@ describe('MembersPanel', () => {
     )
 
     expect(
-      await screen.findByText('The change was refused (last_admin).')
+      await screen.findByText(
+        'A space needs at least one admin. Make someone else an admin first.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('shows the code of a refusal it does not know', async () => {
+    const spaces = fakeSpaces()
+    vi.mocked(spaces.removeMember).mockRejectedValue(
+      Object.assign(new Error('refused'), { status: 409, code: 'SOMETHING' })
+    )
+    renderWithProviders(<MembersPanel space={admin} />, { spaces })
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Remove Carol DANVERS' })
+    )
+
+    expect(
+      await screen.findByText('The change was refused (SOMETHING).')
     ).toBeInTheDocument()
   })
 

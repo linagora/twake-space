@@ -105,7 +105,12 @@
     "noGroupMatches": "Nessun gruppo corrisponde.",
     "more": "Mostra altro",
     "refused": "La modifica è stata rifiutata (%{code}).",
-    "failed": "Non è stato possibile salvare la modifica."
+    "failed": "Non è stato possibile salvare la modifica.",
+    "refusal": {
+      "lastAdmin": "Uno spazio ha bisogno di almeno un admin. Rendi prima admin qualcun altro.",
+      "memberExists": "Questa persona è già membro con un altro ruolo. Cambia invece il suo ruolo nell'elenco.",
+      "groupAlreadyLinked": "Questo gruppo è già collegato con un altro ruolo. Cambia invece il suo ruolo nell'elenco."
+    }
   },
   "space": {
     "back": "Tutti gli spazi",

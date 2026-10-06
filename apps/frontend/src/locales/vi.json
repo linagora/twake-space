@@ -105,7 +105,12 @@
     "noGroupMatches": "Không tìm thấy nhóm nào.",
     "more": "Xem thêm",
     "refused": "Thay đổi bị từ chối (%{code}).",
-    "failed": "Không thể lưu thay đổi."
+    "failed": "Không thể lưu thay đổi.",
+    "refusal": {
+      "lastAdmin": "Một không gian cần ít nhất một quản trị viên. Hãy đặt người khác làm quản trị viên trước.",
+      "memberExists": "Người này đã là thành viên với vai trò khác. Hãy đổi vai trò của họ trong danh sách.",
+      "groupAlreadyLinked": "Nhóm này đã được liên kết với vai trò khác. Hãy đổi vai trò của nhóm trong danh sách."
+    }
   },
   "space": {
     "back": "Tất cả không gian",

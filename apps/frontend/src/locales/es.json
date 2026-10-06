@@ -105,7 +105,12 @@
     "noGroupMatches": "Ningún grupo coincide.",
     "more": "Mostrar más",
     "refused": "El cambio fue rechazado (%{code}).",
-    "failed": "No se pudo guardar el cambio."
+    "failed": "No se pudo guardar el cambio.",
+    "refusal": {
+      "lastAdmin": "Un espacio necesita al menos un admin. Haz admin a otra persona primero.",
+      "memberExists": "Esta persona ya es miembro con otro rol. Cambia su rol en la lista.",
+      "groupAlreadyLinked": "Este grupo ya está vinculado con otro rol. Cambia su rol en la lista."
+    }
   },
   "space": {
     "back": "Todos los espacios",
