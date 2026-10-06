@@ -49,7 +49,8 @@ Each message ends in one outcome:
 - duplicate: `processed_events` already holds `(consumer, source, id)`, so the handler did not run.
 - unrouted: no handler for the key. Logged at debug and skipped.
 - malformed: unparseable, or a handler threw `MalformedEventError`. Logged and skipped.
-- rejected: a handler threw `RejectedEventError`. The message goes to `<topic>.dlq.twake-space` with a `twake-space-reason` header.
+- rejected: a handler threw `RejectedEventError`, or Postgres refused the event's data (an error of class 22 or 23, such as a NUL byte in a preview). The message goes to `<topic>.dlq.twake-space` with a `twake-space-reason` header.
+- failed: any other error. The offset is not committed and the partition pauses, 1 second after the first failure, doubling up to a minute, before the same message comes back. Other partitions keep flowing.
 
 The dedupe claim and the handler run in the same Postgres transaction, so a handler failure releases the claim.
 
@@ -136,7 +137,7 @@ The actor stored on the card is one of:
 - `{ type: 'deleted_user' }` once the user is deleted.
 - null when the event names no actor.
 
-When `space_id` is set, the event is rejected to the dead letter topic if the space is unknown, belongs to another organization, or the user actor is not a member. A space with linked groups accepts a non member actor with a warning, since the copy does not hold group members.
+When `space_id` is set, the event is rejected to the dead letter topic if the space belongs to another organization. An unknown space or a user actor who is not a member may only mean the platform topic is behind, so the event fails and is retried while its `time` is within 5 minutes of now, and is rejected after that. A space with linked groups accepts a non member actor with a warning, since the copy does not hold group members.
 
 The card stores everything in `data` except `recipients`.
 
@@ -204,7 +205,7 @@ flowchart LR
 - `m.room.message` is stored. An `m.replace` edit updates the original if the sender matches and it is newer.
 - `m.reaction` with `m.annotation` is stored.
 - `m.room.redaction` marks the redacted message or reaction (`redacts` at the top level or, for room v11, in the content).
-- A malformed event is skipped so Synapse does not resend the batch forever.
+- A malformed event, or one Postgres refuses to store, is skipped so Synapse does not resend the batch forever.
 
 ## Notifications
 
@@ -292,7 +293,6 @@ The purge does not touch the copy, `processed_events` or `last_changes`, nor the
 
 ## Open questions
 
-- @rezk2ll What happens to a message whose handler fails with an unexpected error? Its offset is not committed; is redelivery up to the Kafka client's restart, and is that intended?
 - @rezk2ll Which component puts AMQP platform messages on `twake.platform.events.v1` with the `amqp_routing_key` and `amqp_message_id` headers?
 - @rezk2ll A second card about the same object is posted as a new card and also edits the first one. Should the feed show both, or should the later card only be an edit?
 - @rezk2ll The card content carries `state`, which the activity schema does not declare and the frontend does not read. What is it for, and what shape should apps send?

@@ -145,7 +145,7 @@ The backend starts in this order. A failure at any step stops the process.
 4. Runs OIDC discovery on `OIDC_ISSUER` (5 second timeout).
 5. Opens the Postgres `LISTEN` channels for live updates and session revocations.
 6. Starts the API and metrics servers.
-7. Connects the Kafka dead letter producer and the consumer.
+7. Connects the Kafka dead letter producer, checks that every dead letter topic exists, and starts the consumer.
 8. Starts the background jobs and reports ready.
 
 On `SIGTERM` or `SIGINT` it reports not ready, stops the jobs, disconnects from Kafka, closes both servers and the Postgres pool, then flushes Sentry.
@@ -195,7 +195,7 @@ The consumer reads from the beginning with manual offset commits, on these topic
 - `twake.tasks.events.v1`
 - `twake.platform.events.v1`
 
-An event the backend cannot process goes to `<topic>.dlq.twake-space` (for example `twake.chat.events.v1.dlq.twake-space`) with a `twake-space-reason` header. The producer is idempotent with `acks` set to all.
+An event the backend cannot process goes to `<topic>.dlq.twake-space` (for example `twake.chat.events.v1.dlq.twake-space`) with a `twake-space-reason` header. The producer is idempotent with `acks` set to all. The seven dead letter topics must exist before the backend starts, or it stops; compose creates them.
 
 ### ldap-rest
 
@@ -223,7 +223,7 @@ The directory: organizations, users, groups and technical accounts. Calls are au
 ## Open questions
 
 - @rezk2ll The entrypoint writes `POSTHOG_KEY` and `POSTHOG_HOST` to `/.env.js` and adds `POSTHOG_HOST` to `connect-src`, but the frontend source does not read either. Is PostHog planned, or should the script drop them?
-- @rezk2ll Kafka auto creation is off in compose, which creates only the seven input topics. Who creates the `<topic>.dlq.twake-space` topics in a deployment, and with which retention?
+- @rezk2ll Who creates the `<topic>.dlq.twake-space` topics in a deployment, and with which retention?
 - @rezk2ll Several replicas start together and each runs the migrations. Does the Drizzle migrator lock against concurrent runs, or should one replica (or a job) migrate first?
 - @rezk2ll The backend relies on Postgres `LISTEN`. Is a transaction pooling proxy (PgBouncer) in front of Postgres ruled out for deployments?
 - @rezk2ll CI builds the images without a `platforms` setting. Is an arm64 image needed?

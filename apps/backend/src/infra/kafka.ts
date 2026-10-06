@@ -2,7 +2,12 @@ import { KafkaJS } from '@confluentinc/kafka-javascript'
 import type { Logger } from 'pino'
 import type { Config } from '../config.ts'
 import { ACTIVITY_TOPICS, PLATFORM_TOPIC } from '../events/envelope.ts'
-import type { DeadLetter, IncomingMessage, Outcome } from '../events/router.ts'
+import {
+  deadLetterTopic,
+  type DeadLetter,
+  type IncomingMessage,
+  type Outcome
+} from '../events/router.ts'
 
 type GlobalConfig = KafkaJS.ProducerConstructorConfig &
   KafkaJS.ConsumerConstructorConfig
@@ -35,7 +40,7 @@ export function connectionConfig(config: Config): GlobalConfig {
   }
 }
 
-function kafkaLogger(logger: Logger): KafkaJS.Logger {
+export function kafkaLogger(logger: Logger): KafkaJS.Logger {
   const child = logger.child({ component: 'kafka' })
   const adapter: KafkaJS.Logger = {
     info: (message, extra) => {
@@ -45,6 +50,11 @@ function kafkaLogger(logger: Logger): KafkaJS.Logger {
       child.warn(extra ?? {}, message)
     },
     error: (message, extra) => {
+      // eachMessageWithBackoff logs each failed attempt already.
+      if (message.startsWith('Consumer encountered error while processing')) {
+        child.debug(extra ?? {}, message)
+        return
+      }
       child.error(extra ?? {}, message)
     },
     debug: (message, extra) => {
@@ -56,10 +66,67 @@ function kafkaLogger(logger: Logger): KafkaJS.Logger {
   return adapter
 }
 
+type Handle = (topic: string, message: IncomingMessage) => Promise<Outcome>
+
+const FIRST_RETRY_MS = 1000
+const MAX_RETRY_MS = 60_000
+
+// Throwing makes the consumer deliver the message again, at once unless its
+// partition is paused. Other partitions keep flowing meanwhile.
+export function eachMessageWithBackoff(
+  consumer: Pick<KafkaJS.Consumer, 'pause' | 'resume' | 'commitOffsets'>,
+  handle: Handle,
+  logger: Logger
+) {
+  const failures = new Map<string, number>()
+  return async ({
+    topic,
+    partition,
+    message
+  }: {
+    topic: string
+    partition: number
+    message: IncomingMessage
+  }) => {
+    const key = `${topic}|${String(partition)}`
+    try {
+      await handle(topic, message)
+    } catch (error) {
+      const failed = (failures.get(key) ?? 0) + 1
+      failures.set(key, failed)
+      const delayMs = Math.min(MAX_RETRY_MS, FIRST_RETRY_MS * 2 ** (failed - 1))
+      logger.warn(
+        {
+          err: error,
+          topic,
+          partition,
+          offset: message.offset,
+          failed,
+          delayMs
+        },
+        'event failed, retrying'
+      )
+      consumer.pause([{ topic, partitions: [partition] }])
+      setTimeout(() => {
+        try {
+          consumer.resume([{ topic, partitions: [partition] }])
+        } catch {
+          // Disconnected while waiting: nothing left to resume.
+        }
+      }, delayMs).unref()
+      throw error
+    }
+    failures.delete(key)
+    await consumer.commitOffsets([
+      { topic, partition, offset: (BigInt(message.offset) + 1n).toString() }
+    ])
+  }
+}
+
 export async function startConsumer(
   config: Config,
   logger: Logger,
-  handle: (topic: string, message: IncomingMessage) => Promise<Outcome>
+  handle: Handle
 ): Promise<KafkaJS.Consumer> {
   const consumer = new KafkaJS.Kafka().consumer({
     ...connectionConfig(config),
@@ -73,14 +140,22 @@ export async function startConsumer(
   await consumer.connect()
   await consumer.subscribe({ topics: [...ACTIVITY_TOPICS, PLATFORM_TOPIC] })
   await consumer.run({
-    eachMessage: async ({ topic, partition, message }) => {
-      await handle(topic, message)
-      await consumer.commitOffsets([
-        { topic, partition, offset: (BigInt(message.offset) + 1n).toString() }
-      ])
-    }
+    eachMessage: eachMessageWithBackoff(consumer, handle, logger)
   })
   return consumer
+}
+
+// Topics aren't created on first send: a missing one would fail every rejection.
+export async function checkDeadLetterTopics(admin: {
+  listTopics(): Promise<string[]>
+}): Promise<void> {
+  const existing = new Set(await admin.listTopics())
+  const missing = [...ACTIVITY_TOPICS, PLATFORM_TOPIC]
+    .map(deadLetterTopic)
+    .filter(topic => !existing.has(topic))
+  if (missing.length > 0) {
+    throw new Error(`missing dead letter topics: ${missing.join(', ')}`)
+  }
 }
 
 export interface DeadLetterProducer {
@@ -99,6 +174,13 @@ export async function startDeadLetterProducer(
     kafkaJS: { logger: kafkaLogger(logger) }
   })
   await producer.connect()
+  const admin = producer.dependentAdmin()
+  await admin.connect()
+  try {
+    await checkDeadLetterTopics(admin)
+  } finally {
+    await admin.disconnect()
+  }
   return {
     async send(topic, message, reason) {
       await producer.send({

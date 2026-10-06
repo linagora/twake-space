@@ -70,13 +70,14 @@ flowchart LR
   dedupe -- no --> handler[handler in one transaction]
   handler -- RejectedEventError --> dlq["dead letter topic"]
   handler -- MalformedEventError --> drop
-  handler -- other error --> retry[offset not committed]
+  handler -- Postgres refuses the data --> dlq
+  handler -- other error --> retry[partition paused, then retried]
 ```
 
 - App topics carry CloudEvents. They route by `type` (for example `com.twake.drive.file.created.v1`) and dedupe on `source` and `id`.
 - The platform topic carries messages bridged from AMQP. They route by the `amqp_routing_key` header (for example `twake.space.created`) and dedupe on `amqp_message_id`.
 - A handler gets the event, a transaction and a logger. The dedupe row and the handler's writes commit together.
-- Throw `MalformedEventError` (or use `parseOrDrop`) for an event that can never be processed. Throw `RejectedEventError` for a well-formed event that contradicts the copy, so someone can look at it on the dead letter topic. Any other error leaves the offset uncommitted and the event is retried.
+- Throw `MalformedEventError` (or use `parseOrDrop`) for an event that can never be processed. Throw `RejectedEventError` for a well-formed event that contradicts the copy, so someone can look at it on the dead letter topic. Any other error leaves the offset uncommitted, and the event is retried after a growing delay.
 - Events can arrive out of order. `events/freshness.ts` (`fresh`) tells which objects an event may still change, using the `last_changes` table.
 
 ## Database and migrations
