@@ -32,16 +32,23 @@ export function KeptAlive({
   )
 }
 
-// The place of the tab panels: kept frames sit over it, hidden.
+// The place of the tab panels: kept frames sit over it, hidden. With none of
+// them shown, it leaves the panel's height to the other tabs.
 export function KeptAliveStack({
+  active,
   children
 }: {
+  active: boolean
   children: ReactNode
 }): ReactElement {
   return (
     <Box
       className="u-flex u-flex-column u-flex-auto"
-      sx={{ position: 'relative' }}
+      sx={{
+        position: active ? 'relative' : 'absolute',
+        inset: active ? undefined : 0,
+        pointerEvents: active ? undefined : 'none'
+      }}
     >
       {children}
     </Box>

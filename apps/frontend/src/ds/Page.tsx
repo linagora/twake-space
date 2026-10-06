@@ -42,6 +42,7 @@ export function TabPanel({
       id={`panel-${tab}`}
       aria-labelledby={`tab-${tab}`}
       sx={{
+        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         flex: '1 1 auto',
