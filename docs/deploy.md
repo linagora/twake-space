@@ -24,6 +24,7 @@ flowchart LR
 
   browser --> fe
   browser -->|API_URL| be
+  fe -.->|/api, with API_UPSTREAM| be
   browser -->|SSO_BASE_URL| oidc
   browser -->|TASKS_URL, in a frame| tasks
   browser -.-> sentry
@@ -71,11 +72,13 @@ The frontend image builds the app with Node 24 and serves it from `nginxinc/ngin
 
 The entrypoint script `40-twake-space-runtime.sh` reads the environment at container start. Each variable below that is set and non-empty becomes a `var NAME = "value"` line in `/.env.js`. A value must fit on one line, or the container refuses to start.
 
-- `API_URL`: the backend base URL, absolute or relative to the page origin. Required: the app throws at startup without it.
+- `API_URL`: the backend base URL, absolute or relative to the page origin. Required: the app throws at startup without it. With `API_UPSTREAM`, set it to `/api`.
 - `SSO_BASE_URL`, `SSO_CLIENT_ID`, `SSO_SCOPE`, `SSO_REDIRECT_URI`, `SSO_POST_LOGOUT_REDIRECT`: the OIDC login settings. All five are required: the app throws without any of them.
 - `TASKS_URL`: the Tasks app, embedded in a frame. Optional.
 - `SENTRY_DSN`, `SENTRY_ENVIRONMENT`: browser error reporting. Optional.
 - `POSTHOG_KEY`, `POSTHOG_HOST`: written to `/.env.js`. See the open questions.
+
+`API_UPSTREAM` is optional and not written to `/.env.js`. It is the backend's bare origin, for example `http://twake-space-backend.ns.svc.cluster.local`. nginx then forwards `/api/<path>` to `<API_UPSTREAM>/<path>`, so the browser reaches the API on the page's own origin. Use the full service name: nginx does not apply the search domains. Without it, `/api/` answers 404.
 
 ### Security headers
 
