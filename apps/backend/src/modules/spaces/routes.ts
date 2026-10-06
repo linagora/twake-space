@@ -89,6 +89,34 @@ export function registerSpaceRoutes(
   })
 
   app.get(
+    '/spaces/apps',
+    { preHandler: authorize('space:read') },
+    async request => {
+      const [organization] = await db
+        .select({
+          chat: organizations.chatAvailable,
+          mail: organizations.mailAvailable
+        })
+        .from(organizations)
+        .where(
+          eq(organizations.organizationId, callerOf(request).organizationId)
+        )
+      const on = new Set(
+        deps.apps.filter(
+          app =>
+            (app !== 'chat' || organization?.chat) &&
+            (app !== 'mail' || organization?.mail)
+        )
+      )
+      return {
+        apps: spaceTab.enumValues.filter(tab =>
+          on.has(tab === 'feed' ? 'chat' : tab)
+        )
+      }
+    }
+  )
+
+  app.get(
     '/spaces/:id',
     { preHandler: authorize('space:read') },
     async (request, reply) => {

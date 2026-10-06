@@ -70,6 +70,7 @@
     "colorHint": "Choisissez une couleur pour votre espace",
     "apps": "Applications à activer",
     "appsHint": "Choisissez les applications disponibles dans cet espace.",
+    "appsFailed": "Les applications disponibles n'ont pas pu être chargées.",
     "app": {
       "feed": "Fil",
       "drive": "Fichiers",

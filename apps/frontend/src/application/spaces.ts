@@ -76,6 +76,8 @@ export function isRefusal(error: unknown): error is Refusal {
 export interface SpacesService {
   list: () => Promise<SpaceSummary[]>
   get: (id: string) => Promise<Space>
+  /** The apps the deployment and the organization provide to a new space. */
+  apps: () => Promise<SpaceApp[]>
   create: (space: NewSpace) => Promise<SpaceSummary>
   rename: (id: string, name: string) => Promise<void>
   remove: (id: string) => Promise<void>

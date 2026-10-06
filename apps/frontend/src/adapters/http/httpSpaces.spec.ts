@@ -43,6 +43,13 @@ describe('httpSpaces', () => {
     expect(requested().url).toBe('https://api.test/spaces')
   })
 
+  it('reads the apps a new space can have', async () => {
+    fetchMock.mockResolvedValue(Response.json({ apps: ['tasks', 'mail'] }))
+
+    await expect(spaces.apps()).resolves.toEqual(['tasks', 'mail'])
+    expect(requested().url).toBe('https://api.test/spaces/apps')
+  })
+
   it('reads one space', async () => {
     const space = {
       id: 'a1',

@@ -70,6 +70,7 @@
     "colorHint": "Chọn một màu cho không gian của bạn",
     "apps": "Ứng dụng cần bật",
     "appsHint": "Chọn các ứng dụng có trong không gian này.",
+    "appsFailed": "Không thể tải các ứng dụng hiện có.",
     "app": {
       "feed": "Bảng tin",
       "drive": "Tệp",

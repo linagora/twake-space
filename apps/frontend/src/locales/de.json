@@ -70,6 +70,7 @@
     "colorHint": "Wählen Sie eine Farbe für Ihren Bereich",
     "apps": "Zu aktivierende Apps",
     "appsHint": "Wählen Sie, welche Apps in diesem Bereich verfügbar sind.",
+    "appsFailed": "Die verfügbaren Apps konnten nicht geladen werden.",
     "app": {
       "feed": "Feed",
       "drive": "Dateien",
