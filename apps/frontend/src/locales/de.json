@@ -10,6 +10,12 @@
   "shell": {
     "yourSpaces": "Ihre Spaces"
   },
+  "errors": {
+    "notFound": "Seite nicht gefunden",
+    "notFoundHint": "Dieser Link ist ungültig oder die Seite wurde verschoben.",
+    "failed": "Etwas ist schiefgelaufen",
+    "failedHint": "Diese Seite konnte nicht angezeigt werden."
+  },
   "session": {
     "signingIn": "Sie werden angemeldet…",
     "openingSpace": "Ihr Space wird geöffnet…",

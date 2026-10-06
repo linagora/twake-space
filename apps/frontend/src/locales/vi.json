@@ -10,6 +10,12 @@
   "shell": {
     "yourSpaces": "Không gian của bạn"
   },
+  "errors": {
+    "notFound": "Không tìm thấy trang",
+    "notFoundHint": "Liên kết này bị hỏng hoặc trang đã được chuyển đi.",
+    "failed": "Đã xảy ra lỗi",
+    "failedHint": "Không thể hiển thị trang này."
+  },
   "session": {
     "signingIn": "Đang đăng nhập…",
     "openingSpace": "Đang mở không gian của bạn…",

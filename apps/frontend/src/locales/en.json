@@ -10,6 +10,12 @@
   "shell": {
     "yourSpaces": "Your spaces"
   },
+  "errors": {
+    "notFound": "Page not found",
+    "notFoundHint": "This link is broken or the page has moved.",
+    "failed": "Something went wrong",
+    "failedHint": "This page could not be displayed."
+  },
   "session": {
     "signingIn": "Signing you in…",
     "openingSpace": "Opening your space…",

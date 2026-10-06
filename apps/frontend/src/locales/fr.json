@@ -10,6 +10,12 @@
   "shell": {
     "yourSpaces": "Vos espaces"
   },
+  "errors": {
+    "notFound": "Page introuvable",
+    "notFoundHint": "Ce lien est cassé ou la page a été déplacée.",
+    "failed": "Une erreur est survenue",
+    "failedHint": "Cette page n'a pas pu être affichée."
+  },
   "session": {
     "signingIn": "Connexion en cours…",
     "openingSpace": "Ouverture de votre espace…",
