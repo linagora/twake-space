@@ -130,6 +130,15 @@
       "files": "File",
       "activities": "Attività",
       "events": "Eventi"
-    }
+    },
+    "apps": {
+      "mail": "Posta",
+      "drive": "Drive",
+      "calendar": "Calendario",
+      "meet": "Meet",
+      "tasks": "Attività"
+    },
+    "deletedUser": "Utente eliminato",
+    "someone": "Qualcuno"
   }
 }

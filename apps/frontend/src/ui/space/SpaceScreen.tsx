@@ -126,6 +126,7 @@ export function SpaceScreen(): ReactElement {
             <FeedPanel
               homeserverUrl={space.data.homeserverUrl}
               roomId={matrixSpace}
+              space={space.data}
             />
           )}
         {current.state === 'ready' && current.tab === 'tasks' && project && (

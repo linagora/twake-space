@@ -130,6 +130,15 @@
       "files": "Tệp",
       "activities": "Hoạt động",
       "events": "Sự kiện"
-    }
+    },
+    "apps": {
+      "mail": "Thư",
+      "drive": "Drive",
+      "calendar": "Lịch",
+      "meet": "Họp",
+      "tasks": "Công việc"
+    },
+    "deletedUser": "Người dùng đã xóa",
+    "someone": "Ai đó"
   }
 }

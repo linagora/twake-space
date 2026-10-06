@@ -46,6 +46,7 @@ const message = (ts: number): FeedEntry => ({
   id: `$m${String(ts)}`,
   ts,
   sender: '@bob:acme.test',
+  senderName: 'Bob',
   body: `Message ${String(ts)}`
 })
 
@@ -54,6 +55,7 @@ const file: FeedEntry = {
   id: '$file',
   ts: 50,
   category: 'files',
+  app: 'drive',
   actor: { type: 'user', id: 'u-bob', email: 'bob@acme.test' },
   object: { type: 'file', id: 'f-1', title: 'brief.pdf', url: '#' },
   preview: null

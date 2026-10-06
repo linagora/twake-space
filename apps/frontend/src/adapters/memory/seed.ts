@@ -125,6 +125,7 @@ function roadmapFeed(): FeedEntry[] {
           id: `$task-${String(i)}`,
           ts,
           category: 'activities',
+          app: 'tasks',
           actor,
           object: {
             type: 'task',
@@ -140,6 +141,7 @@ function roadmapFeed(): FeedEntry[] {
           id: `$file-${String(i)}`,
           ts,
           category: 'files',
+          app: 'drive',
           actor,
           object: {
             type: 'file',
@@ -155,6 +157,7 @@ function roadmapFeed(): FeedEntry[] {
           id: `$event-${String(i)}`,
           ts,
           category: 'events',
+          app: 'calendar',
           actor,
           object: {
             type: 'event',
@@ -170,6 +173,7 @@ function roadmapFeed(): FeedEntry[] {
           id: `$message-${String(i)}`,
           ts,
           sender: matrixId(person),
+          senderName: person.charAt(0).toUpperCase() + person.slice(1),
           body: `Update ${String(i)}: the release notes are ready for review.`
         }
     }

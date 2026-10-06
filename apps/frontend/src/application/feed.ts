@@ -34,12 +34,21 @@ export interface FeedObject {
 }
 
 export type FeedEntry =
-  | { kind: 'message'; id: string; ts: number; sender: string; body: string }
+  | {
+      kind: 'message'
+      id: string
+      ts: number
+      sender: string
+      senderName: string
+      body: string
+    }
   | {
       kind: 'card'
       id: string
       ts: number
       category: FeedCategory
+      /** The app that sent the activity, as in `com.twake.<app>.*`. */
+      app: string | null
       actor: Actor | null
       object: FeedObject
       preview: string | null
@@ -50,6 +59,8 @@ export interface RoomEvent {
   id: string
   type: string
   sender: string
+  /** The sender's display name in the room, when the client knows it. */
+  senderName?: string | undefined
   ts: number
   content: Record<string, unknown>
 }
@@ -98,14 +109,14 @@ function categoryOf(type: string): FeedCategory | undefined {
 }
 
 export function toFeedEntry(event: RoomEvent): FeedEntry | null {
-  const { id, type, sender, ts, content } = event
+  const { id, type, sender, senderName = sender, ts, content } = event
   const relation = content['m.relates_to']
   if (isRecord(relation) && relation.rel_type === 'm.replace') return null
 
   if (type === MESSAGE) {
     const { body } = content
     if (typeof body !== 'string') return null
-    return { kind: 'message', id, ts, sender, body }
+    return { kind: 'message', id, ts, sender, senderName, body }
   }
 
   const category = categoryOf(type)
@@ -116,6 +127,10 @@ export function toFeedEntry(event: RoomEvent): FeedEntry | null {
     id,
     ts,
     category,
+    app:
+      typeof content.type === 'string'
+        ? (/^com\.twake\.([a-z]+)\./.exec(content.type)?.[1] ?? null)
+        : null,
     actor: isActor(content.actor) ? content.actor : null,
     object: { type: objectType, id: objectId, title, url },
     preview: typeof content.preview === 'string' ? content.preview : null
