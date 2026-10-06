@@ -1,0 +1,19 @@
+{
+  "name": "Space",
+  "name_prefix": "Twake",
+  "slug": "space",
+  "version": "0.1.0",
+  "type": "webapp",
+  "licence": "AGPL-3.0",
+  "icon": "src/assets/space.svg",
+  "categories": ["cozy"],
+  "source": "https://github.com/linagora/twake-space",
+  "editor": "Cozy",
+  "developer": {
+    "name": "Twake Workplace",
+    "url": "https://twake.app"
+  },
+  "standalone": true,
+  "client_url_flag": "space.embedded-app-url",
+  "permissions": {}
+}

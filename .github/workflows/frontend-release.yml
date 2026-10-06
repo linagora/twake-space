@@ -59,8 +59,11 @@ jobs:
           path: apps/frontend
           workflow-prefix: frontend
           tag-prefix: frontend-v
+      - name: Archive the Cozy registry app
+        run: tar -czf space.tar.gz -C apps/frontend manifest.webapp src/assets/space.svg
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: Frontend ${{ needs.verify.outputs.version }}
           body_path: ${{ steps.notes.outputs.body-path }}
+          files: space.tar.gz
