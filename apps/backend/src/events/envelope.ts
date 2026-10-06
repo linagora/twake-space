@@ -22,9 +22,7 @@ const cloudEvent = z.looseObject({
   twakeorg: z.string().min(1).optional(),
   // Left out for an action made with an organization token.
   twakeactor: z.email().optional(),
-  data: z.looseObject({
-    object: z.looseObject({ space_id: z.uuid().optional() }).optional()
-  })
+  data: z.looseObject({ object: z.looseObject({}).optional() })
 })
 
 export type CloudEvent = z.infer<typeof cloudEvent>

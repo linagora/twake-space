@@ -14,7 +14,7 @@ const calendarAccepted = {
     object: {
       type: 'event',
       id: '7f3c2a',
-      space_id: '0f8e2c4a-6b1d-4e7a-9c3f-2d5b8a1e6f90'
+      container: { kind: 'calendar', id: 'cal-1' }
     }
   }
 }
@@ -74,13 +74,6 @@ describe('parseCloudEvent', () => {
     [
       'a twakeactor that is not an email',
       JSON.stringify({ ...calendarAccepted, twakeactor: 'user1' })
-    ],
-    [
-      'a space_id that is not a UUID',
-      JSON.stringify({
-        ...calendarAccepted,
-        data: { object: { space_id: 'space-42' } }
-      })
     ]
   ])('rejects %s', (_case, value) => {
     expect(parseCloudEvent(value).ok).toBe(false)
