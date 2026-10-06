@@ -18,7 +18,15 @@
     "close": "Đóng",
     "next": "Tiếp",
     "apply": "Áp dụng",
-    "add": "Thêm"
+    "add": "Thêm",
+    "save": "Lưu",
+    "delete": "Xóa"
+  },
+  "spaceActions": {
+    "rename": "Đổi tên không gian",
+    "delete": "Xóa không gian",
+    "deleteTitle": "Xóa %{name}?",
+    "deleteHint": "Các thành viên sẽ mất quyền truy cập. Không thể hoàn tác."
   },
   "roles": {
     "viewer": "Người xem",

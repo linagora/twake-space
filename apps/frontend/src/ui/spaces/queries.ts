@@ -35,6 +35,31 @@ export function useSpaceWrite(
   })
 }
 
+export function useRenameSpace(
+  id: string
+): UseMutationResult<void, Error, string> {
+  const { spaces } = useServices()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: name => spaces.rename(id, name),
+    // The list shows the name too.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: SPACES })
+  })
+}
+
+export function useDeleteSpace(id: string): UseMutationResult<void> {
+  const { spaces } = useServices()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => spaces.remove(id),
+    onSuccess: () => {
+      // Refetching it would only answer 404 before the page moves away.
+      queryClient.removeQueries({ queryKey: [...SPACES, id] })
+      return queryClient.invalidateQueries({ queryKey: SPACES })
+    }
+  })
+}
+
 export function useCreateSpace(): UseMutationResult<
   SpaceSummary,
   Error,

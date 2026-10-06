@@ -14,6 +14,7 @@ import { LoadingRows, Page, SpaceHeader } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 import { MembersPanel } from '@/ui/space/MembersPanel'
+import { SpaceActions } from '@/ui/space/SpaceActions'
 import { TasksPanel } from '@/ui/space/TasksPanel'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
@@ -66,11 +67,14 @@ export function SpaceScreen(): ReactElement {
         avatar={<NameAvatar name={space.data.name} size="m" />}
         title={space.data.name}
         meta={
-          <Chip
-            label={t(`roles.${space.data.role}`)}
-            size="small"
-            variant="outlined"
-          />
+          <>
+            <Chip
+              label={t(`roles.${space.data.role}`)}
+              size="small"
+              variant="outlined"
+            />
+            <SpaceActions space={space.data} />
+          </>
         }
         tabs={
           <Tabs
