@@ -89,7 +89,7 @@ export const spaceResourceKind = pgEnum('space_resource_kind', [
   'mailbox',
   'calendar',
   'matrix_space',
-  'tasks'
+  'project'
 ])
 
 export const spaceResources = pgTable(

@@ -14,7 +14,7 @@ const space: Space = {
   groups: [],
   resources: [
     { kind: 'matrix_space', id: '!room:acme' },
-    { kind: 'tasks', id: 'board-1' },
+    { kind: 'project', id: 'project-1' },
     { kind: 'drive', id: null },
     { kind: 'mailbox', id: 'roadmap@acme' },
     { kind: 'calendar', id: 'cal-1' }

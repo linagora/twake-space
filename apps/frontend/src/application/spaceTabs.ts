@@ -16,7 +16,7 @@ export type TabState = 'off' | 'preparing' | 'ready'
 const RESOURCE: Record<Tab, ResourceKind> = {
   feed: 'matrix_space',
   chat: 'matrix_space',
-  tasks: 'tasks',
+  tasks: 'project',
   drive: 'drive',
   mail: 'mailbox',
   calendar: 'calendar'

@@ -42,7 +42,7 @@ describe('httpSpaces', () => {
       role: 'admin',
       chat: false,
       mail: true,
-      resources: [{ kind: 'tasks', id: null }]
+      resources: [{ kind: 'project', id: null }]
     }
     fetchMock.mockResolvedValue(Response.json(space))
 

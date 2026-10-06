@@ -79,7 +79,7 @@ The refusals look like this.
 - Path: `id` is a UUID.
 - `404 {"error":"not_found"}` when `id` is not a UUID or the caller does not reach the space.
 - `chat` and `mail` are the organization's chat and mail availability, false when the organization is unknown. `homeserverUrl` is the organization's Matrix homeserver, or null.
-- `resources` lists every kind (`drive`, `mailbox`, `calendar`, `matrix_space`, `tasks`). A kind whose `id` is null is still being prepared by its app.
+- `resources` lists every kind (`drive`, `mailbox`, `calendar`, `matrix_space`, `project`). A kind whose `id` is null is still being prepared by its app.
 
 ```json
 {
@@ -100,7 +100,7 @@ The refusals look like this.
   "groups": [{ "id": "<uuid>", "name": "Sales", "role": "viewer" }],
   "resources": [
     { "kind": "drive", "id": "<resource id>" },
-    { "kind": "tasks", "id": null }
+    { "kind": "project", "id": null }
   ]
 }
 ```

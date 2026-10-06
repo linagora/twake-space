@@ -44,7 +44,7 @@ export function memorySpaces(
         // A new space's apps are still preparing its resources.
         resources: [
           { kind: 'matrix_space', id: null },
-          { kind: 'tasks', id: null },
+          { kind: 'project', id: null },
           { kind: 'drive', id: null },
           { kind: 'mailbox', id: null },
           { kind: 'calendar', id: null }

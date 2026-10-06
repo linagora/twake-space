@@ -19,7 +19,7 @@ const APP_KINDS = {
   mail: 'mailbox',
   calendar: 'calendar',
   chat: 'matrix_space',
-  tasks: 'tasks'
+  tasks: 'project'
 } as const satisfies Record<string, SpaceResourceKind>
 
 function onProvisioned(kind: SpaceResourceKind): Handler<CloudEvent> {

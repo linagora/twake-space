@@ -109,10 +109,10 @@ Upserts and removals of members, groups and names send a `spaces` live event to 
 - `mail` -> `mailbox`
 - `calendar` -> `calendar`
 - `chat` -> `matrix_space` (the room id the bot posts cards to)
-- `tasks` -> `tasks`
+- `tasks` -> `project` (the Tasks project id)
 
 - It needs `twakeorg`, and rejects the event when that is not the space's organization.
-- It upserts `space_resources` and sends a `spaces` live event to the space's members.
+- It upserts `space_resources`, so a new id replaces the old one, and sends a `spaces` live event to the space's members.
 - It parks an event for a space the copy does not hold yet, and ignores one for a space deleted after the event's `time`.
 
 ### Activity that becomes a card
