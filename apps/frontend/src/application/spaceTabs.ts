@@ -32,6 +32,9 @@ export function spaceTabs(space: Space): { tab: Tab; state: TabState }[] {
   return TABS.map(tab => {
     if (!isOn(space, tab)) return { tab, state: 'off' }
     const resource = space.resources.find(r => r.kind === RESOURCE[tab])
-    return { tab, state: resource?.id ? 'ready' : 'preparing' }
+    const ready =
+      Boolean(resource?.id) &&
+      (RESOURCE[tab] !== 'matrix_space' || space.serverName !== null)
+    return { tab, state: ready ? 'ready' : 'preparing' }
   })
 }

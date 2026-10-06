@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client'
 import { backend } from '@/adapters/http/backend'
 import { httpSpaces } from '@/adapters/http/httpSpaces'
 import { liveStream } from '@/adapters/http/liveStream'
+import { matrixSession } from '@/adapters/matrix/matrixSession'
 import { oidcSession, readSsoConfig } from '@/adapters/oidc/oidcSession'
 import { App } from '@/app/App'
 
@@ -24,11 +25,20 @@ if (!container) throw new Error('Root element #root not found')
 
 if (!window.API_URL) throw new Error('/.env.js must set API_URL')
 const apiUrl = new URL(window.API_URL, window.location.origin).href
-const session = oidcSession(readSsoConfig(window, apiUrl))
+const oidc = oidcSession(readSsoConfig(window, apiUrl))
+const matrix = matrixSession(localStorage)
+const session = {
+  ...oidc,
+  signOut: async () => {
+    await matrix.signOut()
+    await oidc.signOut()
+  }
+}
 const api = backend(apiUrl)
 const services = {
   spaces: httpSpaces(api),
   live: liveStream(api),
+  matrix,
   tasksUrl: window.TASKS_URL ?? null
 }
 

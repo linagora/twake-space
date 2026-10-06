@@ -17,6 +17,7 @@ import {
 
 import { spaceTabs } from '@/application/spaceTabs'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { FeedPanel } from '@/ui/space/FeedPanel'
 import { TasksPanel } from '@/ui/space/TasksPanel'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
@@ -96,6 +97,11 @@ export function SpaceScreen(): ReactElement {
         {current.state === 'preparing' && (
           <Typography>{t('space.preparing', { app: label })}</Typography>
         )}
+        {current.state === 'ready' &&
+          current.tab === 'feed' &&
+          space.data.serverName && (
+            <FeedPanel serverName={space.data.serverName} />
+          )}
         {current.state === 'ready' && current.tab === 'tasks' && (
           <TasksPanel spaceId={spaceId} />
         )}

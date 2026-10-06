@@ -46,5 +46,9 @@
   },
   "tasks": {
     "notSetUp": "Công việc chưa được thiết lập cho TwakeSpace."
+  },
+  "feed": {
+    "signingIn": "Đang đăng nhập vào trò chuyện",
+    "signInFailed": "Không thể đăng nhập vào trò chuyện."
   }
 }

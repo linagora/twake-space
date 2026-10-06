@@ -9,6 +9,7 @@ const space: Space = {
   role: 'editor',
   chat: true,
   mail: true,
+  serverName: 'acme.test',
   resources: [
     { kind: 'matrix_space', id: '!room:acme' },
     { kind: 'tasks', id: 'board-1' },
@@ -27,6 +28,15 @@ describe('spaceTabs', () => {
       { tab: 'drive', state: 'preparing' },
       { tab: 'mail', state: 'ready' },
       { tab: 'calendar', state: 'ready' }
+    ])
+  })
+
+  it('prepares Feed and Chat until the homeserver is known', () => {
+    const states = spaceTabs({ ...space, serverName: null })
+
+    expect(states.slice(0, 2)).toEqual([
+      { tab: 'feed', state: 'preparing' },
+      { tab: 'chat', state: 'preparing' }
     ])
   })
 

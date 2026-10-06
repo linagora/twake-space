@@ -1,11 +1,13 @@
 import { createContext, use } from 'react'
 
 import type { LiveService } from '@/application/live'
+import type { MatrixService } from '@/application/matrix'
 import type { SpacesService } from '@/application/spaces'
 
 export interface Services {
   spaces: SpacesService
   live: LiveService
+  matrix: MatrixService
   tasksUrl: string | null
 }
 
