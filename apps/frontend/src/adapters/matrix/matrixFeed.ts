@@ -24,6 +24,7 @@ function toEntry(event: MatrixEvent): FeedEntry | null {
     id,
     type: event.getType(),
     sender,
+    senderName: event.sender?.name,
     ts: event.getTs(),
     // The content of its latest edit, or {} once redacted.
     content: event.getContent()

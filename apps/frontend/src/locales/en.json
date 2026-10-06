@@ -123,6 +123,15 @@
       "files": "Files",
       "activities": "Activities",
       "events": "Events"
-    }
+    },
+    "apps": {
+      "mail": "Mail",
+      "drive": "Drive",
+      "calendar": "Calendar",
+      "meet": "Meet",
+      "tasks": "Tasks"
+    },
+    "deletedUser": "Deleted user",
+    "someone": "Someone"
   }
 }

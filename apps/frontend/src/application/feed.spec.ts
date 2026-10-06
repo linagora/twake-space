@@ -47,6 +47,7 @@ describe('toFeedEntry', () => {
       id: '$card',
       ts: 1_000,
       category: 'activities',
+      app: 'tasks',
       actor: { type: 'user', id: 'u-1', email: 'bob@acme.test' },
       object: {
         type: 'task',
@@ -72,8 +73,28 @@ describe('toFeedEntry', () => {
       id: '$m',
       ts: 2_000,
       sender: '@bob:acme.test',
+      senderName: '@bob:acme.test',
       body: 'Hello'
     })
+  })
+
+  it("names a message's sender by their display name", () => {
+    expect(
+      toFeedEntry({
+        id: '$m',
+        type: 'm.room.message',
+        sender: '@bob:acme.test',
+        senderName: 'Bob Martin',
+        ts: 2_000,
+        content: { msgtype: 'm.text', body: 'Hello' }
+      })
+    ).toMatchObject({ senderName: 'Bob Martin' })
+  })
+
+  it('leaves the app unknown when the card type does not name one', () => {
+    expect(
+      toFeedEntry({ ...card, content: { ...card.content, type: 'other' } })
+    ).toMatchObject({ app: null })
   })
 
   it('skips an edit, which its card already shows', () => {
