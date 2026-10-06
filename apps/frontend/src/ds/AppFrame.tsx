@@ -1,61 +1,64 @@
-import { Icon, Team } from '@linagora/twake-icons'
 import {
+  Avatar,
   Box,
   Content,
   Layout,
   List,
   ListSubheader,
+  nameToColor,
   Sidebar,
   Typography,
-  type Theme
+  getInitials,
+  styled
 } from '@linagora/twake-mui'
 import type { ReactElement, ReactNode } from 'react'
 
+// Layout hands `sx` to a plain div, so it is styled here instead.
+const Frame = styled(Layout)(({ theme }) => ({
+  height: '100dvh',
+  [theme.breakpoints.down('lg')]: {
+    height: 'auto',
+    minHeight: '100dvh',
+    flexDirection: 'column',
+    paddingBottom: 'var(--sidebarHeight)'
+  }
+}))
+
 export function AppFrame({
-  topBar,
   sidebar,
+  mobileBar,
   children
 }: {
-  topBar: ReactNode
   sidebar: ReactNode
+  mobileBar: ReactNode
   children: ReactNode
 }): ReactElement {
   return (
-    <Box sx={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
-      {topBar}
-      <Layout
-        withTopBar={false}
-        sx={(theme: Theme) => ({
-          flex: '1 1 auto',
-          minHeight: 0,
-          [theme.breakpoints.down('lg')]: {
-            height: 'auto',
-            paddingBottom: 'var(--sidebarHeight)'
-          }
-        })}
-      >
-        <Sidebar>{sidebar}</Sidebar>
-        {/* Content's own 100% height ignores its margins and scrolls the page */}
-        <Content role={undefined} sx={{ height: 'auto' }}>
-          {children}
-        </Content>
-      </Layout>
-    </Box>
+    <Frame withTopBar={false}>
+      <Sidebar>{sidebar}</Sidebar>
+      {mobileBar}
+      {/* Content's own 100% height ignores its margins and scrolls the page */}
+      <Content role={undefined} sx={{ height: 'auto' }}>
+        {children}
+      </Content>
+    </Frame>
   )
 }
 
-export function TopBar({ children }: { children: ReactNode }): ReactElement {
+// Below lg the sidebar is a bottom bar, so the account moves up here.
+export function MobileBar({ children }: { children: ReactNode }): ReactElement {
   return (
     <Box
       component="header"
       sx={{
-        display: 'flex',
+        display: { xs: 'flex', lg: 'none' },
         alignItems: 'center',
-        gap: { xs: 1, md: 2 },
-        flex: '0 0 auto',
-        height: 64,
-        px: { xs: 2, md: 3 },
-        bgcolor: 'background.default'
+        justifyContent: 'space-between',
+        height: 56,
+        px: 2,
+        bgcolor: 'background.paper',
+        borderBottom: 1,
+        borderColor: 'divider'
       }}
     >
       {children}
@@ -63,35 +66,94 @@ export function TopBar({ children }: { children: ReactNode }): ReactElement {
   )
 }
 
-// The brand column lines up with the sidebar below it on wide screens.
-export function BrandMark({ name }: { name: string }): ReactElement {
+export function SidebarHeader({ title }: { title: ReactNode }): ReactElement {
   return (
     <Box
-      component="span"
       sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1.5,
-        width: { lg: 204 },
-        color: 'primary.main'
+        display: { xs: 'none', lg: 'block' },
+        pt: 2,
+        px: 3
       }}
     >
-      <Icon icon={Team} size={32} aria-hidden />
-      <Typography
-        variant="h5"
-        component="span"
-        color="textPrimary"
-        noWrap
-        sx={{ display: { xs: 'none', md: 'block' } }}
-      >
-        {name}
+      <Typography variant="h3" component="p">
+        {title}
       </Typography>
     </Box>
   )
 }
 
-export function TopBarSpacer(): ReactElement {
-  return <Box sx={{ flex: '1 1 0' }} />
+// Phones get the bottom bar only; the section stays on wide screens.
+export function SidebarSection({
+  label,
+  children
+}: {
+  label: string
+  children: ReactNode
+}): ReactElement {
+  return (
+    <List
+      aria-label={label}
+      subheader={
+        <ListSubheader
+          component="div"
+          sx={{
+            bgcolor: 'transparent',
+            px: 3,
+            typography: 'caption',
+            lineHeight: '32px'
+          }}
+        >
+          {label}
+        </ListSubheader>
+      }
+      sx={{ display: { xs: 'none', lg: 'block' }, py: 0 }}
+    >
+      {children}
+    </List>
+  )
+}
+
+export function SidebarFooter({
+  children
+}: {
+  children: ReactNode
+}): ReactElement {
+  return (
+    <Box
+      sx={{
+        display: { xs: 'none', lg: 'block' },
+        mt: 'auto',
+        p: 1,
+        borderTop: 1,
+        borderColor: 'divider'
+      }}
+    >
+      {children}
+    </Box>
+  )
+}
+
+export function NameAvatar({
+  name,
+  size
+}: {
+  name: string
+  size: 'xs' | 's' | 'm' | 'l'
+}): ReactElement {
+  return (
+    <Avatar size={size} color={nameToColor(name) ?? 'sunrise'} aria-hidden>
+      {getInitials(name, '')}
+    </Avatar>
+  )
+}
+
+// NavIcon only takes an icon; avatars need the same slot.
+export function NavAvatar({ name }: { name: string }): ReactElement {
+  return (
+    <Box component="span" sx={{ display: 'flex', mr: 1.5 }}>
+      <NameAvatar name={name} size="xs" />
+    </Box>
+  )
 }
 
 export function AccountCard({
@@ -109,46 +171,20 @@ export function AccountCard({
         display: 'flex',
         alignItems: 'center',
         gap: 1.5,
-        px: 2,
-        py: 1.5,
-        minWidth: 240,
-        maxWidth: 320
+        minWidth: 0
       }}
     >
       {avatar}
-      <Box sx={{ minWidth: 0 }}>
-        <Typography variant="subtitle1" noWrap>
+      <Box sx={{ minWidth: 0, textAlign: 'start' }}>
+        <Typography variant="body2" color="textPrimary" noWrap>
           {name}
         </Typography>
         {email && (
-          <Typography variant="body2" color="textSecondary" noWrap>
+          <Typography variant="caption" component="p" noWrap>
             {email}
           </Typography>
         )}
       </Box>
     </Box>
-  )
-}
-
-// Phones get the bottom bar only; the section stays on wide screens.
-export function SidebarSection({
-  label,
-  children
-}: {
-  label: string
-  children: ReactNode
-}): ReactElement {
-  return (
-    <List
-      aria-label={label}
-      subheader={
-        <ListSubheader component="div" sx={{ bgcolor: 'transparent', px: 3 }}>
-          {label}
-        </ListSubheader>
-      }
-      sx={{ display: { xs: 'none', lg: 'block' }, py: 0 }}
-    >
-      {children}
-    </List>
   )
 }

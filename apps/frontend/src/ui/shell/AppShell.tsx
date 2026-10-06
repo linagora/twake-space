@@ -1,10 +1,9 @@
-import { Home, Icon, Logout, Team } from '@linagora/twake-icons'
+import { Home, Icon, Logout } from '@linagora/twake-icons'
 import {
   Avatar,
-  Divider,
+  ButtonBase,
   getInitials,
   IconButton,
-  Link,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -14,36 +13,47 @@ import {
   NavIcon,
   NavItem,
   NavLink,
-  NavText
+  NavText,
+  Typography
 } from '@linagora/twake-mui'
 import { useState, type ReactElement } from 'react'
-import {
-  Outlet,
-  Link as RouterLink,
-  NavLink as RouterNavLink
-} from 'react-router'
+import { Outlet, NavLink as RouterNavLink } from 'react-router'
 
 import {
   AccountCard,
   AppFrame,
-  BrandMark,
-  SidebarSection,
-  TopBar,
-  TopBarSpacer
+  MobileBar,
+  NavAvatar,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarSection
 } from '@/ds/AppFrame'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
 import { useSpaceList } from '@/ui/spaces/queries'
 
 export function AppShell(): ReactElement {
+  const { t } = useI18n()
+
   return (
     <AppFrame
-      topBar={<Header />}
       sidebar={
         <>
+          <SidebarHeader title={t('app.name')} />
           <AppNav />
           <SpaceList />
+          <SidebarFooter>
+            <AccountMenu variant="card" />
+          </SidebarFooter>
         </>
+      }
+      mobileBar={
+        <MobileBar>
+          <Typography variant="h5" component="p">
+            {t('app.name')}
+          </Typography>
+          <AccountMenu variant="avatar" />
+        </MobileBar>
       }
     >
       <Outlet />
@@ -51,26 +61,11 @@ export function AppShell(): ReactElement {
   )
 }
 
-function Header(): ReactElement {
-  const { t } = useI18n()
-
-  return (
-    <TopBar>
-      <Link
-        component={RouterLink}
-        to="/"
-        underline="none"
-        aria-label={t('app.name')}
-      >
-        <BrandMark name={t('app.name')} />
-      </Link>
-      <TopBarSpacer />
-      <AccountMenu />
-    </TopBar>
-  )
-}
-
-function AccountMenu(): ReactElement {
+function AccountMenu({
+  variant
+}: {
+  variant: 'card' | 'avatar'
+}): ReactElement {
   const { t } = useI18n()
   const { user, signOut } = useSession()
   const email = user.email ?? ''
@@ -79,37 +74,43 @@ function AccountMenu(): ReactElement {
   const close = (): void => {
     setAnchor(null)
   }
-  const avatar = (size: 's' | 'l'): ReactElement => (
-    <Avatar size={size} color={nameToColor(name) ?? 'sunrise'} aria-hidden>
+  const avatar = (
+    <Avatar size="m" color={nameToColor(name) ?? 'sunrise'} aria-hidden>
       {getInitials(name, email)}
     </Avatar>
   )
+  const trigger = {
+    'aria-label': name,
+    'aria-haspopup': 'menu' as const,
+    'aria-expanded': anchor !== null,
+    onClick: (event: React.MouseEvent<HTMLElement>) => {
+      setAnchor(event.currentTarget)
+    }
+  }
 
   return (
     <>
-      <IconButton
-        aria-label={name}
-        aria-haspopup="menu"
-        aria-expanded={anchor !== null}
-        onClick={event => {
-          setAnchor(event.currentTarget)
-        }}
-      >
-        {avatar('s')}
-      </IconButton>
+      {variant === 'card' ? (
+        <ButtonBase
+          {...trigger}
+          className="u-w-100 u-p-half u-bdrs-4 u-flex-justify-start"
+        >
+          <AccountCard
+            avatar={avatar}
+            name={name}
+            email={email === name ? undefined : email}
+          />
+        </ButtonBase>
+      ) : (
+        <IconButton {...trigger}>{avatar}</IconButton>
+      )}
       <Menu
         anchorEl={anchor}
         open={anchor !== null}
         onClose={close}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
-        <AccountCard
-          avatar={avatar('l')}
-          name={name}
-          email={email === name ? undefined : email}
-        />
-        <Divider />
         <MenuItem
           onClick={() => {
             close()
@@ -151,7 +152,7 @@ function SpaceList(): ReactElement | null {
       {spaces.map(space => (
         <NavItem key={space.id}>
           <NavLink component={RouterNavLink} to={`/spaces/${space.id}`}>
-            <NavIcon icon={Team} />
+            <NavAvatar name={space.name} />
             <NavText>{space.name}</NavText>
           </NavLink>
         </NavItem>
