@@ -35,6 +35,18 @@ Run `npm run check` before you push. It's what CI runs.
 
 To work on the frontend without a backend or SSO, run it on seed data with `npm run dev:mock -w @twake-space/frontend`.
 
+## Publish it on the Cozy registry
+
+Twake Space shows in the Twake Workplace home and bar as a Cozy app. The app ships no code: [apps/frontend/manifest.webapp](apps/frontend/manifest.webapp) and its icon are the whole archive. The manifest marks it `standalone`, so the home and the bar open the URL held by the `space.embedded-app-url` flag instead of a Cozy subdomain. Set that flag to the Twake Space URL on each context.
+
+Every frontend release attaches the archive, `space.tar.gz`, to its GitHub release. To publish it, check out the release tag and give its URL:
+
+```bash
+npx cozy-app-publish --token $REGISTRY_TOKEN --build-dir apps/frontend --build-url https://github.com/linagora/twake-space/releases/download/frontend-v0.1.3/space.tar.gz
+```
+
+`REGISTRY_TOKEN` is the registry token of the `Cozy` editor. The app goes to the dev channel as `0.1.0-dev.<commit>`.
+
 ## Docs
 
 - [Frontend development](docs/frontend-dev.md): mock mode, code layout, adding a feature.
