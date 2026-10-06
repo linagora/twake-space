@@ -3,9 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   overlayClipPath,
   parseOverlayRegion,
-  parseSurfaceMessage,
-  surfaceInit
-} from '@/application/embedSurface'
+  parseOverlayRegionMessage
+} from '@/application/embedOverlay'
 
 describe('parseOverlayRegion', () => {
   it('takes the whole page or a list of boxes', () => {
@@ -58,56 +57,26 @@ describe('overlayClipPath', () => {
   })
 })
 
-describe('parseSurfaceMessage', () => {
-  it('reads the messages of the overlay', () => {
-    expect(parseSurfaceMessage({ type: 'intent:ready' })).toEqual({
-      type: 'ready'
-    })
+describe('parseOverlayRegionMessage', () => {
+  it('reads the region of the message', () => {
     expect(
-      parseSurfaceMessage({
-        type: 'twake-surface:region',
-        intentId: 'i1',
-        payload: { region: 'full' }
+      parseOverlayRegionMessage({
+        type: 'twake-embed:overlay-region',
+        region: 'full'
       })
-    ).toEqual({ type: 'region', intentId: 'i1', region: 'full' })
-    expect(
-      parseSurfaceMessage({
-        type: 'intent:error',
-        intentId: 'i1',
-        payload: { code: 'unsupported_protocol' }
-      })
-    ).toEqual({ type: 'error', intentId: 'i1', code: 'unsupported_protocol' })
+    ).toBe('full')
   })
 
-  it('ignores anything else', () => {
-    expect(parseSurfaceMessage('intent:ready')).toBeNull()
-    expect(parseSurfaceMessage({ type: 'intent:done' })).toBeNull()
+  it('ignores another message or a wrong region', () => {
     expect(
-      parseSurfaceMessage({
-        type: 'twake-surface:region',
-        payload: { region: 'full' }
-      })
+      parseOverlayRegionMessage({ type: 'other', region: 'full' })
     ).toBeNull()
     expect(
-      parseSurfaceMessage({
-        type: 'twake-surface:region',
-        intentId: 'i1',
-        payload: { region: 'everything' }
+      parseOverlayRegionMessage({
+        type: 'twake-embed:overlay-region',
+        region: 'everything'
       })
     ).toBeNull()
-  })
-})
-
-describe('surfaceInit', () => {
-  it('starts the intent of the overlay', () => {
-    expect(surfaceInit('i1')).toEqual({
-      type: 'intent:init',
-      intentId: 'i1',
-      payload: {
-        action: 'TWAKE_SURFACE',
-        protocol: 'twake-surface/1',
-        slot: 'overlay'
-      }
-    })
+    expect(parseOverlayRegionMessage('twake-embed:overlay-region')).toBeNull()
   })
 })

@@ -1,10 +1,5 @@
 import { Box } from '@linagora/twake-mui'
-import {
-  useLayoutEffect,
-  useRef,
-  type ReactElement,
-  type RefObject
-} from 'react'
+import { useLayoutEffect, useRef, type ReactElement } from 'react'
 import { createPortal } from 'react-dom'
 
 // A frame over the whole page, under TwakeSpace's own dialogs, that only
@@ -16,8 +11,7 @@ export function OverlayFrame({
   title,
   sandbox,
   allow,
-  clipPath,
-  frameRef
+  clipPath
 }: {
   name: string
   src: string
@@ -25,10 +19,8 @@ export function OverlayFrame({
   sandbox: string
   allow: string
   clipPath: string
-  frameRef?: RefObject<HTMLIFrameElement | null>
 }): ReactElement {
-  const ownRef = useRef<HTMLIFrameElement>(null)
-  const ref = frameRef ?? ownRef
+  const ref = useRef<HTMLIFrameElement>(null)
   const empty = clipPath.startsWith('inset(')
 
   // Set by hand: it changes with every move of a menu, a class per value
