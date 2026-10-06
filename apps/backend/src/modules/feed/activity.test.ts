@@ -252,7 +252,7 @@ describe('activity events', () => {
     ])
   })
 
-  it('lets a non-member act in a space with linked groups', async () => {
+  it('waits for a non-member in a space with linked groups too', async () => {
     await testDb.db.insert(spaceGroups).values({
       spaceId: SPACE_ID,
       groupId: '6d5c4b3a-2918-4f7e-8d6c-5b4a39281706',
@@ -260,13 +260,9 @@ describe('activity events', () => {
       role: 'editor'
     })
 
-    await store(anEvent({ twakeactorid: BOB, twakeactor: 'bob@linagora.com' }))
-
-    expect((await stored())[0]?.actor).toEqual({
-      type: 'user',
-      id: BOB,
-      email: 'bob@linagora.com'
-    })
+    await expect(
+      store(anEvent({ twakeactorid: BOB, twakeactor: 'bob@linagora.com' }))
+    ).rejects.toThrow(NotYetKnownError)
   })
 
   it('makes no card from chat or provisioned events', () => {

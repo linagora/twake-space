@@ -1,5 +1,4 @@
 import { and, eq, or, sql } from 'drizzle-orm'
-import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { CloudEvent } from '../../events/envelope.ts'
 import {
@@ -11,7 +10,6 @@ import {
 import type { Tx } from '../../infra/db.ts'
 import { notifyRecipients } from '../notifications/recipients.ts'
 import {
-  spaceGroups,
   spaceMembers,
   spaceResourceKind,
   spaceResources
@@ -123,12 +121,7 @@ async function findSpace(
   return undefined
 }
 
-async function checkActor(
-  tx: Tx,
-  log: Logger,
-  spaceId: string,
-  actor: Actor | null
-) {
+async function checkActor(tx: Tx, spaceId: string, actor: Actor | null) {
   if (actor?.type !== 'user') return
   // Sent by email only and no member has it: someone outside the space, such
   // as an attendee replying to a team calendar event.
@@ -139,20 +132,9 @@ async function checkActor(
     .where(
       and(eq(spaceMembers.spaceId, spaceId), eq(spaceMembers.userId, actor.id))
     )
-  if (member) return
-  // The copy keeps linked groups, not their members.
-  const [group] = await tx
-    .select({ groupId: spaceGroups.groupId })
-    .from(spaceGroups)
-    .where(eq(spaceGroups.spaceId, spaceId))
-    .limit(1)
-  if (!group) {
+  if (!member) {
     throw new NotYetKnownError(`actor is not a member of space ${spaceId}`)
   }
-  log.warn(
-    { spaceId, actorId: actor.id },
-    'actor not a direct member of a space with linked groups'
-  )
 }
 
 // The card keeps the place of the object's first event and shows its latest,
@@ -186,7 +168,7 @@ function store(category: Category): Handler<CloudEvent> {
     const actor: Actor | null = data.actor
       ? { type: 'token', id: data.actor.id, name: data.actor.name }
       : await findUser(tx, spaceId, twakeactorid, twakeactor)
-    if (spaceId) await checkActor(tx, log, spaceId, actor)
+    if (spaceId) await checkActor(tx, spaceId, actor)
     // Recipients stay out of the card every space member sees.
     const { recipients, ...content } = data
     const organizationId = twakeorg ?? null
