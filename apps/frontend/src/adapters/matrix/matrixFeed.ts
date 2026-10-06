@@ -40,8 +40,12 @@ interface FeedRoom {
     getLiveTimeline(): Timeline
   }
   on(event: RoomChange, listener: () => void): unknown
+  on(event: RoomEvent.TimelineReset, listener: OnReset): unknown
   off(event: RoomChange, listener: () => void): unknown
+  off(event: RoomEvent.TimelineReset, listener: OnReset): unknown
 }
+
+type OnReset = (room: unknown, timelineSet: unknown) => void
 
 export interface FeedClient {
   getUserId(): string | null
@@ -98,9 +102,18 @@ export function matrixFeed(clientOf: () => Promise<FeedClient>): FeedService {
       const onReplaced = (event: MatrixEvent) => {
         if (event.getRoomId() === roomId) emit()
       }
+      // After a gap in the sync the live timeline starts over empty.
+      const onReset: OnReset = (_room, reset) => {
+        if (reset !== timelineSet) return
+        hasOlder = true
+        emit()
+        // On failure the feed still offers to load older entries.
+        loadOlder().catch(() => undefined)
+      }
 
       room.on(RoomEvent.Timeline, emit)
       room.on(RoomEvent.Redaction, emit)
+      room.on(RoomEvent.TimelineReset, onReset)
       client.on(MatrixEventEvent.Replaced, onReplaced)
       emit()
       await loadOlder()
@@ -109,6 +122,7 @@ export function matrixFeed(clientOf: () => Promise<FeedClient>): FeedService {
         close: () => {
           room.off(RoomEvent.Timeline, emit)
           room.off(RoomEvent.Redaction, emit)
+          room.off(RoomEvent.TimelineReset, onReset)
           client.off(MatrixEventEvent.Replaced, onReplaced)
         }
       }
