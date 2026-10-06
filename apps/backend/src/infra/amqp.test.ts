@@ -116,24 +116,38 @@ describe('consumerAlive', () => {
           }
         })
     )
-    expect(consumerAlive(connected, stats)).toBe(true)
+    const alive = consumerAlive(connected, stats)
+    expect(alive()).toBe(true)
 
     const delivered = deliver({}, properties())
     await vi.advanceTimersByTimeAsync(4 * 60_000)
-    expect(consumerAlive(connected, stats)).toBe(true)
+    expect(alive()).toBe(true)
 
     await vi.advanceTimersByTimeAsync(2 * 60_000)
-    expect(consumerAlive(connected, stats)).toBe(false)
+    expect(alive()).toBe(false)
 
     finish()
     await delivered
-    expect(consumerAlive(connected, stats)).toBe(true)
+    expect(alive()).toBe(true)
   })
 
-  it('is dead while the client is disconnected', () => {
-    expect(consumerAlive({ isConnected: () => false }, consumerStats())).toBe(
-      false
+  it('rides out a reconnect, and is dead once disconnected for a minute', async () => {
+    let connectedNow = false
+    const alive = consumerAlive(
+      { isConnected: () => connectedNow },
+      consumerStats()
     )
+
+    expect(alive()).toBe(true)
+    await vi.advanceTimersByTimeAsync(50_000)
+    expect(alive()).toBe(true)
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(alive()).toBe(false)
+
+    connectedNow = true
+    expect(alive()).toBe(true)
+    connectedNow = false
+    expect(alive()).toBe(true)
   })
 })
 
@@ -157,6 +171,7 @@ describe('deadLetterQueue', () => {
       { spaceId: 'space-1' },
       {
         messageId: 'm-1',
+        mandatory: true,
         headers: {
           'x-twake-space-exchange': 'space',
           'x-twake-space-routing-key': 'twake.space.member.added',

@@ -187,7 +187,7 @@ Health requests are not logged. The metrics port answers `/health/live` and `/he
 - The backend declares the `activity` exchange, its `twake-space` quorum queue with the bindings, the `twake-space.dlx` exchange and the `twake-space.dlq` queue. Its user needs configure, write and read permissions on those.
 - The queue has a single active consumer, so only one replica consumes at a time. The others take over when it goes away.
 - An event the backend cannot process ends in `twake-space.dlq`. See [Events](events.md#consuming-rabbitmq).
-- A message that fails for over 25 minutes is logged as an error. RabbitMQ's `consumer_timeout` (30 minutes by default) then closes the channel and delivers it again.
+- A message that fails for over 25 minutes is logged as an error. RabbitMQ's `consumer_timeout` (30 minutes by default) then closes the channel and delivers it again. After 6 deliveries (about 3 hours of failures, less with restarts) RabbitMQ dead-letters it to `twake-space.dlq` and the queue moves on.
 
 ### ldap-rest
 
