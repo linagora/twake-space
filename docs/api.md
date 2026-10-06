@@ -212,7 +212,7 @@ Returns whether each notification type is on. A type the user never chose is on,
 - Caller: session only.
 - Answers `200` with `Content-Type: text/event-stream`, `Cache-Control: no-store` and `X-Accel-Buffering: no`.
 - It opens with the comment `: open` and sends `: heartbeat` every 25 seconds.
-- The stream ends when the access token expires, when the session is logged out through back-channel logout (on every replica), and when the server shuts down.
+- The stream ends when the access token expires, when the session is logged out through back-channel logout (on every replica), and when the server shuts down. A person keeps at most 10 open streams per replica: opening another ends their oldest.
 
 The events carry no state; they tell the client what to reload.
 
