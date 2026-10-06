@@ -7,7 +7,8 @@ import {
   DialogContent,
   FormControlLabel,
   Stack,
-  TextField
+  TextField,
+  Typography
 } from '@linagora/twake-mui'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useId, useState, type ReactElement } from 'react'
@@ -118,6 +119,15 @@ export function AddToSpaceDialog({
           />
           {found.isError && (
             <Alert severity="error">{t('members.searchFailed')}</Alert>
+          )}
+          {found.isSuccess && !found.hasNextPage && candidates.length === 0 && (
+            <Typography color="textSecondary">
+              {t(
+                kind === 'people'
+                  ? 'members.noOneMatches'
+                  : 'members.noGroupMatches'
+              )}
+            </Typography>
           )}
           <Stack>
             {candidates.map(c => (

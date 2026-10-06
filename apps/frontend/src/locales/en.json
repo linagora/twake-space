@@ -111,6 +111,8 @@
     "role": "Role",
     "search": "Search",
     "searchFailed": "The organization could not be searched.",
+    "noOneMatches": "No one matches.",
+    "noGroupMatches": "No group matches.",
     "more": "Show more",
     "refused": "The change was refused (%{code}).",
     "failed": "The change could not be saved."

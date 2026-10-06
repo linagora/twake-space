@@ -111,6 +111,8 @@
     "role": "Rolle",
     "search": "Suchen",
     "searchFailed": "Die Organisation konnte nicht durchsucht werden.",
+    "noOneMatches": "Niemand passt zur Suche.",
+    "noGroupMatches": "Keine Gruppe passt zur Suche.",
     "more": "Mehr anzeigen",
     "refused": "Die Änderung wurde abgelehnt (%{code}).",
     "failed": "Die Änderung konnte nicht gespeichert werden."

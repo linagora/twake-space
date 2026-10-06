@@ -111,6 +111,8 @@
     "role": "Rôle",
     "search": "Rechercher",
     "searchFailed": "La recherche dans l'organisation a échoué.",
+    "noOneMatches": "Personne ne correspond.",
+    "noGroupMatches": "Aucun groupe ne correspond.",
     "more": "Afficher plus",
     "refused": "La modification a été refusée (%{code}).",
     "failed": "La modification n'a pas pu être enregistrée."

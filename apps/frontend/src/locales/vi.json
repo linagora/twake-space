@@ -111,6 +111,8 @@
     "role": "Vai trò",
     "search": "Tìm kiếm",
     "searchFailed": "Không thể tìm kiếm trong tổ chức.",
+    "noOneMatches": "Không tìm thấy ai.",
+    "noGroupMatches": "Không tìm thấy nhóm nào.",
     "more": "Xem thêm",
     "refused": "Thay đổi bị từ chối (%{code}).",
     "failed": "Không thể lưu thay đổi."
