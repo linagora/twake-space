@@ -8,7 +8,9 @@
     "evening": "Chào buổi tối, %{name}"
   },
   "shell": {
-    "yourSpaces": "Không gian của bạn"
+    "yourSpaces": "Không gian của bạn",
+    "title": "Không gian",
+    "allSpaces": "Tất cả không gian được chia sẻ"
   },
   "errors": {
     "notFound": "Không tìm thấy trang",
@@ -40,10 +42,18 @@
     "delete": "Xóa"
   },
   "spaceActions": {
-    "rename": "Đổi tên không gian",
+    "edit": "Chỉnh sửa không gian",
     "delete": "Xóa không gian",
     "deleteTitle": "Xóa %{name}?",
     "deleteHint": "Các thành viên sẽ mất quyền truy cập. Không thể hoàn tác."
+  },
+  "spaceMenu": {
+    "open": "Thao tác khác cho %{name}",
+    "shareLink": "Chia sẻ liên kết",
+    "linkCopied": "Đã sao chép liên kết",
+    "invite": "Mời mọi người",
+    "managePeople": "Quản lý thành viên",
+    "members": "Thành viên"
   },
   "roles": {
     "viewer": "Người xem",
@@ -51,7 +61,6 @@
     "admin": "Quản trị viên"
   },
   "spaces": {
-    "title": "Không gian",
     "loading": "Đang tải không gian…",
     "loadFailed": "Không thể tải các không gian của bạn.",
     "none": "Tạo không gian đầu tiên của bạn",
@@ -60,7 +69,8 @@
     "createFailed": "Không thể tạo không gian.",
     "channelsHint": "Một không gian có thể chứa nhiều kênh cho các chủ đề hoặc nhóm khác nhau",
     "all": "Tất cả không gian",
-    "createHint": "Dự án, phòng ban, nhóm chủ đề…"
+    "createHint": "Dự án, phòng ban, nhóm chủ đề…",
+    "createCard": "Tạo không gian mới"
   },
   "createSpace": {
     "name": "Tên không gian",

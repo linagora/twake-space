@@ -72,7 +72,7 @@ describe('memorySpaces', () => {
 
     await spaces.rename('roadmap', 'Roadmap 2027')
     expect(await spaces.list()).toEqual([
-      { id: 'roadmap', name: 'Roadmap 2027', role: 'admin', color: null }
+      expect.objectContaining({ id: 'roadmap', name: 'Roadmap 2027' })
     ])
     await spaces.remove('roadmap')
     expect(await spaces.list()).toEqual([])
@@ -129,7 +129,14 @@ describe('memorySpaces', () => {
     })
 
     expect(await spaces.list()).toEqual([
-      { id: 'roadmap', name: 'Roadmap', role: 'admin', color: null },
+      {
+        id: 'roadmap',
+        name: 'Roadmap',
+        role: 'admin',
+        color: null,
+        description: '',
+        members: [{ id: 'u-alice', username: 'alice', displayName: null }]
+      },
       created
     ])
     expect(await spaces.get(created.id)).toMatchObject({

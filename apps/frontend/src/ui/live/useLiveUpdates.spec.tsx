@@ -19,7 +19,14 @@ describe('useLiveUpdates', () => {
   it('refreshes the spaces when one of them changes', async () => {
     const live = fakeLive()
     const spaces = fakeSpaces([
-      { id: 'a1', name: 'Roadmap', role: 'viewer', color: null }
+      {
+        id: 'a1',
+        name: 'Roadmap',
+        role: 'viewer',
+        color: null,
+        description: '',
+        members: []
+      }
     ])
     renderWithProviders(<Home />, { spaces, live })
     await screen.findByRole('link', { name: 'Roadmap' })

@@ -1,5 +1,30 @@
 import type { MemoryOrganization } from '@/adapters/memory/memoryDirectory'
-import type { Refusal, Space, SpacesService } from '@/application/spaces'
+import type {
+  Refusal,
+  Space,
+  SpaceSummary,
+  SpacesService
+} from '@/application/spaces'
+
+const summary = ({
+  id,
+  name,
+  role,
+  color,
+  description,
+  members
+}: Space): SpaceSummary => ({
+  id,
+  name,
+  role,
+  color,
+  description,
+  members: members.map(({ id, username, displayName }) => ({
+    id,
+    username,
+    displayName
+  }))
+})
 
 const refuse = (status: number, code: string) =>
   Promise.reject(
@@ -23,10 +48,7 @@ export function memorySpaces(
   }
 
   return {
-    list: () =>
-      Promise.resolve(
-        spaces.map(({ id, name, role, color }) => ({ id, name, role, color }))
-      ),
+    list: () => Promise.resolve(spaces.map(summary)),
     get: id => {
       const space = find(id)
       return space
@@ -56,8 +78,7 @@ export function memorySpaces(
         ]
       }
       spaces.push(space)
-      const { id, name, role, color } = space
-      return Promise.resolve({ id, name, role, color })
+      return Promise.resolve(summary(space))
     },
     rename: (id, name) =>
       write(id, space => {

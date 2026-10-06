@@ -1,11 +1,20 @@
 export type SpaceRole = 'viewer' | 'editor' | 'admin'
 
+/** A member as the space list shows it: enough for an avatar. */
+export interface MemberSummary {
+  id: string
+  username: string
+  displayName: string | null
+}
+
 export interface SpaceSummary {
   id: string
   name: string
   role: SpaceRole
   /** The avatar color picked at creation. */
   color: string | null
+  description: string
+  members: MemberSummary[]
 }
 
 export type SpaceApp = 'feed' | 'chat' | 'tasks' | 'drive' | 'mail' | 'calendar'

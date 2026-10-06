@@ -1,12 +1,4 @@
-import {
-  Alert,
-  Button,
-  Chip,
-  Link,
-  Tab,
-  Tabs,
-  Typography
-} from '@linagora/twake-mui'
+import { Alert, Button, Link, Tab, Tabs, Typography } from '@linagora/twake-mui'
 import { useEffect, useState, type ReactElement } from 'react'
 import {
   Navigate,
@@ -145,13 +137,6 @@ export function SpaceScreen(): ReactElement {
           />
         }
         title={space.data.name}
-        meta={
-          <Chip
-            label={t(`roles.${space.data.role}`)}
-            size="small"
-            variant="outlined"
-          />
-        }
         actions={<SpaceActions space={space.data} />}
         tabs={
           <Tabs
@@ -176,11 +161,6 @@ export function SpaceScreen(): ReactElement {
           </Tabs>
         }
       />
-      {space.data.description && !framed && (
-        <Typography variant="body2" color="textSecondary" className="u-mb-1">
-          {space.data.description}
-        </Typography>
-      )}
       {!space.data.chat && (
         <Alert severity="info" className="u-mb-1">
           {t('space.chatOff')}
