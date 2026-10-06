@@ -161,5 +161,8 @@
     },
     "deletedUser": "Deleted user",
     "someone": "Someone"
+  },
+  "embed": {
+    "overlay": "%{app} windows"
   }
 }

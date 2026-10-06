@@ -54,6 +54,7 @@ function TasksFrame({
 
   return (
     <EmbeddedAppFrame
+      app="tasks"
       appUrl={tasksUrl}
       embedPath={`/embed/projects/${projectId}`}
       tabPath={`/spaces/${spaceId}/tasks`}

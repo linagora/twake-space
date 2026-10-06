@@ -161,5 +161,8 @@
     },
     "deletedUser": "Người dùng đã xóa",
     "someone": "Ai đó"
+  },
+  "embed": {
+    "overlay": "Cửa sổ của %{app}"
   }
 }

@@ -139,4 +139,14 @@ describe('TasksPanel', () => {
       await screen.findByText('Tasks is not set up for TwakeSpace.')
     ).toBeInTheDocument()
   })
+
+  it('frames Tasks without an overlay', async () => {
+    renderAt('/spaces/a1/tasks')
+
+    expect(await screen.findByTitle('Tasks')).toHaveAttribute(
+      'name',
+      'twake-embed-tasks'
+    )
+    expect(screen.queryByTitle('Tasks windows')).not.toBeInTheDocument()
+  })
 })

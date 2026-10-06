@@ -161,5 +161,8 @@
     },
     "deletedUser": "Gelöschter Benutzer",
     "someone": "Jemand"
+  },
+  "embed": {
+    "overlay": "Fenster von %{app}"
   }
 }
