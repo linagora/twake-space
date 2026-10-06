@@ -44,10 +44,15 @@ function cardContent(card: StoredEvent) {
     type: card.type,
     id: card.eventId,
     actor: card.actor,
-    object: { type, id, title, container },
+    object: {
+      type,
+      id,
+      title,
+      container: container && { kind: container.kind, id: container.id }
+    },
     preview: content.preview,
     state: content.state ?? {},
-    body: [content.object.title, content.preview].filter(Boolean).join('\n'),
+    body: [title, content.preview].filter(Boolean).join('\n'),
     'm.mentions': {}
   }
 }

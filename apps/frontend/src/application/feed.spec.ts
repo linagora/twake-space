@@ -79,9 +79,9 @@ describe('toFeedEntry', () => {
       url: 'https://tasks.test/T-1'
     }
 
-    expect(
-      toFeedEntry({ ...card, content: { ...card.content, object } })
-    ).toMatchObject({
+    const entry = toFeedEntry({ ...card, content: { ...card.content, object } })
+
+    expect(entry).toMatchObject({
       object: {
         type: 'task',
         id: 'T-1',
@@ -89,9 +89,7 @@ describe('toFeedEntry', () => {
         container: null
       }
     })
-    expect(
-      toFeedEntry({ ...card, content: { ...card.content, object } })
-    ).not.toHaveProperty('object.url')
+    expect(entry).not.toHaveProperty('object.url')
   })
 
   it('reads a text message', () => {

@@ -299,8 +299,8 @@ sequenceDiagram
 - An event becomes a feed entry:
   - `m.room.message` with a string `body` -> a message.
   - `com.twake.feed.<category>` with an `object` holding string `type`, `id`, `title` -> a card with its `actor` (when it has a known `type`) and `preview` (when it is a string).
-- A card's title opens the space's tab for its container: `project` -> Tasks, `drive` -> Files, `mailbox` -> Mail, `calendar` -> Calendar, `matrix_space` -> Chat. With no container, or a tab the space does not show, the title is plain text.
   - An `m.replace` event is not an entry. The SDK gives each event the content of its latest edit, so the first card about an object shows the latest content.
+- A card's title opens the space's tab for its container: `project` -> Tasks, `drive` -> Drive, `mailbox` -> Mail, `calendar` -> Calendar, `matrix_space` -> Chat. With no container, or a tab the space does not show, the title is plain text.
 - After a gap in the sync the timeline resets; the feed then loads older entries again.
 
 ## Retention
