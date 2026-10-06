@@ -84,6 +84,18 @@ describe('FeedPanel', () => {
     expect(feed.view.loadOlder).toHaveBeenCalled()
   })
 
+  it('says so when older entries cannot be loaded', async () => {
+    const feed = fakeFeed(page)
+    vi.mocked(feed.view.loadOlder).mockRejectedValue(new Error('offline'))
+    renderFeed(feed)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Load older' }))
+
+    expect(
+      await screen.findByText('Could not load older entries.')
+    ).toBeInTheDocument()
+  })
+
   it('says when the feed is empty', async () => {
     renderFeed(fakeFeed({ entries: [], hasOlder: false }))
 

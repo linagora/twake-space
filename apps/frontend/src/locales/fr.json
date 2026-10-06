@@ -54,6 +54,7 @@
     "loadFailed": "Impossible de charger le fil.",
     "empty": "Rien pour l'instant.",
     "loadOlder": "Charger les plus anciens",
+    "loadOlderFailed": "Impossible de charger les plus anciens.",
     "filter": "Afficher",
     "filters": {
       "all": "Tout",

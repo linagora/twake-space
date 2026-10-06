@@ -54,6 +54,7 @@
     "loadFailed": "Impossibile caricare il feed.",
     "empty": "Ancora niente qui.",
     "loadOlder": "Carica precedenti",
+    "loadOlderFailed": "Impossibile caricare le voci precedenti.",
     "filter": "Mostra",
     "filters": {
       "all": "Tutto",

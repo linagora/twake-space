@@ -54,6 +54,7 @@
     "loadFailed": "Không thể tải bảng tin.",
     "empty": "Chưa có gì.",
     "loadOlder": "Tải cũ hơn",
+    "loadOlderFailed": "Không thể tải các mục cũ hơn.",
     "filter": "Hiển thị",
     "filters": {
       "all": "Tất cả",

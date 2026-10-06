@@ -54,6 +54,7 @@
     "loadFailed": "Feed konnte nicht geladen werden.",
     "empty": "Noch nichts hier.",
     "loadOlder": "Ältere laden",
+    "loadOlderFailed": "Ältere Einträge konnten nicht geladen werden.",
     "filter": "Anzeigen",
     "filters": {
       "all": "Alle",
