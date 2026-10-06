@@ -100,15 +100,16 @@ export async function postCards(
   const resting = [...backoff]
     .filter(([, b]) => b.retryAt > now)
     .map(([spaceId]) => spaceId)
+  // From the spaces that can post, so cards that never will (no chat, no
+  // Matrix space) cost nothing.
   const waiting = await db
-    .selectDistinct({
+    .select({
       spaceId: spaces.spaceId,
       roomId: spaceResources.resourceId,
       url: homeservers.url,
       asToken: homeservers.asToken
     })
-    .from(activityEvents)
-    .innerJoin(spaces, eq(spaces.spaceId, activityEvents.spaceId))
+    .from(spaces)
     .innerJoin(
       spaceResources,
       and(
@@ -124,13 +125,23 @@ export async function postCards(
       )
     )
     .innerJoin(homeservers, eq(homeservers.id, organizations.homeserverId))
-    .where(
-      and(
-        isNull(activityEvents.matrixEventId),
-        isNull(activityEvents.postFailedAt),
-        notInArray(spaces.spaceId, resting)
-      )
+    // Lateral, so Postgres looks for one card per space instead of reading
+    // every unposted card into a semi-join.
+    .crossJoinLateral(
+      db
+        .select({ one: sql`1`.as('one') })
+        .from(activityEvents)
+        .where(
+          and(
+            eq(activityEvents.spaceId, spaces.spaceId),
+            isNull(activityEvents.matrixEventId),
+            isNull(activityEvents.postFailedAt)
+          )
+        )
+        .limit(1)
+        .as('unposted')
     )
+    .where(notInArray(spaces.spaceId, resting))
     .limit(SPACES_PER_PASS)
 
   await Promise.all(
