@@ -135,19 +135,27 @@ it("revokes a disabled member's tokens in that organization", async () => {
   expect(await active()).toEqual(['alice elsewhere'])
 })
 
-it('finds a disabled member sent without an email by their username', async () => {
+it('finds a disabled member sent without an email by their username, in that organization only', async () => {
   await token('alice', { accountId: ALICE })
+  await token(
+    'alice elsewhere',
+    { accountId: ALICE },
+    { organizationId: 'org-2' }
+  )
 
-  await handle('b2b.member.disabled', {
-    organizationId: 'org-1',
-    username: 'alice'
-  })
+  // Another person named alice in org-2, unknown to the copy.
   await handle('b2b.member.disabled', {
     organizationId: 'org-2',
     username: 'alice'
   })
+  const afterNamesake = await active()
+  await handle('b2b.member.disabled', {
+    organizationId: 'org-1',
+    username: 'alice'
+  })
 
-  expect(await active()).toEqual([])
+  expect(afterNamesake).toEqual(['alice', 'alice elsewhere'])
+  expect(await active()).toEqual(['alice elsewhere'])
 })
 
 it('spares tokens created after a replayed disable', async () => {

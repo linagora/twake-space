@@ -194,6 +194,27 @@ describe('postCards', () => {
     })
   })
 
+  it('edits the first card, not the latest, when more events follow', async () => {
+    const q3 = { type: 'file', category: 'files' as const, id: 'f-q3' }
+    await stored(DESIGN, 1, 'Q3 plan', q3)
+    await stored(DESIGN, 2, 'Q3 plan v2', q3)
+    await stored(DESIGN, 3, 'Q3 plan v3', q3)
+    const { sent, matrix } = recording()
+
+    await postCards(testDb.db, KEY, matrix, log)
+
+    expect(
+      sent
+        .filter(s => s.txnId.endsWith('.edit'))
+        .map(
+          s =>
+            (s.content as { 'm.relates_to': { event_id: string } })[
+              'm.relates_to'
+            ].event_id
+        )
+    ).toEqual(['$card1', '$card1'])
+  })
+
   it('uses the stored row id as transaction id, so a retry posts once', async () => {
     await stored(DESIGN, 1)
     const { sent, matrix } = recording()

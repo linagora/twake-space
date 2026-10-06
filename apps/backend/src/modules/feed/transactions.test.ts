@@ -357,11 +357,13 @@ describe('PUT /_matrix/app/v1/transactions/:txnId', () => {
     })
 
     it('reads the localpart from the email when configured so', async () => {
-      await setUp('email')('t1', [
-        mentioning('@bob:example.com'),
-        mentioning('@robert:example.com')
-      ])
+      const put = setUp('email')
 
+      await put('t1', [mentioning('@bob:example.com')])
+      const byUsername = await mentioned()
+      await put('t2', [mentioning('@robert:example.com')])
+
+      expect(byUsername).toEqual([])
       expect((await mentioned()).map(m => m.userId)).toEqual([BOB])
     })
 
