@@ -21,9 +21,12 @@ export function subscription(topology: AmqpTopology) {
       { exchange: topology.activityExchange, routingKey: '#' }
     ],
     deadLetterExchange: topology.deadLetterExchange,
-    // Other services own these; the apps and we declare the activity one.
+    // Other services own these. The apps and we declare the activity one, and
+    // we declare the settings one so a platform without common settings runs.
     passiveExchanges: [...new Set(platform.map(b => b.exchange))].filter(
-      exchange => exchange !== topology.activityExchange
+      exchange =>
+        exchange !== topology.activityExchange &&
+        exchange !== topology.events['user.settings.updated'].exchange
     ),
     maxRetries: Infinity,
     maxRetryDelay: MAX_RETRY_MS,

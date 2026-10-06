@@ -4,7 +4,7 @@ How events reach Twake Space, what the backend does with them, and how the resul
 
 ## Terms
 
-- Platform event: a RabbitMQ message from ldap-rest or another platform service (exchanges `space`, `b2b`, `admin-panel`). It has a routing key, a message id, and a JSON body.
+- Platform event: a RabbitMQ message from ldap-rest or another platform service (exchanges `space`, `b2b`, `admin-panel`, `settings`). It has a routing key, a message id, and a JSON body.
 - Activity event: a CloudEvent (specversion `1.0`) an app publishes on the `activity` exchange, with the CloudEvent `type` as routing key.
 - Copy: the backend's Postgres copy of organizations, spaces, members, linked groups and resources.
 - Card: an activity event stored in `activity_events`, then posted to the space's Matrix space as a `com.twake.feed.<category>` event.
@@ -39,6 +39,7 @@ The backend consumes one queue, `twake-space`, through [@linagora/rabbitmq-clien
 - `space`: `twake.space.created`, `twake.space.updated`, `twake.space.deleted`, `twake.space.member.added`, `twake.space.member.role.changed`, `twake.space.member.removed`, `twake.space.group.linked`, `twake.space.group.role.changed`, `twake.space.group.unlinked`
 - `b2b`: `b2b.group.updated`, `b2b.member.role.changed`, `b2b.member.disabled`, `domain.user.deleted`, `domain.organization.deleted`, `chat.deprovision`, `chat.deployment.completed`
 - `admin-panel`: `dns.validated`
+- `settings`: `user.settings.updated`
 - `activity`: `#`
 
 The queue:
@@ -47,7 +48,7 @@ The queue:
 - Dead-letters to the `twake-space.dlx` exchange, which routes to the `twake-space.dlq` queue. The backend declares both.
 - Gets each message acknowledged only after its Postgres transaction commits.
 
-Startup fails when `space`, `b2b` or `admin-panel` is missing, since other services own them. The backend declares `activity` itself, as a durable topic exchange, the same way the apps do.
+Startup fails when `space`, `b2b` or `admin-panel` is missing, since other services own them. The backend declares `activity` and `settings` itself, as durable topic exchanges: the apps declare `activity` the same way, and declaring `settings` lets the backend run on a platform without common settings.
 
 Every name above is a setting, listed in [Deploying](deploy.md#rabbitmq-names). The router, the handlers and the `parked_events` rows always see the default names: the consumer translates a renamed exchange or routing key back before routing.
 
@@ -96,6 +97,17 @@ Every platform handler is wrapped: when the body has an `organizationId` the cop
 - `chat.deployment.completed`: sets chat available at `deployment.completedAt`, then refreshes the tenant's homeserver. A `status` other than `succeeded` is logged and ignored.
 - `chat.deprovision`: sets chat unavailable at `timestamp`.
 - `dns.validated`: sets mail available to `mailDnsConfigurationValidated`. It has no time, so the last one handled wins.
+
+### User settings
+
+`user.settings.updated` comes from Twake Workplace common settings. Each message holds all of a person's settings after a change.
+
+- It is stored by the person's lowercased `payload.email`, the only key common settings and TwakeSpace share. A message without an email is dropped.
+- A `version` at or below the stored one is dropped. A newer one replaces the stored settings whole.
+- Only what the UI applies is kept: `language`, `timezone`, `theme` (`light`, `dark` or `auto`), `avatar` and `display_name`. A value of another type is left out.
+- Common settings publishes without a message id, so the body's `request_id` stands in for it. A republish of the same version gets a new `request_id`, and the version check drops it.
+- A stored change sends a `settings` live event to the person's open streams. `GET /settings` gives the caller theirs, with `null` for anything not set.
+- TwakeSpace never calls the common settings API. A person it has had no message about gets the browser's defaults until their settings change, or until an admin republishes everyone with common settings' `POST /api/admin/user/settings/sync`.
 
 ### Space copy
 
@@ -284,7 +296,7 @@ sequenceDiagram
 ```
 
 - Handlers call `pg_notify` on the `live` channel inside their transaction, so replicas only hear about committed changes. One notify carries up to 100 users, to stay under the payload limit.
-- Every replica listens and writes the event to each open stream of the listed users.
+- Every replica listens and writes the event to each open stream of the listed users. A `settings` event names an email instead, and goes to the streams of sessions with that email.
 - `GET /stream` needs a session. It is `text/event-stream`, sends a heartbeat comment every 25 seconds, and closes when the session expires, when the session is revoked, or when the server stops.
 - The frontend reads it with `fetch` (EventSource cannot send the bearer token) and reconnects with a backoff from 1 to 30 seconds.
 - On `spaces`, the frontend invalidates its spaces queries. On a reconnect it invalidates every query, since events sent while the stream was closed are lost.
