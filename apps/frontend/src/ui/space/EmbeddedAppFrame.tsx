@@ -212,6 +212,18 @@ function AppOverlay({
     }
   }, [origin])
 
+  // While the app blocks the page (a dialog), the rest of it, the app's own
+  // frame included, is out of reach of the keyboard and screen readers
+  useEffect(() => {
+    if (region !== 'full') return
+    const page = document.getElementById('root')
+    if (!page) return
+    page.inert = true
+    return () => {
+      page.inert = false
+    }
+  }, [region])
+
   return (
     <OverlayFrame
       frameRef={overlay}
