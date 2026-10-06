@@ -29,6 +29,30 @@ export function Page({ children }: { children: ReactNode }): ReactElement {
   )
 }
 
+export function TabPanel({
+  tab,
+  children
+}: {
+  tab: string
+  children: ReactNode
+}): ReactElement {
+  return (
+    <Box
+      role="tabpanel"
+      id={`panel-${tab}`}
+      aria-labelledby={`tab-${tab}`}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: '1 1 auto',
+        minHeight: 0
+      }}
+    >
+      {children}
+    </Box>
+  )
+}
+
 export function SpaceHeader({
   avatar,
   title,
