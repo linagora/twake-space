@@ -28,7 +28,9 @@ export function fakeSpaces(initial: SpaceSummary[] = []): SpacesService {
         id: `space-${String(spaces.length + 1)}`,
         name,
         role: 'admin',
-        color
+        color,
+        description: '',
+        members: []
       }
       spaces.push(space)
       return Promise.resolve(space)

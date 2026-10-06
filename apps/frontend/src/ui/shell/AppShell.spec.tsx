@@ -8,8 +8,22 @@ import { renderRoute } from '@/testing/renderWithProviders'
 
 const spaces = () =>
   fakeSpaces([
-    { id: 'space-1', name: 'Design', role: 'admin', color: null },
-    { id: 'space-2', name: 'Launch', role: 'viewer', color: null }
+    {
+      id: 'space-1',
+      name: 'Design',
+      role: 'admin',
+      color: null,
+      description: '',
+      members: []
+    },
+    {
+      id: 'space-2',
+      name: 'Launch',
+      role: 'viewer',
+      color: null,
+      description: '',
+      members: []
+    }
   ])
 
 describe('AppShell', () => {
@@ -64,10 +78,9 @@ describe('AppShell', () => {
     renderRoute('/', { spaces: spaces() })
 
     const nav = within(await screen.findByRole('navigation'))
-    expect(nav.getByRole('link', { name: 'Spaces' })).toHaveAttribute(
-      'aria-current',
-      'page'
-    )
+    expect(
+      nav.getByRole('link', { name: 'All shared spaces' })
+    ).toHaveAttribute('aria-current', 'page')
   })
 
   it('follows the UI language', async () => {

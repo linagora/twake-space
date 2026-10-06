@@ -8,7 +8,9 @@
     "evening": "Buenas noches, %{name}"
   },
   "shell": {
-    "yourSpaces": "Tus espacios"
+    "yourSpaces": "Tus espacios",
+    "title": "Espacio",
+    "allSpaces": "Todos los espacios compartidos"
   },
   "errors": {
     "notFound": "Página no encontrada",
@@ -40,10 +42,18 @@
     "delete": "Eliminar"
   },
   "spaceActions": {
-    "rename": "Cambiar el nombre del espacio",
+    "edit": "Editar el espacio",
     "delete": "Eliminar el espacio",
     "deleteTitle": "¿Eliminar %{name}?",
     "deleteHint": "Sus miembros perderán el acceso. No se puede deshacer."
+  },
+  "spaceMenu": {
+    "open": "Más acciones para %{name}",
+    "shareLink": "Compartir enlace",
+    "linkCopied": "Enlace copiado",
+    "invite": "Invitar personas",
+    "managePeople": "Gestionar personas",
+    "members": "Miembros"
   },
   "roles": {
     "viewer": "Lector",
@@ -51,7 +61,6 @@
     "admin": "Administrador"
   },
   "spaces": {
-    "title": "Espacios",
     "loading": "Cargando espacios…",
     "loadFailed": "No se pudieron cargar tus espacios.",
     "none": "Cree su primer espacio",
@@ -60,7 +69,8 @@
     "createFailed": "No se pudo crear el espacio.",
     "channelsHint": "Un espacio puede contener varios canales para distintos temas o equipos",
     "all": "Todos los espacios",
-    "createHint": "Proyecto, departamento, grupo temático…"
+    "createHint": "Proyecto, departamento, grupo temático…",
+    "createCard": "Crear un espacio nuevo"
   },
   "createSpace": {
     "name": "Nombre del espacio",

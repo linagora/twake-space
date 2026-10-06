@@ -1,4 +1,4 @@
-import { Home, Icon, Logout } from '@linagora/twake-icons'
+import { Cube, Icon, Logout, Plus } from '@linagora/twake-icons'
 import {
   Avatar,
   ButtonBase,
@@ -17,7 +17,7 @@ import {
   Typography
 } from '@linagora/twake-mui'
 import { useState, type ReactElement } from 'react'
-import { Outlet, NavLink as RouterNavLink } from 'react-router'
+import { Outlet, NavLink as RouterNavLink, useMatch } from 'react-router'
 
 import {
   AccountCard,
@@ -30,17 +30,33 @@ import {
 } from '@/ds/AppFrame'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
+import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
 import { useCommonSettings } from '@/ui/settings/useCommonSettings'
 import { useSpaceList } from '@/ui/spaces/queries'
 
 export function AppShell(): ReactElement {
   const { t } = useI18n()
+  const [creating, setCreating] = useState(false)
+  const home = useMatch('/') !== null
 
   return (
     <AppFrame
+      bare={home}
       sidebar={
         <>
-          <SidebarHeader title={t('app.name')} />
+          <SidebarHeader
+            title={t('shell.title')}
+            action={
+              <IconButton
+                aria-label={t('spaces.create')}
+                onClick={() => {
+                  setCreating(true)
+                }}
+              >
+                <Icon icon={Plus} />
+              </IconButton>
+            }
+          />
           <AppNav />
           <SpaceList />
           <SidebarFooter>
@@ -58,6 +74,13 @@ export function AppShell(): ReactElement {
       }
     >
       <Outlet />
+      {creating && (
+        <CreateSpaceDialog
+          onClose={() => {
+            setCreating(false)
+          }}
+        />
+      )}
     </AppFrame>
   )
 }
@@ -141,8 +164,8 @@ function AppNav(): ReactElement {
     <Nav>
       <NavItem>
         <NavLink component={RouterNavLink} to="/" end>
-          <NavIcon icon={Home} />
-          <NavText>{t('spaces.title')}</NavText>
+          <NavIcon icon={Cube} />
+          <NavText>{t('shell.allSpaces')}</NavText>
         </NavLink>
       </NavItem>
     </Nav>

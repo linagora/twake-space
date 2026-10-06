@@ -5,9 +5,10 @@ import { Link as RouterLink } from 'react-router'
 
 import spaceTile from '@/assets/space.svg'
 import { NameAvatar } from '@/ds/AppFrame'
-import { CardGrid, CreateCard, SpaceCard } from '@/ds/Card'
+import { CardGrid, CreateCard, MemberAvatars, SpaceCard } from '@/ds/Card'
 import { LoadingRows, Page, TileEmpty } from '@/ds/Page'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
+import { SpaceMenu } from '@/ui/space/SpaceMenu'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
 import { useCommonSettings } from '@/ui/settings/useCommonSettings'
@@ -113,8 +114,8 @@ export function HomeScreen(): ReactElement {
           </Typography>
           <CardGrid>
             <CreateCard
-              icon={<Icon icon={Plus} />}
-              title={t('spaces.create')}
+              icon={<Icon icon={Plus} size={24} />}
+              title={t('spaces.createCard')}
               text={t('spaces.createHint')}
               onClick={startCreating}
             />
@@ -129,6 +130,25 @@ export function HomeScreen(): ReactElement {
                     {space.name}
                   </RouterLink>
                 }
+                description={space.description}
+                members={
+                  space.members.length > 0 && (
+                    <MemberAvatars>
+                      {space.members.map(member => {
+                        const name = member.displayName ?? member.username
+                        return (
+                          <NameAvatar
+                            key={member.id}
+                            name={name}
+                            label={name}
+                            size="s"
+                          />
+                        )
+                      })}
+                    </MemberAvatars>
+                  )
+                }
+                menu={<SpaceMenu space={space} />}
               />
             ))}
           </CardGrid>

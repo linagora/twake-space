@@ -79,14 +79,28 @@ describe('HomeScreen', () => {
 
   it("shows the person's spaces as cards after a create card, each opening the space", async () => {
     const spaces = fakeSpaces([
-      { id: 'a1', name: 'Design Sprint', role: 'admin', color: null },
-      { id: 'b2', name: 'Roadmap', role: 'viewer', color: null }
+      {
+        id: 'a1',
+        name: 'Design Sprint',
+        role: 'admin',
+        color: null,
+        description: '',
+        members: []
+      },
+      {
+        id: 'b2',
+        name: 'Roadmap',
+        role: 'viewer',
+        color: null,
+        description: '',
+        members: []
+      }
     ])
     renderWithProviders(<HomeScreen />, { spaces })
 
     const all = await screen.findByRole('region', { name: 'All spaces' })
     const [create, sprint, roadmap] = within(all).getAllByRole('listitem')
-    expect(create).toHaveTextContent('Create a space')
+    expect(create).toHaveTextContent('Create new space')
     expect(sprint).toHaveTextContent('Design Sprint')
     expect(roadmap).toHaveTextContent('Roadmap')
     expect(

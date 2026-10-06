@@ -8,7 +8,9 @@
     "evening": "Buonasera, %{name}"
   },
   "shell": {
-    "yourSpaces": "I tuoi spazi"
+    "yourSpaces": "I tuoi spazi",
+    "title": "Spazio",
+    "allSpaces": "Tutti gli spazi condivisi"
   },
   "errors": {
     "notFound": "Pagina non trovata",
@@ -40,10 +42,18 @@
     "delete": "Elimina"
   },
   "spaceActions": {
-    "rename": "Rinomina lo spazio",
+    "edit": "Modifica lo spazio",
     "delete": "Elimina lo spazio",
     "deleteTitle": "Eliminare %{name}?",
     "deleteHint": "I suoi membri perderanno l'accesso. L'operazione è definitiva."
+  },
+  "spaceMenu": {
+    "open": "Altre azioni per %{name}",
+    "shareLink": "Condividi il link",
+    "linkCopied": "Link copiato",
+    "invite": "Invita persone",
+    "managePeople": "Gestisci le persone",
+    "members": "Membri"
   },
   "roles": {
     "viewer": "Lettore",
@@ -51,7 +61,6 @@
     "admin": "Amministratore"
   },
   "spaces": {
-    "title": "Spazi",
     "loading": "Caricamento degli spazi…",
     "loadFailed": "Non è stato possibile caricare i tuoi spazi.",
     "none": "Crea il tuo primo spazio",
@@ -60,7 +69,8 @@
     "createFailed": "Non è stato possibile creare lo spazio.",
     "channelsHint": "Uno spazio può contenere più canali per argomenti o team diversi",
     "all": "Tutti gli spazi",
-    "createHint": "Progetto, reparto, gruppo tematico…"
+    "createHint": "Progetto, reparto, gruppo tematico…",
+    "createCard": "Crea un nuovo spazio"
   },
   "createSpace": {
     "name": "Nome dello spazio",

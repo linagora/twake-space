@@ -8,7 +8,9 @@
     "evening": "Good evening, %{name}"
   },
   "shell": {
-    "yourSpaces": "Your spaces"
+    "yourSpaces": "Your spaces",
+    "title": "Space",
+    "allSpaces": "All shared spaces"
   },
   "errors": {
     "notFound": "Page not found",
@@ -40,10 +42,18 @@
     "delete": "Delete"
   },
   "spaceActions": {
-    "rename": "Rename the space",
-    "delete": "Delete the space",
+    "edit": "Edit space",
+    "delete": "Delete space",
     "deleteTitle": "Delete %{name}?",
     "deleteHint": "Its members lose access to it. This cannot be undone."
+  },
+  "spaceMenu": {
+    "open": "More actions for %{name}",
+    "shareLink": "Share link",
+    "linkCopied": "Link copied",
+    "invite": "Invite people",
+    "managePeople": "Manage people",
+    "members": "Members"
   },
   "roles": {
     "viewer": "Viewer",
@@ -51,7 +61,6 @@
     "admin": "Admin"
   },
   "spaces": {
-    "title": "Spaces",
     "loading": "Loading spaces…",
     "loadFailed": "Your spaces could not be loaded.",
     "none": "Create your first space",
@@ -60,7 +69,8 @@
     "createFailed": "The space could not be created.",
     "channelsHint": "A space can hold multiple channels for different topics or teams",
     "all": "All spaces",
-    "createHint": "Project, department, topic group…"
+    "createHint": "Project, department, topic group…",
+    "createCard": "Create new space"
   },
   "createSpace": {
     "name": "Space name",

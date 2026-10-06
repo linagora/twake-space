@@ -33,14 +33,12 @@ export function SpaceHeader({
   avatar,
   title,
   tabs,
-  meta,
   actions,
   compact = false
 }: {
   avatar: ReactNode
   title: ReactNode
   tabs: ReactNode
-  meta?: ReactNode
   actions?: ReactNode
   compact?: boolean
 }): ReactElement {
@@ -95,7 +93,6 @@ export function SpaceHeader({
           <Typography variant="h5" component="h1" noWrap>
             {title}
           </Typography>
-          {meta}
         </Box>
         <Box sx={{ minWidth: 0, flex: '1 1 auto', order: { xs: 1, md: 0 } }}>
           {tabs}

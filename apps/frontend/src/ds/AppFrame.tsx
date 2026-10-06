@@ -13,9 +13,24 @@ import {
 } from '@linagora/twake-mui'
 import type { ReactElement, ReactNode } from 'react'
 
-// Layout hands `sx` to a plain div, so it is styled here instead.
+// Layout hands `sx` to a plain div, so it is styled here instead. The page
+// behind the panels is the mockups' soft gradient, lit from each corner.
 const Frame = styled(Layout)(({ theme }) => ({
   height: '100dvh',
+  backgroundColor: '#e2eaf9',
+  backgroundImage: [
+    'radial-gradient(at 0% 0%, #faf5f7 0px, transparent 55%)',
+    'radial-gradient(at 100% 0%, #dde9ff 0px, transparent 55%)',
+    'radial-gradient(at 100% 100%, #e9f7f0 0px, transparent 55%)'
+  ].join(', '),
+  ...theme.applyStyles('dark', {
+    backgroundColor: '#1a3146',
+    backgroundImage: [
+      'radial-gradient(at 0% 0%, #363648 0px, transparent 55%)',
+      'radial-gradient(at 100% 0%, #193745 0px, transparent 55%)',
+      'radial-gradient(at 100% 100%, #2e3648 0px, transparent 55%)'
+    ].join(', ')
+  }),
   [theme.breakpoints.down('lg')]: {
     height: 'auto',
     minHeight: '100dvh',
@@ -24,21 +39,49 @@ const Frame = styled(Layout)(({ theme }) => ({
   }
 }))
 
+// A frosted panel on the gradient; below lg it stays the bottom bar.
+const GlassSidebar = styled(Sidebar)(({ theme }) => ({
+  [theme.breakpoints.up('lg')]: {
+    margin: '12px 0 12px 12px',
+    borderRadius: '20px 0 0 20px',
+    backgroundColor: theme.alpha(theme.vars.palette.background.paper, 0.6),
+    backdropFilter: 'blur(20px)',
+    boxShadow:
+      '0 0 2px rgba(153, 153, 153, 0.1), 0 2px 4px rgba(153, 153, 153, 0.3)'
+  }
+}))
+
+// `bare` swaps the content's white panel for the dashboard's frosted one,
+// which continues the sidebar.
 export function AppFrame({
   sidebar,
   mobileBar,
+  bare = false,
   children
 }: {
   sidebar: ReactNode
   mobileBar: ReactNode
+  bare?: boolean
   children: ReactNode
 }): ReactElement {
   return (
     <Frame withTopBar={false}>
-      <Sidebar>{sidebar}</Sidebar>
+      <GlassSidebar>{sidebar}</GlassSidebar>
       {mobileBar}
       {/* Content's own 100% height ignores its margins and scrolls the page */}
-      <Content role={undefined} sx={{ height: 'auto' }}>
+      <Content
+        role={undefined}
+        sx={theme => ({
+          height: 'auto',
+          [theme.breakpoints.up('lg')]: bare
+            ? {
+                m: '12px 12px 12px 0',
+                borderRadius: '0 16px 16px 0',
+                bgcolor: theme.alpha(theme.vars.palette.background.paper, 0.45)
+              }
+            : { m: '12px 12px 12px 0', borderRadius: '0 16px 16px 0' }
+        })}
+      >
         {children}
       </Content>
     </Frame>
@@ -66,18 +109,28 @@ export function MobileBar({ children }: { children: ReactNode }): ReactElement {
   )
 }
 
-export function SidebarHeader({ title }: { title: ReactNode }): ReactElement {
+export function SidebarHeader({
+  title,
+  action
+}: {
+  title: ReactNode
+  action?: ReactNode
+}): ReactElement {
   return (
     <Box
       sx={{
-        display: { xs: 'none', lg: 'block' },
+        display: { xs: 'none', lg: 'flex' },
+        alignItems: 'center',
+        justifyContent: 'space-between',
         pt: 2,
-        px: 3
+        pl: 3,
+        pr: 2
       }}
     >
       <Typography variant="h3" component="p">
         {title}
       </Typography>
+      {action}
     </Box>
   )
 }
@@ -133,20 +186,26 @@ export function SidebarFooter({
   )
 }
 
+// `label` names the person for assistive technology; without it the avatar
+// is decoration next to the name it stands for.
 export function NameAvatar({
   name,
   size,
-  color
+  color,
+  label
 }: {
   name: string
   size: 'xs' | 's' | 'm' | 'l'
   color?: string | null
+  label?: string
 }): ReactElement {
   return (
     <Avatar
       size={size}
       color={color ?? nameToColor(name) ?? 'sunrise'}
-      aria-hidden
+      aria-hidden={label === undefined}
+      aria-label={label}
+      title={label}
     >
       {getInitials(name, '')}
     </Avatar>

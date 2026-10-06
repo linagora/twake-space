@@ -8,7 +8,9 @@
     "evening": "Guten Abend, %{name}"
   },
   "shell": {
-    "yourSpaces": "Ihre Spaces"
+    "yourSpaces": "Ihre Spaces",
+    "title": "Space",
+    "allSpaces": "Alle geteilten Spaces"
   },
   "errors": {
     "notFound": "Seite nicht gefunden",
@@ -40,10 +42,18 @@
     "delete": "Löschen"
   },
   "spaceActions": {
-    "rename": "Space umbenennen",
+    "edit": "Space bearbeiten",
     "delete": "Space löschen",
     "deleteTitle": "%{name} löschen?",
     "deleteHint": "Seine Mitglieder verlieren den Zugriff. Das lässt sich nicht rückgängig machen."
+  },
+  "spaceMenu": {
+    "open": "Weitere Aktionen für %{name}",
+    "shareLink": "Link teilen",
+    "linkCopied": "Link kopiert",
+    "invite": "Personen einladen",
+    "managePeople": "Personen verwalten",
+    "members": "Mitglieder"
   },
   "roles": {
     "viewer": "Leser",
@@ -51,7 +61,6 @@
     "admin": "Administrator"
   },
   "spaces": {
-    "title": "Spaces",
     "loading": "Spaces werden geladen…",
     "loadFailed": "Deine Spaces konnten nicht geladen werden.",
     "none": "Erstellen Sie Ihren ersten Bereich",
@@ -60,7 +69,8 @@
     "createFailed": "Der Space konnte nicht erstellt werden.",
     "channelsHint": "Ein Bereich kann mehrere Kanäle für verschiedene Themen oder Teams enthalten",
     "all": "Alle Bereiche",
-    "createHint": "Projekt, Abteilung, Themengruppe…"
+    "createHint": "Projekt, Abteilung, Themengruppe…",
+    "createCard": "Neuen Space erstellen"
   },
   "createSpace": {
     "name": "Name des Bereichs",
