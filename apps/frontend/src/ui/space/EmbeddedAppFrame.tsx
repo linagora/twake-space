@@ -1,5 +1,6 @@
 import { expose } from 'comlink'
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -42,6 +43,7 @@ export function EmbeddedAppFrame({
   tabPath,
   title,
   overlayPath,
+  active = true,
   frameRef,
   onFrameLoad,
   onFrameMessage
@@ -53,6 +55,10 @@ export function EmbeddedAppFrame({
   tabPath: string
   title: string
   overlayPath?: string
+  // False while another tab of the space shows: the frame stays alive, its
+  // overlay too (a composer stays on the page), but it no longer writes the
+  // address
+  active?: boolean
   frameRef?: RefObject<HTMLIFrameElement | null>
   onFrameLoad?: () => void
   // Other messages of the frame, already checked to come from it, with what
@@ -65,7 +71,22 @@ export function EmbeddedAppFrame({
   const frame = frameRef ?? ownRef
   const origin = new URL(appUrl).origin
   const name = `twake-embed-${app}`
-  const { src, follow } = useEmbedPath(appUrl, embedPath, tabPath)
+  const { src, follow: followAlways } = useEmbedPath(appUrl, embedPath, tabPath)
+
+  // Hidden, the frame's path waits for its tab to show again.
+  const isActive = useRef(active)
+  const lastPath = useRef<string | null>(null)
+  const follow = useCallback(
+    (path: string) => {
+      lastPath.current = path
+      if (isActive.current) followAlways(path)
+    },
+    [followAlways]
+  )
+  useEffect(() => {
+    isActive.current = active
+    if (active && lastPath.current !== null) followAlways(lastPath.current)
+  }, [active, followAlways])
 
   const messageHandler = useRef(onFrameMessage)
   useEffect(() => {

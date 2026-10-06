@@ -10,10 +10,13 @@ const MAIL_OVERLAY = '/embed/overlay.html'
 
 export function MailPanel({
   spaceId,
-  mailboxId
+  mailboxId,
+  active = true
 }: {
   spaceId: string
   mailboxId: string
+  // Hidden on another tab of the space, kept alive
+  active?: boolean
 }): ReactElement {
   const { t } = useI18n()
   const { mailUrl } = useServices()
@@ -26,6 +29,7 @@ export function MailPanel({
       tabPath={`/spaces/${spaceId}/mail`}
       title={t('tabs.mail')}
       overlayPath={MAIL_OVERLAY}
+      active={active}
     />
   )
 }

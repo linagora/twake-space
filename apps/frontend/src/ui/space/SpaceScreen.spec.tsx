@@ -1,5 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { Route, Routes, useLocation } from 'react-router'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { Route, Routes, useLocation, useNavigate } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Space } from '@/application/spaces'
@@ -64,6 +64,69 @@ function renderAt(
     { spaces, path, matrix }
   )
   return spaces
+}
+
+function Go({ to }: { to: string }) {
+  const navigate = useNavigate()
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigate(to)
+      }}
+    >
+      Go {to}
+    </button>
+  )
+}
+
+function renderSpaces(path: string, spaces: Space[]) {
+  const service = fakeSpaces()
+  vi.mocked(service.get).mockImplementation(id => {
+    const space = spaces.find(item => item.id === id)
+    return space
+      ? Promise.resolve(space)
+      : Promise.reject(Object.assign(new Error('not found'), { status: 404 }))
+  })
+  renderWithProviders(
+    <>
+      <Routes>
+        <Route path="/spaces/:spaceId/:tab?/*" element={<SpaceScreen />} />
+      </Routes>
+      <Path />
+      <Go to="/spaces/b2/mail" />
+    </>,
+    { spaces: service, path, matrix: fakeMatrix() }
+  )
+}
+
+function openTab(name: string) {
+  fireEvent.click(screen.getByRole('tab', { name }))
+}
+
+function isHidden(element: HTMLElement): boolean {
+  return element.closest('[aria-hidden="true"]') !== null
+}
+
+// What cozy-external-bridge sends through comlink for `bridge.method(arg)`.
+let bridgeCalls = 0
+function bridgeCall(frame: HTMLElement, method: string, arg: string) {
+  if (!(frame instanceof HTMLIFrameElement)) throw new Error('no frame')
+  bridgeCalls += 1
+  act(() => {
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          id: `space-${String(bridgeCalls)}`,
+          type: 'APPLY',
+          path: [method],
+          argumentList: [{ type: 'RAW', value: arg }]
+        },
+        origin: 'https://mail.test',
+        source: frame.contentWindow
+      })
+    )
+  })
 }
 
 describe('SpaceScreen', () => {
@@ -240,5 +303,92 @@ describe('SpaceScreen', () => {
         'This space does not exist, or you are not in it.'
       )
     ).toBeInTheDocument()
+  })
+
+  it('keeps the Mail frame alive, hidden, on the other tabs', async () => {
+    renderAt('/spaces/a1/mail')
+    const frame = await screen.findByTitle('Mail')
+
+    openTab('Members')
+    expect(
+      await screen.findByRole('tab', { name: 'Members', selected: true })
+    ).toBeInTheDocument()
+    expect(screen.getByTitle('Mail')).toBe(frame)
+    expect(isHidden(frame)).toBe(true)
+
+    openTab('Mail')
+    await waitFor(() => {
+      expect(isHidden(frame)).toBe(false)
+    })
+    expect(screen.getByTitle('Mail')).toBe(frame)
+  })
+
+  it('keeps the Tasks and Mail frames of the space side by side', async () => {
+    renderAt('/spaces/a1/tasks')
+    const tasks = await screen.findByTitle('Tasks')
+
+    openTab('Mail')
+    const mail = await screen.findByTitle('Mail')
+
+    expect(screen.getByTitle('Tasks')).toBe(tasks)
+    expect(isHidden(tasks)).toBe(true)
+    expect(isHidden(mail)).toBe(false)
+  })
+
+  it('opens a frame only once its tab was opened', async () => {
+    renderAt('/spaces/a1/members')
+    await screen.findByRole('tab', { name: 'Members', selected: true })
+
+    expect(screen.queryByTitle('Mail')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Tasks')).not.toBeInTheDocument()
+  })
+
+  it('writes the path of a hidden frame once its tab shows again', async () => {
+    renderAt('/spaces/a1/mail')
+    const frame = await screen.findByTitle('Mail')
+    openTab('Members')
+    await screen.findByRole('tab', { name: 'Members', selected: true })
+
+    await waitFor(() => {
+      bridgeCall(
+        frame,
+        'updateHistory',
+        'https://mail.test/embed/team-mailboxes/roadmap%40acme/t/9'
+      )
+      expect(screen.getByLabelText('path')).toHaveTextContent(
+        '/spaces/a1/members'
+      )
+    })
+    openTab('Mail')
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('path')).toHaveTextContent(
+        '/spaces/a1/mail/t/9'
+      )
+    })
+  })
+
+  it('drops the frames of the previous space', async () => {
+    const other: Space = {
+      ...roadmap,
+      id: 'b2',
+      name: 'Other',
+      resources: roadmap.resources.map(r =>
+        r.kind === 'mailbox' ? { ...r, id: 'other@acme' } : r
+      )
+    }
+    renderSpaces('/spaces/a1/mail', [roadmap, other])
+    const first = await screen.findByTitle('Mail')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go /spaces/b2/mail' }))
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Mail')).toHaveAttribute(
+        'src',
+        'https://mail.test/embed/team-mailboxes/other%40acme'
+      )
+    })
+    expect(first).not.toBeInTheDocument()
+    expect(screen.getAllByTitle('Mail')).toHaveLength(1)
   })
 })
