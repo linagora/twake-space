@@ -1,7 +1,9 @@
-import { screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { Space } from '@/application/spaces'
+import { fakeDirectory } from '@/testing/fakeDirectory'
+import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { MembersPanel } from '@/ui/space/MembersPanel'
 
@@ -19,6 +21,8 @@ const space: Space = {
   groups: [{ id: 'g-1', name: 'Designers', role: 'viewer' }],
   resources: []
 }
+
+const admin: Space = { ...space, role: 'admin' }
 
 describe('MembersPanel', () => {
   it('lists the direct members with their roles', async () => {
@@ -39,6 +43,122 @@ describe('MembersPanel', () => {
     const list = await screen.findByRole('list', { name: 'Groups' })
     expect(within(list).getByRole('listitem')).toHaveTextContent('Designers')
     expect(within(list).getByRole('listitem')).toHaveTextContent('Viewer')
+  })
+
+  it('shows a viewer no actions', async () => {
+    renderWithProviders(<MembersPanel space={space} />)
+
+    await screen.findByRole('list', { name: 'Members' })
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
+
+  it("lets an admin change a member's or a group's role", async () => {
+    const spaces = fakeSpaces()
+    renderWithProviders(<MembersPanel space={admin} />, { spaces })
+
+    fireEvent.change(await screen.findByLabelText('Role of alice'), {
+      target: { value: 'viewer' }
+    })
+    fireEvent.change(screen.getByLabelText('Role of Designers'), {
+      target: { value: 'admin' }
+    })
+
+    await waitFor(() => {
+      expect(spaces.setMemberRole).toHaveBeenCalledWith('a1', 'u-2', 'viewer')
+    })
+    await waitFor(() => {
+      expect(spaces.setGroupRole).toHaveBeenCalledWith('a1', 'g-1', 'admin')
+    })
+  })
+
+  it('lets an admin remove a member and unlink a group', async () => {
+    const spaces = fakeSpaces()
+    renderWithProviders(<MembersPanel space={admin} />, { spaces })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove alice' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Designers' }))
+
+    await waitFor(() => {
+      expect(spaces.removeMember).toHaveBeenCalledWith('a1', 'u-2')
+    })
+    await waitFor(() => {
+      expect(spaces.unlinkGroup).toHaveBeenCalledWith('a1', 'g-1')
+    })
+  })
+
+  it('lets an admin add people from the organization with a role', async () => {
+    const spaces = fakeSpaces()
+    const directory = fakeDirectory([
+      { username: 'alice', email: 'alice@acme.test', displayName: 'Alice' },
+      { username: 'bob', email: 'bob@acme.test', displayName: 'Bob' }
+    ])
+    renderWithProviders(<MembersPanel space={admin} />, { spaces, directory })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add people' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Add people' })
+    expect(within(dialog).queryByLabelText('Alice')).not.toBeInTheDocument()
+    fireEvent.click(await within(dialog).findByLabelText('Bob'))
+    fireEvent.change(within(dialog).getByLabelText('Role'), {
+      target: { value: 'editor' }
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
+
+    await waitFor(() => {
+      expect(spaces.addMembers).toHaveBeenCalledWith('a1', ['bob'], 'editor')
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('lets an admin link organization groups with a role', async () => {
+    const spaces = fakeSpaces()
+    const directory = fakeDirectory(
+      [],
+      [
+        { id: 'g-1', name: 'Designers' },
+        { id: 'g-2', name: 'Sales' }
+      ]
+    )
+    renderWithProviders(<MembersPanel space={admin} />, { spaces, directory })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Link groups' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Link groups' })
+    fireEvent.click(await within(dialog).findByLabelText('Sales'))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
+
+    await waitFor(() => {
+      expect(spaces.linkGroups).toHaveBeenCalledWith('a1', ['g-2'], 'viewer')
+    })
+  })
+
+  it('searches the organization as the admin types', async () => {
+    const directory = fakeDirectory()
+    renderWithProviders(<MembersPanel space={admin} />, { directory })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add people' }))
+    fireEvent.change(await screen.findByLabelText('Search'), {
+      target: { value: 'bo' }
+    })
+
+    await waitFor(() => {
+      expect(directory.people).toHaveBeenLastCalledWith('bo', 1)
+    })
+  })
+
+  it('shows why a write was refused', async () => {
+    const spaces = fakeSpaces()
+    vi.mocked(spaces.removeMember).mockRejectedValue(
+      Object.assign(new Error('refused'), { status: 409, code: 'last_admin' })
+    )
+    renderWithProviders(<MembersPanel space={admin} />, { spaces })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove carol' }))
+
+    expect(
+      await screen.findByText('The change was refused (last_admin).')
+    ).toBeInTheDocument()
   })
 
   it('says when there are no direct members or no linked groups', async () => {

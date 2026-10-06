@@ -75,7 +75,18 @@
     "members": "Members",
     "groups": "Groups",
     "noMembers": "No direct members.",
-    "noGroups": "No linked groups."
+    "noGroups": "No linked groups.",
+    "addPeople": "Add people",
+    "linkGroups": "Link groups",
+    "remove": "Remove %{name}",
+    "unlink": "Unlink %{name}",
+    "roleOf": "Role of %{name}",
+    "role": "Role",
+    "search": "Search",
+    "searchFailed": "The organization could not be searched.",
+    "more": "Show more",
+    "refused": "The change was refused (%{code}).",
+    "failed": "The change could not be saved."
   },
   "space": {
     "back": "All spaces",

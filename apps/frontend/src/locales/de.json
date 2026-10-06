@@ -75,7 +75,18 @@
     "members": "Mitglieder",
     "groups": "Gruppen",
     "noMembers": "Keine direkten Mitglieder.",
-    "noGroups": "Keine verknüpften Gruppen."
+    "noGroups": "Keine verknüpften Gruppen.",
+    "addPeople": "Personen hinzufügen",
+    "linkGroups": "Gruppen verknüpfen",
+    "remove": "%{name} entfernen",
+    "unlink": "%{name} trennen",
+    "roleOf": "Rolle von %{name}",
+    "role": "Rolle",
+    "search": "Suchen",
+    "searchFailed": "Die Organisation konnte nicht durchsucht werden.",
+    "more": "Mehr anzeigen",
+    "refused": "Die Änderung wurde abgelehnt (%{code}).",
+    "failed": "Die Änderung konnte nicht gespeichert werden."
   },
   "space": {
     "back": "Alle Spaces",
