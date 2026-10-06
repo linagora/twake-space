@@ -19,7 +19,9 @@ import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
 import { useEmbedPath } from '@/ui/space/useEmbedPath'
 
-const SANDBOX = 'allow-scripts allow-same-origin allow-popups allow-forms'
+// Downloads too: a sandboxed frame without it cannot save a file
+const SANDBOX =
+  'allow-scripts allow-same-origin allow-popups allow-forms allow-downloads'
 const ALLOW = 'clipboard-read; clipboard-write'
 
 function isLoginRequired(data: unknown): boolean {
