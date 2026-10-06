@@ -54,6 +54,7 @@
     "loadFailed": "Could not load the feed.",
     "empty": "Nothing here yet.",
     "loadOlder": "Load older",
+    "loadOlderFailed": "Could not load older entries.",
     "filter": "Show",
     "filters": {
       "all": "All",

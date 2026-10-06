@@ -85,6 +85,7 @@ function FeedEntries({
   const [page, setPage] = useState<FeedPage | null>(null)
   const [view, setView] = useState<FeedView | null>(null)
   const [failed, setFailed] = useState(false)
+  const [olderFailed, setOlderFailed] = useState(false)
 
   useEffect(() => {
     let opened: FeedView | null = null
@@ -115,9 +116,19 @@ function FeedEntries({
       {page && (
         <>
           {page.hasOlder && view && (
-            <Button onClick={() => void view.loadOlder()}>
+            <Button
+              onClick={() => {
+                setOlderFailed(false)
+                view.loadOlder().catch(() => {
+                  setOlderFailed(true)
+                })
+              }}
+            >
               {t('feed.loadOlder')}
             </Button>
+          )}
+          {olderFailed && (
+            <Alert severity="error">{t('feed.loadOlderFailed')}</Alert>
           )}
           {page.entries.length === 0 && !page.hasOlder && (
             <Alert severity="info">{t('feed.empty')}</Alert>

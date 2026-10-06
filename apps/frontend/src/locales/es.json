@@ -54,6 +54,7 @@
     "loadFailed": "No se pudieron cargar las novedades.",
     "empty": "Todavía no hay nada.",
     "loadOlder": "Cargar anteriores",
+    "loadOlderFailed": "No se pudieron cargar las entradas anteriores.",
     "filter": "Mostrar",
     "filters": {
       "all": "Todo",
