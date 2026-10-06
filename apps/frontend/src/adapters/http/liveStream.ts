@@ -3,6 +3,8 @@ import type { KyInstance } from 'ky'
 import type { LiveHandlers, LiveService } from '@/application/live'
 
 const MAX_DELAY_MS = 30_000
+// A dropped connection that reopens at once is routine, e.g. on a network change.
+const FAILURES_BEFORE_WARNING = 3
 
 function parse(block: string): { event: string; data: unknown } | null {
   let event = 'message'
@@ -61,6 +63,7 @@ export function liveStream(api: KyInstance, retryMs = 1000): LiveService {
       void (async () => {
         let opened = false
         let delay = retryMs
+        let failures = 0
         while (!stopped()) {
           try {
             const response = await api.get('stream', {
@@ -71,6 +74,7 @@ export function liveStream(api: KyInstance, retryMs = 1000): LiveService {
             if (opened) onReconnect()
             opened = true
             delay = retryMs
+            failures = 0
             if (response.body) {
               await read(response.body, (event, data) => {
                 if (!stopped()) onEvent(event, data)
@@ -78,7 +82,10 @@ export function liveStream(api: KyInstance, retryMs = 1000): LiveService {
             }
           } catch (error) {
             if (stopped()) return
-            console.warn('Live updates interrupted:', error)
+            failures += 1
+            if (failures >= FAILURES_BEFORE_WARNING) {
+              console.warn('Live updates interrupted:', error)
+            }
           }
           await wait(delay, signal)
           delay = Math.min(delay * 2, MAX_DELAY_MS)
