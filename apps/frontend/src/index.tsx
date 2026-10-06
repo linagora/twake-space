@@ -43,7 +43,8 @@ const services = {
   live: liveStream(api),
   matrix,
   feed: matrixFeed(matrix.client),
-  tasksUrl: window.TASKS_URL ?? null
+  tasksUrl: window.TASKS_URL ?? null,
+  mailUrl: window.MAIL_URL ?? null
 }
 
 const reportUncaughtError = Sentry.reactErrorHandler((error, info) => {

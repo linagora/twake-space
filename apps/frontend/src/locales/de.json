@@ -127,6 +127,9 @@
   "tasks": {
     "notSetUp": "Aufgaben ist für TwakeSpace nicht eingerichtet."
   },
+  "mail": {
+    "notSetUp": "Mail ist für TwakeSpace nicht eingerichtet."
+  },
   "feed": {
     "signingIn": "Anmeldung beim Chat",
     "signInFailed": "Anmeldung beim Chat fehlgeschlagen.",

@@ -139,6 +139,15 @@ describe('SpaceScreen', () => {
     )
   })
 
+  it("frames the space's team mailbox on the Mail tab", async () => {
+    renderAt('/spaces/a1/mail')
+
+    expect(await screen.findByTitle('Mail')).toHaveAttribute(
+      'src',
+      'https://mail.test/embed/team-mailboxes/roadmap%40acme'
+    )
+  })
+
   it("signs in to the organization's homeserver on the Feed tab", async () => {
     const matrix = fakeMatrix()
 

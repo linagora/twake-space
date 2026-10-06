@@ -1,9 +1,9 @@
 import { Typography, useColorScheme } from '@linagora/twake-mui'
-import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router'
+import { useEffect, useRef, type ReactElement } from 'react'
 
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
+import { useEmbedPath } from '@/ui/space/useEmbedPath'
 
 function framedPath(data: unknown): string | null {
   if (typeof data !== 'object' || data === null) return null
@@ -36,17 +36,14 @@ function TasksFrame({
   tasksUrl: string
 }): ReactElement {
   const { t } = useI18n()
-  const navigate = useNavigate()
-  const { '*': rest = '' } = useParams()
-  const { search } = useLocation()
   const { mode, systemMode } = useColorScheme()
   const theme = (mode === 'system' ? systemMode : mode) ?? 'light'
   const frame = useRef<HTMLIFrameElement>(null)
-  const embed = `/embed/projects/${projectId}`
   const origin = new URL(tasksUrl).origin
-  // Set once: the frame navigates by itself, and a new src would reload it.
-  const [src] = useState(
-    () => new URL(`${embed}${rest ? `/${rest}` : ''}${search}`, tasksUrl).href
+  const { src, follow } = useEmbedPath(
+    tasksUrl,
+    `/embed/projects/${projectId}`,
+    `/spaces/${spaceId}/tasks`
   )
 
   const sendTheme = () => {
@@ -66,17 +63,13 @@ function TasksFrame({
         return
       }
       const path = framedPath(event.data)
-      if (!path?.startsWith(embed)) return
-      const inProject = path.slice(embed.length)
-      // '/embed/projects/p12' is another project.
-      if (!/^([/?]|$)/.test(inProject)) return
-      void navigate(`/spaces/${spaceId}/tasks${inProject}`, { replace: true })
+      if (path) follow(path)
     }
     window.addEventListener('message', onMessage)
     return () => {
       window.removeEventListener('message', onMessage)
     }
-  }, [embed, navigate, origin, spaceId])
+  }, [follow, origin])
 
   return (
     <iframe

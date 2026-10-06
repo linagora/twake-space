@@ -16,6 +16,7 @@ const SPLASH_FADE_MS = 200
 
 export interface Session {
   user: User
+  signIn: () => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -82,7 +83,13 @@ export function SessionGate({
   return (
     <>
       {state.status === 'signedIn' && (
-        <SessionContext value={{ user: state.user, signOut: session.signOut }}>
+        <SessionContext
+          value={{
+            user: state.user,
+            signIn: session.signIn,
+            signOut: session.signOut
+          }}
+        >
           {children}
         </SessionContext>
       )}

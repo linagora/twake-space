@@ -30,6 +30,7 @@ interface Options {
   feed?: FeedService
   path?: string
   tasksUrl?: string | null
+  mailUrl?: string | null
 }
 
 function withProviders(
@@ -42,14 +43,15 @@ function withProviders(
     live = fakeLive(),
     matrix = fakeMatrix(),
     feed = fakeFeed(),
-    tasksUrl = 'https://tasks.test/'
+    tasksUrl = 'https://tasks.test/',
+    mailUrl = 'https://mail.test/'
   }: Options
 ): ReactElement {
   return (
     <AppProviders
       lang={lang}
       queryClient={makeQueryClient()}
-      services={{ spaces, directory, live, matrix, feed, tasksUrl }}
+      services={{ spaces, directory, live, matrix, feed, tasksUrl, mailUrl }}
     >
       <SessionGate session={session}>{router}</SessionGate>
     </AppProviders>
