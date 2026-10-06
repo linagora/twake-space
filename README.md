@@ -40,5 +40,5 @@ To work on the frontend without a backend or SSO, run it on seed data with `npm 
 - [Frontend development](docs/frontend-dev.md): mock mode, code layout, adding a feature.
 - [Backend development](docs/backend-dev.md): code layout, events, database, authentication, tests.
 - [HTTP API](docs/api.md): every route, who can call it, and its answers.
-- [Events](docs/events.md): from Kafka and Matrix to Postgres, the feed and the browser.
+- [Events](docs/events.md): from RabbitMQ and Matrix to Postgres, the feed and the browser.
 - [Deploying](docs/deploy.md): the images, their configuration, and what the backend reaches.

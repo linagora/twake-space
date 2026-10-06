@@ -2,7 +2,7 @@
 
 How to run the Twake Space backend, how it is laid out, and where new code goes.
 
-The backend is a Fastify server on Node 24 that keeps a copy of spaces, members and app activity in Postgres. It fills that copy from Kafka events and from Matrix app service transactions, and serves it over HTTP to the frontend and to API token holders.
+The backend is a Fastify server on Node 24 that keeps a copy of spaces, members and app activity in Postgres. It fills that copy from RabbitMQ events and from Matrix app service transactions, and serves it over HTTP to the frontend and to API token holders.
 
 ## Run it
 
@@ -15,7 +15,7 @@ cp apps/backend/.env.example apps/backend/.env
 npm run dev -w @twake-space/backend
 ```
 
-- `docker compose up -d` starts Kafka, creates the seven event topics (`twake.<app>.events.v1` and `twake.platform.events.v1`), and starts Postgres. The `backend` and `frontend` services sit behind the `app` profile and do not start by default.
+- `docker compose up -d` starts RabbitMQ, declares the `space`, `b2b` and `admin-panel` exchanges the backend expects, and starts Postgres. The `backend` and `frontend` services sit behind the `app` profile and do not start by default.
 - Fill in `LDAP_REST_SECRET` and `OIDC_CLIENT_SECRET` in `.env`. The other values in `.env.example` match the compose services.
 - `npm run dev` runs `src/main.ts` with `node --watch`, loads `.env` if it exists, and preloads `src/instrument.ts` for Sentry. Node runs the TypeScript directly, there is no build step in dev.
 - The API listens on port 8080. `/health/live` and `/health/ready` answer there, and `/metrics` answers on port 9464.
@@ -28,7 +28,7 @@ At startup the backend runs OIDC discovery against `OIDC_ISSUER`, so the issuer 
 
 ```mermaid
 flowchart LR
-  kafka[(Kafka topics)] --> events["events/<br>parse, dedupe, route"]
+  rabbitmq[(RabbitMQ queue)] --> events["events/<br>parse, dedupe, route"]
   synapse[Synapse] -- "app service<br>transactions" --> feed
   events --> spaces & organizations & feed
   http["HTTP clients<br>frontend, API tokens"] --> auth["auth/ + tokens/<br>authorize"]
@@ -38,9 +38,9 @@ flowchart LR
   feed -- "poster: cards" --> synapse
 ```
 
-- `src/main.ts` is the only place that wires things. It loads the config, runs the migrations, builds the event routes, registers every module's routes on one Fastify server, starts the metrics server, then the Kafka consumer and the background jobs. It also handles SIGTERM and SIGINT.
-- `src/infra/` holds the adapters to the outside: `db.ts` (drizzle client, migrations), `http.ts` (Fastify server with health routes), `kafka.ts` (consumer, dead letter producer), `ldap-rest.ts` (the `Directory` interface), `matrix.ts` (Matrix client), `secrets.ts` (AES-256-GCM and hashing), `testing.ts` (test database).
-- `src/events/` turns Kafka messages into handler calls. More below.
+- `src/main.ts` is the only place that wires things. It loads the config, runs the migrations, builds the event routes, registers every module's routes on one Fastify server, starts the metrics server, then the RabbitMQ consumer and the background jobs. It also handles SIGTERM and SIGINT.
+- `src/infra/` holds the adapters to the outside: `db.ts` (drizzle client, migrations), `http.ts` (Fastify server with health routes), `amqp.ts` (consumer, dead letter queue), `ldap-rest.ts` (the `Directory` interface), `matrix.ts` (Matrix client), `secrets.ts` (AES-256-GCM and hashing), `testing.ts` (test database).
+- `src/events/` turns RabbitMQ messages into handler calls. More below.
 - `src/modules/` holds one folder per feature. A module owns its `schema.ts` (its tables), its routes, and its event handlers.
 
 What each module owns:
@@ -55,30 +55,32 @@ What each module owns:
 
 Modules import each other's schemas and helpers directly. There is no module registry.
 
-## Events from Kafka
+## Events from RabbitMQ
 
-The consumer reads the six app topics (`twake.chat|mail|drive|calendar|meet|tasks.events.v1`) and `twake.platform.events.v1`, from the beginning, with manual commits.
+The consumer reads one queue, `twake-space`, bound to the `activity` exchange and to the platform exchanges (`space`, `b2b`, `admin-panel`). [Events](events.md#consuming-rabbitmq) lists the bindings.
 
 ```mermaid
 flowchart LR
-  msg[Kafka message] --> parse{parse}
+  msg[RabbitMQ message] --> parse{parse}
+  parse -- not JSON --> dlq
   parse -- invalid --> drop[log and drop]
   parse --> route{handler for<br>type or routing key?}
   route -- no --> skip[unrouted]
   route --> dedupe{seen before?}
   dedupe -- yes --> dup[duplicate]
   dedupe -- no --> handler[handler in one transaction]
-  handler -- RejectedEventError --> dlq["dead letter topic"]
+  handler -- RejectedEventError --> dlq["dead letter queue"]
   handler -- MalformedEventError --> drop
   handler -- Postgres refuses the data --> dlq
   handler -- NotYetKnownError --> park[parked_events, retried] -- still waiting after 5 min --> dlq
-  handler -- other error --> retry[partition paused, then retried]
+  handler -- other error --> retry[held unacknowledged, retried]
 ```
 
-- App topics carry CloudEvents. They route by `type` (for example `com.twake.drive.file.created.v1`) and dedupe on `source` and `id`.
-- The platform topic carries messages bridged from AMQP. They route by the `amqp_routing_key` header (for example `twake.space.created`) and dedupe on `amqp_message_id`.
+- The `activity` exchange carries CloudEvents. They route by `type` (for example `com.twake.drive.file.created.v1`) and dedupe on `source` and `id`.
+- The platform exchanges carry plain JSON. Those messages route by their routing key (for example `twake.space.created`) and dedupe on their message id.
 - A handler gets the event, a transaction and a logger. The dedupe row and the handler's writes commit together.
-- Throw `MalformedEventError` (or use `parseOrDrop`) for an event that can never be processed. Throw `RejectedEventError` for a well-formed event that contradicts the copy, so someone can look at it on the dead letter topic. Throw `NotYetKnownError` when the event needs a space or member that a late platform event may still bring. Any other error leaves the offset uncommitted, and the event is retried after a growing delay.
+- Throw `MalformedEventError` (or use `parseOrDrop`) for an event that can never be processed. Throw `RejectedEventError` for a well-formed event that contradicts the copy, so someone can look at it in the dead letter queue. Throw `NotYetKnownError` when the event needs a space or member that a late platform event may still bring. Any other error leaves the message unacknowledged, and it is retried after a growing delay.
+- A new platform routing key needs a binding in `infra/amqp.ts` too, or the queue never receives it.
 - Events can arrive out of order. `events/freshness.ts` (`fresh`) tells which objects an event may still change, using the `last_changes` table.
 
 ## Database and migrations
@@ -153,7 +155,7 @@ A new scope is a new value in the `token_scope` enum in `modules/tokens/schema.t
 
 - Vitest, with tests next to the code as `*.test.ts`. There is no vitest config file in the backend.
 - Tests need the compose Postgres. `createTestDb()` from `infra/testing.ts` creates a fresh migrated database per test file and drops it after, so files run in parallel. Set `TEST_DATABASE_URL` to use another server.
-- Tests do not need Kafka, ldap-rest, the SSO or Matrix. Handlers are called directly, and the directory and Matrix are passed in as fakes.
+- Tests do not need RabbitMQ, ldap-rest, the SSO or Matrix. Handlers are called directly, and the directory and Matrix are passed in as fakes.
 - Route tests build a server with `createServer` from `infra/http.ts` and use `fakeAuth`, `anIdentity` and `aTokenCaller` from `modules/auth/testing.ts`, then call `app.inject`.
 
 ## Check before you push

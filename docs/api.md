@@ -358,7 +358,7 @@ Revokes the token. Answers `204`, or `404 not_found` under the same conditions a
 
 ### GET /health/live
 
-On the API server, answers `503 {"status":"unavailable"}` when the Kafka consumer is disconnected, or when one message has been in its handler for over 5 minutes (the consumer has left its group by then), and `200 {"status":"ok"}` otherwise. An idle consumer is alive. On the metrics server it always answers `200`.
+On the API server, answers `503 {"status":"unavailable"}` when the RabbitMQ connection is down, or when one message has been in its handler for over 5 minutes, and `200 {"status":"ok"}` otherwise. An idle consumer is alive. On the metrics server it always answers `200`.
 
 ### GET /health/ready
 
@@ -375,7 +375,7 @@ twake_space_cards_waiting{organization="<org id>"} 0
 # HELP twake_space_cards_failed Stored events the homeserver refused for good.
 # TYPE twake_space_cards_failed gauge
 twake_space_cards_failed{organization="<org id>"} 0
-# HELP twake_space_events_total Kafka messages handled, by outcome.
+# HELP twake_space_events_total Messages handled, by outcome.
 # TYPE twake_space_events_total counter
 twake_space_events_total{outcome="processed"} 0
 # HELP twake_space_parked_events Events waiting for a space or member.
@@ -384,7 +384,7 @@ twake_space_parked_events 0
 ```
 
 - `twake_space_cards_waiting` and `twake_space_cards_failed`: every organization with chat available reports a value, 0 included. A failed card is not counted as waiting.
-- `twake_space_events_total`: one series per outcome seen since the process started (`processed`, `duplicate`, `unrouted`, `malformed`, `rejected`, `parked`, `failed`), as listed in [events.md](events.md). Counts messages read from Kafka, not parked events retried.
+- `twake_space_events_total`: one series per outcome seen since the process started (`processed`, `duplicate`, `unrouted`, `malformed`, `rejected`, `parked`, `failed`), as listed in [events.md](events.md). Counts deliveries from RabbitMQ, so a message retried in the process counts once per attempt. Parked events retried are not counted.
 - `twake_space_parked_events`: rows in `parked_events`, for every replica.
 
 ## Space writes
