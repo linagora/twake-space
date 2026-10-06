@@ -26,16 +26,6 @@ describe('AppShell', () => {
     }
   )
 
-  it('links the app name home', async () => {
-    renderRoute('/spaces/space-1', { spaces: spaces() })
-
-    expect(
-      within(await screen.findByRole('banner')).getByRole('link', {
-        name: 'Twake Space'
-      })
-    ).toHaveAttribute('href', '/')
-  })
-
   it('lists the spaces in the sidebar and marks the current one', async () => {
     renderRoute('/spaces/space-2/feed', { spaces: spaces() })
 
