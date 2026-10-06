@@ -111,6 +111,8 @@
     "role": "Ruolo",
     "search": "Cerca",
     "searchFailed": "Non è stato possibile cercare nell'organizzazione.",
+    "noOneMatches": "Nessuno corrisponde.",
+    "noGroupMatches": "Nessun gruppo corrisponde.",
     "more": "Mostra altro",
     "refused": "La modifica è stata rifiutata (%{code}).",
     "failed": "Non è stato possibile salvare la modifica."

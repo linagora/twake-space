@@ -147,6 +147,43 @@ describe('MembersPanel', () => {
     })
   })
 
+  it('says when a search matches no one', async () => {
+    renderWithProviders(<MembersPanel space={admin} />, {
+      directory: fakeDirectory()
+    })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add people' }))
+    fireEvent.change(await screen.findByLabelText('Search'), {
+      target: { value: 'zzzz' }
+    })
+
+    expect(await screen.findByText('No one matches.')).toBeInTheDocument()
+  })
+
+  it('says when a search matches no group', async () => {
+    renderWithProviders(<MembersPanel space={admin} />, {
+      directory: fakeDirectory()
+    })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Link groups' }))
+    fireEvent.change(await screen.findByLabelText('Search'), {
+      target: { value: 'zzzz' }
+    })
+
+    expect(await screen.findByText('No group matches.')).toBeInTheDocument()
+  })
+
+  it('does not say no one matches while searching', async () => {
+    const directory = fakeDirectory()
+    vi.mocked(directory.people).mockReturnValue(new Promise(() => undefined))
+    renderWithProviders(<MembersPanel space={admin} />, { directory })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add people' }))
+    await screen.findByRole('dialog', { name: 'Add people' })
+
+    expect(screen.queryByText('No one matches.')).not.toBeInTheDocument()
+  })
+
   it('shows why a write was refused', async () => {
     const spaces = fakeSpaces()
     vi.mocked(spaces.removeMember).mockRejectedValue(

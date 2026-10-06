@@ -111,6 +111,8 @@
     "role": "Rol",
     "search": "Buscar",
     "searchFailed": "No se pudo buscar en la organización.",
+    "noOneMatches": "Nadie coincide.",
+    "noGroupMatches": "Ningún grupo coincide.",
     "more": "Mostrar más",
     "refused": "El cambio fue rechazado (%{code}).",
     "failed": "No se pudo guardar el cambio."
