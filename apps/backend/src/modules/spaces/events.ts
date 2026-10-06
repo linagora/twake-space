@@ -65,7 +65,6 @@ const member = z
     uuid: z.uuid().optional(),
     username: z.string().min(1),
     email: z.email(),
-    displayName: z.string().optional(),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     role
@@ -73,12 +72,10 @@ const member = z
   .transform(({ firstName, lastName, ...m }) => ({
     ...m,
     displayName:
-      m.displayName?.trim() ||
       [firstName, lastName]
         .map(part => part?.trim())
         .filter(Boolean)
-        .join(' ') ||
-      null
+        .join(' ') || null
   }))
 
 const group = z.looseObject({

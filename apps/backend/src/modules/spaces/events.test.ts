@@ -133,15 +133,18 @@ describe('space events', () => {
     expect(await readMembers()).toHaveLength(1)
   })
 
-  it('names a member by their display name, or else their first and last name', async () => {
+  it('names a member by their first and last name, if they have one', async () => {
     await created({
-      members: [jdoe, { ...jdoe, uuid: ASMITH_ID, displayName: 'Ann SMITH' }]
+      members: [
+        jdoe,
+        { ...jdoe, uuid: ASMITH_ID, firstName: undefined, lastName: ' ' }
+      ]
     })
 
     expect(await readDisplayNames()).toEqual(
       new Map([
         [JDOE_ID, 'John Doe'],
-        [ASMITH_ID, 'Ann SMITH']
+        [ASMITH_ID, null]
       ])
     )
   })
