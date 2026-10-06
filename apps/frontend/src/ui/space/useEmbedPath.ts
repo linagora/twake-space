@@ -1,11 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 
-/**
- * Keeps a framed app's path under `embed` and the tab's path under `tabPath`
- * in step: `src` opens the frame where the URL points, and `follow` puts the
- * frame's new path in the URL.
- */
+// Keeps the frame's path under `embed` and the URL's under `tabPath` in step.
 export function useEmbedPath(
   appUrl: string,
   embed: string,
@@ -23,7 +19,7 @@ export function useEmbedPath(
     (path: string) => {
       if (!path.startsWith(embed)) return
       const inEmbed = path.slice(embed.length)
-      // '/embed/projects/p12' is another project.
+      // '/embed/projects/p12' is not under '/embed/projects/p1'.
       if (!/^([/?#]|$)/.test(inEmbed)) return
       void navigate(`${tabPath}${inEmbed}`, { replace: true })
     },
