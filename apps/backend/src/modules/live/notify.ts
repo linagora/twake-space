@@ -43,16 +43,21 @@ export async function tellEmail(
   await notify(tx, { event, email, data: {} })
 }
 
-export async function tellSpaceMembers(tx: Tx, spaceId: string) {
+export async function tellSpaceMembers(
+  tx: Tx,
+  spaceId: string,
+  event: LiveEvent = 'spaces',
+  data: object = { spaceId }
+) {
   const members = await tx
     .select({ userId: spaceMembers.userId })
     .from(spaceMembers)
     .where(eq(spaceMembers.spaceId, spaceId))
   await tell(
     tx,
-    'spaces',
+    event,
     members.map(m => m.userId),
-    { spaceId }
+    data
   )
 }
 

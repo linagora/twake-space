@@ -22,8 +22,8 @@ import {
 import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
 import { registerMetrics } from './modules/feed/metrics.ts'
-import { schedulePosting } from './modules/feed/poster.ts'
 import { schedulePurge } from './modules/feed/retention.ts'
+import { registerFeedRoutes } from './modules/feed/routes.ts'
 import { registerTransactionRoutes } from './modules/feed/transactions.ts'
 import { listenForLive } from './modules/live/notify.ts'
 import { registerLiveRoutes } from './modules/live/routes.ts'
@@ -115,6 +115,7 @@ registerSpaceWriteRoutes(server, {
 registerTokenRoutes(server, { db, authorize, directory })
 registerDirectoryRoutes(server, { authorize, directory })
 registerNotificationRoutes(server, { db, authorize })
+registerFeedRoutes(server, { db, authorize })
 registerSettingsRoutes(server, { db, authorize })
 registerTransactionRoutes(server, { db, localpart: config.MATRIX_LOCALPART })
 const streams = createStreams()
@@ -143,16 +144,11 @@ const stopParked = scheduleParkedRetries(
   logger
 )
 const stopPurge = schedulePurge(db, logger)
-const secretsKey = (config.homeserver ?? config.controlPlane)?.key
-const stopPosting = secretsKey
-  ? schedulePosting(db, secretsKey, logger)
-  : () => undefined
 accepting = true
 lifecycle.started(async () => {
   accepting = false
   const parkedStopped = stopParked()
   stopPurge()
-  stopPosting()
   try {
     await parkedStopped
     await consumer.close()

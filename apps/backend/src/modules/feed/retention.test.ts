@@ -8,7 +8,9 @@ import { purgeExpired } from './retention.ts'
 import {
   activityEvents,
   appServiceTransactions,
+  feedItemReactions,
   feedMessages,
+  feedPosts,
   feedReactions
 } from './schema.ts'
 
@@ -27,7 +29,12 @@ beforeEach(async () => {
   await db.delete(feedMessages)
   await db.delete(feedReactions)
   await db.delete(notifications)
+  await db.delete(feedPosts)
+  await db.delete(feedItemReactions)
 })
+
+const SPACE = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
+const ALICE = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
 
 async function seed(createdAt: Date, n: string) {
   const { db } = testDb
@@ -94,6 +101,38 @@ describe('purgeExpired', () => {
       reactions: 2,
       notifications: 1
     })
+  })
+
+  it('deletes posts and reactions past 12 months, and reactions whose item is gone', async () => {
+    const { db } = testDb
+    const [old, recent] = await db
+      .insert(feedPosts)
+      .values([
+        { spaceId: SPACE, authorId: ALICE, body: 'old', time: daysAgo(400) },
+        { spaceId: SPACE, authorId: ALICE, body: 'new', time: daysAgo(10) }
+      ])
+      .returning({ id: feedPosts.id })
+    if (!old || !recent) throw new Error('no posts')
+    await db.insert(feedItemReactions).values([
+      { itemId: recent.id, spaceId: SPACE, userId: ALICE, key: 'a' },
+      {
+        itemId: recent.id,
+        spaceId: SPACE,
+        userId: ALICE,
+        key: 'b',
+        createdAt: daysAgo(400)
+      },
+      { itemId: old.id, spaceId: SPACE, userId: ALICE, key: 'c' }
+    ])
+
+    await purgeExpired(db, NOW)
+
+    expect(await db.select({ body: feedPosts.body }).from(feedPosts)).toEqual([
+      { body: 'new' }
+    ])
+    expect(
+      await db.select({ key: feedItemReactions.key }).from(feedItemReactions)
+    ).toEqual([{ key: 'a' }])
   })
 
   it('forgets app service transactions past 7 days', async () => {

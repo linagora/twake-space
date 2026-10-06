@@ -233,6 +233,73 @@ Returns whether each notification type is on. A type the user never chose is on,
 - Answers `204`.
 - `400 {"error":"invalid_request","message":"..."}` when the body fails.
 
+## Feed
+
+A space's feed holds cards and posts. A card shows the activity on one object (a file, a calendar event, a task): the apps' later events about the object change the card instead of adding one. Members post and react.
+
+All feed routes are for session callers only, and the caller must be a member of the space. Otherwise, or when the space or item does not exist: `404 {"error":"not_found"}`. A failed query, path or body: `400 {"error":"invalid_request"}`.
+
+A feed item:
+
+- `id`, `kind` (`card` or `post`), `category` (`messages`, `files`, `activities` or `events`; a post is a message), `time`, `updatedAt`, and `reactions`, a list of `{key, userIds}` in the order they were first added.
+- A card adds `type` (the activity event type), `actor`, `object` (`{type, id, title, container}`, where `container` is `{kind, id}` or `null`), `preview` (a string or `null`) and `state` (an object the app sends, such as a calendar event's time). `time` is the object's first event, so the card keeps its place; everything else comes from its latest event.
+- A post adds `author`, `body` (plain text) and `editedAt` (`null` until edited).
+- An actor or author is `{type: "user", id, name}` (`id` is `null` for someone outside the space, `name` is the member's display name or username), `{type: "token", id, name}`, or `{type: "deleted_user"}`.
+
+```json
+{
+  "id": "<uuid>",
+  "kind": "card",
+  "category": "files",
+  "time": "2026-10-05T09:00:00.000Z",
+  "updatedAt": "2026-10-05T10:00:00.000Z",
+  "type": "com.twake.drive.file.updated.v1",
+  "actor": { "type": "user", "id": "<uuid>", "name": "Alice Martin" },
+  "object": {
+    "type": "file",
+    "id": "<id>",
+    "title": "Roadmap.odt",
+    "container": { "kind": "drive", "id": "<id>" }
+  },
+  "preview": "First draft",
+  "state": {},
+  "reactions": [{ "key": "👍", "userIds": ["<uuid>"] }]
+}
+```
+
+### GET /spaces/:spaceId/feed
+
+- Query: `category` (optional), `limit` (1 to 50, default 20), `before` (the `next` of the previous page).
+- Answers `{"items": [...], "next": "<cursor>"}`, newest first by `time`. `next` is `null` on the last page.
+
+### GET /spaces/:spaceId/feed/items/:itemId
+
+Answers one item.
+
+### POST /spaces/:spaceId/feed/posts
+
+- Body: `{"body": "..."}`, 1 to 4000 characters once trimmed.
+- Editors and admins only, otherwise `403 {"error":"cannot_post"}`.
+- Answers `201` with the post.
+
+### PATCH /spaces/:spaceId/feed/posts/:itemId
+
+- Body: `{"body": "..."}`. Answers the post.
+- Its author only, otherwise `403 {"error":"not_author"}`.
+
+### DELETE /spaces/:spaceId/feed/posts/:itemId
+
+Deletes the post and its reactions. Its author only, otherwise `403 {"error":"not_author"}`. Answers `204`.
+
+### PUT /spaces/:spaceId/feed/items/:itemId/reactions/:key
+
+- `key` is the reaction, URL-encoded, 1 to 16 characters, such as an emoji.
+- Any member, viewers included. Adding the same reaction again changes nothing. Answers `204`.
+
+### DELETE /spaces/:spaceId/feed/items/:itemId/reactions/:key
+
+Takes the caller's reaction back. Answers `204`.
+
 ## Live stream
 
 ### GET /stream
@@ -250,6 +317,7 @@ The events carry no state; they tell the client what to reload.
   - the added or updated members, when members are added or change role;
   - the removed members, when members are removed;
   - the former members, when the space is deleted.
+- `feed` with data `{"spaceId":"<uuid>","itemId":"<uuid>","change":"added"}`, sent to every member when a feed item is `added`, `changed` (a later event, an edit, a reaction) or `removed`. The client reads an added or changed item with `GET /spaces/:spaceId/feed/items/:itemId`.
 
 ```
 event: spaces
@@ -397,12 +465,6 @@ Answers `200 {"status":"ok"}` once the backend has started and the database answ
 Metrics server only. Prometheus text format, no authentication.
 
 ```
-# HELP twake_space_cards_waiting Stored events not posted to Matrix yet.
-# TYPE twake_space_cards_waiting gauge
-twake_space_cards_waiting{organization="<org id>"} 0
-# HELP twake_space_cards_failed Stored events the homeserver refused for good.
-# TYPE twake_space_cards_failed gauge
-twake_space_cards_failed{organization="<org id>"} 0
 # HELP twake_space_events_total Messages handled, by outcome.
 # TYPE twake_space_events_total counter
 twake_space_events_total{outcome="processed"} 0
@@ -411,7 +473,6 @@ twake_space_events_total{outcome="processed"} 0
 twake_space_parked_events 0
 ```
 
-- `twake_space_cards_waiting` and `twake_space_cards_failed`: every organization with chat available reports a value, 0 included. A failed card is not counted as waiting.
 - `twake_space_events_total`: one series per outcome seen since the process started (`processed`, `duplicate`, `unrouted`, `malformed`, `rejected`, `parked`, `failed`), as listed in [events.md](events.md). Counts deliveries from RabbitMQ, so a message retried in the process counts once per attempt. Parked events retried are not counted.
 - `twake_space_parked_events`: rows in `parked_events`, for every replica.
 

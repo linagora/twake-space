@@ -1,11 +1,14 @@
-import { lt, sql } from 'drizzle-orm'
+import { and, eq, lt, notExists, or, sql } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import type { Db } from '../../infra/db.ts'
 import { notifications } from '../notifications/schema.ts'
 import {
   activityEvents,
   appServiceTransactions,
+  feedCards,
+  feedItemReactions,
   feedMessages,
+  feedPosts,
   feedReactions
 } from './schema.ts'
 
@@ -27,6 +30,29 @@ export function purgeExpired(db: Db, now = new Date()): Promise<boolean> {
       .where(lt(activityEvents.createdAt, feedLimit))
     await tx.delete(feedMessages).where(lt(feedMessages.createdAt, feedLimit))
     await tx.delete(feedReactions).where(lt(feedReactions.createdAt, feedLimit))
+    await tx.delete(feedPosts).where(lt(feedPosts.time, feedLimit))
+    // Also those on a card whose events are all purged, or on a deleted post.
+    await tx
+      .delete(feedItemReactions)
+      .where(
+        or(
+          lt(feedItemReactions.createdAt, feedLimit),
+          and(
+            notExists(
+              tx
+                .select({ id: feedCards.id })
+                .from(feedCards)
+                .where(eq(feedCards.id, feedItemReactions.itemId))
+            ),
+            notExists(
+              tx
+                .select({ id: feedPosts.id })
+                .from(feedPosts)
+                .where(eq(feedPosts.id, feedItemReactions.itemId))
+            )
+          )
+        )
+      )
     await tx
       .delete(notifications)
       .where(lt(notifications.createdAt, daysBefore(now, 90)))

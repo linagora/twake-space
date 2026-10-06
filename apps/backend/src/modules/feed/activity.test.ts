@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm'
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { CloudEvent } from '../../events/envelope.ts'
@@ -11,7 +12,7 @@ import {
   spaces
 } from '../spaces/schema.ts'
 import { activityRoute } from './activity.ts'
-import { activityEvents } from './schema.ts'
+import { activityEvents, feedCards } from './schema.ts'
 
 const SPACE_ID = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
 const ALICE = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
@@ -237,6 +238,20 @@ describe('activity events', () => {
     ).rejects.toThrow(NotYetKnownError)
   })
 
+  it('keeps an actor sent by an email no member has, such as an outside attendee', async () => {
+    await store(
+      anEvent({ twakeactorid: undefined, twakeactor: 'guest@partner.com' })
+    )
+
+    expect(
+      await testDb.db
+        .select({ actor: activityEvents.actor })
+        .from(activityEvents)
+    ).toEqual([
+      { actor: { type: 'user', id: null, email: 'guest@partner.com' } }
+    ])
+  })
+
   it('lets a non-member act in a space with linked groups', async () => {
     await testDb.db.insert(spaceGroups).values({
       spaceId: SPACE_ID,
@@ -424,5 +439,67 @@ describe('notifications', () => {
     expect(await readNotifications()).toMatchObject([
       { userId: ALICE, type: 'space_change' }
     ])
+  })
+})
+
+describe('feed cards', () => {
+  const cards = () =>
+    testDb.db
+      .select({
+        objectId: feedCards.objectId,
+        category: feedCards.category,
+        time: feedCards.time,
+        latest: activityEvents.eventId
+      })
+      .from(feedCards)
+      .innerJoin(activityEvents, eq(activityEvents.id, feedCards.latestEventId))
+
+  it('makes one card for an object, kept in place and showing its latest event', async () => {
+    await store(anEvent())
+    await store(
+      anEvent({
+        id: 'renamed',
+        type: 'com.twake.drive.file.updated.v1',
+        time: '2026-10-05T10:00:00Z'
+      })
+    )
+
+    expect(await cards()).toEqual([
+      {
+        objectId: 'f1',
+        category: 'files',
+        time: new Date('2026-10-05T09:14:22Z'),
+        latest: 'renamed'
+      }
+    ])
+  })
+
+  it('keeps the latest event when an older one arrives late, and moves the card to it', async () => {
+    await store(anEvent())
+    await store(anEvent({ id: 'older', time: '2026-10-04T08:00:00Z' }))
+
+    expect(await cards()).toMatchObject([
+      {
+        time: new Date('2026-10-04T08:00:00Z'),
+        latest: '01J9Z6K4X8M2Q7R5T3V1W0Y9AB'
+      }
+    ])
+  })
+
+  it('makes no card for an event outside any space', async () => {
+    await store(
+      anEvent({
+        data: {
+          object: {
+            type: 'file',
+            id: 'f2',
+            container: { kind: 'drive', id: 'personal' },
+            title: 'Notes.odt'
+          }
+        }
+      })
+    )
+
+    expect(await cards()).toEqual([])
   })
 })

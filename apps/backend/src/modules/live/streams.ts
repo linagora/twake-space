@@ -1,4 +1,4 @@
-export type LiveEvent = 'notification' | 'spaces' | 'settings'
+export type LiveEvent = 'notification' | 'spaces' | 'settings' | 'feed'
 
 export interface Stream {
   sessionId: string

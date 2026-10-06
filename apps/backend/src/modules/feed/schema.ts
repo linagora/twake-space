@@ -93,6 +93,59 @@ export const feedReactions = pgTable(
   table => [index().on(table.createdAt)]
 )
 
+// One per object in a space: later events about it change the card in place.
+export const feedCards = pgTable(
+  'feed_cards',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    spaceId: uuid('space_id').notNull(),
+    objectType: text('object_type').notNull(),
+    objectId: text('object_id').notNull(),
+    category: feedCategory().notNull(),
+    // The first event's: the card keeps its place in the feed.
+    time: timestamptz('time').notNull(),
+    latestEventId: uuid('latest_event_id')
+      .notNull()
+      .references(() => activityEvents.id, { onDelete: 'cascade' }),
+    latestTime: timestamptz('latest_time').notNull()
+  },
+  table => [
+    unique().on(table.spaceId, table.objectType, table.objectId),
+    index().on(table.spaceId, table.time, table.id)
+  ]
+)
+
+export const feedPosts = pgTable(
+  'feed_posts',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    spaceId: uuid('space_id').notNull(),
+    // Null once the author's account is deleted.
+    authorId: uuid('author_id'),
+    body: text().notNull(),
+    // Written from a JS Date, at the milliseconds the feed cursor carries.
+    time: timestamptz('time').notNull(),
+    editedAt: timestamptz('edited_at')
+  },
+  table => [index().on(table.spaceId, table.time, table.id)]
+)
+
+// On a card or a post.
+export const feedItemReactions = pgTable(
+  'feed_item_reactions',
+  {
+    itemId: uuid('item_id').notNull(),
+    spaceId: uuid('space_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    key: text().notNull(),
+    createdAt: timestamptz('created_at').notNull().defaultNow()
+  },
+  table => [
+    primaryKey({ columns: [table.itemId, table.userId, table.key] }),
+    index().on(table.createdAt)
+  ]
+)
+
 // Synapse resends a transaction until it gets a 200.
 export const appServiceTransactions = pgTable(
   'app_service_transactions',

@@ -13,7 +13,7 @@ import type { PlatformEvent } from '../../events/envelope.ts'
 import { lastChanges } from '../../events/schema.ts'
 import { MalformedEventError, NotYetKnownError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
-import { activityEvents } from '../feed/schema.ts'
+import { activityEvents, feedItemReactions, feedPosts } from '../feed/schema.ts'
 import { notifications } from '../notifications/schema.ts'
 import { spacePlatformRoutes } from './events.ts'
 import {
@@ -247,17 +247,47 @@ describe('space events', () => {
           time: new Date()
         })
         .returning()
+      await testDb.db.insert(activityEvents).values({
+        source: 'twake://calendar',
+        eventId: 'e2',
+        spaceId: SPACE_ID,
+        type: 'com.twake.calendar.event.updated.v1',
+        category: 'events',
+        actor: { type: 'user', id: null, email: jdoe.email },
+        objectType: 'event',
+        objectId: 'ev1',
+        content: {},
+        time: new Date()
+      })
       await testDb.db.insert(notifications).values({
         userId: JDOE_ID,
         type: 'card_mention',
         activityEventId: event?.id,
         payload: {}
       })
+      const [post] = await testDb.db
+        .insert(feedPosts)
+        .values({
+          spaceId: SPACE_ID,
+          authorId: JDOE_ID,
+          body: 'Hello',
+          time: new Date()
+        })
+        .returning({ id: feedPosts.id })
+      if (!post) throw new Error('no post')
+      await testDb.db.insert(feedItemReactions).values({
+        itemId: post.id,
+        spaceId: SPACE_ID,
+        userId: JDOE_ID,
+        key: '👍'
+      })
     }
 
     beforeEach(async () => {
       await testDb.db.delete(notifications)
       await testDb.db.delete(activityEvents)
+      await testDb.db.delete(feedPosts)
+      await testDb.db.delete(feedItemReactions)
     })
 
     it.each([
@@ -275,7 +305,16 @@ describe('space events', () => {
           await testDb.db
             .select({ actor: activityEvents.actor })
             .from(activityEvents)
-        ).toEqual([{ actor: { type: 'deleted_user' } }])
+        ).toEqual([
+          { actor: { type: 'deleted_user' } },
+          { actor: { type: 'deleted_user' } }
+        ])
+        expect(
+          await testDb.db
+            .select({ authorId: feedPosts.authorId })
+            .from(feedPosts)
+        ).toEqual([{ authorId: null }])
+        expect(await testDb.db.select().from(feedItemReactions)).toEqual([])
       }
     )
   })

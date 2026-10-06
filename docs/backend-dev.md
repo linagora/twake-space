@@ -34,8 +34,8 @@ flowchart LR
   http["HTTP clients<br>frontend, API tokens"] --> auth["auth/ + tokens/<br>authorize"]
   auth --> spaces & tokens & notifications & directory["organizations/<br>directory routes"] & live
   feed --> notifications
-  spaces & notifications -- "pg_notify" --> live["live/<br>SSE /stream"]
-  feed -- "poster: cards" --> synapse
+  auth --> feed
+  spaces & notifications & feed -- "pg_notify" --> live["live/<br>SSE /stream"]
 ```
 
 - `src/main.ts` is the only place that wires things. It loads the config, runs the migrations, builds the event routes, registers every module's routes on one Fastify server, starts the metrics server, then the RabbitMQ consumer and the background jobs. It also handles SIGTERM and SIGINT.
@@ -49,7 +49,7 @@ What each module owns:
 - `tokens`: API tokens (account, organization and technical account tokens), the organization's token policy, the token audit log, and revoking tokens when accounts, spaces or organizations go away.
 - `spaces`: spaces, their members, linked groups, organization roles and app resources, all kept up to date from platform events. Serves `GET /spaces` and `GET /spaces/:id`.
 - `organizations`: organizations (domain, chat and mail availability), homeservers, the chat control plane client, and the directory search routes `GET /organization/members` and `GET /organization/groups`.
-- `feed`: activity cards from app events, chat messages and reactions from Matrix transactions, the poster that sends cards to Matrix rooms, the retention purge, and `/metrics`.
+- `feed`: activity cards from app events, members' posts and reactions under `/spaces/:spaceId/feed`, chat messages and reactions from Matrix transactions, the retention purge, and `/metrics`.
 - `notifications`: per user notifications and settings, under `/notifications`.
 - `live`: the Server-Sent Events stream at `GET /stream`, fed by Postgres `NOTIFY` so every replica hears committed changes.
 

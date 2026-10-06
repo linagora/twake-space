@@ -618,7 +618,10 @@ const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
   ])
   if (known) {
     await deleteNotificationsOf(tx, known.uuid)
-    await forgetActor(tx, { uuid: known.uuid })
+    await forgetActor(tx, {
+      uuid: known.uuid,
+      ...(internalEmail && { email: internalEmail })
+    })
     await revokeAccountTokens(
       tx,
       { accountId: known.uuid },
