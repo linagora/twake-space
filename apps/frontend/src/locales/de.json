@@ -66,27 +66,17 @@
     "name": "Name des Bereichs",
     "description": "Beschreibung (optional)",
     "personalize": "Bereich anpassen",
-    "uploadPhoto": "Foto hochladen",
     "colors": "Farben",
-    "emojis": "Emojis",
-    "icons": "Symbole",
     "colorHint": "Wählen Sie eine Farbe für Ihren Bereich",
     "apps": "Zu aktivierende Apps",
-    "appsHint": "Wählen Sie, welche Apps in diesem Bereich verfügbar sind. Sie können das später ändern.",
-    "addShortcut": "Verknüpfung hinzufügen",
-    "shortcut": "Verknüpfung erstellen",
-    "shortcutHint": "Fügen Sie einen Link zu einer Seite oder App hinzu, die Ihr Team nutzt.",
-    "shortcutUrl": "Link",
-    "shortcutName": "Name",
+    "appsHint": "Wählen Sie, welche Apps in diesem Bereich verfügbar sind.",
     "app": {
       "feed": "Feed",
       "drive": "Dateien",
       "chat": "Chat",
       "tasks": "Aufgaben",
       "calendar": "Kalender",
-      "contacts": "Kontakte",
-      "mail": "Mail",
-      "assistant": "KI-Assistent"
+      "mail": "Mail"
     }
   },
   "tabs": {

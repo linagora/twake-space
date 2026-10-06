@@ -6,7 +6,12 @@ import {
   type UseQueryResult
 } from '@tanstack/react-query'
 
-import type { Space, SpaceSummary, SpacesService } from '@/application/spaces'
+import type {
+  NewSpace,
+  Space,
+  SpaceSummary,
+  SpacesService
+} from '@/application/spaces'
 import { useServices } from '@/ui/services/Services'
 
 export const SPACES = ['spaces']
@@ -63,12 +68,12 @@ export function useDeleteSpace(id: string): UseMutationResult<void> {
 export function useCreateSpace(): UseMutationResult<
   SpaceSummary,
   Error,
-  string
+  NewSpace
 > {
   const { spaces } = useServices()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: name => spaces.create(name),
+    mutationFn: space => spaces.create(space),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: SPACES })
   })
 }

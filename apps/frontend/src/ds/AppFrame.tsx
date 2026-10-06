@@ -135,23 +135,35 @@ export function SidebarFooter({
 
 export function NameAvatar({
   name,
-  size
+  size,
+  color
 }: {
   name: string
   size: 'xs' | 's' | 'm' | 'l'
+  color?: string | null
 }): ReactElement {
   return (
-    <Avatar size={size} color={nameToColor(name) ?? 'sunrise'} aria-hidden>
+    <Avatar
+      size={size}
+      color={color ?? nameToColor(name) ?? 'sunrise'}
+      aria-hidden
+    >
       {getInitials(name, '')}
     </Avatar>
   )
 }
 
 // NavIcon only takes an icon; avatars need the same slot.
-export function NavAvatar({ name }: { name: string }): ReactElement {
+export function NavAvatar({
+  name,
+  color
+}: {
+  name: string
+  color: string | null
+}): ReactElement {
   return (
     <Box component="span" sx={{ display: 'flex', mr: 1.5 }}>
-      <NameAvatar name={name} size="xs" />
+      <NameAvatar name={name} size="xs" color={color} />
     </Box>
   )
 }

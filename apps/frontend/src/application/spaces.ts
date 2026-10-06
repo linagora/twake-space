@@ -4,6 +4,17 @@ export interface SpaceSummary {
   id: string
   name: string
   role: SpaceRole
+  /** The avatar color picked at creation. */
+  color: string | null
+}
+
+export type SpaceApp = 'feed' | 'chat' | 'tasks' | 'drive' | 'mail' | 'calendar'
+
+export interface NewSpace {
+  name: string
+  description: string
+  color: string | null
+  apps: SpaceApp[]
 }
 
 export type ResourceKind =
@@ -27,6 +38,9 @@ export interface LinkedGroup {
 
 export interface Space extends SpaceSummary {
   createdAt: string
+  description: string
+  /** The apps that have a tab when this deployment provides them. */
+  apps: SpaceApp[]
   chat: boolean
   mail: boolean
   /** The organization's Matrix homeserver, once known. */
@@ -62,7 +76,7 @@ export function isRefusal(error: unknown): error is Refusal {
 export interface SpacesService {
   list: () => Promise<SpaceSummary[]>
   get: (id: string) => Promise<Space>
-  create: (name: string) => Promise<SpaceSummary>
+  create: (space: NewSpace) => Promise<SpaceSummary>
   rename: (id: string, name: string) => Promise<void>
   remove: (id: string) => Promise<void>
   addMembers: (

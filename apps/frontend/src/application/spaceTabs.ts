@@ -41,7 +41,7 @@ export function spaceTabs(
   return TABS.flatMap((tab): { tab: Tab; state: TabState }[] => {
     if (tab === 'members') return [{ tab, state: 'ready' }]
     const resource = space.resources.find(r => r.kind === RESOURCE[tab])
-    if (!resource) return []
+    if (!resource || !space.apps.includes(tab)) return []
     if (!isOn(space, tab)) return [{ tab, state: 'off' }]
     const ready =
       resource.id !== null &&

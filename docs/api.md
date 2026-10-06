@@ -66,11 +66,15 @@ The refusals look like this.
 ### GET /spaces
 
 - Caller: session, or token with `space:read`.
-- Returns the spaces the caller reaches, sorted by name, with the role it acts with in each.
+- Returns the spaces the caller reaches, sorted by name, with the role it acts with in each and the avatar color picked at creation (null when none was).
 - A session caller or an account token reaches the spaces its account is a member of. An organization token reaches every space of the organization and acts with its own role. A token that covers a list of spaces reaches only those.
 
 ```json
-{ "spaces": [{ "id": "<uuid>", "name": "Design", "role": "admin" }] }
+{
+  "spaces": [
+    { "id": "<uuid>", "name": "Design", "role": "admin", "color": "#46a2ff" }
+  ]
+}
 ```
 
 ### GET /spaces/:id
@@ -78,6 +82,7 @@ The refusals look like this.
 - Caller: session, or token with `space:read`.
 - Path: `id` is a UUID.
 - `404 {"error":"not_found"}` when `id` is not a UUID or the caller does not reach the space.
+- `description`, `color` and `apps` are what was picked at creation. `apps` lists the tabs the space shows when this deployment provides their app. A space created outside twake-space has an empty description, no color and every tab.
 - `chat` and `mail` are the organization's chat and mail availability, false when the organization is unknown. `homeserverUrl` is the organization's Matrix homeserver, or null.
 - `createdAt` is when the backend learned of the space.
 - `resources` lists the kind (`drive`, `mailbox`, `calendar`, `matrix_space`, `project`) of each app this deployment provides, set by `SPACE_APPS` in [Deploying](deploy.md#configuration). A kind whose `id` is null is still being prepared by its app.
@@ -88,6 +93,9 @@ The refusals look like this.
   "name": "Design",
   "role": "editor",
   "createdAt": "2026-10-01T08:00:00.000Z",
+  "color": "#46a2ff",
+  "description": "Brand and product design",
+  "apps": ["feed", "chat", "tasks", "drive"],
   "chat": true,
   "mail": false,
   "homeserverUrl": "https://matrix.example.com",
@@ -403,7 +411,7 @@ Shared rules:
 
 ### POST /spaces
 
-- Body: `{"name":"..."}`.
+- Body: `{"name":"...","description":"...","color":"#46a2ff","apps":["feed","drive"]}`. Only `name` is required. `color` is a `#rrggbb` hex code. `apps` lists the tabs the space shows, among `feed`, `chat`, `tasks`, `drive`, `mail` and `calendar`; every one when left out.
 - The caller becomes the space's admin. It needs an account found in ldap-rest; otherwise, and for an organization token, it gets `403 {"error":"needs_an_account"}`.
 - Answers `201`.
 

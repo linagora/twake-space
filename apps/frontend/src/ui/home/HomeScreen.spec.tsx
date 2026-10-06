@@ -37,8 +37,8 @@ describe('HomeScreen', () => {
 
   it("shows the person's spaces as cards after a create card, each opening the space", async () => {
     const spaces = fakeSpaces([
-      { id: 'a1', name: 'Design Sprint', role: 'admin' },
-      { id: 'b2', name: 'Roadmap', role: 'viewer' }
+      { id: 'a1', name: 'Design Sprint', role: 'admin', color: null },
+      { id: 'b2', name: 'Roadmap', role: 'viewer', color: null }
     ])
     renderWithProviders(<HomeScreen />, { spaces })
 
@@ -63,7 +63,7 @@ describe('HomeScreen', () => {
     ).toBeInTheDocument()
   })
 
-  it('creates a space by name and shows its card', async () => {
+  it('creates a space with the description, color and apps picked, and shows its card', async () => {
     const spaces = fakeSpaces()
     renderWithProviders(<HomeScreen />, { spaces })
 
@@ -71,27 +71,41 @@ describe('HomeScreen', () => {
       await screen.findByRole('button', { name: 'Create a space' })
     )
     const dialog = await screen.findByRole('dialog')
-    const next = within(dialog).getByRole('button', { name: 'Next' })
-    expect(next).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Next' })).toBeDisabled()
     fireEvent.change(within(dialog).getByLabelText('Space name'), {
       target: { value: '  Launch  ' }
     })
-    fireEvent.click(next)
+    fireEvent.change(within(dialog).getByLabelText('Describe (optional)'), {
+      target: { value: ' Ship it ' }
+    })
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Personalize space' })
+    )
+    fireEvent.click(within(dialog).getByRole('radio', { name: '#46a2ff' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Apply' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Next' }))
 
     expect(within(dialog).getByRole('checkbox', { name: 'Feed' })).toBeChecked()
     expect(
       within(dialog).getByRole('checkbox', { name: 'Calendar' })
     ).not.toBeChecked()
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Chat' }))
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Calendar' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
 
     await screen.findByRole('link', { name: 'Launch' })
-    expect(spaces.create).toHaveBeenCalledWith('Launch')
+    expect(spaces.create).toHaveBeenCalledWith({
+      name: 'Launch',
+      description: 'Ship it',
+      color: '#46a2ff',
+      apps: ['feed', 'drive', 'tasks', 'calendar']
+    })
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 
-  it('adds a shortcut to the apps, turned on', async () => {
+  it('offers only the apps a space can have a tab for', async () => {
     renderWithProviders(<HomeScreen />)
 
     fireEvent.click(
@@ -102,20 +116,15 @@ describe('HomeScreen', () => {
       target: { value: 'Launch' }
     })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Next' }))
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: 'Add shortcut' })
-    )
-    fireEvent.change(within(dialog).getByLabelText('Link'), {
-      target: { value: 'https://grist.example.com' }
-    })
-    fireEvent.change(within(dialog).getByLabelText('Name'), {
-      target: { value: 'Grist' }
-    })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
 
     expect(
-      await within(dialog).findByRole('checkbox', { name: 'Grist' })
-    ).toBeChecked()
+      within(dialog)
+        .getAllByRole('checkbox')
+        .map(box => box.closest('label')?.textContent)
+    ).toEqual(['Feed', 'Files', 'Chat', 'Tasks', 'Calendar', 'Mail'])
+    expect(
+      within(dialog).queryByRole('button', { name: 'Add shortcut' })
+    ).not.toBeInTheDocument()
   })
 
   it('keeps the dialog open and says so when the creation fails', async () => {

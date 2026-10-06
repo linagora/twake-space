@@ -13,6 +13,9 @@ const roadmap: Space = {
   name: 'Roadmap',
   role: 'editor',
   createdAt: new Date().toISOString(),
+  color: null,
+  description: 'Where the year is planned',
+  apps: ['feed', 'chat', 'tasks', 'drive', 'mail', 'calendar'],
   chat: false,
   mail: true,
   homeserverUrl: null,
@@ -64,12 +67,13 @@ function renderAt(
 }
 
 describe('SpaceScreen', () => {
-  it("shows the space's name and the person's role", async () => {
+  it("shows the space's name, description and the person's role", async () => {
     renderAt('/spaces/a1/tasks')
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Roadmap' })
     ).toBeInTheDocument()
+    expect(screen.getByText('Where the year is planned')).toBeInTheDocument()
     expect(screen.getByText('Editor')).toBeInTheDocument()
   })
 

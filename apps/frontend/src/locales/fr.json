@@ -66,27 +66,17 @@
     "name": "Nom de l'espace",
     "description": "Description (facultative)",
     "personalize": "Personnaliser l'espace",
-    "uploadPhoto": "Importer une photo",
     "colors": "Couleurs",
-    "emojis": "Emojis",
-    "icons": "Icônes",
     "colorHint": "Choisissez une couleur pour votre espace",
     "apps": "Applications à activer",
-    "appsHint": "Choisissez les applications disponibles dans cet espace. Vous pourrez changer cela plus tard.",
-    "addShortcut": "Ajouter un raccourci",
-    "shortcut": "Créer un raccourci",
-    "shortcutHint": "Ajoutez un lien vers une page ou une application utilisée par votre équipe.",
-    "shortcutUrl": "Lien",
-    "shortcutName": "Nom",
+    "appsHint": "Choisissez les applications disponibles dans cet espace.",
     "app": {
       "feed": "Fil",
       "drive": "Fichiers",
       "chat": "Chat",
       "tasks": "Tâches",
       "calendar": "Agenda",
-      "contacts": "Contacts",
-      "mail": "Mail",
-      "assistant": "Assistant IA"
+      "mail": "Mail"
     }
   },
   "tabs": {

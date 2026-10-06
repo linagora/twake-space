@@ -11,6 +11,8 @@ import {
   spaceMembers,
   spaceResourceKind,
   spaceResources,
+  spaceSettings,
+  spaceTab,
   spaces
 } from './schema.ts'
 
@@ -29,8 +31,10 @@ export function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
   const fields = {
     id: spaces.spaceId,
     name: spaces.name,
-    createdAt: spaces.createdAt
+    createdAt: spaces.createdAt,
+    color: spaceSettings.color
   }
+  const settings = eq(spaceSettings.spaceId, spaces.spaceId)
   const { userId } = caller
   if (userId === null) {
     const role = caller.kind === 'token' ? caller.role : null
@@ -38,6 +42,7 @@ export function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
     return db
       .select(fields)
       .from(spaces)
+      .leftJoin(spaceSettings, settings)
       .where(covered)
       .orderBy(asc(spaces.name))
       .then(rows => rows.map(row => ({ ...row, role })))
@@ -52,6 +57,7 @@ export function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
         eq(spaceMembers.userId, userId)
       )
     )
+    .leftJoin(spaceSettings, settings)
     .where(covered)
     .orderBy(asc(spaces.name))
 }
@@ -70,7 +76,14 @@ export function registerSpaceRoutes(
 
   app.get('/spaces', { preHandler: authorize('space:read') }, async request => {
     const reached = await reachableSpaces(db, callerOf(request))
-    return { spaces: reached.map(({ id, name, role }) => ({ id, name, role })) }
+    return {
+      spaces: reached.map(({ id, name, role, color }) => ({
+        id,
+        name,
+        role,
+        color
+      }))
+    }
   })
 
   app.get(
@@ -86,6 +99,13 @@ export function registerSpaceRoutes(
         return reply.code(404).send({ error: 'not_found' })
       }
 
+      const [settings] = await db
+        .select({
+          description: spaceSettings.description,
+          apps: spaceSettings.apps
+        })
+        .from(spaceSettings)
+        .where(eq(spaceSettings.spaceId, spaceId))
       const [members, groups, resources, [organization]] = await Promise.all([
         db
           .select({
@@ -127,6 +147,8 @@ export function registerSpaceRoutes(
 
       return {
         ...space,
+        description: settings?.description ?? '',
+        apps: settings?.apps ?? spaceTab.enumValues,
         chat: organization?.chat ?? false,
         mail: organization?.mail ?? false,
         homeserverUrl: organization?.homeserverUrl ?? null,

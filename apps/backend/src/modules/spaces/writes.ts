@@ -16,7 +16,7 @@ import {
   upsertMembers
 } from './events.ts'
 import { reachableSpaces } from './routes.ts'
-import { spaceMembers, spaceRole } from './schema.ts'
+import { spaceMembers, spaceRole, spaceSettings, spaceTab } from './schema.ts'
 
 const role = z.enum(spaceRole.enumValues)
 const name = z.string().trim().min(1).max(255)
@@ -151,7 +151,21 @@ export function registerSpaceWriteRoutes(
     '/spaces',
     writeSpace,
     refusing(async (request, reply) => {
-      const body = parse(z.object({ name }), request.body)
+      const body = parse(
+        z.object({
+          name,
+          description: z.string().trim().max(1000).default(''),
+          color: z
+            .string()
+            .regex(/^#[0-9a-f]{6}$/i)
+            .nullable()
+            .default(null),
+          apps: z
+            .array(z.enum(spaceTab.enumValues))
+            .default(spaceTab.enumValues)
+        }),
+        request.body
+      )
       const caller = callerOf(request)
       const creator = await actorOf(caller)
       if (!creator) throw new Refusal(403, 'needs_an_account')
@@ -168,8 +182,14 @@ export function registerSpaceWriteRoutes(
       )
       const at = new Date()
       await copy(request, () =>
-        db.transaction(tx =>
-          createSpace(
+        db.transaction(async tx => {
+          await tx.insert(spaceSettings).values({
+            spaceId: id,
+            description: body.description,
+            color: body.color,
+            apps: body.apps
+          })
+          await createSpace(
             tx,
             request.log,
             {
@@ -181,7 +201,7 @@ export function registerSpaceWriteRoutes(
             },
             at
           )
-        )
+        })
       )
       return reply.code(201).send({ id, name: body.name, role: 'admin' })
     })

@@ -27,6 +27,7 @@ import {
   spaceResourceKind,
   spaceResources,
   spaceRole,
+  spaceSettings,
   spaces
 } from './schema.ts'
 
@@ -471,6 +472,7 @@ export async function deleteSpace(
     actor,
     reason: 'its only space was deleted'
   })
+  await tx.delete(spaceSettings).where(eq(spaceSettings.spaceId, id))
   await tx.delete(spaces).where(eq(spaces.spaceId, id))
   await tell(
     tx,

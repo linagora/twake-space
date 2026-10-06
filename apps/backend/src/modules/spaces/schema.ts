@@ -22,6 +22,24 @@ export const spaces = pgTable(
   table => [index().on(table.organizationId)]
 )
 
+export const spaceTab = pgEnum('space_tab', [
+  'feed',
+  'chat',
+  'tasks',
+  'drive',
+  'mail',
+  'calendar'
+])
+
+// What the creator picked in twake-space; ldap-rest does not hold it. A space
+// without a row was created elsewhere and has every tab on.
+export const spaceSettings = pgTable('space_settings', {
+  spaceId: uuid('space_id').primaryKey(),
+  description: text().notNull().default(''),
+  color: text(),
+  apps: spaceTab().array().notNull()
+})
+
 // The tables below have no foreign key to spaces: they are fed by events that can be
 // consumed before the space event.
 

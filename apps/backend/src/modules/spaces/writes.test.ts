@@ -13,7 +13,7 @@ import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
 import type { TokenCaller } from '../tokens/authenticator.ts'
 import { spacePlatformRoutes } from './events.ts'
-import { spaceGroups, spaceMembers, spaces } from './schema.ts'
+import { spaceGroups, spaceMembers, spaceSettings, spaces } from './schema.ts'
 import { registerSpaceWriteRoutes } from './writes.ts'
 
 const ALICE = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
@@ -53,7 +53,13 @@ afterAll(() => testDb.drop())
 
 beforeEach(async () => {
   const { db } = testDb
-  for (const table of [spaceMembers, spaceGroups, spaces, lastChanges]) {
+  for (const table of [
+    spaceMembers,
+    spaceGroups,
+    spaceSettings,
+    spaces,
+    lastChanges
+  ]) {
     await db.delete(table)
   }
   await db
@@ -193,6 +199,42 @@ describe('space writes', () => {
     ])
     expect(await nameOf(CREATED)).toBe('Launch')
     expect(await members(CREATED)).toEqual([{ userId: ALICE, role: 'admin' }])
+  })
+
+  it('keeps the description, color and apps picked at creation', async () => {
+    const { directory } = ldapRest()
+
+    const response = await setUp(directory)('POST', '/spaces', {
+      name: 'Launch',
+      description: 'Ship it',
+      color: '#46a2ff',
+      apps: ['feed', 'drive']
+    })
+
+    expect(response.statusCode).toBe(201)
+    expect(await testDb.db.select().from(spaceSettings)).toEqual([
+      {
+        spaceId: CREATED,
+        description: 'Ship it',
+        color: '#46a2ff',
+        apps: ['feed', 'drive']
+      }
+    ])
+  })
+
+  it.each([
+    ['an unknown app', { apps: ['contacts'] }],
+    ['a color that is not a hex code', { color: 'red' }]
+  ])('refuses %s', async (_case, choice) => {
+    const { calls, directory } = ldapRest()
+
+    const response = await setUp(directory)('POST', '/spaces', {
+      name: 'Launch',
+      ...choice
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(calls).toEqual([])
   })
 
   it('lets only a space admin change it', async () => {
@@ -363,12 +405,16 @@ describe('space writes', () => {
 
   it('deletes the space from the copy', async () => {
     const { directory } = ldapRest()
+    await testDb.db
+      .insert(spaceSettings)
+      .values({ spaceId: DESIGN, description: 'x', apps: ['feed'] })
 
     const response = await setUp(directory)('DELETE', `/spaces/${DESIGN}`)
 
     expect(response.statusCode).toBe(204)
     expect(await nameOf(DESIGN)).toBeUndefined()
     expect(await members()).toEqual([])
+    expect(await testDb.db.select().from(spaceSettings)).toEqual([])
   })
 
   it('writes as the service for an organization token', async () => {
