@@ -1,7 +1,7 @@
 import type { MemoryOrganization } from '@/adapters/memory/memoryDirectory'
 import type { FeedEntry } from '@/application/feed'
 import type { User } from '@/application/session'
-import type { Space } from '@/application/spaces'
+import type { Member, Space, SpaceRole } from '@/application/spaces'
 
 // The same organization, people and roles as the local SSO stack, so moving
 // from the mock to the real backend changes nothing on screen.
@@ -31,6 +31,18 @@ export const seedUser: User = {
   email: `alice@${DOMAIN}`
 }
 
+const member = (username: string, role: SpaceRole): Member => ({
+  id: `uuid-${username}`,
+  username,
+  email: `${username}@${DOMAIN}`,
+  role
+})
+const designers = (role: SpaceRole) => ({
+  id: 'uuid-designers',
+  name: 'Designers',
+  role
+})
+
 const ROADMAP_ROOM = `!roadmap:${DOMAIN}`
 const DESIGN_ROOM = `!design-sprint:${DOMAIN}`
 
@@ -42,6 +54,12 @@ export const seedSpaces: Space[] = [
     chat: true,
     mail: true,
     homeserverUrl: HOMESERVER,
+    members: [
+      member('alice', 'admin'),
+      member('bob', 'editor'),
+      member('dave', 'viewer')
+    ],
+    groups: [designers('viewer')],
     resources: [
       { kind: 'matrix_space', id: ROADMAP_ROOM },
       { kind: 'tasks', id: 'board-roadmap' },
@@ -57,6 +75,8 @@ export const seedSpaces: Space[] = [
     chat: true,
     mail: false,
     homeserverUrl: HOMESERVER,
+    members: [member('carol', 'admin'), member('alice', 'editor')],
+    groups: [designers('editor')],
     resources: [
       { kind: 'matrix_space', id: DESIGN_ROOM },
       { kind: 'tasks', id: 'board-design' },
@@ -72,6 +92,8 @@ export const seedSpaces: Space[] = [
     chat: false,
     mail: false,
     homeserverUrl: null,
+    members: [member('dave', 'admin'), member('alice', 'viewer')],
+    groups: [],
     resources: [
       { kind: 'matrix_space', id: null },
       { kind: 'tasks', id: 'board-handover' },

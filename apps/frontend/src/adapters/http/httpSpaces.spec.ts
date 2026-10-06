@@ -80,4 +80,69 @@ describe('httpSpaces', () => {
       code: 'needs_an_account'
     })
   })
+
+  it.each([
+    {
+      write: () => spaces.rename('a1', 'Q3'),
+      method: 'PATCH',
+      path: 'spaces/a1',
+      body: { name: 'Q3' }
+    },
+    {
+      write: () => spaces.remove('a1'),
+      method: 'DELETE',
+      path: 'spaces/a1',
+      body: null
+    },
+    {
+      write: () => spaces.addMembers('a1', ['bob', 'carol'], 'editor'),
+      method: 'POST',
+      path: 'spaces/a1/members',
+      body: { usernames: ['bob', 'carol'], role: 'editor' }
+    },
+    {
+      write: () => spaces.setMemberRole('a1', 'u-bob', 'viewer'),
+      method: 'PATCH',
+      path: 'spaces/a1/members/u-bob',
+      body: { role: 'viewer' }
+    },
+    {
+      write: () => spaces.removeMember('a1', 'u-bob'),
+      method: 'DELETE',
+      path: 'spaces/a1/members/u-bob',
+      body: null
+    },
+    {
+      write: () => spaces.linkGroups('a1', ['g-1'], 'viewer'),
+      method: 'POST',
+      path: 'spaces/a1/groups',
+      body: { groupIds: ['g-1'], role: 'viewer' }
+    },
+    {
+      write: () => spaces.setGroupRole('a1', 'g-1', 'editor'),
+      method: 'PATCH',
+      path: 'spaces/a1/groups/g-1',
+      body: { role: 'editor' }
+    },
+    {
+      write: () => spaces.unlinkGroup('a1', 'g-1'),
+      method: 'DELETE',
+      path: 'spaces/a1/groups/g-1',
+      body: null
+    }
+  ])('sends $method $path', async ({ write, method, path, body }) => {
+    let sent: unknown = null
+    fetchMock.mockImplementation(async request => {
+      if (!(request instanceof Request)) throw new Error('not a Request')
+      const text = await request.clone().text()
+      sent = text ? JSON.parse(text) : null
+      return new Response(null, { status: 204 })
+    })
+
+    await write()
+
+    expect(requested().method).toBe(method)
+    expect(requested().url).toBe(`https://api.test/${path}`)
+    expect(sent).toEqual(body)
+  })
 })
