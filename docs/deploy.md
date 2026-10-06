@@ -78,7 +78,8 @@ The entrypoint script `40-twake-space-runtime.sh` reads the environment at conta
 - `SSO_BASE_URL`, `SSO_CLIENT_ID`, `SSO_SCOPE`, `SSO_REDIRECT_URI`, `SSO_POST_LOGOUT_REDIRECT`: the OIDC login settings. All five are required: the app throws without any of them.
 - `TASKS_URL`: the Tasks app, embedded in a frame. Optional.
 - `MAIL_URL`: the Mail app, whose team mailbox embed fills the Mail tab. Optional. Mail, like Tasks, also serves `/embed/overlay.html`, the overlay its composer and dialogs show on, over the whole page: it is on the origin of `MAIL_URL`, which `frame-src` already allows.
-- `SENTRY_DSN`, `SENTRY_ENVIRONMENT`: browser error reporting. Optional.
+- `SENTRY_DSN`, `SENTRY_ENVIRONMENT`: browser error reporting. Optional. Events carry the tag `app` (`twake-space`), the release (the frontend version) and, in a space, the tag `space_tab` (the open tab).
+- `SENTRY_FEEDBACK_ENABLED`: `true` shows Sentry's floating feedback button, with a form, an optional email and a screenshot of the tab. Anything else, or no `SENTRY_DSN`, keeps it off. It needs a Sentry of 24.4.2 or later. The screenshot uses the browser's tab sharing prompt: it is not offered on mobile.
 - `POSTHOG_KEY`, `POSTHOG_HOST`: written to `/.env.js`. See the open questions.
 
 `API_UPSTREAM` is optional and not written to `/.env.js`. It is the backend's bare origin, for example `http://twake-space-backend.ns.svc.cluster.local`. nginx then forwards `/api/<path>` to `<API_UPSTREAM>/<path>`, so the browser reaches the API on the page's own origin. Use the full service name: nginx does not apply the search domains. Without it, `/api/` answers 404.
