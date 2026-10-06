@@ -154,15 +154,22 @@ function Section({
       ) : (
         <List aria-labelledby={id}>
           {rows.map(row => (
-            <ListItem
-              key={row.id}
-              secondaryAction={
-                admin ? (
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    className="u-flex-items-center"
-                  >
+            <ListItem key={row.id}>
+              <ListItemText
+                primary={row.primary}
+                secondary={row.secondary}
+                slotProps={{
+                  primary: { noWrap: true },
+                  secondary: { noWrap: true }
+                }}
+              />
+              <Stack
+                direction="row"
+                spacing={1}
+                className="u-flex-items-center u-flex-none u-ml-half"
+              >
+                {admin ? (
+                  <>
                     <RoleSelect
                       label={t('members.roleOf', { name: row.primary })}
                       value={row.role}
@@ -178,17 +185,15 @@ function Section({
                     >
                       <Icon icon={admin.removeIcon} />
                     </IconButton>
-                  </Stack>
+                  </>
                 ) : (
                   <Chip
                     label={t(`roles.${row.role}`)}
                     size="small"
                     variant="outlined"
                   />
-                )
-              }
-            >
-              <ListItemText primary={row.primary} secondary={row.secondary} />
+                )}
+              </Stack>
             </ListItem>
           ))}
         </List>
