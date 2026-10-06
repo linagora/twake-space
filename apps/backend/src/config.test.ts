@@ -145,6 +145,10 @@ describe('loadConfig: RabbitMQ topology', () => {
       exchange: 'admin-panel',
       routingKey: 'dns.validated'
     })
+    expect(amqp.events['user.settings.updated']).toEqual({
+      exchange: 'settings',
+      routingKey: 'user.settings.updated'
+    })
   })
 
   it('renames the queue, its dead letter exchange and the exchanges', () => {
@@ -153,7 +157,8 @@ describe('loadConfig: RabbitMQ topology', () => {
       AMQP_QUEUE: 'space-events',
       AMQP_DELIVERY_LIMIT: '5',
       AMQP_ACTIVITY_EXCHANGE: 'apps',
-      AMQP_B2B_EXCHANGE: 'b2b-saas'
+      AMQP_B2B_EXCHANGE: 'b2b-saas',
+      AMQP_SETTINGS_EXCHANGE: 'common-settings'
     })
 
     expect(amqp).toMatchObject({
@@ -163,6 +168,9 @@ describe('loadConfig: RabbitMQ topology', () => {
       activityExchange: 'apps'
     })
     expect(amqp.events['b2b.group.updated'].exchange).toBe('b2b-saas')
+    expect(amqp.events['user.settings.updated'].exchange).toBe(
+      'common-settings'
+    )
     expect(amqp.events['twake.space.created'].exchange).toBe('space')
   })
 

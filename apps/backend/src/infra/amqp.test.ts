@@ -178,7 +178,7 @@ describe('subscription', () => {
       routingKey: 'twake.space.created',
       queue: 'twake-space'
     })
-    expect(options.bindings).toHaveLength(17)
+    expect(options.bindings).toHaveLength(18)
     expect(options.bindings).toContainEqual({
       exchange: 'dns',
       routingKey: 'dns.validated'

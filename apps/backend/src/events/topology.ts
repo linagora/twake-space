@@ -20,7 +20,8 @@ export const PLATFORM_EVENTS = {
   'domain.organization.deleted': 'b2b',
   'chat.deprovision': 'b2b',
   'chat.deployment.completed': 'b2b',
-  'dns.validated': 'admin-panel'
+  'dns.validated': 'admin-panel',
+  'user.settings.updated': 'settings'
 } as const
 
 export type PlatformEventName = keyof typeof PLATFORM_EVENTS
@@ -67,13 +68,15 @@ export const amqpTopology = z
     AMQP_SPACE_EXCHANGE: z.string().min(1).default('space'),
     AMQP_B2B_EXCHANGE: z.string().min(1).default('b2b'),
     AMQP_ADMIN_PANEL_EXCHANGE: z.string().min(1).default('admin-panel'),
+    AMQP_SETTINGS_EXCHANGE: z.string().min(1).default('settings'),
     AMQP_EVENTS: overrides.default({})
   })
   .transform((env, ctx) => {
     const exchanges = {
       space: env.AMQP_SPACE_EXCHANGE,
       b2b: env.AMQP_B2B_EXCHANGE,
-      'admin-panel': env.AMQP_ADMIN_PANEL_EXCHANGE
+      'admin-panel': env.AMQP_ADMIN_PANEL_EXCHANGE,
+      settings: env.AMQP_SETTINGS_EXCHANGE
     }
     const events = Object.fromEntries(
       names.map(name => [

@@ -36,6 +36,8 @@ import {
 import { controlPlaneHomeservers } from './modules/organizations/control-plane.ts'
 import { registerDirectoryRoutes } from './modules/organizations/directory.ts'
 import { configureHomeserver } from './modules/organizations/homeservers.ts'
+import { settingsPlatformRoutes } from './modules/settings/events.ts'
+import { registerSettingsRoutes } from './modules/settings/routes.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
 import { registerSpaceRoutes } from './modules/spaces/routes.ts'
@@ -79,7 +81,9 @@ const routes: Routes = {
     },
     {
       get: key =>
-        spacePlatformRoutes.get(key) ?? organizationPlatformRoutes.get(key)
+        spacePlatformRoutes.get(key) ??
+        organizationPlatformRoutes.get(key) ??
+        settingsPlatformRoutes.get(key)
     }
   )
 }
@@ -111,6 +115,7 @@ registerSpaceWriteRoutes(server, {
 registerTokenRoutes(server, { db, authorize, directory })
 registerDirectoryRoutes(server, { authorize, directory })
 registerNotificationRoutes(server, { db, authorize })
+registerSettingsRoutes(server, { db, authorize })
 registerTransactionRoutes(server, { db, localpart: config.MATRIX_LOCALPART })
 const streams = createStreams()
 registerLiveRoutes(server, { authorize, streams })

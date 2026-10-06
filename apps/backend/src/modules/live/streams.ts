@@ -1,8 +1,9 @@
-export type LiveEvent = 'notification' | 'spaces'
+export type LiveEvent = 'notification' | 'spaces' | 'settings'
 
 export interface Stream {
   sessionId: string
   userId: string
+  email: string
   send: (event: LiveEvent, data: object) => void
   close: () => void
 }
@@ -34,6 +35,13 @@ export function createStreams() {
     },
     send(userId: string, event: LiveEvent, data: object) {
       for (const stream of byPerson.get(userId) ?? []) stream.send(event, data)
+    },
+    // Common settings knows people by email only.
+    sendToEmail(email: string, event: LiveEvent, data: object) {
+      const lowercased = email.toLowerCase()
+      for (const stream of all()) {
+        if (stream.email.toLowerCase() === lowercased) stream.send(event, data)
+      }
     },
     closeSession(sessionId: string) {
       for (const stream of all()) {

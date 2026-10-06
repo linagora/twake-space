@@ -144,7 +144,7 @@ The defaults match the platform. [Events](events.md#consuming-rabbitmq) lists th
 - `AMQP_QUEUE`: the queue, default `twake-space`. The dead letter queue is `<queue>.dlq`.
 - `AMQP_DEAD_LETTER_EXCHANGE`: default `<queue>.dlx`.
 - `AMQP_DELIVERY_LIMIT`: deliveries before RabbitMQ dead-letters a message, default `20`.
-- `AMQP_SPACE_EXCHANGE`, `AMQP_B2B_EXCHANGE`, `AMQP_ADMIN_PANEL_EXCHANGE`: the platform exchanges, default `space`, `b2b` and `admin-panel`.
+- `AMQP_SPACE_EXCHANGE`, `AMQP_B2B_EXCHANGE`, `AMQP_ADMIN_PANEL_EXCHANGE`, `AMQP_SETTINGS_EXCHANGE`: the platform exchanges, default `space`, `b2b`, `admin-panel` and `settings` (common settings' `RABBITMQ_EXCHANGE`).
 - `AMQP_ACTIVITY_EXCHANGE`: the exchange the apps publish their activity on, default `activity`.
 - `AMQP_EVENTS`: JSON that moves single events to another exchange or routing key, such as `{"dns.validated": {"exchange": "dns", "routingKey": "domain.dns.validated"}}`. An event the backend has no handler for, a routing key with `*` or `#`, two events on the same exchange and key, or an event on the activity exchange is a configuration error.
 
