@@ -36,7 +36,15 @@ export interface Directory {
   organizationOf(email: string): Promise<string | undefined>
   organization(orgId: string): Promise<Organization | undefined>
   isTechnicalAccount(orgId: string, accountId: string): Promise<boolean>
+  organizationRole(
+    orgId: string,
+    accountId: string
+  ): Promise<{ email: string; role: OrganizationRole } | undefined>
 }
+
+const organizationRoles = ['owner', 'admin', 'moderator', 'member'] as const
+
+export type OrganizationRole = (typeof organizationRoles)[number]
 
 export interface Organization {
   domain: string
@@ -195,6 +203,16 @@ export function ldapRestDirectory(
       )
       return user?.isTechnical === true && user.isDeleted !== true
     },
+    async organizationRole(orgId, accountId) {
+      const user = await notFoundAsUndefined(
+        client.organizations.getUser(orgId, { by: 'id', value: accountId })
+      )
+      const role = user?.organizationRole
+      if (!user || user.isDeleted === true || !isOrganizationRole(role)) {
+        return undefined
+      }
+      return { email: user.mail, role }
+    },
     async organization(orgId) {
       const organization = await notFoundAsUndefined(
         client.organizations.get(orgId)
@@ -250,6 +268,10 @@ async function notFoundAsUndefined<T>(
     if (error instanceof NotFoundError) return undefined
     throw error
   }
+}
+
+function isOrganizationRole(role: unknown): role is OrganizationRole {
+  return organizationRoles.some(r => r === role)
 }
 
 function toMember(user: User): Member {

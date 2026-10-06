@@ -171,6 +171,40 @@ describe('ldapRestDirectory', () => {
     })
   })
 
+  it("reads a live member's role in the organization", async () => {
+    const { directory, organizations } = setup()
+    organizations.getUser
+      .mockResolvedValueOnce({ ...user, organizationRole: 'owner' })
+      .mockResolvedValueOnce(user)
+      .mockResolvedValueOnce({ ...user, organizationRole: 'superuser' })
+      .mockResolvedValueOnce({
+        ...user,
+        organizationRole: 'admin',
+        isDeleted: true
+      })
+      .mockRejectedValueOnce(new NotFoundError('user not found'))
+
+    const answers = [
+      await directory.organizationRole('org_acme', '3f2a'),
+      await directory.organizationRole('org_acme', '3f2a'),
+      await directory.organizationRole('org_acme', '3f2a'),
+      await directory.organizationRole('org_acme', '3f2a'),
+      await directory.organizationRole('org_acme', '3f2a')
+    ]
+
+    expect(answers).toEqual([
+      { email: 'jdoe@acme.example.com', role: 'owner' },
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    ])
+    expect(organizations.getUser).toHaveBeenCalledWith('org_acme', {
+      by: 'id',
+      value: '3f2a'
+    })
+  })
+
   it('propagates other ldap-rest failures', async () => {
     const { directory, organizations } = setup()
     organizations.getUser.mockRejectedValue(new Error('ldap-rest unreachable'))
