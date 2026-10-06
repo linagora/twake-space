@@ -13,7 +13,12 @@
   },
   "common": {
     "cancel": "Cancel",
-    "create": "Create"
+    "create": "Create",
+    "back": "Back",
+    "close": "Close",
+    "next": "Next",
+    "apply": "Apply",
+    "add": "Add"
   },
   "roles": {
     "viewer": "Viewer",
@@ -27,9 +32,35 @@
     "none": "Create your first space",
     "noneHint": "Spaces bring your team, files, tasks, and conversations together in one place. Create one to get your workspace started.",
     "create": "Create a space",
-    "name": "Name",
     "createFailed": "The space could not be created.",
     "channelsHint": "A space can hold multiple channels for different topics or teams"
+  },
+  "createSpace": {
+    "name": "Space name",
+    "description": "Describe (optional)",
+    "personalize": "Personalize space",
+    "uploadPhoto": "Upload a photo",
+    "colors": "Colors",
+    "emojis": "Emojis",
+    "icons": "Icons",
+    "colorHint": "Choose a specific color for your space",
+    "apps": "Apps to enable",
+    "appsHint": "Choose which apps are available in this space. You can change this later.",
+    "addShortcut": "Add shortcut",
+    "shortcut": "Create a shortcut",
+    "shortcutHint": "Add a link to a page or an app your team uses.",
+    "shortcutUrl": "Link",
+    "shortcutName": "Name",
+    "app": {
+      "feed": "Feed",
+      "drive": "Files",
+      "chat": "Chat",
+      "tasks": "Tasks",
+      "calendar": "Calendar",
+      "contacts": "Contacts",
+      "mail": "Mail",
+      "assistant": "AI assistant"
+    }
   },
   "tabs": {
     "feed": "Feed",

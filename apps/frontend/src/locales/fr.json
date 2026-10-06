@@ -13,7 +13,12 @@
   },
   "common": {
     "cancel": "Annuler",
-    "create": "Créer"
+    "create": "Créer",
+    "back": "Retour",
+    "close": "Fermer",
+    "next": "Suivant",
+    "apply": "Appliquer",
+    "add": "Ajouter"
   },
   "roles": {
     "viewer": "Lecteur",
@@ -27,9 +32,35 @@
     "none": "Créez votre premier espace",
     "noneHint": "Les espaces réunissent votre équipe, vos fichiers, vos tâches et vos conversations au même endroit. Créez-en un pour démarrer.",
     "create": "Créer un espace",
-    "name": "Nom",
     "createFailed": "L'espace n'a pas pu être créé.",
     "channelsHint": "Un espace peut contenir plusieurs canaux pour différents sujets ou équipes"
+  },
+  "createSpace": {
+    "name": "Nom de l'espace",
+    "description": "Description (facultative)",
+    "personalize": "Personnaliser l'espace",
+    "uploadPhoto": "Importer une photo",
+    "colors": "Couleurs",
+    "emojis": "Emojis",
+    "icons": "Icônes",
+    "colorHint": "Choisissez une couleur pour votre espace",
+    "apps": "Applications à activer",
+    "appsHint": "Choisissez les applications disponibles dans cet espace. Vous pourrez changer cela plus tard.",
+    "addShortcut": "Ajouter un raccourci",
+    "shortcut": "Créer un raccourci",
+    "shortcutHint": "Ajoutez un lien vers une page ou une application utilisée par votre équipe.",
+    "shortcutUrl": "Lien",
+    "shortcutName": "Nom",
+    "app": {
+      "feed": "Fil",
+      "drive": "Fichiers",
+      "chat": "Chat",
+      "tasks": "Tâches",
+      "calendar": "Agenda",
+      "contacts": "Contacts",
+      "mail": "Mail",
+      "assistant": "Assistant IA"
+    }
   },
   "tabs": {
     "feed": "Fil",

@@ -13,7 +13,12 @@
   },
   "common": {
     "cancel": "Cancelar",
-    "create": "Crear"
+    "create": "Crear",
+    "back": "Atrás",
+    "close": "Cerrar",
+    "next": "Siguiente",
+    "apply": "Aplicar",
+    "add": "Añadir"
   },
   "roles": {
     "viewer": "Lector",
@@ -27,9 +32,35 @@
     "none": "Cree su primer espacio",
     "noneHint": "Los espacios reúnen a su equipo, sus archivos, tareas y conversaciones en un solo lugar. Cree uno para empezar.",
     "create": "Crear un espacio",
-    "name": "Nombre",
     "createFailed": "No se pudo crear el espacio.",
     "channelsHint": "Un espacio puede contener varios canales para distintos temas o equipos"
+  },
+  "createSpace": {
+    "name": "Nombre del espacio",
+    "description": "Descripción (opcional)",
+    "personalize": "Personalizar el espacio",
+    "uploadPhoto": "Subir una foto",
+    "colors": "Colores",
+    "emojis": "Emojis",
+    "icons": "Iconos",
+    "colorHint": "Elija un color para su espacio",
+    "apps": "Aplicaciones que activar",
+    "appsHint": "Elija qué aplicaciones están disponibles en este espacio. Puede cambiarlo más tarde.",
+    "addShortcut": "Añadir acceso directo",
+    "shortcut": "Crear un acceso directo",
+    "shortcutHint": "Añada un enlace a una página o aplicación que use su equipo.",
+    "shortcutUrl": "Enlace",
+    "shortcutName": "Nombre",
+    "app": {
+      "feed": "Novedades",
+      "drive": "Archivos",
+      "chat": "Chat",
+      "tasks": "Tareas",
+      "calendar": "Calendario",
+      "contacts": "Contactos",
+      "mail": "Correo",
+      "assistant": "Asistente de IA"
+    }
   },
   "tabs": {
     "feed": "Novedades",
