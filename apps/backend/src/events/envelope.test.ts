@@ -21,9 +21,7 @@ const calendarAccepted = {
 
 describe('parseCloudEvent', () => {
   it('parses a structured mode CloudEvent and keeps extra fields', () => {
-    const result = parseCloudEvent(
-      Buffer.from(JSON.stringify(calendarAccepted))
-    )
+    const result = parseCloudEvent(calendarAccepted)
 
     expect(result).toEqual({ ok: true, event: calendarAccepted })
   })
@@ -34,13 +32,13 @@ describe('parseCloudEvent', () => {
       data: { object: { type: 'event', id: '7f3c2a' } }
     }
 
-    expect(parseCloudEvent(JSON.stringify(event)).ok).toBe(true)
+    expect(parseCloudEvent(event).ok).toBe(true)
   })
 
   it('accepts an event without an organization', () => {
     const event = { ...calendarAccepted, twakeorg: undefined }
 
-    expect(parseCloudEvent(JSON.stringify(event)).ok).toBe(true)
+    expect(parseCloudEvent(event).ok).toBe(true)
   })
 
   it('accepts an event without actor nor object, as a provisioned event', () => {
@@ -56,24 +54,17 @@ describe('parseCloudEvent', () => {
       }
     }
 
-    expect(parseCloudEvent(JSON.stringify(event)).ok).toBe(true)
+    expect(parseCloudEvent(event).ok).toBe(true)
   })
 
   it.each([
-    ['invalid JSON', '{'],
-    ['an empty message', null],
-    [
-      'a wrong specversion',
-      JSON.stringify({ ...calendarAccepted, specversion: '0.3' })
-    ],
-    ['a missing id', JSON.stringify({ ...calendarAccepted, id: undefined })],
-    [
-      'an empty twakeorg',
-      JSON.stringify({ ...calendarAccepted, twakeorg: '' })
-    ],
+    ['a body that is not an object', 'hello'],
+    ['a wrong specversion', { ...calendarAccepted, specversion: '0.3' }],
+    ['a missing id', { ...calendarAccepted, id: undefined }],
+    ['an empty twakeorg', { ...calendarAccepted, twakeorg: '' }],
     [
       'a twakeactor that is not an email',
-      JSON.stringify({ ...calendarAccepted, twakeactor: 'user1' })
+      { ...calendarAccepted, twakeactor: 'user1' }
     ]
   ])('rejects %s', (_case, value) => {
     expect(parseCloudEvent(value).ok).toBe(false)
@@ -83,10 +74,11 @@ describe('parseCloudEvent', () => {
 describe('parsePlatformEvent', () => {
   const body = { groupId: 'g1', organizationId: 'linagora' }
 
-  it('reads routing key and message id from the AMQP headers', () => {
-    const result = parsePlatformEvent(Buffer.from(JSON.stringify(body)), {
-      amqp_routing_key: Buffer.from('b2b.group.created'),
-      amqp_message_id: Buffer.from('msg-1')
+  it('takes the routing key and message id of the delivery', () => {
+    const result = parsePlatformEvent({
+      routingKey: 'b2b.group.created',
+      messageId: 'msg-1',
+      body
     })
 
     expect(result).toEqual({
@@ -95,9 +87,10 @@ describe('parsePlatformEvent', () => {
     })
   })
 
-  it('rejects a message without amqp_message_id', () => {
-    const result = parsePlatformEvent(JSON.stringify(body), {
-      amqp_routing_key: 'b2b.group.created'
+  it('rejects a message without a message id', () => {
+    const result = parsePlatformEvent({
+      routingKey: 'b2b.group.created',
+      body
     })
 
     expect(result.ok).toBe(false)

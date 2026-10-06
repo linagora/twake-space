@@ -1,21 +1,5 @@
 import { z } from 'zod'
 
-const kafkaSecurity = z.discriminatedUnion('KAFKA_SECURITY', [
-  z.object({ KAFKA_SECURITY: z.literal('plaintext') }),
-  z.object({
-    KAFKA_SECURITY: z.literal('ssl'),
-    KAFKA_SSL_CA: z.string().min(1),
-    KAFKA_SSL_CERT: z.string().min(1),
-    KAFKA_SSL_KEY: z.string().min(1)
-  }),
-  z.object({
-    KAFKA_SECURITY: z.literal('sasl_ssl'),
-    KAFKA_SASL_USERNAME: z.string().min(1),
-    KAFKA_SASL_PASSWORD: z.string().min(1),
-    KAFKA_SSL_CA: z.string().min(1).optional()
-  })
-])
-
 const HOMESERVER_KEYS = [
   'MATRIX_HOMESERVER_URL',
   'MATRIX_SERVER_NAME',
@@ -90,8 +74,7 @@ const homeserver = z
 
 const configSchema = z
   .object({
-    KAFKA_BOOTSTRAP: z.string().min(1),
-    KAFKA_GROUP_ID: z.string().min(1).default('twake-space'),
+    AMQP_URL: z.url({ protocol: /^amqps?$/ }),
     DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
     LDAP_REST_URL: z.url({ protocol: /^https?$/ }),
     LDAP_REST_SERVICE_ID: z.string().min(1),
@@ -109,7 +92,6 @@ const configSchema = z
       .default('info'),
     MATRIX_LOCALPART: z.enum(['uid', 'email']).default('uid')
   })
-  .and(kafkaSecurity)
   .and(homeserver)
 
 export type Config = z.infer<typeof configSchema>
