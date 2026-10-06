@@ -20,6 +20,7 @@ import { useSession } from '@/ui/session/SessionGate'
 import { useEmbedPath } from '@/ui/space/useEmbedPath'
 
 const SANDBOX = 'allow-scripts allow-same-origin allow-popups allow-forms'
+const ALLOW = 'clipboard-read; clipboard-write'
 
 function isLoginRequired(data: unknown): boolean {
   return (
@@ -151,6 +152,7 @@ export function EmbeddedAppFrame({
         title={title}
         src={src}
         sandbox={SANDBOX}
+        allow={ALLOW}
         className="u-w-100 u-flex-auto u-bdw-0"
         onLoad={onFrameLoad}
       />
@@ -217,6 +219,7 @@ function AppOverlay({
       src={src}
       title={title}
       sandbox={SANDBOX}
+      allow={ALLOW}
       clipPath={overlayClipPath(region)}
     />
   )

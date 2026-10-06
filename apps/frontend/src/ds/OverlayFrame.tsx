@@ -15,6 +15,7 @@ export function OverlayFrame({
   src,
   title,
   sandbox,
+  allow,
   clipPath,
   frameRef
 }: {
@@ -22,6 +23,7 @@ export function OverlayFrame({
   src: string
   title: string
   sandbox: string
+  allow: string
   clipPath: string
   frameRef?: RefObject<HTMLIFrameElement | null>
 }): ReactElement {
@@ -43,6 +45,7 @@ export function OverlayFrame({
       src={src}
       title={title}
       sandbox={sandbox}
+      allow={allow}
       aria-hidden={empty || undefined}
       tabIndex={empty ? -1 : undefined}
       sx={{
