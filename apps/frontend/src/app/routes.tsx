@@ -2,14 +2,23 @@ import type { RouteObject } from 'react-router'
 
 import { HomeScreen } from '@/ui/home/HomeScreen'
 import { AppShell } from '@/ui/shell/AppShell'
+import { ErrorScreen } from '@/ui/shell/ErrorScreen'
 import { SpaceScreen } from '@/ui/space/SpaceScreen'
 
 export const routes: RouteObject[] = [
   {
     element: <AppShell />,
+    errorElement: <ErrorScreen />,
     children: [
-      { path: '/', element: <HomeScreen /> },
-      { path: '/spaces/:spaceId/:tab?/*', element: <SpaceScreen /> }
+      {
+        // Catches errors below the shell so the page keeps its navigation
+        errorElement: <ErrorScreen />,
+        children: [
+          { path: '/', element: <HomeScreen /> },
+          { path: '/spaces/:spaceId/:tab?/*', element: <SpaceScreen /> },
+          { path: '*', element: <ErrorScreen /> }
+        ]
+      }
     ]
   }
 ]

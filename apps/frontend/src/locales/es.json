@@ -10,6 +10,12 @@
   "shell": {
     "yourSpaces": "Tus espacios"
   },
+  "errors": {
+    "notFound": "Página no encontrada",
+    "notFoundHint": "Este enlace no funciona o la página se ha movido.",
+    "failed": "Algo salió mal",
+    "failedHint": "No se pudo mostrar esta página."
+  },
   "session": {
     "signingIn": "Iniciando sesión…",
     "openingSpace": "Abriendo tu espacio…",
