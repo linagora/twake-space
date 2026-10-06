@@ -18,6 +18,10 @@ const cloudEvent = z.looseObject({
 
 export type CloudEvent = z.infer<typeof cloudEvent>
 
+const requestId = z
+  .looseObject({ request_id: z.string().min(1) })
+  .transform(body => body.request_id)
+
 export interface PlatformEvent {
   routingKey: string
   messageId: string
@@ -39,7 +43,10 @@ export function parsePlatformEvent(message: {
   messageId?: string
   body: unknown
 }): ParseResult<PlatformEvent> {
-  const { routingKey, messageId, body } = message
+  const { routingKey, body } = message
+  // Common settings publishes without a message id, and names each message in
+  // its body instead.
+  const messageId = message.messageId ?? requestId.safeParse(body).data
   if (!messageId) return { ok: false, error: 'missing message id' }
   return { ok: true, event: { routingKey, messageId, body } }
 }

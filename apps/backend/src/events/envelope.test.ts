@@ -95,4 +95,13 @@ describe('parsePlatformEvent', () => {
 
     expect(result.ok).toBe(false)
   })
+
+  it('takes the request id of a message published without a message id', () => {
+    const result = parsePlatformEvent({
+      routingKey: 'user.settings.updated',
+      body: { ...body, request_id: 'req-1' }
+    })
+
+    expect(result).toMatchObject({ ok: true, event: { messageId: 'req-1' } })
+  })
 })
