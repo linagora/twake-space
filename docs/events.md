@@ -34,9 +34,9 @@ flowchart LR
 
 ## Consuming RabbitMQ
 
-The backend consumes one queue, `twake-space`, through [@linagora/rabbitmq-client](https://github.com/linagora/rabbitmq-client/tree/v0.6.0). At startup it declares the queue and binds it:
+The backend consumes one queue, `twake-space`, through [@linagora/rabbitmq-client](https://github.com/linagora/rabbitmq-client/tree/v0.6.0). At startup it declares the queue and binds it to each platform event it handles, routing key equal to the event name:
 
-- `space`: `twake.space.#`
+- `space`: `twake.space.created`, `twake.space.updated`, `twake.space.deleted`, `twake.space.member.added`, `twake.space.member.role.changed`, `twake.space.member.removed`, `twake.space.group.linked`, `twake.space.group.role.changed`, `twake.space.group.unlinked`
 - `b2b`: `b2b.group.updated`, `b2b.member.role.changed`, `b2b.member.disabled`, `domain.user.deleted`, `domain.organization.deleted`, `chat.deprovision`, `chat.deployment.completed`
 - `admin-panel`: `dns.validated`
 - `activity`: `#`
@@ -48,6 +48,8 @@ The queue:
 - Gets each message acknowledged only after its Postgres transaction commits.
 
 Startup fails when `space`, `b2b` or `admin-panel` is missing, since other services own them. The backend declares `activity` itself, as a durable topic exchange, the same way the apps do.
+
+Every name above is a setting, listed in [Deploying](deploy.md#rabbitmq-names). The router, the handlers and the `parked_events` rows always see the default names: the consumer translates a renamed exchange or routing key back before routing.
 
 Local `docker-compose.yml` runs RabbitMQ and declares the three exchanges the backend only checks.
 

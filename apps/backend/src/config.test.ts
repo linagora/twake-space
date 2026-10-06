@@ -88,3 +88,103 @@ describe('loadConfig', () => {
     ).toThrow('SECRETS_KEY')
   })
 })
+
+describe('loadConfig: RabbitMQ topology', () => {
+  it('names the queue, exchanges and keys after the platform by default', () => {
+    const { amqp } = loadConfig(base)
+
+    expect(amqp).toMatchObject({
+      queue: 'twake-space',
+      deadLetterExchange: 'twake-space.dlx',
+      deliveryLimit: 20,
+      activityExchange: 'activity'
+    })
+    expect(amqp.events['twake.space.created']).toEqual({
+      exchange: 'space',
+      routingKey: 'twake.space.created'
+    })
+    expect(amqp.events['domain.user.deleted']).toEqual({
+      exchange: 'b2b',
+      routingKey: 'domain.user.deleted'
+    })
+    expect(amqp.events['dns.validated']).toEqual({
+      exchange: 'admin-panel',
+      routingKey: 'dns.validated'
+    })
+  })
+
+  it('renames the queue, its dead letter exchange and the exchanges', () => {
+    const { amqp } = loadConfig({
+      ...base,
+      AMQP_QUEUE: 'space-events',
+      AMQP_DELIVERY_LIMIT: '5',
+      AMQP_ACTIVITY_EXCHANGE: 'apps',
+      AMQP_B2B_EXCHANGE: 'b2b-saas'
+    })
+
+    expect(amqp).toMatchObject({
+      queue: 'space-events',
+      deadLetterExchange: 'space-events.dlx',
+      deliveryLimit: 5,
+      activityExchange: 'apps'
+    })
+    expect(amqp.events['b2b.group.updated'].exchange).toBe('b2b-saas')
+    expect(amqp.events['twake.space.created'].exchange).toBe('space')
+  })
+
+  it('moves one event to another exchange or routing key', () => {
+    const { amqp } = loadConfig({
+      ...base,
+      AMQP_EVENTS: JSON.stringify({
+        'chat.deployment.completed': {
+          exchange: 'chat',
+          routingKey: 'deployment.completed'
+        },
+        'dns.validated': { routingKey: 'domain.dns.validated' }
+      })
+    })
+
+    expect(amqp.events['chat.deployment.completed']).toEqual({
+      exchange: 'chat',
+      routingKey: 'deployment.completed'
+    })
+    expect(amqp.events['dns.validated']).toEqual({
+      exchange: 'admin-panel',
+      routingKey: 'domain.dns.validated'
+    })
+  })
+
+  it('refuses an event it has no handler for, or two events on one key', () => {
+    expect(() =>
+      loadConfig({
+        ...base,
+        AMQP_EVENTS: JSON.stringify({ 'chat.unknown': { routingKey: 'x' } })
+      })
+    ).toThrow('AMQP_EVENTS')
+    expect(() =>
+      loadConfig({
+        ...base,
+        AMQP_EVENTS: JSON.stringify({
+          'b2b.group.updated': { routingKey: 'b2b.member.disabled' }
+        })
+      })
+    ).toThrow('AMQP_EVENTS')
+    expect(() => loadConfig({ ...base, AMQP_EVENTS: '{' })).toThrow(
+      'AMQP_EVENTS'
+    )
+  })
+
+  it('refuses a wildcard key, or platform events on the activity exchange', () => {
+    expect(() =>
+      loadConfig({
+        ...base,
+        AMQP_EVENTS: JSON.stringify({
+          'dns.validated': { routingKey: 'dns.#' }
+        })
+      })
+    ).toThrow('AMQP_EVENTS')
+    expect(() =>
+      loadConfig({ ...base, AMQP_ACTIVITY_EXCHANGE: 'b2b' })
+    ).toThrow('AMQP_ACTIVITY_EXCHANGE')
+  })
+})
