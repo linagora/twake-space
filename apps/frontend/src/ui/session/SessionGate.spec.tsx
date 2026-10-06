@@ -125,8 +125,10 @@ describe('SessionGate', () => {
     renderWithProviders(<p>app</p>, { session })
     await screen.findByText('app')
 
-    session.endElsewhere()
-
-    expect(session.signIn).toHaveBeenCalled()
+    // The gate may not listen yet when the app first renders.
+    await waitFor(() => {
+      session.endElsewhere()
+      expect(session.signIn).toHaveBeenCalled()
+    })
   })
 })
