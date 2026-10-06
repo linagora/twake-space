@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client'
 import { backend } from '@/adapters/http/backend'
 import { httpSpaces } from '@/adapters/http/httpSpaces'
 import { liveStream } from '@/adapters/http/liveStream'
+import { matrixFeed } from '@/adapters/matrix/matrixFeed'
 import { matrixSession } from '@/adapters/matrix/matrixSession'
 import { oidcSession, readSsoConfig } from '@/adapters/oidc/oidcSession'
 import { App } from '@/app/App'
@@ -39,6 +40,7 @@ const services = {
   spaces: httpSpaces(api),
   live: liveStream(api),
   matrix,
+  feed: matrixFeed(matrix.client),
   tasksUrl: window.TASKS_URL ?? null
 }
 

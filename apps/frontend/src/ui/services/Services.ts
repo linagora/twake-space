@@ -1,5 +1,6 @@
 import { createContext, use } from 'react'
 
+import type { FeedService } from '@/application/feed'
 import type { LiveService } from '@/application/live'
 import type { MatrixService } from '@/application/matrix'
 import type { SpacesService } from '@/application/spaces'
@@ -8,6 +9,7 @@ export interface Services {
   spaces: SpacesService
   live: LiveService
   matrix: MatrixService
+  feed: FeedService
   tasksUrl: string | null
 }
 

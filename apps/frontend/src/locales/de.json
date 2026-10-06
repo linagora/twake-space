@@ -49,6 +49,18 @@
   },
   "feed": {
     "signingIn": "Anmeldung beim Chat",
-    "signInFailed": "Anmeldung beim Chat fehlgeschlagen."
+    "signInFailed": "Anmeldung beim Chat fehlgeschlagen.",
+    "loading": "Feed wird geladen",
+    "loadFailed": "Feed konnte nicht geladen werden.",
+    "empty": "Noch nichts hier.",
+    "loadOlder": "Ältere laden",
+    "filter": "Anzeigen",
+    "filters": {
+      "all": "Alle",
+      "messages": "Nachrichten",
+      "files": "Dateien",
+      "activities": "Aktivitäten",
+      "events": "Termine"
+    }
   }
 }
