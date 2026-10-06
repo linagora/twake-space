@@ -2,11 +2,13 @@
   "app": {
     "name": "Twake Space"
   },
+  "shell": {
+    "yourSpaces": "Ваши пространства"
+  },
   "session": {
     "signingIn": "Вход…",
     "failed": "Не удалось войти.",
     "retry": "Повторить",
-    "signedInAs": "Вы вошли как %{name}",
     "signOut": "Выйти"
   },
   "common": {

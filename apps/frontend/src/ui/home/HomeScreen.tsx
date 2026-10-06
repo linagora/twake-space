@@ -14,26 +14,18 @@ import { Link as RouterLink } from 'react-router'
 
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
 import { useI18n } from '@/ui/i18n/useI18n'
-import { useSession } from '@/ui/session/SessionGate'
 import { useSpaceList } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
 export function HomeScreen(): ReactElement {
   const { t } = useI18n()
-  const { user, signOut } = useSession()
   const spaces = useSpaceList()
   const [creating, setCreating] = useState(false)
   useDocumentTitle(null)
 
   return (
     <main className="u-p-2">
-      <Typography variant="h1">{t('app.name')}</Typography>
-      <Typography>
-        {t('session.signedInAs', { name: user.name ?? user.email ?? '' })}
-      </Typography>
-      <Button onClick={() => void signOut()}>{t('session.signOut')}</Button>
-
-      <Typography variant="h2">{t('spaces.title')}</Typography>
+      <Typography variant="h1">{t('spaces.title')}</Typography>
       <Button
         variant="contained"
         onClick={() => {
