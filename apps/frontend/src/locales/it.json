@@ -13,7 +13,12 @@
   },
   "common": {
     "cancel": "Annulla",
-    "create": "Crea"
+    "create": "Crea",
+    "back": "Indietro",
+    "close": "Chiudi",
+    "next": "Avanti",
+    "apply": "Applica",
+    "add": "Aggiungi"
   },
   "roles": {
     "viewer": "Lettore",
@@ -27,9 +32,35 @@
     "none": "Crea il tuo primo spazio",
     "noneHint": "Gli spazi riuniscono il tuo team, i file, le attività e le conversazioni in un unico posto. Creane uno per iniziare.",
     "create": "Crea uno spazio",
-    "name": "Nome",
     "createFailed": "Non è stato possibile creare lo spazio.",
     "channelsHint": "Uno spazio può contenere più canali per argomenti o team diversi"
+  },
+  "createSpace": {
+    "name": "Nome dello spazio",
+    "description": "Descrizione (facoltativa)",
+    "personalize": "Personalizza lo spazio",
+    "uploadPhoto": "Carica una foto",
+    "colors": "Colori",
+    "emojis": "Emoji",
+    "icons": "Icone",
+    "colorHint": "Scegli un colore per il tuo spazio",
+    "apps": "App da attivare",
+    "appsHint": "Scegli quali app sono disponibili in questo spazio. Potrai cambiarlo in seguito.",
+    "addShortcut": "Aggiungi collegamento",
+    "shortcut": "Crea un collegamento",
+    "shortcutHint": "Aggiungi un link a una pagina o a un’app usata dal tuo team.",
+    "shortcutUrl": "Link",
+    "shortcutName": "Nome",
+    "app": {
+      "feed": "Feed",
+      "drive": "File",
+      "chat": "Chat",
+      "tasks": "Attività",
+      "calendar": "Calendario",
+      "contacts": "Contatti",
+      "mail": "Mail",
+      "assistant": "Assistente IA"
+    }
   },
   "tabs": {
     "feed": "Feed",

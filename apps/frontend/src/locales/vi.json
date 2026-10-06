@@ -13,7 +13,12 @@
   },
   "common": {
     "cancel": "Hủy",
-    "create": "Tạo"
+    "create": "Tạo",
+    "back": "Quay lại",
+    "close": "Đóng",
+    "next": "Tiếp",
+    "apply": "Áp dụng",
+    "add": "Thêm"
   },
   "roles": {
     "viewer": "Người xem",
@@ -27,9 +32,35 @@
     "none": "Tạo không gian đầu tiên của bạn",
     "noneHint": "Không gian tập hợp nhóm, tệp, công việc và cuộc trò chuyện của bạn ở một nơi. Hãy tạo một không gian để bắt đầu.",
     "create": "Tạo không gian",
-    "name": "Tên",
     "createFailed": "Không thể tạo không gian.",
     "channelsHint": "Một không gian có thể chứa nhiều kênh cho các chủ đề hoặc nhóm khác nhau"
+  },
+  "createSpace": {
+    "name": "Tên không gian",
+    "description": "Mô tả (không bắt buộc)",
+    "personalize": "Tùy chỉnh không gian",
+    "uploadPhoto": "Tải ảnh lên",
+    "colors": "Màu sắc",
+    "emojis": "Biểu tượng cảm xúc",
+    "icons": "Biểu tượng",
+    "colorHint": "Chọn một màu cho không gian của bạn",
+    "apps": "Ứng dụng cần bật",
+    "appsHint": "Chọn các ứng dụng có trong không gian này. Bạn có thể thay đổi sau.",
+    "addShortcut": "Thêm lối tắt",
+    "shortcut": "Tạo lối tắt",
+    "shortcutHint": "Thêm liên kết tới một trang hoặc ứng dụng nhóm của bạn sử dụng.",
+    "shortcutUrl": "Liên kết",
+    "shortcutName": "Tên",
+    "app": {
+      "feed": "Bảng tin",
+      "drive": "Tệp",
+      "chat": "Trò chuyện",
+      "tasks": "Công việc",
+      "calendar": "Lịch",
+      "contacts": "Danh bạ",
+      "mail": "Thư",
+      "assistant": "Trợ lý AI"
+    }
   },
   "tabs": {
     "feed": "Bảng tin",

@@ -13,7 +13,12 @@
   },
   "common": {
     "cancel": "Abbrechen",
-    "create": "Erstellen"
+    "create": "Erstellen",
+    "back": "Zurück",
+    "close": "Schließen",
+    "next": "Weiter",
+    "apply": "Anwenden",
+    "add": "Hinzufügen"
   },
   "roles": {
     "viewer": "Leser",
@@ -27,9 +32,35 @@
     "none": "Erstellen Sie Ihren ersten Bereich",
     "noneHint": "Bereiche bringen Ihr Team, Ihre Dateien, Aufgaben und Unterhaltungen an einem Ort zusammen. Erstellen Sie einen, um loszulegen.",
     "create": "Space erstellen",
-    "name": "Name",
     "createFailed": "Der Space konnte nicht erstellt werden.",
     "channelsHint": "Ein Bereich kann mehrere Kanäle für verschiedene Themen oder Teams enthalten"
+  },
+  "createSpace": {
+    "name": "Name des Bereichs",
+    "description": "Beschreibung (optional)",
+    "personalize": "Bereich anpassen",
+    "uploadPhoto": "Foto hochladen",
+    "colors": "Farben",
+    "emojis": "Emojis",
+    "icons": "Symbole",
+    "colorHint": "Wählen Sie eine Farbe für Ihren Bereich",
+    "apps": "Zu aktivierende Apps",
+    "appsHint": "Wählen Sie, welche Apps in diesem Bereich verfügbar sind. Sie können das später ändern.",
+    "addShortcut": "Verknüpfung hinzufügen",
+    "shortcut": "Verknüpfung erstellen",
+    "shortcutHint": "Fügen Sie einen Link zu einer Seite oder App hinzu, die Ihr Team nutzt.",
+    "shortcutUrl": "Link",
+    "shortcutName": "Name",
+    "app": {
+      "feed": "Feed",
+      "drive": "Dateien",
+      "chat": "Chat",
+      "tasks": "Aufgaben",
+      "calendar": "Kalender",
+      "contacts": "Kontakte",
+      "mail": "Mail",
+      "assistant": "KI-Assistent"
+    }
   },
   "tabs": {
     "feed": "Feed",

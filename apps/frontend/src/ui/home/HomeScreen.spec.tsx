@@ -59,12 +59,18 @@ describe('HomeScreen', () => {
       await screen.findByRole('button', { name: 'Create a space' })
     )
     const dialog = await screen.findByRole('dialog')
-    const create = within(dialog).getByRole('button', { name: 'Create' })
-    expect(create).toBeDisabled()
-    fireEvent.change(within(dialog).getByLabelText('Name'), {
+    const next = within(dialog).getByRole('button', { name: 'Next' })
+    expect(next).toBeDisabled()
+    fireEvent.change(within(dialog).getByLabelText('Space name'), {
       target: { value: '  Launch  ' }
     })
-    fireEvent.click(create)
+    fireEvent.click(next)
+
+    expect(within(dialog).getByRole('checkbox', { name: 'Feed' })).toBeChecked()
+    expect(
+      within(dialog).getByRole('checkbox', { name: 'Calendar' })
+    ).not.toBeChecked()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
 
     await screen.findByRole('link', { name: 'Launch' })
     expect(screen.getByRole('listitem')).toHaveTextContent('LaunchAdmin')
@@ -72,6 +78,33 @@ describe('HomeScreen', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
+  })
+
+  it('adds a shortcut to the apps, turned on', async () => {
+    renderWithProviders(<HomeScreen />)
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create a space' })
+    )
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Space name'), {
+      target: { value: 'Launch' }
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Next' }))
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Add shortcut' })
+    )
+    fireEvent.change(within(dialog).getByLabelText('Link'), {
+      target: { value: 'https://grist.example.com' }
+    })
+    fireEvent.change(within(dialog).getByLabelText('Name'), {
+      target: { value: 'Grist' }
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
+
+    expect(
+      await within(dialog).findByRole('checkbox', { name: 'Grist' })
+    ).toBeChecked()
   })
 
   it('keeps the dialog open and says so when the creation fails', async () => {
@@ -83,9 +116,10 @@ describe('HomeScreen', () => {
       await screen.findByRole('button', { name: 'Create a space' })
     )
     const dialog = await screen.findByRole('dialog')
-    fireEvent.change(within(dialog).getByLabelText('Name'), {
+    fireEvent.change(within(dialog).getByLabelText('Space name'), {
       target: { value: 'Launch' }
     })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Next' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
 
     expect(
