@@ -10,10 +10,16 @@ import {
 } from '../../events/router.ts'
 import type { Tx } from '../../infra/db.ts'
 import { notifyRecipients } from '../notifications/recipients.ts'
-import { spaceGroups, spaceMembers, spaces } from '../spaces/schema.ts'
+import {
+  spaceGroups,
+  spaceMembers,
+  spaceResourceKind,
+  spaceResources
+} from '../spaces/schema.ts'
 import { activityEvents, type Actor, type feedCategory } from './schema.ts'
 
 type Category = (typeof feedCategory.enumValues)[number]
+type SpaceResourceKind = (typeof spaceResourceKind.enumValues)[number]
 
 // Chat makes no card: its messages are already in Matrix.
 const CATEGORIES: Record<string, Category> = {
@@ -32,7 +38,13 @@ const activity = z.looseObject({
     object: z.looseObject({
       type: z.string().min(1),
       id: z.string().min(1),
-      space_id: z.uuid().optional(),
+      // The app's own resource the object lives in.
+      container: z
+        .looseObject({
+          kind: z.enum(spaceResourceKind.enumValues),
+          id: z.string().min(1)
+        })
+        .optional(),
       title: z.string().min(1),
       url: z.string().min(1)
     }),
@@ -72,24 +84,44 @@ async function findUser(
   return { type: 'user', id: member?.userId ?? null, email }
 }
 
-// So a wrong space_id never shows content to another space.
-async function checkSpace(
+// A resource no space has belongs to a person: notifications only. The app
+// publishes a space resource's provisioned event before any activity on it,
+// in the same partition, so it is never just late.
+async function findSpace(
+  tx: Tx,
+  container: { kind: SpaceResourceKind; id: string } | undefined,
+  organizationId: string | undefined
+): Promise<string | undefined> {
+  if (!container) return undefined
+  const holders = await tx
+    .select({
+      spaceId: spaceResources.spaceId,
+      organizationId: spaceResources.organizationId
+    })
+    .from(spaceResources)
+    .where(
+      and(
+        eq(spaceResources.kind, container.kind),
+        eq(spaceResources.resourceId, container.id)
+      )
+    )
+  const holder = holders.find(h => h.organizationId === organizationId)
+  if (holder) return holder.spaceId
+  // So a resource id never shows content to another organization's space.
+  if (holders.length > 0) {
+    throw new RejectedEventError(
+      `${container.kind} ${container.id} is not in organization ${organizationId ?? 'none'}`
+    )
+  }
+  return undefined
+}
+
+async function checkActor(
   tx: Tx,
   log: Logger,
   spaceId: string,
-  organizationId: string | undefined,
   actor: Actor | null
 ) {
-  const [space] = await tx
-    .select({ organizationId: spaces.organizationId })
-    .from(spaces)
-    .where(eq(spaces.spaceId, spaceId))
-  if (!space) throw new NotYetKnownError(`unknown space ${spaceId}`)
-  if (space.organizationId !== organizationId) {
-    throw new RejectedEventError(
-      `space ${spaceId} is not in organization ${organizationId ?? 'none'}`
-    )
-  }
   if (actor?.type !== 'user') return
   if (actor.id) {
     const [member] = await tx
@@ -125,11 +157,11 @@ function store(category: Category): Handler<CloudEvent> {
       event,
       event.type
     )
-    const spaceId = data.object.space_id
+    const spaceId = await findSpace(tx, data.object.container, twakeorg)
     const actor: Actor | null = data.actor
       ? { type: 'token', id: data.actor.id, name: data.actor.name }
       : await findUser(tx, spaceId, twakeactorid, twakeactor)
-    if (spaceId) await checkSpace(tx, log, spaceId, twakeorg, actor)
+    if (spaceId) await checkActor(tx, log, spaceId, actor)
     // Recipients stay out of the card every space member sees.
     const { recipients, ...content } = data
     const organizationId = twakeorg ?? null

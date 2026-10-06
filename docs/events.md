@@ -131,7 +131,7 @@ The CloudEvent fields the handler reads:
 
 - `twakeorg`: the organization, absent for a B2C user.
 - `twakeactorid`, `twakeactor`: the acting user's uuid and email.
-- `data.object`: `type`, `id`, `title`, `url`, and an optional `space_id`.
+- `data.object`: `type`, `id`, `title`, `url`, and an optional `container` (`kind`, `id`): the app's own resource the object lives in.
 - `data.preview`: optional text, cut to 280 characters.
 - `data.actor`: `{ type: 'token', id, name }` when an API token acted.
 - `data.recipients`: who to notify (see Notifications).
@@ -143,7 +143,7 @@ The actor stored on the card is one of:
 - `{ type: 'deleted_user' }` once the user is deleted.
 - null when the event names no actor.
 
-When `space_id` is set, the event is rejected to the dead letter topic if the space belongs to another organization. An unknown space or a user actor who is not a member may only mean the platform topic is behind, so the event is parked. A parked event is handled after the events that came after it on its partition. A space with linked groups accepts a non member actor with a warning, since the copy does not hold group members.
+The space is the one whose resource of that kind has the container's id. An app publishes a resource's provisioned event before any activity on it, on the same partition, so a container no space has belongs to a person: the card is for personal notifications only. A container held only by another organization's space is rejected to the dead letter topic. A user actor who is not a member may only mean the platform topic is behind, so the event is parked. A parked event is handled after the events that came after it on its partition. A space with linked groups accepts a non member actor with a warning, since the copy does not hold group members.
 
 The card stores everything in `data` except `recipients`.
 
@@ -176,7 +176,7 @@ sequenceDiagram
 - A failing space waits before its next try: 1 second, doubling up to 5 minutes, reset by a pass where all its cards post. Other spaces post meanwhile.
 - A card the homeserver refuses for good (400 or 413) gets `post_failed_at`, is not retried, and the next card posts. When only the edit of the first card is refused, the card stays posted and the first card is left as it was.
 - The transaction id is the card's `id`, so a retried send does not post twice.
-- A card without a `space_id` is never posted. It exists for personal notifications only.
+- A card in no space is never posted. It exists for personal notifications only.
 - `twake_space_cards_waiting{organization}` on the metrics port counts unposted cards per organization with chat, and `twake_space_cards_failed{organization}` the refused ones.
 
 ### Card content
