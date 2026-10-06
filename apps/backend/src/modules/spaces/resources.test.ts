@@ -108,11 +108,11 @@ describe('provisioned events', () => {
     ])
   })
 
-  it('stores the tasks resource, whose id is the space id', async () => {
-    await provisioned('tasks', { kind: 'tasks', id: SPACE_ID })
+  it("stores the space's Tasks project", async () => {
+    await provisioned('tasks', { kind: 'project', id: 'project-7' })
 
     expect(await readResources()).toMatchObject([
-      { kind: 'tasks', resourceId: SPACE_ID }
+      { kind: 'project', resourceId: 'project-7' }
     ])
   })
 

@@ -62,7 +62,7 @@ export const seedSpaces: Space[] = [
     groups: [designers('viewer')],
     resources: [
       { kind: 'matrix_space', id: ROADMAP_ROOM },
-      { kind: 'tasks', id: 'board-roadmap' },
+      { kind: 'project', id: 'project-roadmap' },
       { kind: 'drive', id: 'drive-roadmap' },
       { kind: 'mailbox', id: `roadmap@${DOMAIN}` },
       { kind: 'calendar', id: 'calendar-roadmap' }
@@ -79,7 +79,7 @@ export const seedSpaces: Space[] = [
     groups: [designers('editor')],
     resources: [
       { kind: 'matrix_space', id: DESIGN_ROOM },
-      { kind: 'tasks', id: 'board-design' },
+      { kind: 'project', id: 'project-design' },
       { kind: 'drive', id: null },
       { kind: 'mailbox', id: null },
       { kind: 'calendar', id: 'calendar-design' }
@@ -96,7 +96,7 @@ export const seedSpaces: Space[] = [
     groups: [],
     resources: [
       { kind: 'matrix_space', id: null },
-      { kind: 'tasks', id: 'board-handover' },
+      { kind: 'project', id: 'project-handover' },
       { kind: 'drive', id: 'drive-handover' },
       { kind: 'mailbox', id: null },
       { kind: 'calendar', id: null }

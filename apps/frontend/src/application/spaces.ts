@@ -7,7 +7,7 @@ export interface SpaceSummary {
 }
 
 export type ResourceKind =
-  'matrix_space' | 'tasks' | 'drive' | 'mailbox' | 'calendar'
+  'matrix_space' | 'project' | 'drive' | 'mailbox' | 'calendar'
 
 /** A person given a role on the space directly. */
 export interface Member {
