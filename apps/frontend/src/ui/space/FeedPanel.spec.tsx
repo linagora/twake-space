@@ -17,7 +17,13 @@ const space: Space = {
   mail: false,
   homeserverUrl: 'https://matrix.acme.test',
   members: [
-    { id: 'u-1', username: 'bob', email: 'bob@acme.test', role: 'editor' }
+    {
+      id: 'u-1',
+      username: 'bob',
+      email: 'bob@acme.test',
+      displayName: null,
+      role: 'editor'
+    }
   ],
   groups: [],
   resources: [

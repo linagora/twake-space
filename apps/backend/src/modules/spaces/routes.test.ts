@@ -47,6 +47,7 @@ beforeEach(async () => {
     userId,
     username: userId === ALICE ? 'alice' : 'bob',
     email: userId === ALICE ? 'alice@example.com' : 'bob@example.com',
+    displayName: userId === ALICE ? 'Alice LIDDELL' : null,
     role
   })
   await db
@@ -172,9 +173,16 @@ describe('GET /spaces/:id', () => {
           id: ALICE,
           username: 'alice',
           email: 'alice@example.com',
+          displayName: 'Alice LIDDELL',
           role: 'admin'
         },
-        { id: BOB, username: 'bob', email: 'bob@example.com', role: 'viewer' }
+        {
+          id: BOB,
+          username: 'bob',
+          email: 'bob@example.com',
+          displayName: null,
+          role: 'viewer'
+        }
       ],
       groups: [{ id: DESIGNERS, name: 'Designers', role: 'viewer' }]
     })

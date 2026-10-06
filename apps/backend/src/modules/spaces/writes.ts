@@ -106,7 +106,8 @@ export function registerSpaceWriteRoutes(
       .select({
         uuid: spaceMembers.userId,
         username: spaceMembers.username,
-        email: spaceMembers.email
+        email: spaceMembers.email,
+        displayName: spaceMembers.displayName
       })
       .from(spaceMembers)
       .where(

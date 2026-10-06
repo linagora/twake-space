@@ -85,6 +85,7 @@ export function registerSpaceRoutes(
             id: spaceMembers.userId,
             username: spaceMembers.username,
             email: spaceMembers.email,
+            displayName: spaceMembers.displayName,
             role: spaceMembers.role
           })
           .from(spaceMembers)

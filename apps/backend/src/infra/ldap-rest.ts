@@ -58,6 +58,7 @@ export interface Person {
   uuid: string
   username: string
   email: string
+  displayName: string | null
 }
 
 // `actor` is the acting user's email, so ldap-rest's events name them; null
@@ -137,7 +138,12 @@ export function ldapRestSpaces(
         client.organizations.getUser(orgId, { by, value })
       )
       if (!user?._id) return undefined
-      return { uuid: user._id, username: user.uid, email: user.mail }
+      return {
+        uuid: user._id,
+        username: user.uid,
+        email: user.mail,
+        displayName: user.displayName || null
+      }
     },
     async create(orgId, space, actor) {
       const { id } = await spaces.create(orgId, space, as(actor))

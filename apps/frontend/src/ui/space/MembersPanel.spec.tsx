@@ -15,8 +15,20 @@ const space: Space = {
   mail: false,
   homeserverUrl: null,
   members: [
-    { id: 'u-1', username: 'carol', email: 'carol@acme.test', role: 'admin' },
-    { id: 'u-2', username: 'alice', email: 'alice@acme.test', role: 'editor' }
+    {
+      id: 'u-1',
+      username: 'carol',
+      email: 'carol@acme.test',
+      displayName: 'Carol DANVERS',
+      role: 'admin'
+    },
+    {
+      id: 'u-2',
+      username: 'alice',
+      email: 'alice@acme.test',
+      displayName: null,
+      role: 'editor'
+    }
   ],
   groups: [{ id: 'g-1', name: 'Designers', role: 'viewer' }],
   resources: []
@@ -31,10 +43,17 @@ describe('MembersPanel', () => {
     const list = await screen.findByRole('list', { name: 'Members' })
     const items = within(list).getAllByRole('listitem')
     expect(items).toHaveLength(2)
-    expect(items[0]).toHaveTextContent('carol')
+    expect(items[0]).toHaveTextContent('Carol DANVERS')
     expect(items[0]).toHaveTextContent('carol@acme.test')
     expect(items[0]).toHaveTextContent('Admin')
     expect(items[1]).toHaveTextContent('Editor')
+  })
+
+  it('names a member without a display name by their username', async () => {
+    renderWithProviders(<MembersPanel space={space} />)
+
+    const list = await screen.findByRole('list', { name: 'Members' })
+    expect(within(list).getAllByRole('listitem')[1]).toHaveTextContent('alice')
   })
 
   it('lists the linked groups with their roles', async () => {
@@ -191,7 +210,9 @@ describe('MembersPanel', () => {
     )
     renderWithProviders(<MembersPanel space={admin} />, { spaces })
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Remove carol' }))
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Remove Carol DANVERS' })
+    )
 
     expect(
       await screen.findByText('The change was refused (last_admin).')

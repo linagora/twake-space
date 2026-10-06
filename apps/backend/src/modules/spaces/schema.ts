@@ -33,6 +33,7 @@ export const spaceMembers = pgTable(
     userId: uuid('user_id').notNull(),
     username: text().notNull(),
     email: text().notNull(),
+    displayName: text('display_name'),
     role: spaceRole().notNull()
   },
   table => [

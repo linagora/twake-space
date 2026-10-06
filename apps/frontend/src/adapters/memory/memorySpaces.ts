@@ -65,10 +65,11 @@ export function memorySpaces(
       write(id, space => {
         const added = organization.people
           .filter(person => usernames.includes(person.username))
-          .map(({ id: userId, username, email }) => ({
+          .map(({ id: userId, username, email, displayName }) => ({
             id: userId,
             username,
             email,
+            displayName,
             role
           }))
         space.members = [

@@ -25,6 +25,7 @@ import {
 
 const SPACE_ID = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
 const JDOE_ID = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
+const ASMITH_ID = 'c9f0f895-fb98-4b91-a1a4-7f3e2d1c0b5a'
 const jdoe = {
   uuid: JDOE_ID,
   username: 'jdoe',
@@ -82,6 +83,18 @@ const readMembers = () =>
     })
     .from(spaceMembers)
     .where(eq(spaceMembers.spaceId, SPACE_ID))
+const readDisplayNames = async () =>
+  new Map(
+    (
+      await testDb.db
+        .select({
+          userId: spaceMembers.userId,
+          displayName: spaceMembers.displayName
+        })
+        .from(spaceMembers)
+        .where(eq(spaceMembers.spaceId, SPACE_ID))
+    ).map(m => [m.userId, m.displayName])
+  )
 const readGroups = () =>
   testDb.db
     .select({
@@ -118,6 +131,22 @@ describe('space events', () => {
 
     expect(await readSpace()).toHaveLength(1)
     expect(await readMembers()).toHaveLength(1)
+  })
+
+  it('names a member by their first and last name, if they have one', async () => {
+    await created({
+      members: [
+        jdoe,
+        { ...jdoe, uuid: ASMITH_ID, firstName: undefined, lastName: ' ' }
+      ]
+    })
+
+    expect(await readDisplayNames()).toEqual(
+      new Map([
+        [JDOE_ID, 'John Doe'],
+        [ASMITH_ID, null]
+      ])
+    )
   })
 
   it('keeps the last entry of a member listed twice', async () => {
