@@ -75,7 +75,18 @@
     "members": "Thành viên",
     "groups": "Nhóm",
     "noMembers": "Không có thành viên trực tiếp.",
-    "noGroups": "Không có nhóm liên kết."
+    "noGroups": "Không có nhóm liên kết.",
+    "addPeople": "Thêm người",
+    "linkGroups": "Liên kết nhóm",
+    "remove": "Xóa %{name}",
+    "unlink": "Hủy liên kết %{name}",
+    "roleOf": "Vai trò của %{name}",
+    "role": "Vai trò",
+    "search": "Tìm kiếm",
+    "searchFailed": "Không thể tìm kiếm trong tổ chức.",
+    "more": "Xem thêm",
+    "refused": "Thay đổi bị từ chối (%{code}).",
+    "failed": "Không thể lưu thay đổi."
   },
   "space": {
     "back": "Tất cả không gian",

@@ -75,7 +75,18 @@
     "members": "Miembros",
     "groups": "Grupos",
     "noMembers": "No hay miembros directos.",
-    "noGroups": "No hay grupos vinculados."
+    "noGroups": "No hay grupos vinculados.",
+    "addPeople": "Añadir personas",
+    "linkGroups": "Vincular grupos",
+    "remove": "Quitar a %{name}",
+    "unlink": "Desvincular %{name}",
+    "roleOf": "Rol de %{name}",
+    "role": "Rol",
+    "search": "Buscar",
+    "searchFailed": "No se pudo buscar en la organización.",
+    "more": "Mostrar más",
+    "refused": "El cambio fue rechazado (%{code}).",
+    "failed": "No se pudo guardar el cambio."
   },
   "space": {
     "back": "Todos los espacios",

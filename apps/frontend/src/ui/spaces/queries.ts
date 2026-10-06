@@ -6,7 +6,7 @@ import {
   type UseQueryResult
 } from '@tanstack/react-query'
 
-import type { Space, SpaceSummary } from '@/application/spaces'
+import type { Space, SpaceSummary, SpacesService } from '@/application/spaces'
 import { useServices } from '@/ui/services/Services'
 
 export const SPACES = ['spaces']
@@ -19,6 +19,20 @@ export function useSpaceList(): UseQueryResult<SpaceSummary[]> {
 export function useSpace(id: string): UseQueryResult<Space> {
   const { spaces } = useServices()
   return useQuery({ queryKey: [...SPACES, id], queryFn: () => spaces.get(id) })
+}
+
+// The copy changes once the backend applies ldap-rest's answer, so the space
+// is read again after every write, refused or not.
+export function useSpaceWrite(
+  id: string
+): UseMutationResult<void, Error, (spaces: SpacesService) => Promise<void>> {
+  const { spaces } = useServices()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: write => write(spaces),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: [...SPACES, id] })
+  })
 }
 
 export function useCreateSpace(): UseMutationResult<
