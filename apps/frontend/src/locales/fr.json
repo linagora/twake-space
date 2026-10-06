@@ -115,7 +115,12 @@
     "noGroupMatches": "Aucun groupe ne correspond.",
     "more": "Afficher plus",
     "refused": "La modification a été refusée (%{code}).",
-    "failed": "La modification n'a pas pu être enregistrée."
+    "failed": "La modification n'a pas pu être enregistrée.",
+    "refusal": {
+      "lastAdmin": "Un espace a besoin d'au moins un admin. Nommez d'abord quelqu'un d'autre admin.",
+      "memberExists": "Cette personne est déjà membre avec un autre rôle. Changez plutôt son rôle dans la liste.",
+      "groupAlreadyLinked": "Ce groupe est déjà lié avec un autre rôle. Changez plutôt son rôle dans la liste."
+    }
   },
   "space": {
     "back": "Tous les espaces",

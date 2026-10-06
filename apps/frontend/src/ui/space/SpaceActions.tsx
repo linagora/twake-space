@@ -1,6 +1,5 @@
 import { Icon, Rename, Trash } from '@linagora/twake-icons'
 import {
-  Alert,
   Button,
   Dialog,
   DialogActions,
@@ -13,9 +12,10 @@ import {
 import { useId, useState, type ReactElement } from 'react'
 import { useNavigate } from 'react-router'
 
-import { isRefusal, type Space } from '@/application/spaces'
+import type { Space } from '@/application/spaces'
 import { DialogHeader } from '@/ds/Dialog'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { WriteError } from '@/ui/space/WriteError'
 import { useDeleteSpace, useRenameSpace } from '@/ui/spaces/queries'
 
 export function SpaceActions({ space }: { space: Space }): ReactElement | null {
@@ -46,18 +46,6 @@ export function SpaceActions({ space }: { space: Space }): ReactElement | null {
       {open === 'rename' && <RenameDialog space={space} onClose={close} />}
       {open === 'delete' && <DeleteDialog space={space} onClose={close} />}
     </>
-  )
-}
-
-function WriteError({ error }: { error: Error | null }): ReactElement | null {
-  const { t } = useI18n()
-  if (!error) return null
-  return (
-    <Alert severity="error">
-      {isRefusal(error) && error.code
-        ? t('members.refused', { code: error.code })
-        : t('members.failed')}
-    </Alert>
   )
 }
 

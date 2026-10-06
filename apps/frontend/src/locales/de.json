@@ -115,7 +115,12 @@
     "noGroupMatches": "Keine Gruppe passt zur Suche.",
     "more": "Mehr anzeigen",
     "refused": "Die Änderung wurde abgelehnt (%{code}).",
-    "failed": "Die Änderung konnte nicht gespeichert werden."
+    "failed": "Die Änderung konnte nicht gespeichert werden.",
+    "refusal": {
+      "lastAdmin": "Ein Space braucht mindestens einen Admin. Machen Sie zuerst jemand anderen zum Admin.",
+      "memberExists": "Diese Person ist bereits Mitglied mit einer anderen Rolle. Ändern Sie stattdessen ihre Rolle in der Liste.",
+      "groupAlreadyLinked": "Diese Gruppe ist bereits mit einer anderen Rolle verknüpft. Ändern Sie stattdessen ihre Rolle in der Liste."
+    }
   },
   "space": {
     "back": "Alle Spaces",

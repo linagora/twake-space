@@ -1,6 +1,5 @@
 import { Icon, Trash, Unlink } from '@linagora/twake-icons'
 import {
-  Alert,
   Button,
   Chip,
   IconButton,
@@ -12,15 +11,11 @@ import {
 } from '@linagora/twake-mui'
 import { useId, useState, type ReactElement } from 'react'
 
-import {
-  isRefusal,
-  type Space,
-  type SpaceRole,
-  type SpacesService
-} from '@/application/spaces'
+import type { Space, SpaceRole, SpacesService } from '@/application/spaces'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { AddToSpaceDialog } from '@/ui/space/AddToSpaceDialog'
 import { RoleSelect } from '@/ui/space/RoleSelect'
+import { WriteError } from '@/ui/space/WriteError'
 import { useSpaceWrite } from '@/ui/spaces/queries'
 
 interface Row {
@@ -41,13 +36,7 @@ export function MembersPanel({ space }: { space: Space }): ReactElement {
 
   return (
     <>
-      {write.error && (
-        <Alert severity="error" className="u-mb-1">
-          {isRefusal(write.error) && write.error.code
-            ? t('members.refused', { code: write.error.code })
-            : t('members.failed')}
-        </Alert>
-      )}
+      <WriteError error={write.error} className="u-mb-1" />
       <Section
         title={t('members.members')}
         empty={t('members.noMembers')}
