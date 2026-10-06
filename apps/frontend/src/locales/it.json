@@ -12,8 +12,14 @@
   },
   "session": {
     "signingIn": "Accesso in corso…",
-    "failed": "Accesso non riuscito.",
+    "openingSpace": "Apertura del tuo spazio…",
+    "slow": "Connessione al tuo account ancora in corso…",
+    "failed": "Non è stato possibile farti accedere",
+    "failedHint": "Si è verificato un problema durante la connessione al tuo account.",
+    "timeout": "Ci sta volendo più del solito",
+    "timeoutHint": "Il servizio di accesso risponde lentamente.",
     "retry": "Riprova",
+    "backToSignIn": "Torna all'accesso",
     "signOut": "Esci"
   },
   "common": {

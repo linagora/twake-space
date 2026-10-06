@@ -12,8 +12,14 @@
   },
   "session": {
     "signingIn": "Iniciando sesión…",
-    "failed": "No se pudo iniciar sesión.",
+    "openingSpace": "Abriendo tu espacio…",
+    "slow": "Seguimos conectando con tu cuenta…",
+    "failed": "No pudimos iniciar tu sesión",
+    "failedHint": "Algo salió mal al conectar con tu cuenta.",
+    "timeout": "Esto está tardando más de lo habitual",
+    "timeoutHint": "El servicio de inicio de sesión tarda en responder.",
     "retry": "Reintentar",
+    "backToSignIn": "Volver al inicio de sesión",
     "signOut": "Cerrar sesión"
   },
   "common": {

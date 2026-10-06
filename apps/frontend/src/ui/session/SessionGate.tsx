@@ -1,4 +1,3 @@
-import { Button, CircularProgress, Typography } from '@linagora/twake-mui'
 import {
   createContext,
   use,
@@ -10,7 +9,10 @@ import {
 } from 'react'
 
 import type { SessionService, User } from '@/application/session'
-import { useI18n } from '@/ui/i18n/useI18n'
+import { forgetDestination, SignInScreen } from '@/ui/session/SignInScreen'
+
+// Matches .splash-leaving in index.html.
+const SPLASH_FADE_MS = 200
 
 export interface Session {
   user: User
@@ -39,7 +41,6 @@ export function SessionGate({
   session,
   children
 }: SessionGateProps): ReactElement {
-  const { t } = useI18n()
   const [state, setState] = useState<GateState>({ status: 'pending' })
   // StrictMode runs effects twice; a second start would find the sign-in spent
   const started = useRef(false)
@@ -64,22 +65,34 @@ export function SessionGate({
     return session.onEndedElsewhere(() => void session.signIn())
   }, [session, signedIn])
 
-  if (state.status === 'failed') {
-    return (
-      <main className="u-p-2">
-        <Typography>{t('session.failed')}</Typography>
-        <Button onClick={() => void session.signIn()}>
-          {t('session.retry')}
-        </Button>
-      </main>
-    )
-  }
-  if (state.status === 'pending') {
-    return <CircularProgress aria-label={t('session.signingIn')} />
-  }
+  const [splashGone, setSplashGone] = useState(false)
+  useEffect(() => {
+    if (!signedIn) return
+    forgetDestination()
+    const gone = setTimeout(() => {
+      setSplashGone(true)
+    }, SPLASH_FADE_MS)
+    return () => {
+      clearTimeout(gone)
+    }
+  }, [signedIn])
+
+  // The screen keeps its place in the tree while the app mounts beneath it,
+  // so it fades out instead of being replaced.
   return (
-    <SessionContext value={{ user: state.user, signOut: session.signOut }}>
-      {children}
-    </SessionContext>
+    <>
+      {state.status === 'signedIn' && (
+        <SessionContext value={{ user: state.user, signOut: session.signOut }}>
+          {children}
+        </SessionContext>
+      )}
+      {!splashGone && (
+        <SignInScreen
+          failed={state.status === 'failed'}
+          leaving={signedIn}
+          onSignIn={() => void session.signIn()}
+        />
+      )}
+    </>
   )
 }

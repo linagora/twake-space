@@ -11,9 +11,15 @@
     "yourSpaces": "Ihre Spaces"
   },
   "session": {
-    "signingIn": "Anmeldung…",
-    "failed": "Die Anmeldung ist fehlgeschlagen.",
+    "signingIn": "Sie werden angemeldet…",
+    "openingSpace": "Ihr Space wird geöffnet…",
+    "slow": "Verbindung zu Ihrem Konto wird weiter hergestellt…",
+    "failed": "Die Anmeldung ist fehlgeschlagen",
+    "failedHint": "Beim Verbinden mit Ihrem Konto ist ein Fehler aufgetreten.",
+    "timeout": "Das dauert länger als üblich",
+    "timeoutHint": "Der Anmeldedienst antwortet langsam.",
     "retry": "Erneut versuchen",
+    "backToSignIn": "Zurück zur Anmeldung",
     "signOut": "Abmelden"
   },
   "common": {
