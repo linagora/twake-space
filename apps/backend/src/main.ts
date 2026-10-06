@@ -6,7 +6,12 @@ import { parkIn, scheduleParkedRetries } from './events/parking.ts'
 import { createMessageHandler, type Routes } from './events/router.ts'
 import { createDb, migrateDb } from './infra/db.ts'
 import { createServer } from './infra/http.ts'
-import { startConsumer, startDeadLetterProducer } from './infra/kafka.ts'
+import {
+  consumerAlive,
+  consumerStats,
+  startConsumer,
+  startDeadLetterProducer
+} from './infra/kafka.ts'
 import { createLdapRestClient, ldapRestDirectory } from './infra/ldap-rest.ts'
 import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
@@ -63,9 +68,12 @@ const routes: Routes = {
 }
 
 let accepting = false
+const consumerStatus = consumerStats()
+let isAlive = () => true
 const server = createServer({
   logger,
-  isReady: async () => accepting && (await sql`select 1`).length === 1
+  isReady: async () => accepting && (await sql`select 1`).length === 1,
+  isAlive: () => isAlive()
 })
 const authorize = await setUpAuth(server, {
   db,
@@ -90,7 +98,7 @@ await listenForRevocations(sql, sessionId => {
 await listenForLive(sql, streams)
 await server.listen({ host: config.HTTP_HOST, port: config.HTTP_PORT })
 const metrics = createServer({ logger, isReady: () => Promise.resolve(true) })
-registerMetrics(metrics, { db })
+registerMetrics(metrics, { db, consumer: consumerStatus })
 await metrics.listen({ host: config.HTTP_HOST, port: config.METRICS_PORT })
 
 const deadLetters = await startDeadLetterProducer(config, logger)
@@ -101,7 +109,8 @@ const handle = createMessageHandler({
   park: parkIn(db),
   logger
 })
-const consumer = await startConsumer(config, logger, handle)
+const consumer = await startConsumer(config, logger, handle, consumerStatus)
+isAlive = () => consumerAlive(consumer, consumerStatus)
 const stopParked = scheduleParkedRetries(db, handle, deadLetters.send, logger)
 const stopPurge = schedulePurge(db, logger)
 const secretsKey = (config.homeserver ?? config.controlPlane)?.key

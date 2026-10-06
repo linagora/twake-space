@@ -1,6 +1,8 @@
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest'
+import { parkedEvents } from '../../events/schema.ts'
 import { createServer } from '../../infra/http.ts'
+import { consumerStats } from '../../infra/kafka.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { organizations } from '../organizations/schema.ts'
 import { spaces } from '../spaces/schema.ts'
@@ -19,7 +21,7 @@ afterAll(() => testDb.drop())
 
 beforeEach(async () => {
   const { db } = testDb
-  for (const table of [activityEvents, spaces, organizations]) {
+  for (const table of [parkedEvents, activityEvents, spaces, organizations]) {
     await db.delete(table)
   }
   await db.insert(organizations).values([
@@ -61,11 +63,23 @@ it('counts the events waiting to be posted, per organization with chat', async (
   await stored(DESIGN, '$posted')
   await stored(SALES, '$posted')
   await stored(HR)
+  await testDb.db.insert(parkedEvents).values({
+    topic: 'twake.drive.events.v1',
+    source: 'twake://drive',
+    id: 'e-late',
+    value: '{}',
+    headers: {},
+    reason: 'unknown space'
+  })
+  const stats = consumerStats()
+  stats.ended('processed')
+  stats.ended('processed')
+  stats.ended('failed')
   const app = createServer({
     logger: pino({ level: 'silent' }),
     isReady: () => Promise.resolve(true)
   })
-  registerMetrics(app, { db: testDb.db })
+  registerMetrics(app, { db: testDb.db, consumer: stats })
 
   const response = await app.inject({ method: 'GET', url: '/metrics' })
 
@@ -79,6 +93,13 @@ it('counts the events waiting to be posted, per organization with chat', async (
       '# TYPE twake_space_cards_waiting gauge',
       'twake_space_cards_waiting{organization="acme"} 2',
       'twake_space_cards_waiting{organization="globex"} 0',
+      '# HELP twake_space_events_total Kafka messages handled, by outcome.',
+      '# TYPE twake_space_events_total counter',
+      'twake_space_events_total{outcome="processed"} 2',
+      'twake_space_events_total{outcome="failed"} 1',
+      '# HELP twake_space_parked_events Events waiting for a space or member.',
+      '# TYPE twake_space_parked_events gauge',
+      'twake_space_parked_events 1',
       ''
     ].join('\n')
   )

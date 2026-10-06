@@ -4,6 +4,8 @@ import { ACTIVITY_TOPICS, PLATFORM_TOPIC } from '../events/envelope.ts'
 import type { IncomingMessage, Outcome } from '../events/router.ts'
 import {
   checkDeadLetterTopics,
+  consumerAlive,
+  consumerStats,
   eachMessageWithBackoff,
   kafkaLogger
 } from './kafka.ts'
@@ -22,14 +24,16 @@ function setup(
     resume: vi.fn(),
     commitOffsets: vi.fn().mockResolvedValue(undefined)
   }
+  const stats = consumerStats()
   const eachMessage = eachMessageWithBackoff(
     consumer,
     handle,
-    pino({ level: 'silent' })
+    pino({ level: 'silent' }),
+    stats
   )
   const deliver = (offset: string) =>
     eachMessage({ topic, partition: 2, message: message(offset) })
-  return { consumer, deliver }
+  return { consumer, deliver, stats }
 }
 
 beforeEach(() => {
@@ -86,6 +90,44 @@ describe('checkDeadLetterTopics', () => {
   })
 })
 
+describe('consumerAlive', () => {
+  const connected = { assignment: () => [] }
+
+  it('stays alive while idle, and while a handler runs under 5 minutes', async () => {
+    let finish: () => void = () => undefined
+    const { deliver, stats } = setup(
+      () =>
+        new Promise(resolve => {
+          finish = () => {
+            resolve('processed')
+          }
+        })
+    )
+    expect(consumerAlive(connected, stats)).toBe(true)
+
+    const delivered = deliver('1')
+    await vi.advanceTimersByTimeAsync(4 * 60_000)
+    expect(consumerAlive(connected, stats)).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(2 * 60_000)
+    expect(consumerAlive(connected, stats)).toBe(false)
+
+    finish()
+    await delivered
+    expect(consumerAlive(connected, stats)).toBe(true)
+  })
+
+  it('is dead once the consumer is disconnected', () => {
+    const disconnected = {
+      assignment: () => {
+        throw new Error('Assignment can only be called while connected.')
+      }
+    }
+
+    expect(consumerAlive(disconnected, consumerStats())).toBe(false)
+  })
+})
+
 describe('eachMessageWithBackoff', () => {
   it('commits the offset after the message', async () => {
     const { consumer, deliver } = setup(() => Promise.resolve('processed'))
@@ -95,6 +137,27 @@ describe('eachMessageWithBackoff', () => {
     expect(consumer.commitOffsets).toHaveBeenCalledWith([
       { topic, partition: 2, offset: '42' }
     ])
+  })
+
+  it('counts each outcome, failures included', async () => {
+    const handle = vi
+      .fn<(topic: string, m: IncomingMessage) => Promise<Outcome>>()
+      .mockResolvedValueOnce('processed')
+      .mockResolvedValueOnce('parked')
+      .mockRejectedValueOnce(new Error('ldap-rest down'))
+      .mockResolvedValueOnce('processed')
+    const { deliver, stats } = setup(handle)
+
+    await deliver('1')
+    await deliver('2')
+    await deliver('3').catch(() => undefined)
+    await deliver('3')
+
+    expect(Object.fromEntries(stats.outcomes)).toEqual({
+      processed: 2,
+      parked: 1,
+      failed: 1
+    })
   })
 
   it('pauses the partition when the commit fails', async () => {

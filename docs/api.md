@@ -358,7 +358,7 @@ Revokes the token. Answers `204`, or `404 not_found` under the same conditions a
 
 ### GET /health/live
 
-Answers `200 {"status":"ok"}` while the process runs.
+On the API server, answers `503 {"status":"unavailable"}` when the Kafka consumer is disconnected, or when one message has been in its handler for over 5 minutes (the consumer has left its group by then), and `200 {"status":"ok"}` otherwise. An idle consumer is alive. On the metrics server it always answers `200`.
 
 ### GET /health/ready
 
@@ -372,9 +372,17 @@ Metrics server only. Prometheus text format, no authentication.
 # HELP twake_space_cards_waiting Stored events not posted to Matrix yet.
 # TYPE twake_space_cards_waiting gauge
 twake_space_cards_waiting{organization="<org id>"} 0
+# HELP twake_space_events_total Kafka messages handled, by outcome.
+# TYPE twake_space_events_total counter
+twake_space_events_total{outcome="processed"} 0
+# HELP twake_space_parked_events Events waiting for a space or member.
+# TYPE twake_space_parked_events gauge
+twake_space_parked_events 0
 ```
 
-Every organization with chat available reports a value, 0 included.
+- `twake_space_cards_waiting`: every organization with chat available reports a value, 0 included.
+- `twake_space_events_total`: one series per outcome seen since the process started (`processed`, `duplicate`, `unrouted`, `malformed`, `rejected`, `parked`, `failed`), as listed in [events.md](events.md). Counts messages read from Kafka, not parked events retried.
+- `twake_space_parked_events`: rows in `parked_events`, for every replica.
 
 ## Space writes
 

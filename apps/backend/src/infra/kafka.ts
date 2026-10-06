@@ -70,13 +70,48 @@ type Handle = (topic: string, message: IncomingMessage) => Promise<Outcome>
 
 const FIRST_RETRY_MS = 1000
 const MAX_RETRY_MS = 60_000
+// librdkafka's max.poll.interval.ms: past it the consumer has left its group.
+const STUCK_MS = 5 * 60_000
+
+export type ConsumerStats = ReturnType<typeof consumerStats>
+
+export function consumerStats() {
+  const outcomes = new Map<Outcome | 'failed', number>()
+  let handlingSince: number | undefined
+  return {
+    outcomes,
+    started() {
+      handlingSince = Date.now()
+    },
+    ended(outcome: Outcome | 'failed') {
+      handlingSince = undefined
+      outcomes.set(outcome, (outcomes.get(outcome) ?? 0) + 1)
+    },
+    stuck: () =>
+      handlingSince !== undefined && Date.now() - handlingSince > STUCK_MS
+  }
+}
+
+// An idle consumer is alive: only a stuck handler or a lost connection is not.
+export function consumerAlive(
+  consumer: Pick<KafkaJS.Consumer, 'assignment'>,
+  stats: ConsumerStats
+): boolean {
+  try {
+    consumer.assignment()
+  } catch {
+    return false
+  }
+  return !stats.stuck()
+}
 
 // Throwing makes the consumer deliver the message again, at once unless its
 // partition is paused. Other partitions keep flowing meanwhile.
 export function eachMessageWithBackoff(
   consumer: Pick<KafkaJS.Consumer, 'pause' | 'resume' | 'commitOffsets'>,
   handle: Handle,
-  logger: Logger
+  logger: Logger,
+  stats: ConsumerStats
 ) {
   const failures = new Map<string, number>()
   return async ({
@@ -89,12 +124,15 @@ export function eachMessageWithBackoff(
     message: IncomingMessage
   }) => {
     const key = `${topic}|${String(partition)}`
+    stats.started()
+    let outcome: Outcome
     try {
-      await handle(topic, message)
+      outcome = await handle(topic, message)
       await consumer.commitOffsets([
         { topic, partition, offset: (BigInt(message.offset) + 1n).toString() }
       ])
     } catch (error) {
+      stats.ended('failed')
       const failed = (failures.get(key) ?? 0) + 1
       failures.set(key, failed)
       const delayMs = Math.min(MAX_RETRY_MS, FIRST_RETRY_MS * 2 ** (failed - 1))
@@ -119,6 +157,7 @@ export function eachMessageWithBackoff(
       }, delayMs).unref()
       throw error
     }
+    stats.ended(outcome)
     failures.delete(key)
   }
 }
@@ -126,7 +165,8 @@ export function eachMessageWithBackoff(
 export async function startConsumer(
   config: Config,
   logger: Logger,
-  handle: Handle
+  handle: Handle,
+  stats: ConsumerStats
 ): Promise<KafkaJS.Consumer> {
   const consumer = new KafkaJS.Kafka().consumer({
     ...connectionConfig(config),
@@ -140,7 +180,7 @@ export async function startConsumer(
   await consumer.connect()
   await consumer.subscribe({ topics: [...ACTIVITY_TOPICS, PLATFORM_TOPIC] })
   await consumer.run({
-    eachMessage: eachMessageWithBackoff(consumer, handle, logger)
+    eachMessage: eachMessageWithBackoff(consumer, handle, logger, stats)
   })
   return consumer
 }
