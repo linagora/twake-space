@@ -13,6 +13,7 @@ import {
   seedUser
 } from '@/adapters/memory/seed'
 import { App } from '@/app/App'
+import { NO_SETTINGS } from '@/application/settings'
 
 // `npm run dev:mock`: the app on seed data, with no backend, SSO or homeserver.
 const container = document.getElementById('root')
@@ -30,6 +31,7 @@ const session = {
 const services = {
   spaces: memorySpaces(seedSpaces, seedOrganization),
   directory: memoryDirectory(seedOrganization),
+  settings: { get: () => Promise.resolve(NO_SETTINGS) },
   live: { subscribe: () => () => undefined },
   matrix: {
     signIn: () => Promise.resolve(true),

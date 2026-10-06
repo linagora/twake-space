@@ -9,6 +9,7 @@ import { findPreferredLanguage } from '@/ui/i18n/languages'
 import { useLiveUpdates } from '@/ui/live/useLiveUpdates'
 import type { Services } from '@/ui/services/Services'
 import { SessionGate } from '@/ui/session/SessionGate'
+import { FollowCommonSettings } from '@/ui/settings/FollowCommonSettings'
 
 export interface AppProps {
   session: SessionService
@@ -22,7 +23,9 @@ export function App({ session, services }: AppProps): ReactElement {
   return (
     <AppProviders lang={lang} queryClient={queryClient} services={services}>
       <SessionGate session={session}>
-        <AppRouter />
+        <FollowCommonSettings>
+          <AppRouter />
+        </FollowCommonSettings>
       </SessionGate>
     </AppProviders>
   )

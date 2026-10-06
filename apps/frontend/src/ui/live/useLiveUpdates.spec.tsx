@@ -1,7 +1,8 @@
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { fakeLive } from '@/testing/fakeLive'
+import { fakeSettings } from '@/testing/fakeSettings'
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { HomeScreen } from '@/ui/home/HomeScreen'
@@ -31,6 +32,22 @@ describe('useLiveUpdates', () => {
     expect(
       await screen.findByRole('link', { name: 'Launch' })
     ).toBeInTheDocument()
+  })
+
+  it('rereads the settings when they change in Twake Workplace', async () => {
+    const live = fakeLive()
+    const settings = fakeSettings()
+    renderWithProviders(<Home />, { live, settings })
+    await screen.findByText('Create your first space')
+
+    settings.set({ language: 'fr' })
+    act(() => {
+      live.emit('settings', {})
+    })
+
+    await waitFor(() => {
+      expect(document.documentElement.lang).toBe('fr')
+    })
   })
 
   it('refreshes everything after the stream reopened', async () => {

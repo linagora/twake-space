@@ -60,10 +60,13 @@ for url in "${MAIL_URL:-}" "${MAIL_URL:+${SSO_BASE_URL:-}}"; do
   esac
 done
 frame_ancestors=${CSP_FRAME_ANCESTORS:-"'self'"}
+img_src="'self' data: blob:"
+[ -n "${CSP_IMG_SRC:-}" ] && img_src="$img_src $CSP_IMG_SRC"
 permissions_policy=${PERMISSIONS_POLICY:-"accelerometer=(), geolocation=(), gyroscope=(), magnetometer=(), payment=(), usb=()"}
 check_sources CSP_CONNECT_SRC "$connect_src"
 check_sources CSP_FRAME_SRC "$frame_src"
 check_sources CSP_FRAME_ANCESTORS "$frame_ancestors"
+check_sources CSP_IMG_SRC "$img_src"
 one_line PERMISSIONS_POLICY "$permissions_policy"
 case "$permissions_policy" in
   *[\"\\\$\;]*) fail "PERMISSIONS_POLICY must not contain double quotes, backslashes, dollar signs nor semicolons" ;;
@@ -71,7 +74,7 @@ esac
 
 # style-src 'unsafe-inline': MUI (emotion) injects its styles at runtime.
 csp="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
-csp="$csp; img-src 'self' data: blob:; font-src 'self' data:"
+csp="$csp; img-src $img_src; font-src 'self' data:"
 csp="$csp; connect-src $connect_src; frame-src $frame_src"
 csp="$csp; frame-ancestors $frame_ancestors"
 csp="$csp; object-src 'none'; base-uri 'self'; form-action 'self'"

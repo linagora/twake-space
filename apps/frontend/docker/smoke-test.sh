@@ -20,6 +20,7 @@ docker run -d --name "$NAME" \
   -e POSTHOG_HOST='https://posthog.example.com' \
   -e SENTRY_DSN='https://public-key@errors.example.com/42' \
   -e CSP_FRAME_ANCESTORS="'self' https://workplace.example.com" \
+  -e CSP_IMG_SRC='https://*.twake.example.com' \
   -e API_UPSTREAM='http://127.0.0.1:8080' \
   "$IMAGE" >/dev/null
 BASE="http://$(docker port "$NAME" 8080/tcp | head -1)"
@@ -59,6 +60,7 @@ csp="$(header / Content-Security-Policy)"
 expect 'CSP sent' "$csp" "default-src 'self'; script-src 'self';*"
 expect 'CSP: API, SSO, PostHog and Sentry origins in connect-src' "$csp" "*connect-src 'self' https://api.example.com https://sso.example.com https://posthog.example.com https://errors.example.com;*"
 expect 'CSP: Tasks, Mail and SSO origins in frame-src' "$csp" "*frame-src 'self' https://tasks.example.com https://mail.example.com https://sso.example.com;*"
+expect 'CSP: avatar origins in img-src' "$csp" "*img-src 'self' data: blob: https://*.twake.example.com;*"
 expect 'CSP: frame-ancestors from the environment' "$csp" "*frame-ancestors 'self' https://workplace.example.com;*"
 expect 'CSP on the SPA fallback too' "$(header /spaces/42 Content-Security-Policy)" "$csp"
 expect 'CSP on assets too' "$(header "$script" Content-Security-Policy)" "$csp"

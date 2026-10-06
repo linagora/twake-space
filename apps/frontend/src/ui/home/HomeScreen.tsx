@@ -10,6 +10,7 @@ import { LoadingRows, Page, TileEmpty } from '@/ds/Page'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
+import { useCommonSettings } from '@/ui/settings/useCommonSettings'
 import { useSpaceList } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
@@ -26,8 +27,20 @@ export function HomeScreen(): ReactElement {
   const [creating, setCreating] = useState(false)
   const allId = useId()
   useDocumentTitle(null)
+  const { settings } = useCommonSettings()
+  const timeZone = settings.timezone ?? undefined
   const now = new Date()
-  const name = user.name?.split(' ')[0] ?? user.email?.split('@')[0] ?? ''
+  const hour = Number(
+    new Intl.DateTimeFormat('en', {
+      hour: 'numeric',
+      hourCycle: 'h23',
+      timeZone
+    }).format(now)
+  )
+  const name =
+    (settings.displayName ?? user.name)?.split(' ')[0] ??
+    user.email?.split('@')[0] ??
+    ''
   const startCreating = (): void => {
     setCreating(true)
   }
@@ -48,12 +61,13 @@ export function HomeScreen(): ReactElement {
           {new Intl.DateTimeFormat(lang, {
             weekday: 'long',
             month: 'long',
-            day: 'numeric'
+            day: 'numeric',
+            timeZone
           }).format(now)}
         </Typography>
       </div>
       <Typography variant="h2" component="h1" className="u-mt-1 u-mb-1-half">
-        {t(`home.${greetingKey(now.getHours())}`, { name })}
+        {t(`home.${greetingKey(hour)}`, { name })}
       </Typography>
       {spaces.isPending && (
         <LoadingRows count={4} label={t('spaces.loading')} />
