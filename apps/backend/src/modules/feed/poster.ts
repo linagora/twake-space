@@ -2,6 +2,7 @@ import {
   and,
   asc,
   eq,
+  gt,
   isNotNull,
   isNull,
   ne,
@@ -43,22 +44,29 @@ function cardContent(card: StoredEvent) {
   }
 }
 
-async function firstCardOf(db: Db, spaceId: string, card: StoredEvent) {
+// The first card about the object shows its latest state, so an event older
+// than one already posted leaves it alone.
+async function cardToEdit(db: Db, spaceId: string, card: StoredEvent) {
+  const postedAbout = and(
+    eq(activityEvents.spaceId, spaceId),
+    eq(activityEvents.objectType, card.objectType),
+    eq(activityEvents.objectId, card.objectId),
+    isNotNull(activityEvents.matrixEventId),
+    ne(activityEvents.id, card.id)
+  )
+  const [newer] = await db
+    .select({ id: activityEvents.id })
+    .from(activityEvents)
+    .where(and(postedAbout, gt(activityEvents.time, card.time)))
+    .limit(1)
+  if (newer) return undefined
   const [first] = await db
     .select({
       matrixEventId: activityEvents.matrixEventId,
       category: activityEvents.category
     })
     .from(activityEvents)
-    .where(
-      and(
-        eq(activityEvents.spaceId, spaceId),
-        eq(activityEvents.objectType, card.objectType),
-        eq(activityEvents.objectId, card.objectId),
-        isNotNull(activityEvents.matrixEventId),
-        ne(activityEvents.id, card.id)
-      )
-    )
+    .where(postedAbout)
     .orderBy(asc(activityEvents.time), asc(activityEvents.id))
     .limit(1)
   return first
@@ -127,25 +135,27 @@ export async function postCards(
 
   await Promise.all(
     waiting.map(async space => {
-      const homeserver = {
-        url: space.url,
-        asToken: decrypt(key, space.asToken)
-      }
-      const cards = await db
-        .select()
-        .from(activityEvents)
-        .where(
-          and(
-            eq(activityEvents.spaceId, space.spaceId),
-            isNull(activityEvents.matrixEventId),
-            isNull(activityEvents.postFailedAt)
-          )
-        )
-        .orderBy(asc(activityEvents.time), asc(activityEvents.id))
-        .limit(CARDS_PER_SPACE)
       const room = `${space.url}|${space.roomId}`
-      for (const card of cards) {
-        try {
+      // A space stops at its first failure; nothing escapes, so the pass and
+      // its lock end only once every space is done.
+      try {
+        const homeserver = {
+          url: space.url,
+          asToken: decrypt(key, space.asToken)
+        }
+        const cards = await db
+          .select()
+          .from(activityEvents)
+          .where(
+            and(
+              eq(activityEvents.spaceId, space.spaceId),
+              isNull(activityEvents.matrixEventId),
+              isNull(activityEvents.postFailedAt)
+            )
+          )
+          .orderBy(asc(activityEvents.time), asc(activityEvents.id))
+          .limit(CARDS_PER_SPACE)
+        for (const card of cards) {
           if (!joined.has(room)) {
             await matrix.join(homeserver, space.roomId)
             joined.add(room)
@@ -173,7 +183,7 @@ export async function postCards(
             continue
           }
           // Before storing the card's id, so a failed edit is retried with it.
-          const first = await firstCardOf(db, space.spaceId, card)
+          const first = await cardToEdit(db, space.spaceId, card)
           if (first?.matrixEventId) {
             await matrix
               .send(
@@ -203,26 +213,25 @@ export async function postCards(
             .update(activityEvents)
             .set({ matrixEventId })
             .where(eq(activityEvents.id, card.id))
-        } catch (error) {
-          // The bot may have been kicked; join again on the next pass.
-          joined.delete(room)
-          const failures = (backoff.get(space.spaceId)?.failures ?? 0) + 1
-          const delayMs = Math.min(
-            MAX_BACKOFF_MS,
-            POST_EVERY_MS * 2 ** (failures - 1)
-          )
-          backoff.set(space.spaceId, {
-            failures,
-            retryAt: Date.now() + delayMs
-          })
-          log.warn(
-            { err: error, spaceId: space.spaceId, failures, delayMs },
-            'card not posted, retrying'
-          )
-          return
         }
+        backoff.delete(space.spaceId)
+      } catch (error) {
+        // The bot may have been kicked; join again on the next pass.
+        joined.delete(room)
+        const failures = (backoff.get(space.spaceId)?.failures ?? 0) + 1
+        const delayMs = Math.min(
+          MAX_BACKOFF_MS,
+          POST_EVERY_MS * 2 ** (failures - 1)
+        )
+        backoff.set(space.spaceId, {
+          failures,
+          retryAt: Date.now() + delayMs
+        })
+        log.warn(
+          { err: error, spaceId: space.spaceId, failures, delayMs },
+          'card not posted, retrying'
+        )
       }
-      backoff.delete(space.spaceId)
     })
   )
 }

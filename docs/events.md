@@ -172,7 +172,7 @@ sequenceDiagram
 
 - The poster runs every second under a Postgres advisory lock, so one replica posts at a time.
 - A space is picked when it has unposted cards, a `matrix_space` resource, and its organization has chat available and a homeserver. Up to 50 spaces per pass, 50 cards per space, oldest first.
-- Spaces post in parallel. Within a space, cards go in order and the space stops at its first failure.
+- Spaces post in parallel. Within a space, cards go in order and the space stops at its first failure, wherever it happens (reading its homeserver token, its cards, or Matrix). The pass, and the lock, end once every space is done.
 - A failing space waits before its next try: 1 second, doubling up to 5 minutes, reset by a pass where all its cards post. Other spaces post meanwhile.
 - A card the homeserver refuses for good (400 or 413) gets `post_failed_at`, is not retried, and the next card posts. When only the edit of the first card is refused, the card stays posted and the first card is left as it was.
 - The transaction id is the card's `id`, so a retried send does not post twice.
@@ -194,7 +194,7 @@ The event type is `com.twake.feed.<category>`, with `<category>` one of `message
 
 ### Edits
 
-When a card is about an object (same space, `object.type`, `object.id`) that already has a posted card, the bot posts the new card, then edits the first card with the new content (`m.new_content`, `m.relates_to` with `rel_type: m.replace`). The edit uses the first card's event type and the transaction id `<card id>.edit`.
+When a card is about an object (same space, `object.type`, `object.id`) that already has a posted card, the bot posts the new card, then edits the first card with the new content (`m.new_content`, `m.relates_to` with `rel_type: m.replace`). The edit uses the first card's event type and the transaction id `<card id>.edit`. A card older (by `time`) than another posted card about the object is posted without the edit, so the first card keeps the latest content.
 
 ## Matrix events back into Postgres
 
