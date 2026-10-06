@@ -15,23 +15,13 @@ import { matrixClient, MatrixError, type Matrix } from '../../infra/matrix.ts'
 import { decrypt } from '../../infra/secrets.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
 import { spaceResources, spaces } from '../spaces/schema.ts'
+import type { StoredContent } from './items.ts'
 import { activityEvents } from './schema.ts'
 
 const POST_EVERY_MS = 1000
 const CARDS_PER_SPACE = 50
 const SPACES_PER_PASS = 50
 const MAX_BACKOFF_MS = 5 * 60_000
-
-interface StoredContent {
-  object: {
-    type: string
-    id: string
-    title: string
-    container?: { kind: string; id: string }
-  }
-  preview?: string
-  state?: object
-}
 
 type StoredEvent = typeof activityEvents.$inferSelect
 
