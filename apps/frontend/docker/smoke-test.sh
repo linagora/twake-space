@@ -19,6 +19,7 @@ docker run -d --name "$NAME" \
   -e SSO_CLIENT_ID='twake-space' \
   -e POSTHOG_HOST='https://posthog.example.com' \
   -e SENTRY_DSN='https://public-key@errors.example.com/42' \
+  -e SENTRY_FEEDBACK_ENABLED='true' \
   -e CSP_FRAME_ANCESTORS="'self' https://workplace.example.com" \
   -e CSP_IMG_SRC='https://*.twake.example.com' \
   -e API_UPSTREAM='http://127.0.0.1:8080' \
@@ -53,6 +54,7 @@ expect '/ serves index.html' "$(body "$BASE/")" '*<div id="root"*'
 expect 'unknown routes fall back to index.html' "$(body "$BASE/spaces/42")" '*<div id="root"*'
 expect 'index.html is revalidated' "$(header / Cache-Control)" 'no-cache'
 expect '/.env.js comes from the environment' "$(body "$BASE/.env.js")" '*var SSO_CLIENT_ID = "twake-space"*'
+expect '/.env.js carries the feedback switch' "$(body "$BASE/.env.js")" '*var SENTRY_FEEDBACK_ENABLED = "true"*'
 expect '/.env.js is never cached' "$(header /.env.js Cache-Control)" 'no-store'
 script="$(body "$BASE/" | grep -o 'src="/static/js/index[^"]*"' | head -1 | cut -d'"' -f2)"
 expect 'hashed assets are cached for a year' "$(header "$script" Cache-Control)" '*immutable'

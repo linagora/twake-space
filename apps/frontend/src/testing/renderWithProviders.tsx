@@ -3,6 +3,7 @@ import type { ReactElement } from 'react'
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
 
 import type { DirectoryService } from '@/application/directory'
+import type { FeedbackService } from '@/application/feedback'
 import type { FeedService } from '@/application/feed'
 import type { LiveService } from '@/application/live'
 import type { SessionService } from '@/application/session'
@@ -29,6 +30,7 @@ interface Options {
   directory?: DirectoryService
   live?: LiveService
   feed?: FeedService
+  feedback?: FeedbackService | null
   path?: string
   tasksUrl?: string | null
   mailUrl?: string | null
@@ -44,6 +46,7 @@ function withProviders(
     directory = fakeDirectory(),
     live = fakeLive(),
     feed = fakeFeed(),
+    feedback = null,
     tasksUrl = 'https://tasks.test/',
     mailUrl = 'https://mail.test/'
   }: Options
@@ -58,6 +61,7 @@ function withProviders(
         directory,
         live,
         feed,
+        feedback,
         tasksUrl,
         mailUrl
       }}

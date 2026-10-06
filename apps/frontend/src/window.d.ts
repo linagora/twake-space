@@ -12,5 +12,6 @@ declare global {
     SSO_POST_LOGOUT_REDIRECT?: string
     SENTRY_DSN?: string
     SENTRY_ENVIRONMENT?: string
+    SENTRY_FEEDBACK_ENABLED?: string
   }
 }

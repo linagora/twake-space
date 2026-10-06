@@ -37,6 +37,7 @@ const services = {
     me: { id: 'uuid-alice', name: seedUser.name },
     roles: Object.fromEntries(seedSpaces.map(space => [space.id, space.role]))
   }),
+  feedback: null,
   tasksUrl: window.TASKS_URL ?? null,
   mailUrl: window.MAIL_URL ?? null
 }
