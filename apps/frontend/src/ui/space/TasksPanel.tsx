@@ -3,7 +3,7 @@ import { useEffect, useRef, type ReactElement } from 'react'
 
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
-import { useEmbedPath } from '@/ui/space/useEmbedPath'
+import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
 
 function framedPath(data: unknown): string | null {
   if (typeof data !== 'object' || data === null) return null
@@ -40,11 +40,6 @@ function TasksFrame({
   const theme = (mode === 'system' ? systemMode : mode) ?? 'light'
   const frame = useRef<HTMLIFrameElement>(null)
   const origin = new URL(tasksUrl).origin
-  const { src, follow } = useEmbedPath(
-    tasksUrl,
-    `/embed/projects/${projectId}`,
-    `/spaces/${spaceId}/tasks`
-  )
 
   const loaded = useRef(false)
   const sendTheme = () => {
@@ -57,33 +52,20 @@ function TasksFrame({
   }
   useEffect(sendTheme)
 
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (
-        event.origin !== origin ||
-        event.source !== frame.current?.contentWindow
-      ) {
-        return
-      }
-      const path = framedPath(event.data)
-      if (path) follow(path)
-    }
-    window.addEventListener('message', onMessage)
-    return () => {
-      window.removeEventListener('message', onMessage)
-    }
-  }, [follow, origin])
-
   return (
-    <iframe
-      ref={frame}
+    <EmbeddedAppFrame
+      appUrl={tasksUrl}
+      embedPath={`/embed/projects/${projectId}`}
+      tabPath={`/spaces/${spaceId}/tasks`}
       title={t('tabs.tasks')}
-      src={src}
-      sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-      className="u-w-100 u-flex-auto u-bdw-0"
-      onLoad={() => {
+      frameRef={frame}
+      onFrameLoad={() => {
         loaded.current = true
         sendTheme()
+      }}
+      onFrameMessage={(data, follow) => {
+        const path = framedPath(data)
+        if (path) follow(path)
       }}
     />
   )
