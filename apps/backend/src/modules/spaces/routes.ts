@@ -26,7 +26,11 @@ export function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
       ? inArray(spaces.spaceId, caller.spaceIds)
       : undefined
   )
-  const fields = { id: spaces.spaceId, name: spaces.name }
+  const fields = {
+    id: spaces.spaceId,
+    name: spaces.name,
+    createdAt: spaces.createdAt
+  }
   const { userId } = caller
   if (userId === null) {
     const role = caller.kind === 'token' ? caller.role : null
@@ -65,7 +69,8 @@ export function registerSpaceRoutes(
   const provided = new Set(deps.apps.map(app => APP_KINDS[app]))
 
   app.get('/spaces', { preHandler: authorize('space:read') }, async request => {
-    return { spaces: await reachableSpaces(db, callerOf(request)) }
+    const reached = await reachableSpaces(db, callerOf(request))
+    return { spaces: reached.map(({ id, name, role }) => ({ id, name, role })) }
   })
 
   app.get(
@@ -80,10 +85,6 @@ export function registerSpaceRoutes(
       if (!space) {
         return reply.code(404).send({ error: 'not_found' })
       }
-      const [created] = await db
-        .select({ createdAt: spaces.createdAt })
-        .from(spaces)
-        .where(eq(spaces.spaceId, spaceId))
 
       const [members, groups, resources, [organization]] = await Promise.all([
         db
@@ -126,7 +127,6 @@ export function registerSpaceRoutes(
 
       return {
         ...space,
-        createdAt: created?.createdAt,
         chat: organization?.chat ?? false,
         mail: organization?.mail ?? false,
         homeserverUrl: organization?.homeserverUrl ?? null,

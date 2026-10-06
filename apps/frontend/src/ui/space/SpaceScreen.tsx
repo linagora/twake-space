@@ -27,7 +27,6 @@ import { TasksPanel } from '@/ui/space/TasksPanel'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
-// The current time, read again when `at` comes.
 function useNowAfter(at: number): number {
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
