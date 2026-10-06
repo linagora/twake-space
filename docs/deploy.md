@@ -152,7 +152,7 @@ On `SIGTERM` or `SIGINT` it reports not ready, stops the jobs, disconnects from 
 
 ### Database migrations
 
-Migrations run at every startup, from the `apps/backend/drizzle` folder shipped in the image, with the Drizzle migrator. There is no separate migration job. Developers generate new migrations with `npm run db:generate` (drizzle-kit).
+Migrations run at every startup, from the `apps/backend/drizzle` folder shipped in the image, with the Drizzle migrator. There is no separate migration job. Replicas take a Postgres advisory lock first, so one migrates at a time and the others wait, then find nothing left to apply. Developers generate new migrations with `npm run db:generate` (drizzle-kit).
 
 ### Health
 
