@@ -25,6 +25,7 @@
     "loading": "Cargando espacios…",
     "loadFailed": "No se pudieron cargar tus espacios.",
     "none": "Todavía no estás en ningún espacio.",
+    "noneHint": "Crea uno para compartir chat, archivos y tareas con tu equipo.",
     "create": "Crear un espacio",
     "name": "Nombre",
     "createFailed": "No se pudo crear el espacio."

@@ -1,17 +1,10 @@
-import {
-  Alert,
-  Button,
-  Chip,
-  CircularProgress,
-  Link,
-  List,
-  ListItem,
-  ListItemText,
-  Typography
-} from '@linagora/twake-mui'
+import { Icon, Plus, Team } from '@linagora/twake-icons'
+import { Alert, Button, Empty } from '@linagora/twake-mui'
 import { useState, type ReactElement } from 'react'
 import { Link as RouterLink } from 'react-router'
 
+import { NameAvatar } from '@/ds/AppFrame'
+import { LoadingRows, Page, PageHeader, Row, RowList } from '@/ds/Page'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSpaceList } from '@/ui/spaces/queries'
@@ -22,40 +15,48 @@ export function HomeScreen(): ReactElement {
   const spaces = useSpaceList()
   const [creating, setCreating] = useState(false)
   useDocumentTitle(null)
+  const create = (
+    <Button
+      variant="contained"
+      startIcon={<Icon icon={Plus} />}
+      onClick={() => {
+        setCreating(true)
+      }}
+    >
+      {t('spaces.create')}
+    </Button>
+  )
 
   return (
-    <main className="u-p-2">
-      <Typography variant="h1">{t('spaces.title')}</Typography>
-      <Button
-        variant="contained"
-        onClick={() => {
-          setCreating(true)
-        }}
-      >
-        {t('spaces.create')}
-      </Button>
+    <Page>
+      <PageHeader
+        title={t('spaces.title')}
+        actions={spaces.data?.length ? create : undefined}
+      />
       {spaces.isPending && (
-        <CircularProgress aria-label={t('spaces.loading')} />
+        <LoadingRows count={4} label={t('spaces.loading')} />
       )}
       {spaces.isError && (
         <Alert severity="error">{t('spaces.loadFailed')}</Alert>
       )}
-      {spaces.data?.length === 0 && <Typography>{t('spaces.none')}</Typography>}
+      {spaces.data?.length === 0 && (
+        <Empty icon={Team} title={t('spaces.none')} text={t('spaces.noneHint')}>
+          {create}
+        </Empty>
+      )}
       {spaces.data && spaces.data.length > 0 && (
-        <List>
+        <RowList label={t('spaces.title')}>
           {spaces.data.map(space => (
-            <ListItem key={space.id}>
-              <ListItemText
-                primary={
-                  <Link component={RouterLink} to={`/spaces/${space.id}`}>
-                    {space.name}
-                  </Link>
-                }
-              />
-              <Chip label={t(`roles.${space.role}`)} size="small" />
-            </ListItem>
+            <Row
+              key={space.id}
+              icon={<NameAvatar name={space.name} size="m" />}
+              link={
+                <RouterLink to={`/spaces/${space.id}`}>{space.name}</RouterLink>
+              }
+              secondary={t(`roles.${space.role}`)}
+            />
           ))}
-        </List>
+        </RowList>
       )}
       {creating && (
         <CreateSpaceDialog
@@ -64,6 +65,6 @@ export function HomeScreen(): ReactElement {
           }}
         />
       )}
-    </main>
+    </Page>
   )
 }

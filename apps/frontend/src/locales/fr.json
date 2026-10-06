@@ -25,6 +25,7 @@
     "loading": "Chargement des espaces…",
     "loadFailed": "Vos espaces n'ont pas pu être chargés.",
     "none": "Vous n'êtes encore dans aucun espace.",
+    "noneHint": "Créez-en un pour partager discussions, fichiers et tâches avec votre équipe.",
     "create": "Créer un espace",
     "name": "Nom",
     "createFailed": "L'espace n'a pas pu être créé."

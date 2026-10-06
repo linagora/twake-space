@@ -25,6 +25,7 @@
     "loading": "Loading spaces…",
     "loadFailed": "Your spaces could not be loaded.",
     "none": "You are not in any space yet.",
+    "noneHint": "Create one to share chat, files and tasks with your team.",
     "create": "Create a space",
     "name": "Name",
     "createFailed": "The space could not be created."
