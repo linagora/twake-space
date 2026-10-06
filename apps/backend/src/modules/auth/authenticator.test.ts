@@ -62,13 +62,28 @@ describe('createAuthenticator', () => {
     expect(identify).toHaveBeenCalledTimes(2)
   })
 
-  it('does not cache a refused token', async () => {
-    const { authenticate, identify } = setUp(null)
+  it('remembers a refused token for 60 seconds', async () => {
+    const { authenticate, identify, advance } = setUp(null)
 
     await expect(authenticate('token')).resolves.toBeNull()
+    advance(59_000)
+    await expect(authenticate('token')).resolves.toBeNull()
+    const within = vi.mocked(identify).mock.calls.length
+    advance(1_000)
     await authenticate('token')
 
+    expect(within).toBe(1)
     expect(identify).toHaveBeenCalledTimes(2)
+  })
+
+  it('remembers at most 10,000 refused tokens, forgetting the oldest', async () => {
+    const { authenticate, identify } = setUp(null)
+
+    for (let i = 0; i <= 10_000; i++) await authenticate(`token-${String(i)}`)
+    await authenticate('token-10000')
+    await authenticate('token-0')
+
+    expect(identify).toHaveBeenCalledTimes(10_002)
   })
 
   it('refuses a cached token once its session is revoked', async () => {

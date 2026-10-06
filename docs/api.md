@@ -16,7 +16,7 @@ Request logging skips every path under `/health/`.
 Every route behind `authorize` reads `Authorization: Bearer <token>`. The token's prefix picks how it is checked.
 
 - A token starting with `tws_` is an API token. Its SHA-256 hash is looked up among tokens that are not revoked and not expired, and its `lastUsedAt` is stamped. A token owned by a technical account also needs that account to still exist in ldap-rest (checked at most every 5 minutes per account).
-- Any other token is an OIDC access token. The backend introspects it and fetches userinfo in parallel. It refuses a token that is inactive, expired, missing the configured audience, or whose userinfo lacks `sub`, `uuid`, `email` or `sid`. A valid identity is cached for 60 seconds (never past the token's expiry), and its session id is checked against revoked sessions on every request.
+- Any other token is an OIDC access token. The backend introspects it and fetches userinfo in parallel. It refuses a token that is inactive, expired, missing the configured audience, or whose userinfo lacks `sub`, `uuid`, `email` or `sid`. A valid identity is cached for 60 seconds (never past the token's expiry), and its session id is checked against revoked sessions on every request. A refused token is remembered for 60 seconds too (up to 10,000 of them per replica), so sending it again costs no provider call. A provider error is not a refusal and is never remembered.
 
 This gives two kinds of caller.
 

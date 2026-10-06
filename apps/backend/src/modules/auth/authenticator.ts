@@ -5,6 +5,7 @@ import type { AuthStore } from './store.ts'
 export type Authenticate = (accessToken: string) => Promise<Identity | null>
 
 const CACHE_TTL_MS = 60_000
+const MAX_REFUSED = 10_000
 
 export function sha256(value: string): string {
   return createHash('sha256').update(value).digest('base64url')
@@ -25,14 +26,33 @@ export function createAuthenticator(deps: {
     }
   }
 
+  // Spares the provider a refused token sent again; bounded, since anyone can
+  // send new ones.
+  const refused = new Map<string, number>()
+  function refuse(key: string, at: number) {
+    const [oldest] = refused.keys()
+    if (oldest !== undefined && refused.size >= MAX_REFUSED) {
+      refused.delete(oldest)
+    }
+    refused.set(key, at + CACHE_TTL_MS)
+  }
+
   return async accessToken => {
     const key = sha256(accessToken)
     const at = now()
+    const refusedUntil = refused.get(key)
+    if (refusedUntil !== undefined) {
+      if (refusedUntil > at) return null
+      refused.delete(key)
+    }
     let entry = cache.get(key)
     if (!entry || entry.until <= at) {
       cache.delete(key)
       const identity = await deps.provider.identify(accessToken)
-      if (!identity) return null
+      if (!identity) {
+        refuse(key, at)
+        return null
+      }
       evictExpired(at)
       entry = {
         identity,
