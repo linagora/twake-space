@@ -9,21 +9,23 @@ const SERVER_URL =
 export interface TestDb {
   db: Db
   sql: postgres.Sql
+  url: string
   drop(): Promise<void>
 }
 
 // One migrated database per test file, so files run in parallel.
-export async function createTestDb(): Promise<TestDb> {
+export async function createTestDb({ migrated = true } = {}): Promise<TestDb> {
   const name = `test_${randomUUID().replaceAll('-', '')}`
   const server = postgres(SERVER_URL, { max: 1, onnotice: () => undefined })
   await server.unsafe(`create database ${name}`)
   const url = new URL(SERVER_URL)
   url.pathname = `/${name}`
   const { sql, db } = createDb(url.toString())
-  await migrateDb(db)
+  if (migrated) await migrateDb(sql)
   return {
     db,
     sql,
+    url: url.toString(),
     async drop() {
       await sql.end()
       await server.unsafe(`drop database ${name}`)

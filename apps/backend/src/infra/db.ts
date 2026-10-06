@@ -26,8 +26,23 @@ export function postgresRefusal(error: unknown): string | null {
   return null
 }
 
-export async function migrateDb(db: Db): Promise<void> {
-  await migrate(db, {
-    migrationsFolder: fileURLToPath(new URL('../../drizzle', import.meta.url))
-  })
+// The drizzle migrator takes no lock: replicas starting together would apply
+// the same migration. A reserved connection holds the session lock while the
+// pool migrates, since drizzle cannot run on a reserved connection.
+export async function migrateDb(sql: postgres.Sql): Promise<void> {
+  const connection = await sql.reserve()
+  try {
+    await connection`select pg_advisory_lock(hashtext('migrations'))`
+    try {
+      await migrate(drizzle({ client: sql }), {
+        migrationsFolder: fileURLToPath(
+          new URL('../../drizzle', import.meta.url)
+        )
+      })
+    } finally {
+      await connection`select pg_advisory_unlock(hashtext('migrations'))`
+    }
+  } finally {
+    connection.release()
+  }
 }

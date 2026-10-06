@@ -39,7 +39,7 @@ const config = loadConfig()
 const logger = pino({ level: config.LOG_LEVEL })
 
 const { sql, db } = createDb(config.DATABASE_URL)
-await migrateDb(db)
+await migrateDb(sql)
 let homeserverId: string | undefined
 if (config.homeserver) {
   const { key, ...homeserver } = config.homeserver
