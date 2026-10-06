@@ -2,11 +2,13 @@
   "app": {
     "name": "Twake Space"
   },
+  "shell": {
+    "yourSpaces": "Vos espaces"
+  },
   "session": {
     "signingIn": "Connexion…",
     "failed": "La connexion a échoué.",
     "retry": "Réessayer",
-    "signedInAs": "Connecté en tant que %{name}",
     "signOut": "Se déconnecter"
   },
   "common": {
