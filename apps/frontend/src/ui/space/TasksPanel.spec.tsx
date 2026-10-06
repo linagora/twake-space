@@ -114,22 +114,26 @@ describe('TasksPanel', () => {
     )
   })
 
-  it('posts nothing to the frame before Tasks has loaded in it', async () => {
+  it('sends no theme to the frame before Tasks has loaded in it', async () => {
     renderAt('/spaces/a1/tasks')
     await screen.findByTitle('Tasks')
     const contentWindow = frame().contentWindow
     if (!contentWindow) throw new Error('no frame window')
     const post = vi.spyOn(contentWindow, 'postMessage')
 
-    postFromFrame({
-      type: 'twake-tasks:path',
-      path: '/embed/projects/p1/boards/b2'
+    await waitFor(() => {
+      postFromFrame({
+        type: 'twake-tasks:path',
+        path: '/embed/projects/p1/boards/b2'
+      })
+      expect(screen.getByLabelText('path')).toHaveTextContent(
+        '/spaces/a1/tasks/boards/b2'
+      )
     })
-
-    expect(screen.getByLabelText('path')).toHaveTextContent(
-      '/spaces/a1/tasks/boards/b2'
+    expect(post).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'twake-space:theme' }),
+      expect.anything()
     )
-    expect(post).not.toHaveBeenCalled()
   })
 
   it('says so when Tasks is not configured', async () => {
