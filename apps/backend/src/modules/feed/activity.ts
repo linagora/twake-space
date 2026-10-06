@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, or, sql } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { CloudEvent } from '../../events/envelope.ts'
@@ -16,7 +16,15 @@ import {
   spaceResourceKind,
   spaceResources
 } from '../spaces/schema.ts'
-import { activityEvents, type Actor, type feedCategory } from './schema.ts'
+import { tellFeed } from './live.ts'
+import {
+  activityEvents,
+  feedCards,
+  feedItemReactions,
+  feedPosts,
+  type Actor,
+  type feedCategory
+} from './schema.ts'
 
 type Category = (typeof feedCategory.enumValues)[number]
 type SpaceResourceKind = (typeof spaceResourceKind.enumValues)[number]
@@ -122,18 +130,16 @@ async function checkActor(
   actor: Actor | null
 ) {
   if (actor?.type !== 'user') return
-  if (actor.id) {
-    const [member] = await tx
-      .select({ userId: spaceMembers.userId })
-      .from(spaceMembers)
-      .where(
-        and(
-          eq(spaceMembers.spaceId, spaceId),
-          eq(spaceMembers.userId, actor.id)
-        )
-      )
-    if (member) return
-  }
+  // Sent by email only and no member has it: someone outside the space, such
+  // as an attendee replying to a team calendar event.
+  if (!actor.id) return
+  const [member] = await tx
+    .select({ userId: spaceMembers.userId })
+    .from(spaceMembers)
+    .where(
+      and(eq(spaceMembers.spaceId, spaceId), eq(spaceMembers.userId, actor.id))
+    )
+  if (member) return
   // The copy keeps linked groups, not their members.
   const [group] = await tx
     .select({ groupId: spaceGroups.groupId })
@@ -147,6 +153,26 @@ async function checkActor(
     { spaceId, actorId: actor.id },
     'actor not a direct member of a space with linked groups'
   )
+}
+
+// The card keeps the place of the object's first event and shows its latest,
+// whatever order the events arrive in.
+async function showCard(tx: Tx, card: typeof feedCards.$inferInsert) {
+  const [shown] = await tx
+    .insert(feedCards)
+    .values(card)
+    .onConflictDoUpdate({
+      target: [feedCards.spaceId, feedCards.objectType, feedCards.objectId],
+      set: {
+        time: sql`least(${feedCards.time}, excluded.time)`,
+        latestEventId: sql`case when excluded.latest_time >= ${feedCards.latestTime}
+          then excluded.latest_event_id else ${feedCards.latestEventId} end`,
+        latestTime: sql`greatest(${feedCards.latestTime}, excluded.latest_time)`
+      }
+    })
+    .returning({ id: feedCards.id, added: sql<boolean>`xmax = 0` })
+  if (!shown) throw new Error('the card upsert returned no row')
+  await tellFeed(tx, card.spaceId, shown.id, shown.added ? 'added' : 'changed')
 }
 
 function store(category: Category): Handler<CloudEvent> {
@@ -180,9 +206,20 @@ function store(category: Category): Handler<CloudEvent> {
         time: event.time ? new Date(event.time) : new Date()
       })
       .onConflictDoNothing()
-      .returning({ id: activityEvents.id })
+      .returning({ id: activityEvents.id, time: activityEvents.time })
     // Replayed under another consumer group: stored and notified already.
     if (!stored) return
+    if (spaceId) {
+      await showCard(tx, {
+        spaceId,
+        objectType: data.object.type,
+        objectId: data.object.id,
+        category,
+        time: stored.time,
+        latestEventId: stored.id,
+        latestTime: stored.time
+      })
+    }
     // Twake Tasks notifies its own users.
     if (event.type.startsWith('com.twake.tasks.')) return
     await notifyRecipients(
@@ -200,17 +237,27 @@ const handlers = new Map(
 
 export async function forgetActor(
   tx: Tx,
-  user: { uuid: string } | { email: string }
+  user: { uuid: string; email?: string } | { uuid?: never; email: string }
 ) {
+  const { uuid, email } = user
+  if (uuid) {
+    await tx
+      .update(feedPosts)
+      .set({ authorId: null })
+      .where(eq(feedPosts.authorId, uuid))
+    await tx.delete(feedItemReactions).where(eq(feedItemReactions.userId, uuid))
+  }
+  // An actor sent by email only keeps a null id, so the email matches it too.
   await tx
     .update(activityEvents)
     .set({ actor: { type: 'deleted_user' } satisfies Actor })
     .where(
       and(
         sql`${activityEvents.actor}->>'type' = 'user'`,
-        'uuid' in user
-          ? sql`${activityEvents.actor}->>'id' = ${user.uuid}`
-          : sql`${activityEvents.actor}->>'email' = ${user.email}`
+        or(
+          uuid ? sql`${activityEvents.actor}->>'id' = ${uuid}` : undefined,
+          email ? sql`${activityEvents.actor}->>'email' = ${email}` : undefined
+        )
       )
     )
 }
