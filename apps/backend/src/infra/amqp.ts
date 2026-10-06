@@ -150,14 +150,17 @@ export function deliveryHandler(
   }
 }
 
+// Through the queue's dead letter exchange and the key the client binds
+// <queue>.dlq with: the default exchange is not ours to publish to.
 export function deadLetterQueue(
   client: Pick<RabbitMQClient, 'publish'>,
-  queue: string
+  topology: AmqpTopology
 ): DeadLetter {
+  const { routingKey } = subscription(topology)
   return (message, reason) =>
     client.publish(
-      '',
-      `${queue}.dlq`,
+      topology.deadLetterExchange,
+      `${routingKey}.dead`,
       message.body as Record<string, unknown>,
       {
         ...(message.messageId !== undefined && {
