@@ -32,7 +32,9 @@ export function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
     id: spaces.spaceId,
     name: spaces.name,
     createdAt: spaces.createdAt,
-    color: spaceSettings.color
+    color: spaceSettings.color,
+    description: spaceSettings.description,
+    apps: spaceSettings.apps
   }
   const settings = eq(spaceSettings.spaceId, spaces.spaceId)
   const { userId } = caller
@@ -99,13 +101,6 @@ export function registerSpaceRoutes(
         return reply.code(404).send({ error: 'not_found' })
       }
 
-      const [settings] = await db
-        .select({
-          description: spaceSettings.description,
-          apps: spaceSettings.apps
-        })
-        .from(spaceSettings)
-        .where(eq(spaceSettings.spaceId, spaceId))
       const [members, groups, resources, [organization]] = await Promise.all([
         db
           .select({
@@ -147,8 +142,8 @@ export function registerSpaceRoutes(
 
       return {
         ...space,
-        description: settings?.description ?? '',
-        apps: settings?.apps ?? spaceTab.enumValues,
+        description: space.description ?? '',
+        apps: space.apps ?? spaceTab.enumValues,
         chat: organization?.chat ?? false,
         mail: organization?.mail ?? false,
         homeserverUrl: organization?.homeserverUrl ?? null,

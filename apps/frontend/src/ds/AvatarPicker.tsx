@@ -8,7 +8,6 @@ import {
 } from '@linagora/twake-mui'
 import type { ReactElement, ReactNode } from 'react'
 
-// The pen badge tells the avatar opens a picker.
 export function AvatarPicker({
   avatar,
   pickLabel,
