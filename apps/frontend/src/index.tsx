@@ -11,16 +11,11 @@ import { httpSettings } from '@/adapters/http/httpSettings'
 import { httpSpaces } from '@/adapters/http/httpSpaces'
 import { liveStream } from '@/adapters/http/liveStream'
 import { oidcSession, readSsoConfig } from '@/adapters/oidc/oidcSession'
+import { readSentryConfig } from '@/adapters/sentry/sentryConfig'
+import { startSentry } from '@/adapters/sentry/sentryReporting'
 import { App } from '@/app/App'
 
-Sentry.init({
-  dsn: window.SENTRY_DSN,
-  environment: window.SENTRY_ENVIRONMENT,
-  integrations: [
-    Sentry.consoleLoggingIntegration({ levels: ['info', 'warn', 'error'] })
-  ],
-  denyUrls: [/^(chrome|moz|safari(-web)?)-extension:\/\//]
-})
+const feedback = startSentry(readSentryConfig(), __APP_VERSION__)
 
 const container = document.getElementById('root')
 if (!container) throw new Error('Root element #root not found')
@@ -35,6 +30,7 @@ const services = {
   directory: httpDirectory(api),
   live: liveStream(api),
   feed: httpFeed(api),
+  feedback,
   tasksUrl: window.TASKS_URL ?? null,
   mailUrl: window.MAIL_URL ?? null
 }

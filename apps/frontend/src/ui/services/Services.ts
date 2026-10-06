@@ -1,6 +1,7 @@
 import { createContext, use } from 'react'
 
 import type { DirectoryService } from '@/application/directory'
+import type { FeedbackService } from '@/application/feedback'
 import type { FeedService } from '@/application/feed'
 import type { LiveService } from '@/application/live'
 import type { SettingsService } from '@/application/settings'
@@ -12,6 +13,8 @@ export interface Services {
   directory: DirectoryService
   live: LiveService
   feed: FeedService
+  // Null without a Sentry DSN
+  feedback: FeedbackService | null
   tasksUrl: string | null
   mailUrl: string | null
 }
