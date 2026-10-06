@@ -42,6 +42,7 @@ function setup(handler: Handler<CloudEvent>) {
     },
     dedupe: postgresDeduplicator(testDb.db, 'twake-space'),
     deadLetter,
+    park: vi.fn(),
     logger: pino({ level: 'silent' })
   })
   return { handle, deadLetter }

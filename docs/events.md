@@ -50,7 +50,8 @@ Each message ends in one outcome:
 - unrouted: no handler for the key. Logged at debug and skipped.
 - malformed: unparseable, or a handler threw `MalformedEventError`. Logged and skipped.
 - rejected: a handler threw `RejectedEventError`, or Postgres refused the event's data (an error of class 22 or 23, such as a NUL byte in a preview). The message goes to `<topic>.dlq.twake-space` with a `twake-space-reason` header.
-- failed: any other error. The offset is not committed and the partition pauses, 1 second after the first failure, doubling up to a minute, before the same message comes back. Other partitions keep flowing.
+- parked: a handler threw `NotYetKnownError`, because the event is about a space or member the copy does not hold yet. The event goes to the `parked_events` table and the partition moves on. One replica retries parked events every 5 seconds, and sends one still waiting after 5 minutes to the dead letter topic.
+- failed: any other error, or a failed offset commit. The offset is not committed and the partition pauses, 1 second after the first failure, doubling up to a minute, before the same message comes back. Other partitions keep flowing.
 
 The dedupe claim and the handler run in the same Postgres transaction, so a handler failure releases the claim.
 
@@ -137,7 +138,7 @@ The actor stored on the card is one of:
 - `{ type: 'deleted_user' }` once the user is deleted.
 - null when the event names no actor.
 
-When `space_id` is set, the event is rejected to the dead letter topic if the space belongs to another organization. An unknown space or a user actor who is not a member may only mean the platform topic is behind, so the event fails and is retried while its `time` is within 5 minutes of now, and is rejected after that. A space with linked groups accepts a non member actor with a warning, since the copy does not hold group members.
+When `space_id` is set, the event is rejected to the dead letter topic if the space belongs to another organization. An unknown space or a user actor who is not a member may only mean the platform topic is behind, so the event is parked. A parked event is handled after the events that came after it on its partition. A space with linked groups accepts a non member actor with a warning, since the copy does not hold group members.
 
 The card stores everything in `data` except `recipients`.
 

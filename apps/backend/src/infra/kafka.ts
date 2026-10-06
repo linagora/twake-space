@@ -91,6 +91,9 @@ export function eachMessageWithBackoff(
     const key = `${topic}|${String(partition)}`
     try {
       await handle(topic, message)
+      await consumer.commitOffsets([
+        { topic, partition, offset: (BigInt(message.offset) + 1n).toString() }
+      ])
     } catch (error) {
       const failed = (failures.get(key) ?? 0) + 1
       failures.set(key, failed)
@@ -117,9 +120,6 @@ export function eachMessageWithBackoff(
       throw error
     }
     failures.delete(key)
-    await consumer.commitOffsets([
-      { topic, partition, offset: (BigInt(message.offset) + 1n).toString() }
-    ])
   }
 }
 

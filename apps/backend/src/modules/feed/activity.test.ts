@@ -1,7 +1,7 @@
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { CloudEvent } from '../../events/envelope.ts'
-import { RejectedEventError } from '../../events/router.ts'
+import { NotYetKnownError, RejectedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { notifications, notificationSettings } from '../notifications/schema.ts'
 import { spaceGroups, spaceMembers, spaces } from '../spaces/schema.ts'
@@ -177,48 +177,20 @@ describe('activity events', () => {
     expect(await stored()).toEqual([])
   })
 
-  it('rejects an event about a space it does not know', async () => {
+  it('waits for a space it does not know yet', async () => {
     const event = anEvent()
     event.data.object = {
       ...event.data.object,
       space_id: '00000000-0000-4000-8000-000000000000'
     }
 
-    await expect(store(event)).rejects.toThrow(RejectedEventError)
+    await expect(store(event)).rejects.toThrow(NotYetKnownError)
   })
 
-  it('retries a recent event about a space or member it does not know yet', async () => {
-    const time = new Date().toISOString()
-    const event = anEvent({ time })
-    event.data.object = {
-      ...event.data.object,
-      space_id: '00000000-0000-4000-8000-000000000000'
-    }
-
-    for (const late of [
-      event,
-      anEvent({ time, twakeactorid: BOB, twakeactor: 'bob@linagora.com' })
-    ]) {
-      const failure = await store(late).catch((error: unknown) => error)
-      expect(failure).toBeInstanceOf(Error)
-      expect(failure).not.toBeInstanceOf(RejectedEventError)
-    }
-  })
-
-  it('rejects an unknown member at once when the event time is far ahead', async () => {
-    const time = new Date(Date.now() + 3_600_000).toISOString()
-
-    await expect(
-      store(
-        anEvent({ time, twakeactorid: BOB, twakeactor: 'bob@linagora.com' })
-      )
-    ).rejects.toThrow(RejectedEventError)
-  })
-
-  it('rejects an event whose actor is not a member of the space', async () => {
+  it('waits for an actor who is not a member of the space yet', async () => {
     await expect(
       store(anEvent({ twakeactorid: BOB, twakeactor: 'bob@linagora.com' }))
-    ).rejects.toThrow(RejectedEventError)
+    ).rejects.toThrow(NotYetKnownError)
   })
 
   it('lets a non-member act in a space with linked groups', async () => {

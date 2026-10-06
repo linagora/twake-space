@@ -6,9 +6,11 @@ import type { CloudEvent, PlatformEvent } from './envelope.ts'
 import {
   createMessageHandler,
   MalformedEventError,
+  NotYetKnownError,
   RejectedEventError,
   type DeadLetter,
-  type Handler
+  type Handler,
+  type Park
 } from './router.ts'
 
 const tx = {} as Tx
@@ -33,6 +35,7 @@ function setup() {
   const activity = vi.fn<Handler<CloudEvent>>().mockResolvedValue()
   const platform = vi.fn<Handler<PlatformEvent>>().mockResolvedValue()
   const deadLetter = vi.fn<DeadLetter>().mockResolvedValue()
+  const park = vi.fn<Park>().mockResolvedValue()
   const dedupe = memoryDeduplicator()
   const handle = createMessageHandler({
     routes: {
@@ -41,9 +44,10 @@ function setup() {
     },
     dedupe,
     deadLetter,
+    park,
     logger: pino({ level: 'silent' })
   })
-  return { handle, activity, platform, deadLetter, dedupe }
+  return { handle, activity, platform, deadLetter, park, dedupe }
 }
 
 const fileCreated = {
@@ -158,6 +162,22 @@ describe('createMessageHandler', () => {
       incoming,
       'not a member'
     )
+    expect(dedupe.keys).toEqual([])
+  })
+
+  it('parks an event about something the copy does not hold yet', async () => {
+    const { handle, activity, deadLetter, park, dedupe } = setup()
+    activity.mockRejectedValueOnce(new NotYetKnownError('unknown space'))
+    const incoming = message(fileCreated)
+
+    expect(await handle('twake.drive.events.v1', incoming)).toBe('parked')
+    expect(park).toHaveBeenCalledWith(
+      'twake.drive.events.v1',
+      incoming,
+      { source: 'twake://drive', id: 'evt-1' },
+      'unknown space'
+    )
+    expect(deadLetter).not.toHaveBeenCalled()
     expect(dedupe.keys).toEqual([])
   })
 

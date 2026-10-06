@@ -75,7 +75,7 @@ function parseJson(value: Buffer | string | null): ParseResult<unknown> {
   }
 }
 
-function headerString(value: unknown): string | undefined {
+export function headerString(value: unknown): string | undefined {
   const first: unknown = Array.isArray(value) ? value[0] : value
   if (Buffer.isBuffer(first)) return first.toString()
   return typeof first === 'string' ? first : undefined
