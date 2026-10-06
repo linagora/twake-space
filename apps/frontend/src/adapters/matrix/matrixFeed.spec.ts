@@ -113,6 +113,31 @@ describe('matrixFeed', () => {
     })
   })
 
+  it('ignores an older page that arrives after a reset', async () => {
+    const { paginate, pages, open, reset } = setUp()
+    const view = await open()
+    let reachStart: () => void = () => undefined
+    paginate.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          reachStart = () => {
+            resolve(false)
+          }
+        })
+    )
+    paginate.mockImplementationOnce(() => Promise.resolve(true))
+    const stale = view.loadOlder()
+
+    reset()
+    await vi.waitFor(() => {
+      expect(paginate).toHaveBeenCalledTimes(3)
+    })
+    reachStart()
+    await stale
+
+    expect(pages.at(-1)?.hasOlder).toBe(true)
+  })
+
   it('refuses a Matrix space the user is not in', async () => {
     const { open } = setUp()
 

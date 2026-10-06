@@ -92,10 +92,14 @@ export function matrixFeed(clientOf: () => Promise<FeedClient>): FeedService {
         onChange({ entries, hasOlder })
       }
       const loadOlder = async () => {
-        hasOlder = await client.paginateEventTimeline(
-          timelineSet.getLiveTimeline(),
-          { backwards: true, limit: PAGE_SIZE }
-        )
+        const timeline = timelineSet.getLiveTimeline()
+        const more = await client.paginateEventTimeline(timeline, {
+          backwards: true,
+          limit: PAGE_SIZE
+        })
+        // A reset replaced the timeline this page belongs to.
+        if (timeline !== timelineSet.getLiveTimeline()) return
+        hasOlder = more
         emit()
       }
 
