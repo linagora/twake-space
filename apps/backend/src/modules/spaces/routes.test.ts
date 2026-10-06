@@ -7,7 +7,13 @@ import { homeservers, organizations } from '../organizations/schema.ts'
 import type { TokenCaller } from '../tokens/authenticator.ts'
 import { spaceApp, type SpaceApp } from './resources.ts'
 import { registerSpaceRoutes } from './routes.ts'
-import { spaceGroups, spaceMembers, spaceResources, spaces } from './schema.ts'
+import {
+  spaceGroups,
+  spaceMembers,
+  spaceResources,
+  spaceSettings,
+  spaces
+} from './schema.ts'
 
 const ALICE = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
 const BOB = 'c9f0f895-fb98-4b91-a1a4-7f3e2d1c0b5a'
@@ -28,6 +34,7 @@ beforeEach(async () => {
     spaceMembers,
     spaceGroups,
     spaceResources,
+    spaceSettings,
     spaces,
     organizations,
     homeservers
@@ -104,8 +111,8 @@ describe('API tokens', () => {
 
     expect(response.json()).toEqual({
       spaces: [
-        { id: DESIGN, name: 'Design', role: 'viewer' },
-        { id: SALES, name: 'Sales', role: 'admin' }
+        { id: DESIGN, name: 'Design', role: 'viewer', color: null },
+        { id: SALES, name: 'Sales', role: 'admin', color: null }
       ]
     })
   })
@@ -114,7 +121,7 @@ describe('API tokens', () => {
     const get = setUp(aTokenCaller({ userId: BOB, spaceIds: [SALES] }))
 
     expect((await get('/spaces', 'tws_bot')).json()).toEqual({
-      spaces: [{ id: SALES, name: 'Sales', role: 'admin' }]
+      spaces: [{ id: SALES, name: 'Sales', role: 'admin', color: null }]
     })
     expect((await get(`/spaces/${DESIGN}`, 'tws_bot')).statusCode).toBe(404)
   })
@@ -126,8 +133,8 @@ describe('API tokens', () => {
 
     expect(response.json()).toEqual({
       spaces: [
-        { id: DESIGN, name: 'Design', role: 'editor' },
-        { id: SALES, name: 'Sales', role: 'editor' }
+        { id: DESIGN, name: 'Design', role: 'editor', color: null },
+        { id: SALES, name: 'Sales', role: 'editor', color: null }
       ]
     })
   })
@@ -157,7 +164,7 @@ describe('GET /spaces', () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toEqual({
-      spaces: [{ id: DESIGN, name: 'Design', role: 'admin' }]
+      spaces: [{ id: DESIGN, name: 'Design', role: 'admin', color: null }]
     })
   })
 })
@@ -216,6 +223,33 @@ describe('GET /spaces/:id', () => {
         { kind: 'drive', id: 'folder-1' },
         { kind: 'project', id: null }
       ]
+    })
+  })
+
+  it('gives the description, color and apps picked for it', async () => {
+    await testDb.db.insert(spaceSettings).values({
+      spaceId: DESIGN,
+      description: 'Ship it',
+      color: '#46a2ff',
+      apps: ['feed', 'drive']
+    })
+
+    const response = await setUp()(`/spaces/${DESIGN}`)
+
+    expect(response.json()).toMatchObject({
+      description: 'Ship it',
+      color: '#46a2ff',
+      apps: ['feed', 'drive']
+    })
+  })
+
+  it('has every app on for a space created elsewhere', async () => {
+    const response = await setUp()(`/spaces/${DESIGN}`)
+
+    expect(response.json()).toMatchObject({
+      description: '',
+      color: null,
+      apps: ['feed', 'chat', 'tasks', 'drive', 'mail', 'calendar']
     })
   })
 
