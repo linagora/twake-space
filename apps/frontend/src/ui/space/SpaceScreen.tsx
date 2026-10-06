@@ -90,10 +90,14 @@ export function SpaceScreen(): ReactElement {
   const matrixSpace = resource('matrix_space')
   const project = resource('project')
   const mailbox = resource('mailbox')
+  const framed =
+    current.state === 'ready' &&
+    (current.tab === 'tasks' || current.tab === 'mail')
 
   return (
     <Page>
       <SpaceHeader
+        compact={framed}
         avatar={
           <NameAvatar
             name={space.data.name}
@@ -133,7 +137,7 @@ export function SpaceScreen(): ReactElement {
           </Tabs>
         }
       />
-      {space.data.description && (
+      {space.data.description && !framed && (
         <Typography variant="body2" color="textSecondary" className="u-mb-1">
           {space.data.description}
         </Typography>

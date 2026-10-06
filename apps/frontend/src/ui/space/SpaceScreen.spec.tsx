@@ -68,7 +68,7 @@ function renderAt(
 
 describe('SpaceScreen', () => {
   it("shows the space's name, description and the person's role", async () => {
-    renderAt('/spaces/a1/tasks')
+    renderAt('/spaces/a1/members')
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Roadmap' })
@@ -147,6 +147,21 @@ describe('SpaceScreen', () => {
       'https://mail.test/embed/team-mailboxes/roadmap%40acme'
     )
   })
+
+  it.each(['tasks', 'mail'])(
+    'leaves the %s frame the page under the tabs',
+    async tab => {
+      renderAt(`/spaces/a1/${tab}`)
+
+      expect(await screen.findByRole('tabpanel')).toContainElement(
+        document.querySelector('iframe')
+      )
+      expect(document.querySelector('main img')).toBeNull()
+      expect(
+        screen.queryByText('Where the year is planned')
+      ).not.toBeInTheDocument()
+    }
+  )
 
   it("signs in to the organization's homeserver on the Feed tab", async () => {
     const matrix = fakeMatrix()
