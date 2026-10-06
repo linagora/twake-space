@@ -128,4 +128,19 @@ describe('parked events', () => {
     )
     expect(await parked()).toEqual([])
   })
+
+  it('keeps an expired event the dead letter topic refuses, and goes on', async () => {
+    const { deadLetter, handle, retry } = setup()
+    await handle(topic, memberAdded())
+    await handle(topic, memberAdded())
+    await testDb.db.execute(
+      sql`update parked_events set parked_at = now() - interval '6 minutes'`
+    )
+    deadLetter.mockRejectedValueOnce(new Error('kafka down'))
+
+    await retry()
+
+    expect(deadLetter).toHaveBeenCalledTimes(2)
+    expect(await parked()).toHaveLength(1)
+  })
 })

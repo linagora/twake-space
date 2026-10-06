@@ -71,25 +71,34 @@ export async function retryParked(
       continue
     }
     if (outcome === 'parked') {
-      const [expired] = await db
-        .delete(parkedEvents)
-        .where(
-          and(
-            done,
-            lt(
-              parkedEvents.parkedAt,
-              sql`now() - make_interval(secs => ${WAIT_SECONDS})`
+      // The row goes only once the dead letter is sent.
+      await db
+        .transaction(async tx => {
+          const [expired] = await tx
+            .delete(parkedEvents)
+            .where(
+              and(
+                done,
+                lt(
+                  parkedEvents.parkedAt,
+                  sql`now() - make_interval(secs => ${WAIT_SECONDS})`
+                )
+              )
             )
+            .returning({ reason: parkedEvents.reason })
+          if (!expired) return
+          await deadLetter(deadLetterTopic(row.topic), message, expired.reason)
+          log.warn(
+            { topic: row.topic, id: row.id, reason: expired.reason },
+            'parked event sent to the dead letter topic'
           )
-        )
-        .returning({ reason: parkedEvents.reason })
-      if (expired) {
-        await deadLetter(deadLetterTopic(row.topic), message, expired.reason)
-        log.warn(
-          { topic: row.topic, id: row.id, reason: expired.reason },
-          'parked event sent to the dead letter topic'
-        )
-      }
+        })
+        .catch((error: unknown) => {
+          log.error(
+            { err: error, topic: row.topic, id: row.id },
+            'parked event could not reach the dead letter topic'
+          )
+        })
       continue
     }
     await db.delete(parkedEvents).where(done)
