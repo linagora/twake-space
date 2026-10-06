@@ -23,9 +23,21 @@ const CI = '2d7e4b1a-9c3f-4e8d-b6a5-0f1e2d3c4b5a'
 const CAROL = '5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e'
 const DAY = 24 * 60 * 60 * 1000
 
+const DANA = '1e2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a5b'
+
 const directory = {
   isTechnicalAccount: (organizationId: string, accountId: string) =>
-    Promise.resolve(organizationId === 'org-1' && accountId === CI)
+    Promise.resolve(organizationId === 'org-1' && accountId === CI),
+  organizationRole: (organizationId: string, accountId: string) =>
+    Promise.resolve(
+      organizationId !== 'org-1'
+        ? undefined
+        : accountId === DANA
+          ? { email: 'dana@example.com', role: 'owner' as const }
+          : accountId === BOB
+            ? { email: 'bob@example.com', role: 'member' as const }
+            : undefined
+    )
 }
 const authenticate = (token: string) =>
   apiTokenAuthenticator(testDb.db, directory)(token)
@@ -102,7 +114,9 @@ function setUp(tokenCaller: TokenCaller = aTokenCaller()) {
             ? anIdentity({ userId: CAROL, organizationId: 'org-2' })
             : token === 'alice-at-org-2'
               ? anIdentity({ userId: ALICE, organizationId: 'org-2' })
-              : null,
+              : token === 'dana'
+                ? anIdentity({ userId: DANA, email: 'dana@example.com' })
+                : null,
     token => (token === 'tws_bot' ? tokenCaller : null)
   )
   registerTokenRoutes(app, { db: testDb.db, authorize, directory })
@@ -386,6 +400,32 @@ describe('organization tokens', () => {
 
     expect(byBob.statusCode).toBe(403)
     expect(byOrgToken.statusCode).toBe(403)
+  })
+
+  it('is managed by an admin whose role predates any role change, and remembers it', async () => {
+    const call = setUp()
+
+    const created = await call(
+      'POST',
+      '/organization/tokens',
+      orgToken(),
+      'dana'
+    )
+
+    expect(created.statusCode).toBe(201)
+    expect(
+      await testDb.db
+        .select()
+        .from(organizationMembers)
+        .where(eq(organizationMembers.userId, DANA))
+    ).toEqual([
+      {
+        organizationId: 'org-1',
+        userId: DANA,
+        email: 'dana@example.com',
+        role: 'owner'
+      }
+    ])
   })
 
   it('renames and revokes only organization tokens', async () => {

@@ -124,7 +124,8 @@ const manageOwnAccount: Manage = (request, db) => {
 const accountParams = z.object({ accountId: z.uuid() })
 
 function manageTechnicalAccount(
-  directory: Pick<Directory, 'isTechnicalAccount'>
+  directory: Pick<Directory, 'isTechnicalAccount'>,
+  manageOrganization: Manage
 ): Manage {
   return async (request, db) => {
     const admin = await manageOrganization(request, db)
@@ -143,43 +144,69 @@ function manageTechnicalAccount(
   }
 }
 
-const manageOrganization: Manage = async (request, db) => {
-  const caller = callerOf(request)
-  const { userId, organizationId } = caller
-  if (userId === null) return 'an organization token manages no tokens'
-  const [admin] = await db
+const ADMIN_ROLES: readonly string[] = ['owner', 'admin']
+
+// The copy only learns a role from a role change, so a role held before then
+// is read from ldap-rest and kept.
+async function isOrganizationAdmin(
+  db: Db,
+  directory: Pick<Directory, 'organizationRole'>,
+  organizationId: string,
+  userId: string
+) {
+  const [row] = await db
     .select({ role: organizationMembers.role })
     .from(organizationMembers)
     .where(
       and(
         eq(organizationMembers.organizationId, organizationId),
-        eq(organizationMembers.userId, userId),
-        inArray(organizationMembers.role, ['owner', 'admin'])
+        eq(organizationMembers.userId, userId)
       )
     )
-  if (!admin) return 'not an admin of the organization'
-  return {
-    caller,
-    actor: actorOf(caller),
-    owner: { ownerKind: 'organization' },
-    owns: and(
-      eq(apiTokens.organizationId, organizationId),
-      eq(apiTokens.ownerKind, 'organization')
-    ),
-    coverable: async spaceIds =>
-      (
-        await db
-          .select({ spaceId: spaces.spaceId })
-          .from(spaces)
-          .where(
-            and(
-              eq(spaces.organizationId, organizationId),
-              inArray(spaces.spaceId, spaceIds)
-            )
-          )
-      ).map(s => s.spaceId)
-  }
+  if (row && ADMIN_ROLES.includes(row.role)) return true
+  const live = await directory.organizationRole(organizationId, userId)
+  if (!live) return false
+  await db
+    .insert(organizationMembers)
+    .values({ organizationId, userId, ...live })
+    .onConflictDoUpdate({
+      target: [organizationMembers.organizationId, organizationMembers.userId],
+      set: live
+    })
+  return ADMIN_ROLES.includes(live.role)
 }
+
+const organizationManager =
+  (directory: Pick<Directory, 'organizationRole'>): Manage =>
+  async (request, db) => {
+    const caller = callerOf(request)
+    const { userId, organizationId } = caller
+    if (userId === null) return 'an organization token manages no tokens'
+    if (!(await isOrganizationAdmin(db, directory, organizationId, userId))) {
+      return 'not an admin of the organization'
+    }
+    return {
+      caller,
+      actor: actorOf(caller),
+      owner: { ownerKind: 'organization' },
+      owns: and(
+        eq(apiTokens.organizationId, organizationId),
+        eq(apiTokens.ownerKind, 'organization')
+      ),
+      coverable: async spaceIds =>
+        (
+          await db
+            .select({ spaceId: spaces.spaceId })
+            .from(spaces)
+            .where(
+              and(
+                eq(spaces.organizationId, organizationId),
+                inArray(spaces.spaceId, spaceIds)
+              )
+            )
+        ).map(s => s.spaceId)
+    }
+  }
 
 // Null when the organization's policy allows the expiry, else why not.
 async function refusedExpiry(
@@ -416,11 +443,12 @@ export function registerTokenRoutes(
   deps: {
     db: Db
     authorize: Authorize
-    directory: Pick<Directory, 'isTechnicalAccount'>
+    directory: Pick<Directory, 'isTechnicalAccount' | 'organizationRole'>
   }
 ) {
   const { db } = deps
   const preHandler = deps.authorize('tokens:write')
+  const manageOrganization = organizationManager(deps.directory)
   registerManagedTokens(app, db, '/tokens', preHandler, manageOwnAccount)
   registerManagedTokens(
     app,
@@ -434,7 +462,7 @@ export function registerTokenRoutes(
     db,
     '/organization/technical-accounts/:accountId/tokens',
     preHandler,
-    manageTechnicalAccount(deps.directory)
+    manageTechnicalAccount(deps.directory, manageOrganization)
   )
 
   app.get(
