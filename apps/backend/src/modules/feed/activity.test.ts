@@ -4,7 +4,12 @@ import type { CloudEvent } from '../../events/envelope.ts'
 import { NotYetKnownError, RejectedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { notifications, notificationSettings } from '../notifications/schema.ts'
-import { spaceGroups, spaceMembers, spaces } from '../spaces/schema.ts'
+import {
+  spaceGroups,
+  spaceMembers,
+  spaceResources,
+  spaces
+} from '../spaces/schema.ts'
 import { activityRoute } from './activity.ts'
 import { activityEvents } from './schema.ts'
 
@@ -22,10 +27,17 @@ beforeEach(async () => {
   await db.delete(activityEvents)
   await db.delete(spaceGroups)
   await db.delete(spaceMembers)
+  await db.delete(spaceResources)
   await db.delete(spaces)
   await db
     .insert(spaces)
     .values({ spaceId: SPACE_ID, organizationId: 'linagora', name: 'Design' })
+  await db.insert(spaceResources).values({
+    spaceId: SPACE_ID,
+    kind: 'drive',
+    organizationId: 'linagora',
+    resourceId: 'drive-1'
+  })
   await db.insert(spaceMembers).values({
     spaceId: SPACE_ID,
     userId: ALICE,
@@ -49,7 +61,7 @@ function anEvent(overrides: Record<string, unknown> = {}): CloudEvent {
       object: {
         type: 'file',
         id: 'f1',
-        space_id: SPACE_ID,
+        container: { kind: 'drive', id: 'drive-1' },
         title: 'Roadmap.odt',
         url: 'https://drive.example.com/f1'
       },
@@ -103,7 +115,7 @@ describe('activity events', () => {
           object: {
             type: 'file',
             id: 'f1',
-            space_id: SPACE_ID,
+            container: { kind: 'drive', id: 'drive-1' },
             title: 'Roadmap.odt',
             url: 'https://drive.example.com/f1'
           },
@@ -177,14 +189,48 @@ describe('activity events', () => {
     expect(await stored()).toEqual([])
   })
 
-  it('waits for a space it does not know yet', async () => {
+  it('keeps an event on a resource no space has for notifications only', async () => {
     const event = anEvent()
     event.data.object = {
       ...event.data.object,
-      space_id: '00000000-0000-4000-8000-000000000000'
+      container: { kind: 'drive', id: 'my-own-drive' }
     }
 
-    await expect(store(event)).rejects.toThrow(NotYetKnownError)
+    await store(event)
+
+    expect(await stored()).toMatchObject([
+      { spaceId: null, organizationId: 'linagora' }
+    ])
+  })
+
+  it('matches the resource by its kind as well as its id', async () => {
+    const event = anEvent()
+    event.data.object = {
+      ...event.data.object,
+      container: { kind: 'calendar', id: 'drive-1' }
+    }
+
+    await store(event)
+
+    expect((await stored())[0]?.spaceId).toBeNull()
+  })
+
+  it('files a Tasks event under the space of its project', async () => {
+    await testDb.db.insert(spaceResources).values({
+      spaceId: SPACE_ID,
+      kind: 'project',
+      organizationId: 'linagora',
+      resourceId: 'project-7'
+    })
+    const event = anEvent({ type: 'com.twake.tasks.task.moved.v1' })
+    event.data.object = {
+      ...event.data.object,
+      container: { kind: 'project', id: 'project-7' }
+    }
+
+    await store(event)
+
+    expect((await stored())[0]?.spaceId).toBe(SPACE_ID)
   })
 
   it('waits for an actor who is not a member of the space yet', async () => {

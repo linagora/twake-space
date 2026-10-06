@@ -61,7 +61,7 @@ const fileCreated = {
     object: {
       type: 'file',
       id: 'f1',
-      space_id: '0f8e2c4a-6b1d-4e7a-9c3f-2d5b8a1e6f90'
+      container: { kind: 'drive', id: 'drive-1' }
     }
   }
 }
