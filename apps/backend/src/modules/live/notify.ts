@@ -8,13 +8,17 @@ const CHANNEL = 'live'
 // A NOTIFY payload stays under 8000 bytes.
 const USERS_PER_NOTIFY = 100
 
-interface Message {
-  event: LiveEvent
-  users: string[]
-  data: object
-}
+type Message = { event: LiveEvent; data: object } & (
+  { users: string[] } | { email: string }
+)
 
 // Sent with the transaction, so a replica only hears about committed changes.
+async function notify(tx: Tx, message: Message): Promise<void> {
+  await tx.execute(
+    sql`select pg_notify(${CHANNEL}, ${JSON.stringify(message)})`
+  )
+}
+
 export async function tell(
   tx: Tx,
   event: LiveEvent,
@@ -23,15 +27,20 @@ export async function tell(
 ): Promise<void> {
   const users = [...new Set(userIds)]
   for (let i = 0; i < users.length; i += USERS_PER_NOTIFY) {
-    const message: Message = {
+    await notify(tx, {
       event,
       users: users.slice(i, i + USERS_PER_NOTIFY),
       data
-    }
-    await tx.execute(
-      sql`select pg_notify(${CHANNEL}, ${JSON.stringify(message)})`
-    )
+    })
   }
+}
+
+export async function tellEmail(
+  tx: Tx,
+  event: LiveEvent,
+  email: string
+): Promise<void> {
+  await notify(tx, { event, email, data: {} })
 }
 
 export async function tellSpaceMembers(tx: Tx, spaceId: string) {
@@ -49,10 +58,16 @@ export async function tellSpaceMembers(tx: Tx, spaceId: string) {
 
 export async function listenForLive(
   client: postgres.Sql,
-  streams: Pick<Streams, 'send'>
+  streams: Pick<Streams, 'send' | 'sendToEmail'>
 ): Promise<void> {
   await client.listen(CHANNEL, payload => {
-    const { event, users, data } = JSON.parse(payload) as Message
-    for (const userId of users) streams.send(userId, event, data)
+    const message = JSON.parse(payload) as Message
+    if ('email' in message) {
+      streams.sendToEmail(message.email, message.event, message.data)
+      return
+    }
+    for (const userId of message.users) {
+      streams.send(userId, message.event, message.data)
+    }
   })
 }

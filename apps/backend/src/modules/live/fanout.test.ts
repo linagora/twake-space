@@ -29,7 +29,7 @@ let testDb: TestDb
 const send = vi.fn()
 beforeAll(async () => {
   testDb = await createTestDb()
-  await listenForLive(testDb.sql, { send })
+  await listenForLive(testDb.sql, { send, sendToEmail: vi.fn() })
 })
 afterAll(() => testDb.drop())
 

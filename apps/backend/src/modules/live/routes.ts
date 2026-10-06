@@ -46,6 +46,7 @@ export function registerLiveRoutes(
     const remove = streams.add({
       sessionId: identity.sessionId,
       userId: identity.userId,
+      email: identity.email,
       send: (event, data) => {
         if (response.writableEnded) return
         response.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)

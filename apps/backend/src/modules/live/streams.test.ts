@@ -4,8 +4,22 @@ import { createStreams } from './streams.ts'
 const stream = (userId: string, sessionId = 's1') => ({
   sessionId,
   userId,
+  email: `${userId}@example.com`,
   send: vi.fn(),
   close: vi.fn()
+})
+
+it('sends to the open streams of an email, whatever its case', () => {
+  const streams = createStreams()
+  const alice = stream('alice')
+  const bob = stream('bob')
+  streams.add(alice)
+  streams.add(bob)
+
+  streams.sendToEmail('Alice@Example.com', 'settings', {})
+
+  expect(alice.send).toHaveBeenCalledWith('settings', {})
+  expect(bob.send).not.toHaveBeenCalled()
 })
 
 it("sends to that person's open streams only", () => {
