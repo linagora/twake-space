@@ -34,7 +34,7 @@ export function spaceTabs(space: Space): { tab: Tab; state: TabState }[] {
     const resource = space.resources.find(r => r.kind === RESOURCE[tab])
     const ready =
       Boolean(resource?.id) &&
-      (RESOURCE[tab] !== 'matrix_space' || space.serverName !== null)
+      (RESOURCE[tab] !== 'matrix_space' || space.homeserverUrl !== null)
     return { tab, state: ready ? 'ready' : 'preparing' }
   })
 }

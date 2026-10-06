@@ -8,7 +8,6 @@ const sdk = () => import('matrix-js-sdk')
 const KEY = 'twake-space:matrix'
 
 interface Device {
-  serverName: string
   baseUrl: string
   userId: string
   accessToken: string
@@ -17,19 +16,9 @@ interface Device {
 
 function isDevice(value: unknown): value is Device {
   if (typeof value !== 'object' || value === null) return false
-  return ['serverName', 'baseUrl', 'userId', 'accessToken', 'deviceId'].every(
+  return ['baseUrl', 'userId', 'accessToken', 'deviceId'].every(
     key => typeof (value as Record<string, unknown>)[key] === 'string'
   )
-}
-
-async function baseUrlOf(serverName: string): Promise<string> {
-  const { AutoDiscovery } = await sdk()
-  const config = await AutoDiscovery.findClientConfig(serverName)
-  const homeserver = config['m.homeserver']
-  if (homeserver.state !== AutoDiscovery.SUCCESS || !homeserver.base_url) {
-    throw new Error(`no Matrix homeserver found for ${serverName}`)
-  }
-  return homeserver.base_url
 }
 
 export function matrixSession(
@@ -82,10 +71,9 @@ export function matrixSession(
   }
 
   return {
-    async signIn(serverName) {
-      if (stored()?.serverName === serverName) return true
+    async signIn(baseUrl) {
+      if (stored()?.baseUrl === baseUrl) return true
 
-      const baseUrl = await baseUrlOf(serverName)
       const { createClient } = await sdk()
       const homeserver = createClient({ baseUrl })
       const here = new URL(window.location.href)
@@ -104,7 +92,6 @@ export function matrixSession(
         initial_device_display_name: 'TwakeSpace'
       })
       const device: Device = {
-        serverName,
         baseUrl,
         userId: login.user_id,
         accessToken: login.access_token,
