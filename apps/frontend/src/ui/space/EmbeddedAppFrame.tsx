@@ -1,6 +1,20 @@
 import { expose } from 'comlink'
-import { useEffect, useRef, type ReactElement, type RefObject } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type RefObject
+} from 'react'
 
+import {
+  overlayClipPath,
+  parseSurfaceMessage,
+  surfaceInit,
+  type OverlayRegion
+} from '@/application/embedSurface'
+import { OverlayFrame } from '@/ds/OverlayFrame'
+import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
 import { useEmbedPath } from '@/ui/space/useEmbedPath'
 
@@ -18,30 +32,39 @@ function isLoginRequired(data: unknown): boolean {
 // from TwakeSpace:
 // - its path below `embed` written in the address (`updateHistory`),
 // - a new sign in when its session expired (`notifyLoginRequired`), through
-//   cozy-external-bridge (comlink).
+//   cozy-external-bridge (comlink),
+// - with `overlayPath`, an overlay over the whole page, on the app's origin,
+//   for its docked windows and dialogs.
 export function EmbeddedAppFrame({
+  app,
   appUrl,
   embedPath,
   tabPath,
   title,
+  overlayPath,
   frameRef,
   onFrameLoad,
   onFrameMessage
 }: {
+  // Names the frame `twake-embed-<app>`, and its overlay `<that>:overlay`
+  app: string
   appUrl: string
   embedPath: string
   tabPath: string
   title: string
+  overlayPath?: string
   frameRef?: RefObject<HTMLIFrameElement | null>
   onFrameLoad?: () => void
   // Other messages of the frame, already checked to come from it, with what
   // writes a path of the frame in the address
   onFrameMessage?: (data: unknown, follow: (path: string) => void) => void
 }): ReactElement {
+  const { t } = useI18n()
   const { signIn } = useSession()
   const ownRef = useRef<HTMLIFrameElement>(null)
   const frame = frameRef ?? ownRef
   const origin = new URL(appUrl).origin
+  const name = `twake-embed-${app}`
   const { src, follow } = useEmbedPath(appUrl, embedPath, tabPath)
 
   const messageHandler = useRef(onFrameMessage)
@@ -100,13 +123,80 @@ export function EmbeddedAppFrame({
   }, [follow, frame, origin, signIn])
 
   return (
-    <iframe
-      ref={frame}
-      title={title}
+    <>
+      <iframe
+        ref={frame}
+        name={name}
+        title={title}
+        src={src}
+        sandbox={SANDBOX}
+        className="u-w-100 u-flex-auto u-bdw-0"
+        onLoad={onFrameLoad}
+      />
+      {overlayPath === undefined ? null : (
+        <AppOverlay
+          name={`${name}:overlay`}
+          src={new URL(overlayPath, appUrl).href}
+          origin={origin}
+          title={t('embed.overlay', { app: title })}
+        />
+      )}
+    </>
+  )
+}
+
+// Answers the overlay's `intent:ready` with `intent:init`, then shows the
+// region it reports for that intent only.
+function AppOverlay({
+  name,
+  src,
+  origin,
+  title
+}: {
+  name: string
+  src: string
+  origin: string
+  title: string
+}): ReactElement {
+  const overlay = useRef<HTMLIFrameElement>(null)
+  const [region, setRegion] = useState<OverlayRegion | null>(null)
+
+  useEffect(() => {
+    let intentId: string | null = null
+    const onMessage = (event: MessageEvent) => {
+      const target = overlay.current?.contentWindow
+      if (!target || event.origin !== origin || event.source !== target) return
+      const message = parseSurfaceMessage(event.data)
+      if (message === null) return
+      if (message.type === 'ready') {
+        // A reloaded overlay starts a new intent
+        intentId = crypto.randomUUID()
+        setRegion(null)
+        target.postMessage(surfaceInit(intentId), origin)
+        return
+      }
+      if (message.intentId !== intentId) return
+      if (message.type === 'region') setRegion(message.region)
+      else {
+        console.warn(`[embed] the overlay of ${origin} failed: ${message.code}`)
+        intentId = null
+        setRegion(null)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => {
+      window.removeEventListener('message', onMessage)
+    }
+  }, [origin])
+
+  return (
+    <OverlayFrame
+      frameRef={overlay}
+      name={name}
       src={src}
+      title={title}
       sandbox={SANDBOX}
-      className="u-w-100 u-flex-auto u-bdw-0"
-      onLoad={onFrameLoad}
+      clipPath={overlayClipPath(region)}
     />
   )
 }
