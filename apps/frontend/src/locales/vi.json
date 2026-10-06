@@ -128,7 +128,7 @@
     "loading": "Đang tải không gian…",
     "notFound": "Không gian này không tồn tại hoặc bạn không phải thành viên.",
     "loadFailed": "Không thể tải không gian.",
-    "chatOff": "Bảng tin và Trò chuyện đang tắt: tổ chức của bạn chưa bật trò chuyện.",
+    "chatOff": "Trò chuyện đang tắt: tổ chức của bạn chưa bật trò chuyện.",
     "mailOff": "Thư đang tắt: tên miền thư của tổ chức bạn chưa được xác thực.",
     "preparing": "%{app} đang được chuẩn bị cho không gian này.",
     "stalled": "%{app} chưa sẵn sàng. Hãy thử lại sau và báo cho quản trị viên nếu tình trạng này vẫn tiếp diễn.",
@@ -141,8 +141,57 @@
     "notSetUp": "Thư chưa được thiết lập cho TwakeSpace."
   },
   "feed": {
-    "signingIn": "Đang đăng nhập vào trò chuyện",
-    "signInFailed": "Không thể đăng nhập vào trò chuyện.",
+    "composer": "Tin nhắn",
+    "send": "Gửi",
+    "postFailed": "Không thể gửi tin nhắn.",
+    "more": "Thao tác khác",
+    "edit": "Sửa",
+    "delete": "Xóa",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "edited": "đã sửa",
+    "changeFailed": "Không thể thay đổi tin nhắn.",
+    "react": "Thêm biểu cảm",
+    "reaction": "%{emoji} %{count}",
+    "open": {
+      "tasks": "Mở trong Công việc",
+      "mail": "Mở trong Thư",
+      "calendar": "Xem sự kiện",
+      "drive": "Mở trong Drive",
+      "chat": "Mở trong trò chuyện"
+    },
+    "verbs": {
+      "other": "đã đăng cập nhật",
+      "tasks": {
+        "created": "đã tạo công việc",
+        "updated": "đã sửa công việc",
+        "assigned": "đã giao công việc",
+        "unassigned": "đã bỏ giao công việc",
+        "moved": "đã chuyển công việc",
+        "completed": "đã hoàn thành công việc",
+        "reopened": "đã mở lại công việc",
+        "deleted": "đã xóa công việc",
+        "restored": "đã khôi phục công việc"
+      },
+      "mail": {
+        "received": "Đã nhận thư mới",
+        "sent": "Đã gửi thư"
+      },
+      "calendar": {
+        "created": "đã tạo sự kiện",
+        "updated": "đã sửa sự kiện",
+        "rescheduled": "đã dời sự kiện",
+        "accepted": "đã chấp nhận sự kiện",
+        "declined": "đã từ chối sự kiện",
+        "proposed": "đã đề xuất thời gian khác"
+      }
+    },
+    "event": {
+      "allDay": "Cả ngày",
+      "movedFrom": "Dời từ %{time}",
+      "proposed": "%{by} đề xuất %{time}",
+      "rsvp": "%{accepted} có · %{tentative} có thể · %{declined} không · %{pending} chờ"
+    },
     "loading": "Đang tải bảng tin",
     "loadFailed": "Không thể tải bảng tin.",
     "empty": "Chưa có gì.",
@@ -154,7 +203,7 @@
     },
     "loadOlder": "Tải cũ hơn",
     "loadOlderFailed": "Không thể tải các mục cũ hơn.",
-    "filter": "Hiển thị",
+    "filter": "Lọc theo",
     "filters": {
       "all": "Tất cả",
       "messages": "Tin nhắn",
@@ -166,7 +215,6 @@
       "mail": "Thư",
       "drive": "Drive",
       "calendar": "Lịch",
-      "meet": "Họp",
       "tasks": "Công việc"
     },
     "deletedUser": "Người dùng đã xóa",

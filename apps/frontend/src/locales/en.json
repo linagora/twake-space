@@ -128,7 +128,7 @@
     "loading": "Loading the space…",
     "notFound": "This space does not exist, or you are not in it.",
     "loadFailed": "The space could not be loaded.",
-    "chatOff": "Feed and Chat are off: chat is not turned on for your organization.",
+    "chatOff": "Chat is off: it is not turned on for your organization.",
     "mailOff": "Mail is off: your organization's mail domain is not validated yet.",
     "preparing": "%{app} is being prepared for this space.",
     "stalled": "%{app} is not ready yet. Try again later, and tell your administrator if it stays this way.",
@@ -141,8 +141,57 @@
     "notSetUp": "Mail is not set up for TwakeSpace."
   },
   "feed": {
-    "signingIn": "Signing in to chat",
-    "signInFailed": "Could not sign in to chat.",
+    "composer": "Text message",
+    "send": "Send",
+    "postFailed": "Could not send the message.",
+    "more": "More actions",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edited": "edited",
+    "changeFailed": "Could not change the message.",
+    "react": "Add a reaction",
+    "reaction": "%{emoji} %{count}",
+    "open": {
+      "tasks": "Open in Tasks",
+      "mail": "Open in Mail",
+      "calendar": "View event",
+      "drive": "Open in Drive",
+      "chat": "Open in Chat"
+    },
+    "verbs": {
+      "other": "posted an update",
+      "tasks": {
+        "created": "created a task",
+        "updated": "updated a task",
+        "assigned": "assigned a task",
+        "unassigned": "unassigned a task",
+        "moved": "moved a task",
+        "completed": "completed a task",
+        "reopened": "reopened a task",
+        "deleted": "deleted a task",
+        "restored": "restored a task"
+      },
+      "mail": {
+        "received": "New email received",
+        "sent": "Email sent"
+      },
+      "calendar": {
+        "created": "created an event",
+        "updated": "updated an event",
+        "rescheduled": "rescheduled an event",
+        "accepted": "accepted an event",
+        "declined": "declined an event",
+        "proposed": "proposed a new time"
+      }
+    },
+    "event": {
+      "allDay": "All day",
+      "movedFrom": "Moved from %{time}",
+      "proposed": "%{by} proposed %{time}",
+      "rsvp": "%{accepted} yes · %{tentative} maybe · %{declined} no · %{pending} waiting"
+    },
     "loading": "Loading the feed",
     "loadFailed": "Could not load the feed.",
     "empty": "Nothing here yet.",
@@ -154,7 +203,7 @@
     },
     "loadOlder": "Load older",
     "loadOlderFailed": "Could not load older entries.",
-    "filter": "Show",
+    "filter": "Filter by",
     "filters": {
       "all": "All",
       "messages": "Messages",
@@ -166,7 +215,6 @@
       "mail": "Mail",
       "drive": "Drive",
       "calendar": "Calendar",
-      "meet": "Meet",
       "tasks": "Tasks"
     },
     "deletedUser": "Deleted user",

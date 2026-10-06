@@ -1,226 +1,222 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { Actor, FeedEntry, FeedObject, FeedPage } from '@/application/feed'
+import type { FeedCard, FeedItem, FeedPost } from '@/application/feed'
 import type { Space } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
+import { fakeLive } from '@/testing/fakeLive'
+import { fakeSession } from '@/testing/fakeSession'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 
-const ROOM = '!space:acme.test'
-
-const space: Space = {
+const roadmap: Space = {
   id: 'a1',
   name: 'Roadmap',
   role: 'editor',
   createdAt: '2026-10-01T08:00:00.000Z',
   color: null,
   description: '',
-  apps: ['feed', 'chat'],
+  apps: ['feed', 'chat', 'tasks', 'mail', 'calendar'],
   chat: true,
-  mail: false,
-  homeserverUrl: 'https://matrix.acme.test',
+  mail: true,
+  homeserverUrl: null,
   members: [
     {
-      id: 'u-1',
-      username: 'bob',
-      email: 'bob@acme.test',
-      displayName: null,
+      id: 'u-me',
+      username: 'alice',
+      email: 'Alice@Example.com',
+      displayName: 'Alice Martin',
       role: 'editor'
     }
   ],
   groups: [],
   resources: [
-    { kind: 'matrix_space', id: ROOM },
-    { kind: 'project', id: 'p1' }
+    { kind: 'project', id: 'project-1' },
+    { kind: 'mailbox', id: 'roadmap@acme' },
+    { kind: 'calendar', id: 'cal-1' }
   ]
 }
 
-function card(
-  id: string,
-  actor: Actor | null,
-  object: { title: string; container?: FeedObject['container'] },
-  app: string | null = 'drive'
-): FeedEntry {
-  return {
-    kind: 'card',
-    id,
-    ts: 2,
-    category: 'files',
-    app,
-    actor,
-    object: { type: 'file', id, container: null, ...object },
-    preview: null
+const at = (minute: number) =>
+  new Date(Date.UTC(2026, 9, 7, 8, minute)).toISOString()
+
+const post = (minute: number, overrides: Partial<FeedPost> = {}): FeedPost => ({
+  id: `post-${String(minute)}`,
+  kind: 'post',
+  category: 'messages',
+  time: at(minute),
+  updatedAt: at(minute),
+  reactions: [],
+  author: { type: 'user', id: 'u-bob', name: 'Bob Durand' },
+  body: `Message ${String(minute)}`,
+  editedAt: null,
+  ...overrides
+})
+
+const task: FeedCard = {
+  id: 'task-card',
+  kind: 'card',
+  category: 'activities',
+  time: at(1),
+  updatedAt: at(1),
+  reactions: [],
+  type: 'com.twake.tasks.task.completed.v1',
+  actor: { type: 'user', id: 'u-bob', name: 'Bob Durand' },
+  object: {
+    type: 'task',
+    id: 'T-1',
+    title: 'Write the brief',
+    container: { kind: 'project', id: 'project-1' }
+  },
+  preview: null,
+  state: {}
+}
+
+const mail: FeedCard = {
+  ...task,
+  id: 'mail-card',
+  category: 'messages',
+  time: at(2),
+  type: 'com.twake.mail.message.received.v1',
+  actor: null,
+  object: {
+    type: 'message',
+    id: 'm-1',
+    title: 'Partner feedback',
+    container: { kind: 'mailbox', id: 'roadmap@acme' }
   }
 }
 
-const page: FeedPage = {
-  entries: [
-    {
-      kind: 'message',
-      id: '$m',
-      ts: 1,
-      sender: '@bob:acme.test',
-      senderName: 'Bob Martin',
-      body: 'Hello'
-    },
-    {
-      kind: 'card',
-      id: '$c',
-      ts: 2,
-      category: 'activities',
-      app: 'tasks',
-      actor: { type: 'user', id: 'u-1', email: 'bob@acme.test' },
-      object: {
-        type: 'task',
-        id: 'T-1',
-        title: 'Write the brief',
-        container: { kind: 'project', id: 'p1' }
-      },
-      preview: 'Due Friday'
-    }
-  ],
-  hasOlder: true
+const event: FeedCard = {
+  ...task,
+  id: 'event-card',
+  category: 'events',
+  time: at(3),
+  type: 'com.twake.calendar.event.rescheduled.v1',
+  actor: { type: 'user', id: null, name: null },
+  object: {
+    type: 'event',
+    id: 'e-1',
+    title: 'Roadmap review',
+    container: { kind: 'calendar', id: 'cal-1' }
+  },
+  state: {
+    start: '2026-10-09T09:00:00Z',
+    end: '2026-10-09T10:00:00Z',
+    allDay: false,
+    location: 'Room 4',
+    previous: { start: '2026-10-09T08:00:00Z', end: '2026-10-09T09:00:00Z' }
+  }
 }
 
-function renderFeed(feed = fakeFeed(page), on = space) {
-  renderWithProviders(
-    <FeedPanel
-      homeserverUrl="https://matrix.acme.test"
-      roomId={ROOM}
-      space={on}
-    />,
-    { feed }
+const me = fakeSession(() =>
+  Promise.resolve({ name: 'Alice Martin', email: 'alice@example.com' })
+)
+
+function renderFeed(
+  items: FeedItem[],
+  {
+    space = roadmap,
+    pageSize,
+    live = fakeLive()
+  }: {
+    space?: Space
+    pageSize?: number
+    live?: ReturnType<typeof fakeLive>
+  } = {}
+) {
+  const feed = fakeFeed(
+    { a1: items },
+    { roles: { a1: space.role }, ...(pageSize && { pageSize }) }
   )
-  return feed
+  renderWithProviders(<FeedPanel space={space} />, {
+    feed,
+    live,
+    session: me
+  })
+  return { feed, live }
 }
+
+const articles = () =>
+  screen.getAllByRole('article').map(a => a.getAttribute('aria-label'))
 
 describe('FeedPanel', () => {
-  it("shows the Matrix space's messages and cards", async () => {
-    const feed = renderFeed()
+  it('shows the newest item last, above the composer', async () => {
+    renderFeed([post(5), task, post(9)])
 
-    expect(await screen.findByText('Hello')).toBeInTheDocument()
-    expect(screen.getByText('Bob Martin')).toBeInTheDocument()
-    expect(screen.getByText('bob · Due Friday')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Tasks' })).toBeInTheDocument()
-    expect(feed.open).toHaveBeenCalledWith(ROOM, 'all', expect.any(Function))
+    await screen.findByText('Message 9')
+    expect(articles()).toEqual([
+      'Bob Durand: Write the brief',
+      'Bob Durand',
+      'Bob Durand'
+    ])
+    expect(screen.getAllByText(/^Message/).map(m => m.textContent)).toEqual([
+      'Message 5',
+      'Message 9'
+    ])
+    expect(screen.getByRole('textbox', { name: 'Text message' })).toBeVisible()
   })
 
-  it("opens a card in the space's tab of its container", async () => {
-    renderFeed(
-      fakeFeed({
-        entries: [
-          card('$t', null, {
-            title: 'Write the brief',
-            container: { kind: 'project', id: 'p1' }
-          }),
-          card('$c', null, {
-            title: 'Standup',
-            container: { kind: 'matrix_space', id: ROOM }
-          })
-        ],
-        hasOlder: false
-      }),
-      { ...space, apps: ['feed', 'chat', 'tasks'] }
-    )
+  it('says what each app card is about, and opens its tab', async () => {
+    renderFeed([task, mail, event])
 
+    const taskCard = await screen.findByRole('article', {
+      name: 'Bob Durand: Write the brief'
+    })
+    expect(within(taskCard).getByText('completed a task')).toBeInTheDocument()
     expect(
-      await screen.findByRole('link', { name: 'Write the brief' })
+      within(taskCard).getByRole('link', { name: 'Open in Tasks' })
     ).toHaveAttribute('href', '/spaces/a1/tasks')
-    expect(screen.getByRole('link', { name: 'Standup' })).toHaveAttribute(
-      'href',
-      '/spaces/a1/chat'
-    )
+
+    const mailCard = screen.getByRole('article', {
+      name: 'Mail: Partner feedback'
+    })
+    expect(within(mailCard).getByText('New email received')).toBeInTheDocument()
+    expect(
+      within(mailCard).getByRole('link', { name: 'Open in Mail' })
+    ).toHaveAttribute('href', '/spaces/a1/mail')
+
+    const eventCard = screen.getByRole('article', {
+      name: 'Someone: Roadmap review'
+    })
+    expect(
+      within(eventCard).getByText('rescheduled an event')
+    ).toBeInTheDocument()
+    expect(within(eventCard).getByText(/Moved from/)).toBeInTheDocument()
+    expect(within(eventCard).getByText(/Room 4/)).toBeInTheDocument()
   })
 
-  it('links no card whose container has no tab in the space', async () => {
-    renderFeed(
-      fakeFeed({
-        entries: [
-          card('$f', null, {
-            title: 'brief.pdf',
-            container: { kind: 'drive', id: 'd1' }
-          }),
-          card('$n', null, { title: 'notes.txt' })
-        ],
-        hasOlder: false
-      })
-    )
+  it('shows one category at a time', async () => {
+    const { feed } = renderFeed([post(5), task, event])
+    await screen.findByText('Message 5')
 
-    expect(await screen.findByText('brief.pdf')).toBeInTheDocument()
-    expect(screen.getByText('notes.txt')).toBeInTheDocument()
-    expect(screen.queryByRole('link')).not.toBeInTheDocument()
-    expect(screen.getAllByRole('img', { name: 'Drive' })).toHaveLength(2)
-  })
-
-  it('names who acted on a card', async () => {
-    const file = { title: 'brief.pdf' }
-    renderFeed(
-      fakeFeed({
-        entries: [
-          card('$1', { type: 'user', id: 'u-1', email: null }, file),
-          card('$2', { type: 'user', id: null, email: 'eve@acme.test' }, file),
-          card('$3', { type: 'token', id: 't-1', name: 'CI bot' }, file),
-          card('$4', { type: 'deleted_user' }, file)
-        ],
-        hasOlder: false
-      })
-    )
-
-    expect(await screen.findByText('bob')).toBeInTheDocument()
-    expect(screen.getByText('eve@acme.test')).toBeInTheDocument()
-    expect(screen.getByText('CI bot')).toBeInTheDocument()
-    expect(screen.getByText('Deleted user')).toBeInTheDocument()
-  })
-
-  it('reopens the feed on another filter and closes the previous one', async () => {
-    const feed = renderFeed()
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Files' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Filter by' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Events' }))
 
     await waitFor(() => {
-      expect(feed.open).toHaveBeenLastCalledWith(
-        ROOM,
-        'files',
-        expect.any(Function)
-      )
+      expect(articles()).toEqual(['Someone: Roadmap review'])
     })
-    expect(feed.view.close).toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Files' })).toHaveAttribute(
-      'aria-pressed',
-      'true'
+    expect(feed.list).toHaveBeenLastCalledWith('a1', { category: 'events' })
+  })
+
+  it('loads older items on demand', async () => {
+    renderFeed(
+      Array.from({ length: 3 }, (_, i) => post(i + 1)),
+      { pageSize: 2 }
     )
-  })
+    await screen.findByText('Message 3')
+    expect(screen.queryByText('Message 1')).not.toBeInTheDocument()
 
-  it('loads older entries on request', async () => {
-    const feed = renderFeed()
+    fireEvent.click(screen.getByRole('button', { name: 'Load older' }))
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Load older' }))
-
-    expect(feed.view.loadOlder).toHaveBeenCalled()
-  })
-
-  it('says so when older entries cannot be loaded', async () => {
-    const feed = fakeFeed(page)
-    vi.mocked(feed.view.loadOlder).mockRejectedValue(new Error('offline'))
-    renderFeed(feed)
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Load older' }))
-
+    expect(await screen.findByText('Message 1')).toBeInTheDocument()
     expect(
-      await screen.findByText('Could not load older entries.')
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: 'Load older' })
+    ).not.toBeInTheDocument()
   })
 
-  it('offers to set up an empty space with what is ready in it', async () => {
-    renderWithProviders(
-      <FeedPanel
-        homeserverUrl="https://matrix.acme.test"
-        roomId={ROOM}
-        space={{ ...space, role: 'admin', apps: ['feed', 'chat', 'tasks'] }}
-      />,
-      { feed: fakeFeed({ entries: [], hasOlder: false }) }
-    )
+  it('invites the team to a new space', async () => {
+    renderFeed([], { space: { ...roadmap, role: 'admin' } })
 
     expect(
       await screen.findByRole('heading', { name: 'Set up Roadmap' })
@@ -228,40 +224,140 @@ describe('FeedPanel', () => {
     expect(
       screen.getByRole('link', { name: 'Invite members' })
     ).toHaveAttribute('href', '/spaces/a1/members')
-    expect(screen.getByRole('link', { name: 'Create a task' })).toHaveAttribute(
-      'href',
-      '/spaces/a1/tasks'
-    )
-    expect(
-      screen.queryByRole('button', { name: 'Load older' })
-    ).not.toBeInTheDocument()
   })
 
-  it('leaves inviting to the admins and tasks to spaces that have them', async () => {
-    renderFeed(fakeFeed({ entries: [], hasOlder: false }))
+  it('says so when a category is empty', async () => {
+    renderFeed([post(1)])
+    await screen.findByText('Message 1')
 
-    expect(
-      await screen.findByRole('heading', { name: 'Set up Roadmap' })
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('link')).not.toBeInTheDocument()
-  })
-
-  it('says when a filter shows nothing', async () => {
-    renderFeed(fakeFeed({ entries: [], hasOlder: false }))
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Files' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Filter by' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Files' }))
 
     expect(await screen.findByText('Nothing here yet.')).toBeInTheDocument()
   })
 
-  it('says so when the feed cannot be loaded', async () => {
-    const feed = fakeFeed()
-    vi.mocked(feed.open).mockRejectedValue(new Error('not in the space'))
+  it('posts a message', async () => {
+    const { feed } = renderFeed([post(1)])
+    const composer = await screen.findByRole('textbox', {
+      name: 'Text message'
+    })
 
-    renderFeed(feed)
+    fireEvent.change(composer, { target: { value: '  Hello team  ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+
+    expect(await screen.findByText('Hello team')).toBeInTheDocument()
+    expect(feed.post).toHaveBeenCalledWith('a1', 'Hello team')
+    expect(composer).toHaveValue('')
+  })
+
+  it('lets a viewer react, but not post', async () => {
+    const { feed } = renderFeed([post(1)], {
+      space: { ...roadmap, role: 'viewer' }
+    })
+    await screen.findByText('Message 1')
+    expect(
+      screen.queryByRole('textbox', { name: 'Text message' })
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add a reaction' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '🎉' }))
 
     expect(
-      await screen.findByText('Could not load the feed.')
+      await screen.findByRole('button', { name: '🎉 1', pressed: true })
     ).toBeInTheDocument()
+    expect(feed.react).toHaveBeenCalledWith('a1', 'post-1', '🎉')
+  })
+
+  it('takes back a reaction of mine', async () => {
+    const { feed } = renderFeed([
+      post(1, { reactions: [{ key: '👍', userIds: ['u-bob', 'u-me'] }] })
+    ])
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: '👍 2', pressed: true })
+    )
+
+    expect(
+      await screen.findByRole('button', { name: '👍 1', pressed: false })
+    ).toBeInTheDocument()
+    expect(feed.unreact).toHaveBeenCalledWith('a1', 'post-1', '👍')
+  })
+
+  it('edits and deletes my own post only', async () => {
+    const mine = post(2, {
+      author: { type: 'user', id: 'u-me', name: 'Alice Martin' }
+    })
+    renderFeed([post(1), mine])
+    const article = await screen.findByRole('article', { name: 'Alice Martin' })
+    expect(
+      within(screen.getByRole('article', { name: 'Bob Durand' })).queryByRole(
+        'button',
+        { name: 'More actions' }
+      )
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(
+      within(article).getByRole('button', { name: 'More actions' })
+    )
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }))
+    fireEvent.change(within(article).getByRole('textbox', { name: 'Edit' }), {
+      target: { value: 'Message 2, fixed' }
+    })
+    fireEvent.click(within(article).getByRole('button', { name: 'Save' }))
+    await waitFor(() => {
+      expect(within(article).queryByRole('textbox')).not.toBeInTheDocument()
+    })
+    expect(within(article).getByText('Message 2, fixed')).toBeInTheDocument()
+    expect(within(article).getByText('edited')).toBeInTheDocument()
+
+    fireEvent.click(
+      within(article).getByRole('button', { name: 'More actions' })
+    )
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }))
+    await waitFor(() => {
+      expect(screen.queryByText('Message 2, fixed')).not.toBeInTheDocument()
+    })
+  })
+
+  it('follows the live changes of this space', async () => {
+    const { feed, live } = renderFeed([post(1)])
+    await screen.findByText('Message 1')
+
+    vi.mocked(feed.item).mockResolvedValueOnce(post(2))
+    act(() => {
+      live.emit('feed', { spaceId: 'a1', itemId: 'post-2', change: 'added' })
+    })
+    expect(await screen.findByText('Message 2')).toBeInTheDocument()
+
+    act(() => {
+      live.emit('feed', {
+        spaceId: 'other',
+        itemId: 'post-1',
+        change: 'removed'
+      })
+      live.emit('feed', { spaceId: 'a1', itemId: 'post-1', change: 'removed' })
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Message 1')).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows my own post once when its live echo arrives', async () => {
+    const { feed, live } = renderFeed([])
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Text message' }),
+      { target: { value: 'Hi' } }
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await screen.findByText('Hi')
+
+    const [sent] = (await feed.list('a1', {})).items
+    act(() => {
+      live.emit('feed', { spaceId: 'a1', itemId: sent?.id, change: 'added' })
+    })
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Hi')).toHaveLength(1)
+    })
   })
 })

@@ -1,0 +1,123 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import { backend } from '@/adapters/http/backend'
+import { httpFeed } from '@/adapters/http/httpFeed'
+import type { FeedItem } from '@/application/feed'
+
+vi.mock('@linagora/twake-oidc', () => ({
+  addAuthorization: vi.fn(),
+  redirectOnUnauthorized: vi.fn()
+}))
+
+const fetchMock = vi.fn<typeof fetch>()
+vi.stubGlobal('fetch', fetchMock)
+
+const feed = httpFeed(backend('https://api.test/'))
+
+const post: FeedItem = {
+  id: 'p1',
+  kind: 'post',
+  category: 'messages',
+  time: '2026-10-07T08:00:00.000Z',
+  updatedAt: '2026-10-07T08:00:00.000Z',
+  reactions: [],
+  author: { type: 'user', id: 'u1', name: 'Bob' },
+  body: 'Hello',
+  editedAt: null
+}
+
+function requested(): Request {
+  const [request] = fetchMock.mock.calls[0] ?? []
+  if (!(request instanceof Request)) throw new Error('no request sent')
+  return request
+}
+
+afterEach(() => {
+  fetchMock.mockReset()
+})
+
+describe('httpFeed', () => {
+  it("reads a page of the space's feed", async () => {
+    fetchMock.mockResolvedValue(Response.json({ items: [post], next: 'c2' }))
+
+    await expect(feed.list('a1', {})).resolves.toEqual({
+      items: [post],
+      next: 'c2'
+    })
+    expect(requested().url).toBe('https://api.test/spaces/a1/feed')
+  })
+
+  it('reads an older page of one category', async () => {
+    fetchMock.mockResolvedValue(Response.json({ items: [], next: null }))
+
+    await feed.list('a1', { category: 'events', before: 'c2' })
+
+    expect(requested().url).toBe(
+      'https://api.test/spaces/a1/feed?category=events&before=c2'
+    )
+  })
+
+  it('reads one item', async () => {
+    fetchMock.mockResolvedValue(Response.json(post))
+
+    await expect(feed.item('a1', 'p1')).resolves.toEqual(post)
+    expect(requested().url).toBe('https://api.test/spaces/a1/feed/items/p1')
+  })
+
+  it('answers a new post with the item', async () => {
+    fetchMock.mockResolvedValue(Response.json(post, { status: 201 }))
+
+    await expect(feed.post('a1', 'Hello')).resolves.toEqual(post)
+  })
+
+  const thumbsUp = '%F0%9F%91%8D'
+
+  it.each([
+    {
+      write: () => feed.post('a1', 'Hello'),
+      method: 'POST',
+      path: 'spaces/a1/feed/posts',
+      body: { body: 'Hello' }
+    },
+    {
+      write: () => feed.edit('a1', 'p1', 'Hi'),
+      method: 'PATCH',
+      path: 'spaces/a1/feed/posts/p1',
+      body: { body: 'Hi' }
+    },
+    {
+      write: () => feed.remove('a1', 'p1'),
+      method: 'DELETE',
+      path: 'spaces/a1/feed/posts/p1',
+      body: null
+    },
+    {
+      write: () => feed.react('a1', 'p1', '👍'),
+      method: 'PUT',
+      path: `spaces/a1/feed/items/p1/reactions/${thumbsUp}`,
+      body: null
+    },
+    {
+      write: () => feed.unreact('a1', 'p1', '👍'),
+      method: 'DELETE',
+      path: `spaces/a1/feed/items/p1/reactions/${thumbsUp}`,
+      body: null
+    }
+  ])('sends $method $path', async ({ write, method, path, body }) => {
+    let sent: unknown = null
+    fetchMock.mockImplementation(async request => {
+      if (!(request instanceof Request)) throw new Error('not a Request')
+      const text = await request.clone().text()
+      sent = text ? JSON.parse(text) : null
+      return method === 'POST' || method === 'PATCH'
+        ? Response.json(post)
+        : new Response(null, { status: 204 })
+    })
+
+    await write()
+
+    expect(requested().method).toBe(method)
+    expect(requested().url).toBe(`https://api.test/${path}`)
+    expect(sent).toEqual(body)
+  })
+})

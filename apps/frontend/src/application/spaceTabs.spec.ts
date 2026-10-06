@@ -41,20 +41,19 @@ describe('spaceTabs', () => {
     ])
   })
 
-  it('prepares Feed and Chat until the homeserver is known', () => {
+  it('prepares Chat until the homeserver is known', () => {
     const states = spaceTabs({ ...space, homeserverUrl: null }, SOON)
 
     expect(states.slice(0, 2)).toEqual([
-      { tab: 'feed', state: 'preparing' },
+      { tab: 'feed', state: 'ready' },
       { tab: 'chat', state: 'preparing' }
     ])
   })
 
-  it('turns Feed and Chat off without chat, and Mail off without mail', () => {
+  it('turns Chat off without chat, and Mail off without mail', () => {
     const states = spaceTabs({ ...space, chat: false, mail: false }, SOON)
 
     expect(states.filter(t => t.state === 'off').map(t => t.tab)).toEqual([
-      'feed',
       'chat',
       'mail'
     ])
@@ -78,6 +77,7 @@ describe('spaceTabs', () => {
     )
 
     expect(tabs.map(t => t.tab)).toEqual([
+      'feed',
       'tasks',
       'mail',
       'calendar',

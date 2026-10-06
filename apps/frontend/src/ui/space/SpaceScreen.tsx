@@ -11,7 +11,7 @@ import { isRefusal } from '@/application/spaces'
 import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
 import { KeptAlive, KeptAliveStack } from '@/ds/KeptAlive'
-import { LoadingRows, Page, SpaceHeader } from '@/ds/Page'
+import { LoadingRows, Page, SpaceHeader, TabPanel } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 import { MailPanel } from '@/ui/space/MailPanel'
@@ -118,7 +118,6 @@ export function SpaceScreen(): ReactElement {
   const label = t(`tabs.${current.tab}`)
   const resource = (kind: string) =>
     space.data.resources.find(r => r.kind === kind)?.id
-  const matrixSpace = resource('matrix_space')
   const project = resource('project')
   const mailbox = resource('mailbox')
   const framed =
@@ -128,7 +127,7 @@ export function SpaceScreen(): ReactElement {
   return (
     <Page>
       <SpaceHeader
-        compact={framed}
+        compact={framed || current.tab === 'feed'}
         avatar={
           <NameAvatar
             name={space.data.name}
@@ -171,12 +170,7 @@ export function SpaceScreen(): ReactElement {
           {t('space.mailOff')}
         </Alert>
       )}
-      <div
-        role="tabpanel"
-        id={`panel-${current.tab}`}
-        aria-labelledby={`tab-${current.tab}`}
-        className="u-flex u-flex-column u-flex-auto"
-      >
+      <TabPanel tab={current.tab}>
         {current.state === 'preparing' && (
           <Typography>{t('space.preparing', { app: label })}</Typography>
         )}
@@ -198,16 +192,7 @@ export function SpaceScreen(): ReactElement {
             {t('space.stalled', { app: label })}
           </Alert>
         )}
-        {current.state === 'ready' &&
-          current.tab === 'feed' &&
-          space.data.homeserverUrl &&
-          matrixSpace && (
-            <FeedPanel
-              homeserverUrl={space.data.homeserverUrl}
-              roomId={matrixSpace}
-              space={space.data}
-            />
-          )}
+        {current.tab === 'feed' && <FeedPanel space={space.data} />}
         {current.tab === 'members' && <MembersPanel space={space.data} />}
         <KeptAliveStack>
           {opened.has('tasks') && project && (
@@ -229,7 +214,7 @@ export function SpaceScreen(): ReactElement {
             </KeptAlive>
           )}
         </KeptAliveStack>
-      </div>
+      </TabPanel>
     </Page>
   )
 }

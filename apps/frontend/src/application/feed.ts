@@ -1,4 +1,4 @@
-import { RESOURCE_KINDS, type ResourceKind } from '@/application/spaces'
+import type { ResourceKind } from '@/application/spaces'
 
 export const FEED_CATEGORIES = [
   'messages',
@@ -11,20 +11,9 @@ export type FeedCategory = (typeof FEED_CATEGORIES)[number]
 
 export type FeedFilter = 'all' | FeedCategory
 
-const MESSAGE = 'm.room.message'
-const cardType = (category: FeedCategory) => `com.twake.feed.${category}`
-
-// Synapse filters by event type, so each filter is one query on the Matrix space.
-export const FEED_TYPES: Record<FeedFilter, string[]> = {
-  all: [MESSAGE, ...FEED_CATEGORIES.map(cardType)],
-  messages: [MESSAGE, cardType('messages')],
-  files: [cardType('files')],
-  activities: [cardType('activities')],
-  events: [cardType('events')]
-}
-
+/** A user's name is null when they are not a member of the space. */
 export type Actor =
-  | { type: 'user'; id: string | null; email: string | null }
+  | { type: 'user'; id: string | null; name: string | null }
   | { type: 'token'; id: string; name: string }
   | { type: 'deleted_user' }
 
@@ -36,119 +25,146 @@ export interface FeedObject {
   container: { kind: ResourceKind; id: string } | null
 }
 
-export type FeedEntry =
-  | {
-      kind: 'message'
-      id: string
-      ts: number
-      sender: string
-      senderName: string
-      body: string
-    }
-  | {
-      kind: 'card'
-      id: string
-      ts: number
-      category: FeedCategory
-      /** The app that sent the activity, as in `com.twake.<app>.*`. */
-      app: string | null
-      actor: Actor | null
-      object: FeedObject
-      preview: string | null
-    }
+export interface Reaction {
+  key: string
+  /** In the order they reacted. */
+  userIds: string[]
+}
 
-/** A Matrix event, with the content of its latest edit. */
-export interface RoomEvent {
+interface ItemBase {
   id: string
+  category: FeedCategory
+  time: string
+  updatedAt: string
+  reactions: Reaction[]
+}
+
+/** One card per object: it keeps its first time, and shows the latest event. */
+export interface FeedCard extends ItemBase {
+  kind: 'card'
+  /** The latest activity event type, like `com.twake.tasks.task.moved.v1`. */
   type: string
-  sender: string
-  /** The sender's display name in the room, when the client knows it. */
-  senderName?: string | undefined
-  ts: number
-  content: Record<string, unknown>
+  actor: Actor | null
+  object: FeedObject
+  preview: string | null
+  state: Record<string, unknown>
 }
 
+export interface FeedPost extends ItemBase {
+  kind: 'post'
+  author: Actor
+  body: string
+  editedAt: string | null
+}
+
+export type FeedItem = FeedCard | FeedPost
+
+/** Newest first. `next` is the cursor of the older page, if any. */
 export interface FeedPage {
-  entries: FeedEntry[]
-  hasOlder: boolean
-}
-
-export interface FeedView {
-  loadOlder: () => Promise<void>
-  close: () => void
+  items: FeedItem[]
+  next: string | null
 }
 
 export interface FeedService {
-  /** Calls onChange with the whole feed, newest last, each time it changes. */
-  open: (
-    roomId: string,
-    filter: FeedFilter,
-    onChange: (page: FeedPage) => void
-  ) => Promise<FeedView>
+  list: (
+    spaceId: string,
+    options: { category?: FeedCategory; before?: string }
+  ) => Promise<FeedPage>
+  item: (spaceId: string, itemId: string) => Promise<FeedItem>
+  /** Editors and admins only: a viewer is refused with `cannot_post`. */
+  post: (spaceId: string, body: string) => Promise<FeedItem>
+  edit: (spaceId: string, postId: string, body: string) => Promise<FeedItem>
+  remove: (spaceId: string, postId: string) => Promise<void>
+  react: (spaceId: string, itemId: string, key: string) => Promise<void>
+  unreact: (spaceId: string, itemId: string, key: string) => Promise<void>
+}
+
+/** The `feed` live event. */
+export interface FeedChange {
+  spaceId: string
+  itemId: string
+  change: 'added' | 'changed' | 'removed'
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function isObject(
-  value: unknown
-): value is Omit<FeedObject, 'container'> & { container?: unknown } {
-  return (
-    isRecord(value) &&
-    ['type', 'id', 'title'].every(key => typeof value[key] === 'string')
-  )
-}
-
-function toContainer(value: unknown): FeedObject['container'] {
-  if (!isRecord(value) || typeof value.id !== 'string') return null
-  const kind = RESOURCE_KINDS.find(k => k === value.kind)
-  return kind ? { kind, id: value.id } : null
-}
-
-function isActor(value: unknown): value is Actor {
-  return (
-    isRecord(value) &&
-    (value.type === 'user' ||
-      value.type === 'token' ||
-      value.type === 'deleted_user')
-  )
-}
-
-function categoryOf(type: string): FeedCategory | undefined {
-  return FEED_CATEGORIES.find(category => cardType(category) === type)
-}
-
-export function toFeedEntry(event: RoomEvent): FeedEntry | null {
-  const { id, type, sender, senderName = sender, ts, content } = event
-  const relation = content['m.relates_to']
-  if (isRecord(relation) && relation.rel_type === 'm.replace') return null
-
-  if (type === MESSAGE) {
-    const { body } = content
-    if (typeof body !== 'string') return null
-    return { kind: 'message', id, ts, sender, senderName, body }
+export function toFeedChange(data: unknown): FeedChange | null {
+  if (
+    !isRecord(data) ||
+    typeof data.spaceId !== 'string' ||
+    typeof data.itemId !== 'string'
+  ) {
+    return null
   }
+  const { spaceId, itemId, change } = data
+  return change === 'added' || change === 'changed' || change === 'removed'
+    ? { spaceId, itemId, change }
+    : null
+}
 
-  const category = categoryOf(type)
-  if (!category || !isObject(content.object)) return null
-  const { type: objectType, id: objectId, title, container } = content.object
+export function shows(item: FeedItem, filter: FeedFilter): boolean {
+  return filter === 'all' || item.category === filter
+}
+
+/** The app that sent a card, as in `com.twake.<app>.*`. */
+export function cardApp(card: FeedCard): string | null {
+  return /^com\.twake\.([a-z]+)\./.exec(card.type)?.[1] ?? null
+}
+
+/** What happened last, as in `com.twake.<app>.<object>.<action>.v1`. */
+export function cardAction(card: FeedCard): string | null {
+  return /\.([a-z_]+)\.v\d+$/.exec(card.type)?.[1] ?? null
+}
+
+export interface TimeRange {
+  start: string
+  end: string
+}
+
+/** A calendar card's state; `allDay` times are dates, `YYYY-MM-DD`. */
+export interface EventState extends TimeRange {
+  allDay: boolean
+  location: string | null
+  previous: TimeRange | null
+  proposed: (TimeRange & { by: string }) | null
+  rsvp: Record<'accepted' | 'declined' | 'tentative' | 'pending', number> | null
+}
+
+function toRsvp(value: unknown): EventState['rsvp'] {
+  if (!isRecord(value)) return null
+  const count = (key: string) =>
+    typeof value[key] === 'number' ? value[key] : 0
   return {
-    kind: 'card',
-    id,
-    ts,
-    category,
-    app:
-      typeof content.type === 'string'
-        ? (/^com\.twake\.([a-z]+)\./.exec(content.type)?.[1] ?? null)
-        : null,
-    actor: isActor(content.actor) ? content.actor : null,
-    object: {
-      type: objectType,
-      id: objectId,
-      title,
-      container: toContainer(container)
-    },
-    preview: typeof content.preview === 'string' ? content.preview : null
+    accepted: count('accepted'),
+    declined: count('declined'),
+    tentative: count('tentative'),
+    pending: count('pending')
+  }
+}
+
+function toRange(value: unknown): TimeRange | null {
+  return isRecord(value) &&
+    typeof value.start === 'string' &&
+    typeof value.end === 'string'
+    ? { start: value.start, end: value.end }
+    : null
+}
+
+export function toEventState(
+  state: Record<string, unknown>
+): EventState | null {
+  const range = toRange(state)
+  if (!range) return null
+  const proposed = toRange(state.proposed)
+  const by = isRecord(state.proposed) ? state.proposed.by : null
+  return {
+    ...range,
+    allDay: state.allDay === true,
+    location: typeof state.location === 'string' ? state.location : null,
+    previous: toRange(state.previous),
+    proposed: proposed && typeof by === 'string' ? { ...proposed, by } : null,
+    rsvp: toRsvp(state.rsvp)
   }
 }
