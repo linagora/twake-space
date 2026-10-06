@@ -18,6 +18,7 @@ import {
 import { isRefusal } from '@/application/spaces'
 import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
+import { KeptAlive, KeptAliveStack } from '@/ds/KeptAlive'
 import { LoadingRows, Page, SpaceHeader } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { FeedPanel } from '@/ui/space/FeedPanel'
@@ -44,6 +45,35 @@ function useNowAfter(at: number): number {
   return now
 }
 
+// The tabs that frame an app: once opened, their frame stays alive in the
+// space (ADR 010), hidden on the other tabs.
+const FRAMED_TABS = ['tasks', 'mail'] as const
+type FramedTab = (typeof FRAMED_TABS)[number]
+
+function isFramed(tab: string): tab is FramedTab {
+  return (FRAMED_TABS as readonly string[]).includes(tab)
+}
+
+// The framed tabs opened in this space. Another space starts empty: its
+// frames show other resources, and the old ones go with their history.
+function useOpenedFrames(
+  spaceId: string,
+  tab: string | null
+): ReadonlySet<FramedTab> {
+  const [opened, setOpened] = useState<{
+    spaceId: string
+    tabs: ReadonlySet<FramedTab>
+  }>({ spaceId, tabs: new Set() })
+  const current =
+    opened.spaceId === spaceId ? opened.tabs : new Set<FramedTab>()
+  if (tab !== null && isFramed(tab) && !current.has(tab)) {
+    setOpened({ spaceId, tabs: new Set([...current, tab]) })
+  } else if (opened.spaceId !== spaceId) {
+    setOpened({ spaceId, tabs: current })
+  }
+  return current
+}
+
 export function SpaceScreen(): ReactElement {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -53,6 +83,15 @@ export function SpaceScreen(): ReactElement {
   const now = useNowAfter(
     space.data ? Date.parse(space.data.createdAt) + PREPARING_MS : 0
   )
+  const readyTab =
+    space.data &&
+    tab !== undefined &&
+    spaceTabs(space.data, now).some(
+      item => item.tab === tab && item.state === 'ready'
+    )
+      ? tab
+      : null
+  const opened = useOpenedFrames(spaceId, readyTab)
 
   if (space.isPending) {
     return (
@@ -189,13 +228,27 @@ export function SpaceScreen(): ReactElement {
               space={space.data}
             />
           )}
-        {current.state === 'ready' && current.tab === 'tasks' && project && (
-          <TasksPanel spaceId={spaceId} projectId={project} />
-        )}
-        {current.state === 'ready' && current.tab === 'mail' && mailbox && (
-          <MailPanel spaceId={spaceId} mailboxId={mailbox} />
-        )}
         {current.tab === 'members' && <MembersPanel space={space.data} />}
+        <KeptAliveStack>
+          {opened.has('tasks') && project && (
+            <KeptAlive active={current.tab === 'tasks'}>
+              <TasksPanel
+                spaceId={spaceId}
+                projectId={project}
+                active={current.tab === 'tasks'}
+              />
+            </KeptAlive>
+          )}
+          {opened.has('mail') && mailbox && (
+            <KeptAlive active={current.tab === 'mail'}>
+              <MailPanel
+                spaceId={spaceId}
+                mailboxId={mailbox}
+                active={current.tab === 'mail'}
+              />
+            </KeptAlive>
+          )}
+        </KeptAliveStack>
       </div>
     </Page>
   )

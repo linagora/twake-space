@@ -13,27 +13,37 @@ function framedPath(data: unknown): string | null {
 
 export function TasksPanel({
   spaceId,
-  projectId
+  projectId,
+  active = true
 }: {
   spaceId: string
   projectId: string
+  // Hidden on another tab of the space, kept alive
+  active?: boolean
 }): ReactElement {
   const { t } = useI18n()
   const { tasksUrl } = useServices()
   if (!tasksUrl) return <Typography>{t('tasks.notSetUp')}</Typography>
   return (
-    <TasksFrame spaceId={spaceId} projectId={projectId} tasksUrl={tasksUrl} />
+    <TasksFrame
+      spaceId={spaceId}
+      projectId={projectId}
+      tasksUrl={tasksUrl}
+      active={active}
+    />
   )
 }
 
 function TasksFrame({
   spaceId,
   projectId,
-  tasksUrl
+  tasksUrl,
+  active
 }: {
   spaceId: string
   projectId: string
   tasksUrl: string
+  active: boolean
 }): ReactElement {
   const { t } = useI18n()
   const { mode, systemMode } = useColorScheme()
@@ -60,6 +70,7 @@ function TasksFrame({
       tabPath={`/spaces/${spaceId}/tasks`}
       title={t('tabs.tasks')}
       frameRef={frame}
+      active={active}
       onFrameLoad={() => {
         loaded.current = true
         sendTheme()
