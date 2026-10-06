@@ -39,8 +39,10 @@ services:
         for topic in twake.chat.events.v1 twake.mail.events.v1 twake.drive.events.v1 \
           twake.calendar.events.v1 twake.meet.events.v1 twake.tasks.events.v1 \
           twake.platform.events.v1; do
-          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 \
-            --create --if-not-exists --topic "$$topic" --partitions 3 --replication-factor 1 || exit 1
+          for name in "$$topic" "$$topic.dlq.twake-space"; do
+            /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 \
+              --create --if-not-exists --topic "$$name" --partitions 3 --replication-factor 1 || exit 1
+          done
         done
 
   postgres:

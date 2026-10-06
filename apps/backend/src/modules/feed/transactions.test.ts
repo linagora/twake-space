@@ -216,6 +216,18 @@ describe('PUT /_matrix/app/v1/transactions/:txnId', () => {
     ])
   })
 
+  it('skips an event Postgres cannot store and keeps the others', async () => {
+    const put = setUp()
+    const bye = message('bye')
+
+    const response = await put('t1', [message('nul \u0000 byte'), bye])
+
+    expect(response.statusCode).toBe(200)
+    expect((await readMessages()).map(m => m.matrixEventId)).toEqual([
+      bye.event_id
+    ])
+  })
+
   it('ignores rooms that are not the Matrix space of a space', async () => {
     const put = setUp()
 

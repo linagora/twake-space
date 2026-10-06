@@ -1,6 +1,6 @@
 import type { Logger } from 'pino'
 import { z } from 'zod'
-import type { Tx } from '../infra/db.ts'
+import { postgresRefusal, type Tx } from '../infra/db.ts'
 import type { Deduplicator, EventKey } from './dedupe.ts'
 import {
   PLATFORM_TOPIC,
@@ -19,6 +19,8 @@ export class MalformedEventError extends Error {}
 // Thrown by a handler for a well-formed event that contradicts the copy; kept on a
 // dead letter topic for someone to look at.
 export class RejectedEventError extends Error {}
+
+export const deadLetterTopic = (topic: string) => `${topic}.dlq.twake-space`
 
 export type DeadLetter = (
   topic: string,
@@ -94,10 +96,14 @@ export function createMessageHandler(deps: {
         handler(parsed.event, tx, logger.child({ ...context, key }))
       )
     } catch (error) {
-      if (error instanceof RejectedEventError) {
-        await deadLetter(`${topic}.dlq.twake-space`, message, error.message)
+      const reason =
+        error instanceof RejectedEventError
+          ? error.message
+          : postgresRefusal(error)
+      if (reason) {
+        await deadLetter(deadLetterTopic(topic), message, reason)
         logger.warn(
-          { ...context, key, ...dedupeKey, reason: error.message },
+          { ...context, key, ...dedupeKey, reason },
           'event sent to the dead letter topic'
         )
         return 'rejected'

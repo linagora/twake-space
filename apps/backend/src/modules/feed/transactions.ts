@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm'
 import type { FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import type { Db, Tx } from '../../infra/db.ts'
+import { postgresRefusal, type Db, type Tx } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import { hashSecret } from '../../infra/secrets.ts'
 import { notifyUsers } from '../notifications/recipients.ts'
@@ -246,8 +246,18 @@ export function registerTransactionRoutes(
         for (const raw of body.data.events) {
           // One malformed event must not make Synapse resend the batch forever.
           const event = roomEvent.safeParse(raw)
-          if (event.success) {
-            await storeEvent(tx, homeserver, localpart, event.data)
+          if (!event.success) continue
+          try {
+            await tx.transaction(savepoint =>
+              storeEvent(savepoint, homeserver, localpart, event.data)
+            )
+          } catch (error) {
+            const reason = postgresRefusal(error)
+            if (!reason) throw error
+            request.log.warn(
+              { eventId: event.data.event_id, reason },
+              'skipping a Matrix event Postgres refuses'
+            )
           }
         }
       })

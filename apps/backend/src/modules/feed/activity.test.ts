@@ -187,6 +187,34 @@ describe('activity events', () => {
     await expect(store(event)).rejects.toThrow(RejectedEventError)
   })
 
+  it('retries a recent event about a space or member it does not know yet', async () => {
+    const time = new Date().toISOString()
+    const event = anEvent({ time })
+    event.data.object = {
+      ...event.data.object,
+      space_id: '00000000-0000-4000-8000-000000000000'
+    }
+
+    for (const late of [
+      event,
+      anEvent({ time, twakeactorid: BOB, twakeactor: 'bob@linagora.com' })
+    ]) {
+      const failure = await store(late).catch((error: unknown) => error)
+      expect(failure).toBeInstanceOf(Error)
+      expect(failure).not.toBeInstanceOf(RejectedEventError)
+    }
+  })
+
+  it('rejects an unknown member at once when the event time is far ahead', async () => {
+    const time = new Date(Date.now() + 3_600_000).toISOString()
+
+    await expect(
+      store(
+        anEvent({ time, twakeactorid: BOB, twakeactor: 'bob@linagora.com' })
+      )
+    ).rejects.toThrow(RejectedEventError)
+  })
+
   it('rejects an event whose actor is not a member of the space', async () => {
     await expect(
       store(anEvent({ twakeactorid: BOB, twakeactor: 'bob@linagora.com' }))
@@ -243,6 +271,18 @@ describe('notifications', () => {
     event.data.recipients = recipients
     return event
   }
+
+  it('stores a replayed event and its notifications once', async () => {
+    const event = withRecipients([
+      { uuid: ALICE, email: 'alice@linagora.com', reason: 'mentioned' }
+    ])
+
+    await store(event)
+    await store(event)
+
+    expect(await stored()).toHaveLength(1)
+    expect(await readNotifications()).toHaveLength(1)
+  })
 
   it('notifies each recipient with the type of its reason', async () => {
     await store(
