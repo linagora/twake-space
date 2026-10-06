@@ -47,7 +47,10 @@ Both images go to `ghcr.io/<repository owner>/twake-space-frontend` and `ghcr.io
 - Push to `main`: runs the check, then builds and pushes the image tagged `latest`.
 - Tag `frontend-vX.Y.Z` or `backend-vX.Y.Z`: verifies the tag (the commit is on `main`, the version is greater than the previous release, and it matches the app's `package.json`), runs the check, pushes the image tagged with the version and `latest`, then creates a GitHub release with generated notes.
 
-The image build in CI runs `apps/<app>/docker/smoke-test.sh` when it exists. Only the frontend has one: it starts the image as in production (uid 101, read-only root filesystem, `/tmp` as tmpfs, all capabilities dropped) and checks the served files, cache headers, CSP and logs.
+The image build in CI runs `apps/<app>/docker/smoke-test.sh`. Both apps start their image as in production (read-only root filesystem, all capabilities dropped):
+
+- Frontend (uid 101, `/tmp` as tmpfs): checks the served files, cache headers, CSP and logs.
+- Backend (uid 1000), next to Postgres, Kafka and a stub OIDC issuer: checks readiness, liveness, migrations, an unauthenticated API call, metrics, and a clean stop on `SIGTERM`.
 
 ## Frontend
 
@@ -158,7 +161,7 @@ Migrations run at every startup, from the `apps/backend/drizzle` folder shipped 
 
 On the API port:
 
-- `GET /health/live` answers `200 {"status":"ok"}` once the server listens.
+- `GET /health/live` answers `503 {"status":"unavailable"}` when the Kafka consumer is disconnected or one message has been in its handler for over 5 minutes, `200 {"status":"ok"}` otherwise. Restarting the pod is the fix for both.
 - `GET /health/ready` answers `200` when startup has finished and `select 1` succeeds on Postgres, `503 {"status":"unavailable"}` otherwise. It turns `503` as soon as shutdown starts.
 
 Health requests are not logged. The metrics port answers `/health/live` and `/health/ready` too, but its readiness is always `200`: probe the API port.

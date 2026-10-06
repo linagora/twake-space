@@ -138,6 +138,32 @@ it('tells every member when a group role changes', async () => {
   )
 })
 
+it('tells the members of the spaces linking a group when it is renamed', async () => {
+  const groupId = randomUUID()
+  await handle('twake.space.group.linked', {
+    organizationId: 'org-1',
+    id: SPACE_ID,
+    groups: [{ id: groupId, name: 'Designers', role: 'editor' }],
+    timestamp: next()
+  })
+  await told(2)
+  send.mockClear()
+
+  await handle('b2b.group.updated', {
+    organizationId: 'org-1',
+    id: groupId,
+    name: 'Product designers',
+    timestamp: next()
+  })
+
+  expect(await told(2)).toEqual(
+    expect.arrayContaining([
+      [ALICE, 'spaces', space],
+      [BOB, 'spaces', space]
+    ])
+  )
+})
+
 it('tells every member when a resource is ready', async () => {
   const type = 'com.twake.drive.space.provisioned.v1'
   const handler = resourceActivityRoutes.get(type)

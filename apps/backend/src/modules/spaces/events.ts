@@ -514,7 +514,12 @@ const onGroupUpdated: Handler<PlatformEvent> = async (event, tx) => {
       .returning({ groupId: groupNames.groupId })
     if (!newest) return
   }
-  await tx.update(spaceGroups).set({ name }).where(eq(spaceGroups.groupId, id))
+  const linking = await tx
+    .update(spaceGroups)
+    .set({ name })
+    .where(eq(spaceGroups.groupId, id))
+    .returning({ spaceId: spaceGroups.spaceId })
+  for (const { spaceId } of linking) await tellSpaceMembers(tx, spaceId)
 }
 
 const userDeleted = z
