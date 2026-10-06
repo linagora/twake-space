@@ -221,5 +221,29 @@
   },
   "embed": {
     "overlay": "Fenster von %{app}"
+  },
+  "feedback": {
+    "triggerLabel": "Feedback",
+    "triggerAriaLabel": "Feedback senden",
+    "formTitle": "Feedback senden",
+    "messageLabel": "Was ist passiert?",
+    "messagePlaceholder": "Beschreiben Sie, was Sie getan haben, was Sie erwartet haben oder was Sie ändern würden.",
+    "emailLabel": "E-Mail (optional)",
+    "emailPlaceholder": "ihre.email@beispiel.de",
+    "submitButtonLabel": "Senden",
+    "cancelButtonLabel": "Abbrechen",
+    "confirmButtonLabel": "OK",
+    "successMessageText": "Vielen Dank, Ihr Feedback wurde gesendet.",
+    "isRequiredLabel": "(erforderlich)",
+    "addScreenshotButtonLabel": "Screenshot hinzufügen",
+    "removeScreenshotButtonLabel": "Screenshot entfernen",
+    "highlightToolText": "Hervorheben",
+    "hideToolText": "Ausblenden",
+    "removeHighlightText": "Entfernen",
+    "errorEmptyMessageText": "Geben Sie vor dem Senden eine Nachricht ein.",
+    "errorNoClientText": "Das Feedback konnte nicht gesendet werden: Der Meldedienst ist nicht verfügbar.",
+    "errorTimeoutText": "Das Senden hat zu lange gedauert. Versuchen Sie es erneut.",
+    "errorForbiddenText": "Das Feedback konnte nicht gesendet werden: Sie haben keine Berechtigung dazu.",
+    "errorGenericText": "Das Feedback konnte nicht gesendet werden. Versuchen Sie es erneut."
   }
 }

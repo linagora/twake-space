@@ -221,5 +221,29 @@
   },
   "embed": {
     "overlay": "Ventanas de %{app}"
+  },
+  "feedback": {
+    "triggerLabel": "Opinión",
+    "triggerAriaLabel": "Enviar opinión",
+    "formTitle": "Enviar opinión",
+    "messageLabel": "¿Qué ha pasado?",
+    "messagePlaceholder": "Cuéntenos qué estaba haciendo, qué esperaba o qué cambiaría.",
+    "emailLabel": "Correo electrónico (opcional)",
+    "emailPlaceholder": "su.correo@ejemplo.es",
+    "submitButtonLabel": "Enviar",
+    "cancelButtonLabel": "Cancelar",
+    "confirmButtonLabel": "Aceptar",
+    "successMessageText": "Gracias, su opinión se ha enviado.",
+    "isRequiredLabel": "(obligatorio)",
+    "addScreenshotButtonLabel": "Añadir una captura de pantalla",
+    "removeScreenshotButtonLabel": "Quitar la captura de pantalla",
+    "highlightToolText": "Resaltar",
+    "hideToolText": "Ocultar",
+    "removeHighlightText": "Quitar",
+    "errorEmptyMessageText": "Escriba un mensaje antes de enviar.",
+    "errorNoClientText": "No se pudo enviar la opinión: el servicio de informes no está disponible.",
+    "errorTimeoutText": "El envío ha tardado demasiado. Inténtelo de nuevo.",
+    "errorForbiddenText": "No se pudo enviar la opinión: no tiene permiso para hacerlo.",
+    "errorGenericText": "No se pudo enviar la opinión. Inténtelo de nuevo."
   }
 }

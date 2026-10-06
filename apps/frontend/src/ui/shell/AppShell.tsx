@@ -28,6 +28,7 @@ import {
   SidebarHeader,
   SidebarSection
 } from '@/ds/AppFrame'
+import { useFeedbackButton } from '@/ui/feedback/useFeedbackButton'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
@@ -38,6 +39,7 @@ export function AppShell(): ReactElement {
   const { t } = useI18n()
   const [creating, setCreating] = useState(false)
   const home = useMatch('/') !== null
+  useFeedbackButton()
 
   return (
     <AppFrame
