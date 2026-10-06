@@ -25,6 +25,8 @@ jobs:
           allowed-branches: main
       - id: version
         run: echo "version=${GITHUB_REF_NAME#frontend-v}" >> "$GITHUB_OUTPUT"
+      - name: Verify the Cozy registry manifest has the same version
+        run: test "$(jq -r .version apps/frontend/manifest.webapp)" = "${{ steps.version.outputs.version }}"
 
   check:
     needs: [verify]
