@@ -57,10 +57,13 @@ function handle(routingKey: string, body: unknown) {
   return testDb.db.transaction(tx => handler(event, tx, log))
 }
 
+// Waits a little past the expected count, so a stray later event fails the test.
 async function told(count: number) {
   await vi.waitFor(() => {
     expect(send).toHaveBeenCalledTimes(count)
   })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  expect(send).toHaveBeenCalledTimes(count)
   return send.mock.calls
 }
 
@@ -127,7 +130,12 @@ it('tells every member when a group role changes', async () => {
     timestamp: next()
   })
 
-  expect(await told(2)).toHaveLength(2)
+  expect(await told(2)).toEqual(
+    expect.arrayContaining([
+      [ALICE, 'spaces', space],
+      [BOB, 'spaces', space]
+    ])
+  )
 })
 
 it('tells every member when a resource is ready', async () => {

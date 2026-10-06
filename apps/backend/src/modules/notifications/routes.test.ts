@@ -142,6 +142,24 @@ describe('GET /notifications', () => {
     ])
   })
 
+  it('pages through notifications made at the same time without skipping any', async () => {
+    for (const title of ['a', 'b', 'c', 'd', 'e']) await notify(ALICE, title, 1)
+    const get = setUp()
+    const seen: string[] = []
+
+    let before = ''
+    for (let page = 0; page < 3; page++) {
+      const { notifications: rows } = (
+        await get('GET', `/notifications?limit=2${before}`)
+      ).json<Page>()
+      seen.push(...rows.map(r => r.id))
+      before = `&before=${rows.at(-1)?.id ?? ''}`
+    }
+
+    expect(new Set(seen).size).toBe(5)
+    expect(seen).toHaveLength(5)
+  })
+
   it('is for people signed in, not API tokens', async () => {
     const response = await setUp()(
       'GET',

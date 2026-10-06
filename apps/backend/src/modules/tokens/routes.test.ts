@@ -20,6 +20,7 @@ const DESIGN = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
 const SALES = '9d1c7a52-0b3e-4f6a-8c2d-5e4f3a2b1c0d'
 const HR = '6a1f3e2d-8c4b-4a5e-9f7d-2b3c4d5e6f70'
 const CI = '2d7e4b1a-9c3f-4e8d-b6a5-0f1e2d3c4b5a'
+const CAROL = '5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e'
 const DAY = 24 * 60 * 60 * 1000
 
 const directory = {
@@ -97,7 +98,11 @@ function setUp(tokenCaller: TokenCaller = aTokenCaller()) {
         ? anIdentity({ userId: ALICE })
         : token === 'bob'
           ? anIdentity({ userId: BOB })
-          : null,
+          : token === 'carol'
+            ? anIdentity({ userId: CAROL, organizationId: 'org-2' })
+            : token === 'alice-at-org-2'
+              ? anIdentity({ userId: ALICE, organizationId: 'org-2' })
+              : null,
     token => (token === 'tws_bot' ? tokenCaller : null)
   )
   registerTokenRoutes(app, { db: testDb.db, authorize, directory })
@@ -518,6 +523,89 @@ describe('organization token policy', () => {
     )
 
     expect(response.statusCode).toBe(403)
+  })
+})
+
+describe('between organizations', () => {
+  beforeEach(async () => {
+    await testDb.db.insert(organizationMembers).values({
+      organizationId: 'org-2',
+      userId: CAROL,
+      email: 'carol@example.org',
+      role: 'admin'
+    })
+  })
+
+  it("keeps an organization's tokens, policy and audit log from the admins of another", async () => {
+    const call = setUp()
+    const org = await call('POST', '/organization/tokens', orgToken())
+    const orgId = org.json<{ id: string }>().id
+    await call('PUT', '/organization/token-policy', {
+      allowNoExpiry: true,
+      maxLifetimeDays: 30
+    })
+
+    const listed = await call('GET', '/organization/tokens', undefined, 'carol')
+    const renamed = await call(
+      'PATCH',
+      `/organization/tokens/${orgId}`,
+      { name: 'hijacked' },
+      'carol'
+    )
+    const revoked = await call(
+      'DELETE',
+      `/organization/tokens/${orgId}`,
+      undefined,
+      'carol'
+    )
+    const audit = await call(
+      'GET',
+      '/organization/token-audit',
+      undefined,
+      'carol'
+    )
+    const policy = await call(
+      'GET',
+      '/organization/token-policy',
+      undefined,
+      'carol'
+    )
+    const onTheirSpace = await call(
+      'POST',
+      '/organization/tokens',
+      orgToken({ spaces: [DESIGN] }),
+      'carol'
+    )
+
+    expect(listed.json<{ tokens: object[] }>().tokens).toEqual([])
+    expect(renamed.statusCode).toBe(404)
+    expect(revoked.statusCode).toBe(404)
+    expect(audit.json<{ entries: object[] }>().entries).toEqual([])
+    expect(policy.json()).toEqual({
+      allowNoExpiry: false,
+      maxLifetimeDays: null
+    })
+    expect(onTheirSpace.statusCode).toBe(400)
+    expect((await call('GET', '/organization/tokens')).json()).toMatchObject({
+      tokens: [{ id: orgId, name: 'release bot' }]
+    })
+  })
+
+  it('shows a person only the tokens made in the organization they act in', async () => {
+    const call = setUp()
+    const own = await call('POST', '/tokens', create())
+    const ownId = own.json<{ id: string }>().id
+
+    const listed = await call('GET', '/tokens', undefined, 'alice-at-org-2')
+    const revoked = await call(
+      'DELETE',
+      `/tokens/${ownId}`,
+      undefined,
+      'alice-at-org-2'
+    )
+
+    expect(listed.json<{ tokens: object[] }>().tokens).toEqual([])
+    expect(revoked.statusCode).toBe(404)
   })
 })
 
