@@ -80,6 +80,8 @@ export const feedReactions = pgTable(
   'feed_reactions',
   {
     matrixEventId: text('matrix_event_id').primaryKey(),
+    // Null on reactions stored before reactions were scoped to their space.
+    spaceId: uuid('space_id'),
     targetEventId: text('target_event_id').notNull(),
     sender: text().notNull(),
     key: text().notNull(),

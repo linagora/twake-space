@@ -1,11 +1,16 @@
-import { sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { CloudEvent } from '../../events/envelope.ts'
 import { fresh } from '../../events/freshness.ts'
-import { parseOrDrop, type Handler } from '../../events/router.ts'
+import {
+  NotYetKnownError,
+  parseOrDrop,
+  RejectedEventError,
+  type Handler
+} from '../../events/router.ts'
 import { tellSpaceMembers } from '../live/notify.ts'
 import { deletedAfter, resourceKey } from './events.ts'
-import { spaceResourceKind, spaceResources } from './schema.ts'
+import { spaceResourceKind, spaceResources, spaces } from './schema.ts'
 
 type SpaceResourceKind = (typeof spaceResourceKind.enumValues)[number]
 
@@ -32,6 +37,16 @@ function onProvisioned(kind: SpaceResourceKind): Handler<CloudEvent> {
     } = parseOrDrop(provisioned, event, event.type)
     const at = event.time === undefined ? undefined : new Date(event.time)
     if (await deletedAfter(tx, space_id, at)) return
+    const [space] = await tx
+      .select({ organizationId: spaces.organizationId })
+      .from(spaces)
+      .where(eq(spaces.spaceId, space_id))
+    if (!space) throw new NotYetKnownError(`unknown space ${space_id}`)
+    if (space.organizationId !== twakeorg) {
+      throw new RejectedEventError(
+        `space ${space_id} belongs to another organization`
+      )
+    }
     if (!(await fresh(tx, at, [resourceKey(space_id, kind)])).size) return
     await tx
       .insert(spaceResources)

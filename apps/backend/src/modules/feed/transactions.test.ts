@@ -200,6 +200,53 @@ describe('PUT /_matrix/app/v1/transactions/:txnId', () => {
     ])
   })
 
+  it('leaves the messages and reactions of another space to their own room', async () => {
+    const SALES = '9d1c7a52-0b3e-4f6a-8c2d-5e4f3a2b1c0d'
+    await testDb.db
+      .insert(spaces)
+      .values({ spaceId: SALES, organizationId: 'acme', name: 'Sales' })
+    await testDb.db.insert(spaceResources).values({
+      spaceId: SALES,
+      kind: 'matrix_space',
+      organizationId: 'acme',
+      resourceId: '!sales:example.com'
+    })
+    const put = setUp()
+    const hello = message('hello')
+    const liked = event('m.reaction', {
+      'm.relates_to': {
+        rel_type: 'm.annotation',
+        event_id: hello.event_id,
+        key: '👍'
+      }
+    })
+    await put('t1', [hello, liked])
+
+    const fromSales = { room_id: '!sales:example.com' }
+    await put('t2', [
+      event('m.room.redaction', { redacts: hello.event_id }, fromSales),
+      event('m.room.redaction', { redacts: liked.event_id }, fromSales),
+      message('* edited', {
+        ...fromSales,
+        content: {
+          msgtype: 'm.text',
+          body: '* edited',
+          'm.new_content': { msgtype: 'm.text', body: 'edited' },
+          'm.relates_to': { rel_type: 'm.replace', event_id: hello.event_id }
+        }
+      })
+    ])
+
+    expect(await readMessages()).toMatchObject([
+      { content: { body: 'hello' }, editedContent: null, redactedAt: null }
+    ])
+    expect(
+      await testDb.db
+        .select({ redactedAt: feedReactions.redactedAt })
+        .from(feedReactions)
+    ).toEqual([{ redactedAt: null }])
+  })
+
   it('handles a transaction once', async () => {
     const put = setUp()
     const hello = message('hello')

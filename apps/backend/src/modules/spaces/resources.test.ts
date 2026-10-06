@@ -2,10 +2,14 @@ import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { CloudEvent } from '../../events/envelope.ts'
 import { lastChanges } from '../../events/schema.ts'
-import { MalformedEventError } from '../../events/router.ts'
+import {
+  MalformedEventError,
+  NotYetKnownError,
+  RejectedEventError
+} from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { resourceActivityRoutes } from './resources.ts'
-import { spaceResources } from './schema.ts'
+import { spaceResources, spaces } from './schema.ts'
 
 const SPACE_ID = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
 
@@ -17,6 +21,10 @@ afterAll(() => testDb.drop())
 beforeEach(async () => {
   await testDb.db.delete(spaceResources)
   await testDb.db.delete(lastChanges)
+  await testDb.db.delete(spaces)
+  await testDb.db
+    .insert(spaces)
+    .values({ spaceId: SPACE_ID, organizationId: 'linagora', name: 'Design' })
 })
 
 function provisioned(
@@ -53,6 +61,7 @@ const readResources = () =>
 
 describe('provisioned events', () => {
   it('does not bring back a resource of a space deleted after the event', async () => {
+    await testDb.db.delete(spaces)
     await testDb.db.insert(lastChanges).values({
       object: `space:${SPACE_ID}`,
       at: new Date('2026-10-05T10:00:00Z')
@@ -64,6 +73,25 @@ describe('provisioned events', () => {
       { time: '2026-10-05T09:30:00Z' }
     )
 
+    expect(await readResources()).toEqual([])
+  })
+
+  it('waits for a space it does not know yet', async () => {
+    await testDb.db.delete(spaces)
+
+    await expect(
+      provisioned('drive', { kind: 'drive', id: 'a1f0c3e2d4b5' })
+    ).rejects.toBeInstanceOf(NotYetKnownError)
+  })
+
+  it('rejects a resource sent for a space of another organization', async () => {
+    await expect(
+      provisioned(
+        'drive',
+        { kind: 'drive', id: 'a1f0c3e2d4b5' },
+        { twakeorg: 'globex' }
+      )
+    ).rejects.toBeInstanceOf(RejectedEventError)
     expect(await readResources()).toEqual([])
   })
 
