@@ -68,7 +68,14 @@
     "tasks": "Công việc",
     "drive": "Drive",
     "mail": "Thư",
-    "calendar": "Lịch"
+    "calendar": "Lịch",
+    "members": "Thành viên"
+  },
+  "members": {
+    "members": "Thành viên",
+    "groups": "Nhóm",
+    "noMembers": "Không có thành viên trực tiếp.",
+    "noGroups": "Không có nhóm liên kết."
   },
   "space": {
     "back": "Tất cả không gian",

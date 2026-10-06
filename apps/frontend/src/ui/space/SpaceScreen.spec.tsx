@@ -152,6 +152,18 @@ describe('SpaceScreen', () => {
     ).toBeInTheDocument()
   })
 
+  it("lists the space's people on the Members tab", async () => {
+    renderAt('/spaces/a1/members', {
+      ...roadmap,
+      groups: [{ id: 'g-1', name: 'Designers', role: 'viewer' }]
+    })
+
+    expect(
+      await screen.findByRole('tab', { name: 'Members', selected: true })
+    ).toBeInTheDocument()
+    expect(screen.getByText('Designers')).toBeInTheDocument()
+  })
+
   it('shows a resource without an id as being prepared', async () => {
     renderAt('/spaces/a1/drive')
 

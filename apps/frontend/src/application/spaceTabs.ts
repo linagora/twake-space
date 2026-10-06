@@ -6,14 +6,15 @@ export const TABS = [
   'tasks',
   'drive',
   'mail',
-  'calendar'
+  'calendar',
+  'members'
 ] as const
 
 export type Tab = (typeof TABS)[number]
 
 export type TabState = 'off' | 'preparing' | 'ready'
 
-const RESOURCE: Record<Tab, ResourceKind> = {
+const RESOURCE: Record<Exclude<Tab, 'members'>, ResourceKind> = {
   feed: 'matrix_space',
   chat: 'matrix_space',
   tasks: 'project',
@@ -30,6 +31,7 @@ function isOn(space: Space, tab: Tab): boolean {
 
 export function spaceTabs(space: Space): { tab: Tab; state: TabState }[] {
   return TABS.map(tab => {
+    if (tab === 'members') return { tab, state: 'ready' }
     if (!isOn(space, tab)) return { tab, state: 'off' }
     const resource = space.resources.find(r => r.kind === RESOURCE[tab])
     const ready =
