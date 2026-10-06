@@ -282,9 +282,16 @@ export function registerSpaceWriteRoutes(
       const { id, userId } = parse(memberParams, request.params)
       const { orgId, actor } = await administered(request, id)
       const member = await memberOf(id, userId)
+      // Another admin removed them first; the copy just has not heard yet.
       await ldapRest(() =>
         directory.removeMember(orgId, id, member.username, actor)
-      )
+      ).catch((error: unknown) => {
+        if (!(
+          error instanceof Refusal && error.message === 'MEMBER_NOT_FOUND'
+        )) {
+          throw error
+        }
+      })
       const at = new Date()
       await copy(request, () =>
         db.transaction(tx =>
