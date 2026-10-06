@@ -18,7 +18,15 @@
     "close": "Close",
     "next": "Next",
     "apply": "Apply",
-    "add": "Add"
+    "add": "Add",
+    "save": "Save",
+    "delete": "Delete"
+  },
+  "spaceActions": {
+    "rename": "Rename the space",
+    "delete": "Delete the space",
+    "deleteTitle": "Delete %{name}?",
+    "deleteHint": "Its members lose access to it. This cannot be undone."
   },
   "roles": {
     "viewer": "Viewer",

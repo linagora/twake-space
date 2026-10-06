@@ -18,7 +18,15 @@
     "close": "Schließen",
     "next": "Weiter",
     "apply": "Anwenden",
-    "add": "Hinzufügen"
+    "add": "Hinzufügen",
+    "save": "Speichern",
+    "delete": "Löschen"
+  },
+  "spaceActions": {
+    "rename": "Space umbenennen",
+    "delete": "Space löschen",
+    "deleteTitle": "%{name} löschen?",
+    "deleteHint": "Seine Mitglieder verlieren den Zugriff. Das lässt sich nicht rückgängig machen."
   },
   "roles": {
     "viewer": "Leser",

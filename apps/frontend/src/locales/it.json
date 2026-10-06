@@ -18,7 +18,15 @@
     "close": "Chiudi",
     "next": "Avanti",
     "apply": "Applica",
-    "add": "Aggiungi"
+    "add": "Aggiungi",
+    "save": "Salva",
+    "delete": "Elimina"
+  },
+  "spaceActions": {
+    "rename": "Rinomina lo spazio",
+    "delete": "Elimina lo spazio",
+    "deleteTitle": "Eliminare %{name}?",
+    "deleteHint": "I suoi membri perderanno l'accesso. L'operazione è definitiva."
   },
   "roles": {
     "viewer": "Lettore",
