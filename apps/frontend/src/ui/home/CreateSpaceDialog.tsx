@@ -278,9 +278,7 @@ export function CreateSpaceDialog({
                 name: trimmed,
                 description: description.trim(),
                 color,
-                apps: [...DEFAULT_APPS, ...OTHER_APPS].filter(app =>
-                  apps.has(app)
-                )
+                apps: [...apps]
               },
               { onSuccess: onClose }
             )
