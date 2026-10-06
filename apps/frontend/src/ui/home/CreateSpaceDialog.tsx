@@ -1,4 +1,11 @@
-import { CalendarApp, Chat, Drive, Icon, Mail } from '@linagora/twake-icons'
+import {
+  CalendarApp,
+  Chat,
+  Drive,
+  Icon,
+  Mail,
+  Palette
+} from '@linagora/twake-icons'
 import {
   Alert,
   Avatar,
@@ -18,7 +25,6 @@ import {
 import { useId, useState, type ReactElement, type ReactNode } from 'react'
 
 import type { SpaceApp } from '@/application/spaces'
-import addReaction from '@/assets/add-reaction.svg'
 import feedTile from '@/assets/feed.svg'
 import tasksTile from '@/assets/tasks.svg'
 import { AvatarPicker, ColorSwatches } from '@/ds/AvatarPicker'
@@ -90,7 +96,7 @@ function DraftAvatar({
   }
   return (
     <Avatar size={size} color="var(--twake-palette-background-default)">
-      <img src={addReaction} alt="" width={24} height={24} />
+      <Icon icon={Palette} size={24} color="#424244" />
     </Avatar>
   )
 }
