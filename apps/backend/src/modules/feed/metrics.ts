@@ -2,7 +2,7 @@ import { and, asc, count, eq, isNull, sql } from 'drizzle-orm'
 import { parkedEvents } from '../../events/schema.ts'
 import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
-import type { ConsumerStats } from '../../infra/kafka.ts'
+import type { ConsumerStats } from '../../infra/amqp.ts'
 import { organizations } from '../organizations/schema.ts'
 import { spaces } from '../spaces/schema.ts'
 import { activityEvents } from './schema.ts'
@@ -53,7 +53,7 @@ export function registerMetrics(
             w =>
               `twake_space_cards_failed{organization="${label(w.organizationId)}"} ${String(w.failed)}`
           ),
-          '# HELP twake_space_events_total Kafka messages handled, by outcome.',
+          '# HELP twake_space_events_total Messages handled, by outcome.',
           '# TYPE twake_space_events_total counter',
           ...[...consumer.outcomes].map(
             ([outcome, total]) =>

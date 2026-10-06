@@ -31,19 +31,15 @@ beforeEach(async () => {
 })
 
 const log = pino({ level: 'silent' })
-const topic = 'twake.platform.events.v1'
 
 let next = 0
 function memberAdded() {
   next += 1
   return {
-    key: Buffer.from('space-1'),
-    value: Buffer.from(JSON.stringify({ spaceId: 'space-1' })),
-    offset: String(next),
-    headers: {
-      amqp_routing_key: Buffer.from('twake.space.member.added'),
-      amqp_message_id: Buffer.from(`msg-${String(next)}`)
-    }
+    exchange: 'space',
+    routingKey: 'twake.space.member.added',
+    messageId: `msg-${String(next)}`,
+    body: { spaceId: 'space-1' }
   }
 }
 
@@ -58,7 +54,6 @@ function setup() {
       platform: new Map([['twake.space.member.added', handler]])
     },
     dedupe: postgresDeduplicator(testDb.db, 'twake-space'),
-    deadLetter,
     park: parkIn(testDb.db),
     logger: log
   })
@@ -74,8 +69,8 @@ describe('parked events', () => {
     const { handler, handle, retry } = setup()
     const message = memberAdded()
 
-    expect(await handle(topic, message)).toBe('parked')
-    expect(await parked()).toEqual([{ id: `msg-${message.offset}` }])
+    expect(await handle(message)).toBe('parked')
+    expect(await parked()).toEqual([{ id: message.messageId }])
 
     handler.mockResolvedValueOnce()
     await retry()
@@ -83,7 +78,7 @@ describe('parked events', () => {
     expect(handler).toHaveBeenLastCalledWith(
       {
         routingKey: 'twake.space.member.added',
-        messageId: `msg-${message.offset}`,
+        messageId: message.messageId,
         body: { spaceId: 'space-1' }
       },
       expect.anything(),
@@ -94,7 +89,7 @@ describe('parked events', () => {
 
   it('keeps an event that still waits, or whose retry fails', async () => {
     const { handler, deadLetter, handle, retry } = setup()
-    await handle(topic, memberAdded())
+    await handle(memberAdded())
 
     await retry()
     handler.mockRejectedValueOnce(new Error('db down'))
@@ -104,39 +99,28 @@ describe('parked events', () => {
     expect(deadLetter).not.toHaveBeenCalled()
   })
 
-  it('sends an event parked for over 5 minutes to the dead letter topic', async () => {
+  it('sends an event parked for over 5 minutes to the dead letter queue', async () => {
     const { deadLetter, handle, retry } = setup()
     const message = memberAdded()
-    await handle(topic, message)
+    await handle(message)
     await testDb.db.execute(
       sql`update parked_events set parked_at = now() - interval '6 minutes'`
     )
 
     await retry()
 
-    expect(deadLetter).toHaveBeenCalledWith(
-      'twake.platform.events.v1.dlq.twake-space',
-      expect.objectContaining({
-        key: message.key,
-        value: message.value,
-        headers: {
-          amqp_routing_key: 'twake.space.member.added',
-          amqp_message_id: `msg-${message.offset}`
-        }
-      }),
-      'unknown space space-1'
-    )
+    expect(deadLetter).toHaveBeenCalledWith(message, 'unknown space space-1')
     expect(await parked()).toEqual([])
   })
 
-  it('keeps an expired event the dead letter topic refuses, and goes on', async () => {
+  it('keeps an expired event the dead letter queue refuses, and goes on', async () => {
     const { deadLetter, handle, retry } = setup()
-    await handle(topic, memberAdded())
-    await handle(topic, memberAdded())
+    await handle(memberAdded())
+    await handle(memberAdded())
     await testDb.db.execute(
       sql`update parked_events set parked_at = now() - interval '6 minutes'`
     )
-    deadLetter.mockRejectedValueOnce(new Error('kafka down'))
+    deadLetter.mockRejectedValueOnce(new Error('broker down'))
 
     await retry()
 

@@ -8,7 +8,6 @@ import {
   MalformedEventError,
   NotYetKnownError,
   RejectedEventError,
-  type DeadLetter,
   type Handler,
   type Park
 } from './router.ts'
@@ -34,7 +33,6 @@ function memoryDeduplicator(): Deduplicator & { keys: EventKey[] } {
 function setup() {
   const activity = vi.fn<Handler<CloudEvent>>().mockResolvedValue()
   const platform = vi.fn<Handler<PlatformEvent>>().mockResolvedValue()
-  const deadLetter = vi.fn<DeadLetter>().mockResolvedValue()
   const park = vi.fn<Park>().mockResolvedValue()
   const dedupe = memoryDeduplicator()
   const handle = createMessageHandler({
@@ -43,11 +41,10 @@ function setup() {
       platform: new Map([['b2b.group.created', platform]])
     },
     dedupe,
-    deadLetter,
     park,
     logger: pino({ level: 'silent' })
   })
-  return { handle, activity, platform, deadLetter, park, dedupe }
+  return { handle, activity, platform, park, dedupe }
 }
 
 const fileCreated = {
@@ -66,19 +63,17 @@ const fileCreated = {
   }
 }
 
-const message = (value: unknown, headers?: Record<string, unknown>) => ({
-  value: Buffer.from(JSON.stringify(value)),
-  offset: '0',
-  ...(headers && { headers })
+const activityMessage = (body: unknown) => ({
+  exchange: 'activity',
+  routingKey: 'com.twake.drive.file.created.v1',
+  body
 })
 
 describe('createMessageHandler', () => {
   it('routes an activity event by type and dedupes on source and id', async () => {
     const { handle, activity, dedupe } = setup()
 
-    expect(await handle('twake.drive.events.v1', message(fileCreated))).toBe(
-      'processed'
-    )
+    expect(await handle(activityMessage(fileCreated))).toBe('processed')
     expect(activity).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'evt-1' }),
       tx,
@@ -90,10 +85,8 @@ describe('createMessageHandler', () => {
   it('skips a redelivered event', async () => {
     const { handle, activity } = setup()
 
-    await handle('twake.drive.events.v1', message(fileCreated))
-    expect(await handle('twake.drive.events.v1', message(fileCreated))).toBe(
-      'duplicate'
-    )
+    await handle(activityMessage(fileCreated))
+    expect(await handle(activityMessage(fileCreated))).toBe('duplicate')
     expect(activity).toHaveBeenCalledOnce()
   })
 
@@ -101,33 +94,27 @@ describe('createMessageHandler', () => {
     const { handle, activity } = setup()
     const event = { ...fileCreated, type: 'com.twake.drive.file.moved.v1' }
 
-    expect(await handle('twake.drive.events.v1', message(event))).toBe(
-      'unrouted'
-    )
+    expect(await handle(activityMessage(event))).toBe('unrouted')
     expect(activity).not.toHaveBeenCalled()
   })
 
   it('drops a malformed event without calling any handler', async () => {
     const { handle, activity } = setup()
 
-    expect(
-      await handle('twake.drive.events.v1', message({ hello: 'world' }))
-    ).toBe('malformed')
+    expect(await handle(activityMessage({ hello: 'world' }))).toBe('malformed')
     expect(activity).not.toHaveBeenCalled()
   })
 
-  it('routes a platform event by AMQP routing key and dedupes on message id', async () => {
+  it('routes a platform event by routing key and dedupes on message id', async () => {
     const { handle, platform, activity, dedupe } = setup()
-    const headers = {
-      amqp_routing_key: Buffer.from('b2b.group.created'),
-      amqp_message_id: Buffer.from('m-1')
-    }
 
     expect(
-      await handle(
-        'twake.platform.events.v1',
-        message({ groupId: 'g1' }, headers)
-      )
+      await handle({
+        exchange: 'b2b',
+        routingKey: 'b2b.group.created',
+        messageId: 'm-1',
+        body: { groupId: 'g1' }
+      })
     ).toBe('processed')
     expect(platform).toHaveBeenCalledWith(
       {
@@ -146,50 +133,51 @@ describe('createMessageHandler', () => {
     const { handle, activity } = setup()
     activity.mockRejectedValueOnce(new MalformedEventError('no space id'))
 
-    expect(await handle('twake.drive.events.v1', message(fileCreated))).toBe(
-      'malformed'
-    )
+    expect(await handle(activityMessage(fileCreated))).toBe('malformed')
   })
 
-  it('sends an event its handler rejects to the dead letter topic', async () => {
-    const { handle, activity, deadLetter, dedupe } = setup()
-    activity.mockRejectedValueOnce(new RejectedEventError('not a member'))
-    const incoming = message(fileCreated)
+  it('drops a platform event without a message id', async () => {
+    const { handle, platform } = setup()
 
-    expect(await handle('twake.drive.events.v1', incoming)).toBe('rejected')
-    expect(deadLetter).toHaveBeenCalledWith(
-      'twake.drive.events.v1.dlq.twake-space',
-      incoming,
-      'not a member'
-    )
+    expect(
+      await handle({
+        exchange: 'b2b',
+        routingKey: 'b2b.group.created',
+        body: { groupId: 'g1' }
+      })
+    ).toBe('malformed')
+    expect(platform).not.toHaveBeenCalled()
+  })
+
+  it('rejects an event its handler rejects, without marking it processed', async () => {
+    const { handle, activity, dedupe } = setup()
+    activity.mockRejectedValueOnce(new RejectedEventError('not a member'))
+
+    expect(await handle(activityMessage(fileCreated))).toBe('rejected')
     expect(dedupe.keys).toEqual([])
   })
 
   it('parks an event about something the copy does not hold yet', async () => {
-    const { handle, activity, deadLetter, park, dedupe } = setup()
+    const { handle, activity, park, dedupe } = setup()
     activity.mockRejectedValueOnce(new NotYetKnownError('unknown space'))
-    const incoming = message(fileCreated)
+    const incoming = activityMessage(fileCreated)
 
-    expect(await handle('twake.drive.events.v1', incoming)).toBe('parked')
+    expect(await handle(incoming)).toBe('parked')
     expect(park).toHaveBeenCalledWith(
-      'twake.drive.events.v1',
       incoming,
       { source: 'twake://drive', id: 'evt-1' },
       'unknown space'
     )
-    expect(deadLetter).not.toHaveBeenCalled()
     expect(dedupe.keys).toEqual([])
   })
 
-  it('propagates a handler failure so the offset is not committed', async () => {
+  it('propagates a handler failure so the message is not acknowledged', async () => {
     const { handle, activity } = setup()
     activity.mockRejectedValueOnce(new Error('db down'))
 
-    await expect(
-      handle('twake.drive.events.v1', message(fileCreated))
-    ).rejects.toThrow('db down')
-    expect(await handle('twake.drive.events.v1', message(fileCreated))).toBe(
-      'processed'
+    await expect(handle(activityMessage(fileCreated))).rejects.toThrow(
+      'db down'
     )
+    expect(await handle(activityMessage(fileCreated))).toBe('processed')
   })
 })
