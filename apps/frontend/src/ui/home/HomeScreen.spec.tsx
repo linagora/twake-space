@@ -1,17 +1,27 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { HomeScreen } from '@/ui/home/HomeScreen'
 
 describe('HomeScreen', () => {
-  it('heads the page with the spaces and titles it with the app name', async () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('greets the person by first name with the date, and titles the page with the app name', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 8, 29, 14))
     renderWithProviders(<HomeScreen />)
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Spaces' })
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Good afternoon, Alice'
+      })
     ).toBeInTheDocument()
+    expect(screen.getByText('Tuesday, September 29')).toBeInTheDocument()
     expect(screen.getByRole('main')).toBeInTheDocument()
     await waitFor(() => {
       expect(document.title).toBe('Twake Space')
@@ -25,19 +35,21 @@ describe('HomeScreen', () => {
     expect(document.documentElement.lang).toBe('fr')
   })
 
-  it("lists the person's spaces with their role, each opening the space", async () => {
+  it("shows the person's spaces as cards after a create card, each opening the space", async () => {
     const spaces = fakeSpaces([
       { id: 'a1', name: 'Design Sprint', role: 'admin' },
       { id: 'b2', name: 'Roadmap', role: 'viewer' }
     ])
     renderWithProviders(<HomeScreen />, { spaces })
 
+    const all = await screen.findByRole('region', { name: 'All spaces' })
+    const [create, sprint, roadmap] = within(all).getAllByRole('listitem')
+    expect(create).toHaveTextContent('Create a space')
+    expect(sprint).toHaveTextContent('Design Sprint')
+    expect(roadmap).toHaveTextContent('Roadmap')
     expect(
-      await screen.findByRole('link', { name: 'Design Sprint' })
+      within(all).getByRole('link', { name: 'Design Sprint' })
     ).toHaveAttribute('href', '/spaces/a1')
-    const [sprint, roadmap] = screen.getAllByRole('listitem')
-    expect(sprint).toHaveTextContent('Design SprintAdmin')
-    expect(roadmap).toHaveTextContent('RoadmapViewer')
   })
 
   it('shows an empty state with the create action when there is no space', async () => {
@@ -51,7 +63,7 @@ describe('HomeScreen', () => {
     ).toBeInTheDocument()
   })
 
-  it('creates a space by name and lists it as its admin', async () => {
+  it('creates a space by name and shows its card', async () => {
     const spaces = fakeSpaces()
     renderWithProviders(<HomeScreen />, { spaces })
 
@@ -73,7 +85,6 @@ describe('HomeScreen', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
 
     await screen.findByRole('link', { name: 'Launch' })
-    expect(screen.getByRole('listitem')).toHaveTextContent('LaunchAdmin')
     expect(spaces.create).toHaveBeenCalledWith('Launch')
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

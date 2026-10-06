@@ -2,6 +2,11 @@
   "app": {
     "name": "Twake Space"
   },
+  "home": {
+    "morning": "Buongiorno, %{name}",
+    "afternoon": "Buon pomeriggio, %{name}",
+    "evening": "Buonasera, %{name}"
+  },
   "shell": {
     "yourSpaces": "I tuoi spazi"
   },
@@ -41,7 +46,9 @@
     "noneHint": "Gli spazi riuniscono il tuo team, i file, le attività e le conversazioni in un unico posto. Creane uno per iniziare.",
     "create": "Crea uno spazio",
     "createFailed": "Non è stato possibile creare lo spazio.",
-    "channelsHint": "Uno spazio può contenere più canali per argomenti o team diversi"
+    "channelsHint": "Uno spazio può contenere più canali per argomenti o team diversi",
+    "all": "Tutti gli spazi",
+    "createHint": "Progetto, reparto, gruppo tematico…"
   },
   "createSpace": {
     "name": "Nome dello spazio",
