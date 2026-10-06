@@ -222,10 +222,13 @@ describe('canonical', () => {
 })
 
 describe('deadLetterQueue', () => {
-  it('publishes the event straight to the dead letter queue, with its reason', async () => {
+  it('publishes the event to the dead letter exchange, under the key that reaches the dead letter queue', async () => {
     const client = { publish: vi.fn(() => Promise.resolve()) }
+    const topology = amqpTopology.parse({
+      AMQP_DEAD_LETTER_EXCHANGE: 'spaces.dlx'
+    }).amqp
 
-    await deadLetterQueue(client, 'twake-space')(
+    await deadLetterQueue(client, topology)(
       {
         exchange: 'space',
         routingKey: 'twake.space.member.added',
@@ -236,8 +239,8 @@ describe('deadLetterQueue', () => {
     )
 
     expect(client.publish).toHaveBeenCalledWith(
-      '',
-      'twake-space.dlq',
+      'spaces.dlx',
+      'twake.space.created.dead',
       { spaceId: 'space-1' },
       {
         messageId: 'm-1',
