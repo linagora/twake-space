@@ -12,7 +12,7 @@ export type ResourceKind =
 export interface Space extends SpaceSummary {
   chat: boolean
   mail: boolean
-  /** The Matrix server name of the organization's homeserver, once known. */
+  /** The organization's Matrix homeserver, once known. */
   homeserverUrl: string | null
   /** An id of null: the app is still preparing the resource. */
   resources: { kind: ResourceKind; id: string | null }[]

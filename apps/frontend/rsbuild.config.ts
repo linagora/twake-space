@@ -7,7 +7,10 @@ export default defineConfig({
     template: './index.html'
   },
   source: {
-    entry: { index: './src/index.tsx' }
+    // MOCK=1 runs the app on in-memory services: see docs/frontend-dev.md.
+    entry: {
+      index: process.env.MOCK === '1' ? './src/mock.tsx' : './src/index.tsx'
+    }
   },
   resolve: {
     alias: { '@': './src' }
