@@ -1,0 +1,65 @@
+# Frontend development
+
+How to run the Twake Space frontend and where new code goes.
+
+## Run it on seed data
+
+Mock mode needs Node 24 and nothing else: no backend, SSO or homeserver.
+
+```bash
+npm ci
+npm run dev:mock -w @twake-space/frontend
+```
+
+Open http://localhost:3000. You're signed in as Alice Martin, an admin of the organization `acme.twake.local`, and three spaces cover each role and each resource state:
+
+- Roadmap: admin, every app ready, with a feed of messages and cards
+- Design Sprint: editor, Drive and Mail still being prepared, an empty feed
+- Handover: viewer, chat and mail turned off
+
+The seed lives in `apps/frontend/src/adapters/memory/seed.ts`. It uses the same organization, people (alice, bob, carol, dave) and roles as the local SSO stack, so the screens look the same on the real backend.
+
+What mock mode doesn't do:
+
+- Spaces you create vanish on reload.
+- Nothing arrives live, and signing out only reloads the page.
+- The Tasks tab says Tasks isn't set up unless `apps/frontend/public/.env.js` sets `TASKS_URL`.
+- Card links in the feed point nowhere.
+
+## Run it against the backend
+
+The main README covers the backend and `public/.env.js`. Signing in for real needs an SSO whose users belong to an organization, and an ldap-rest with spaces. That ldap-rest isn't released yet, so the full local stack can't be set up from this repo: ask Khaled Ferjani.
+
+## How the code is laid out
+
+```mermaid
+flowchart LR
+  ui["ui/<br>screens and hooks"] --> application["application/<br>types and service interfaces"]
+  adapters["adapters/<br>http, oidc, matrix, memory"] --> application
+  app["app/<br>providers and routes"] --> ui
+  roots["index.tsx, mock.tsx"] --> app
+  roots --> adapters
+```
+
+- `application/` holds the types and the service interfaces (`SpacesService`, `FeedService`, and so on). It imports no framework.
+- `adapters/` implements those interfaces: `http/` for the backend, `oidc/` for the SSO, `matrix/` for the homeserver, `memory/` for mock mode.
+- `ui/` renders screens and reaches services only through `useServices()`, never through an adapter.
+- `index.tsx` wires the real adapters, and `mock.tsx` wires the memory ones. Rsbuild picks `mock.tsx` when `MOCK=1`, so production builds never include the seed.
+
+ESLint enforces these boundaries, and a few more rules: named exports only, UI from `@linagora/twake-mui`, layout with twake-css classes instead of `sx` or inline styles.
+
+## Add a feature
+
+1. Add the types and the service interface in `application/`.
+2. Implement it in `adapters/`, and add a memory version plus seed data so mock mode shows it.
+3. Add a fake in `testing/` and pass it to `renderWithProviders`.
+4. Build the screen in `ui/`.
+5. Add every string to the seven files in `src/locales/`. A key missing from one fails the type check.
+
+## Check before you push
+
+```bash
+npm run check -w @twake-space/frontend
+```
+
+It runs lint, formatting, the type check, the tests and the build, which is what CI runs. Tests sit next to the code as `*.spec.ts(x)` and use Testing Library with the fakes from `testing/`.

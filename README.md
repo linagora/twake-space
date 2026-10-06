@@ -32,3 +32,5 @@ npm run dev -w @twake-space/frontend
 ```
 
 Run `npm run check` before you push. It's what CI runs.
+
+To work on the frontend without a backend or SSO, run it on seed data with `npm run dev:mock -w @twake-space/frontend`. See [Frontend development](docs/frontend-dev.md).
