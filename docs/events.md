@@ -103,11 +103,18 @@ Every platform handler is wrapped: when the body has an `organizationId` the cop
 `user.settings.updated` comes from Twake Workplace common settings. Each message holds all of a person's settings after a change.
 
 - It is stored by the person's lowercased `payload.email`, the only key common settings and TwakeSpace share. A message without an email is dropped.
-- A `version` at or below the stored one is dropped. A newer one replaces the stored settings whole.
+- A `version` at or below the stored one is dropped. A newer one replaces the stored settings whole. Versions count per common settings account, so a message from another `nickname` behind the same email replaces them whatever its version.
 - Only what the UI applies is kept: `language`, `timezone`, `theme` (`light`, `dark` or `auto`), `avatar` and `display_name`. A value of another type is left out.
 - Common settings publishes without a message id, so the body's `request_id` stands in for it. A republish of the same version gets a new `request_id`, and the version check drops it.
 - A stored change sends a `settings` live event to the person's open streams. `GET /settings` gives the caller theirs, with `null` for anything not set.
 - TwakeSpace never calls the common settings API. A person it has had no message about gets the browser's defaults until their settings change, or until an admin republishes everyone with common settings' `POST /api/admin/user/settings/sync`.
+
+The browser reads `GET /settings` once signed in, and applies the answer when it comes. Until then, or when the read fails, the app keeps its own defaults and the theme it last had.
+
+- The language is the one set if TwakeSpace has it, else the browser's.
+- The theme is the one set. `auto`, or nothing set, follows the system.
+- Dates and the greeting use the timezone set, or the browser's when it is unknown.
+- The account menu shows the display name and avatar set, else the name from sign-in and its initials. The greeting uses the same name. Other people keep their directory names.
 
 ### Space copy
 
@@ -299,7 +306,7 @@ sequenceDiagram
 - Every replica listens and writes the event to each open stream of the listed users. A `settings` event names an email instead, and goes to the streams of sessions with that email.
 - `GET /stream` needs a session. It is `text/event-stream`, sends a heartbeat comment every 25 seconds, and closes when the session expires, when the session is revoked, or when the server stops.
 - The frontend reads it with `fetch` (EventSource cannot send the bearer token) and reconnects with a backoff from 1 to 30 seconds.
-- On `spaces`, the frontend invalidates its spaces queries. On a reconnect it invalidates every query, since events sent while the stream was closed are lost.
+- On `spaces`, the frontend invalidates its spaces queries, and on `settings` it reads the settings again. On a reconnect it invalidates every query, since events sent while the stream was closed are lost.
 
 ## The feed in the browser
 

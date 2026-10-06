@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { fakeSettings } from '@/testing/fakeSettings'
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { HomeScreen } from '@/ui/home/HomeScreen'
@@ -26,6 +27,47 @@ describe('HomeScreen', () => {
     await waitFor(() => {
       expect(document.title).toBe('Twake Space')
     })
+  })
+
+  it('greets and dates in the timezone set in Twake Workplace', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-29T23:30:00Z'))
+    renderWithProviders(<HomeScreen />, {
+      settings: fakeSettings({ timezone: 'Asia/Tokyo' })
+    })
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Good morning, Alice'
+      })
+    ).toBeInTheDocument()
+    expect(screen.getByText('Wednesday, September 30')).toBeInTheDocument()
+  })
+
+  it('greets by the display name set in Twake Workplace', async () => {
+    renderWithProviders(<HomeScreen />, {
+      settings: fakeSettings({ displayName: 'Ali Martin' })
+    })
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /, Ali$/ })
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the browser timezone when Twake Workplace sets one it does not know', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 8, 29, 14))
+    renderWithProviders(<HomeScreen />, {
+      settings: fakeSettings({ timezone: 'Mars/Olympus' })
+    })
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Good afternoon, Alice'
+      })
+    ).toBeInTheDocument()
   })
 
   it('follows the UI language', async () => {

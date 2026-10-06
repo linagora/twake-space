@@ -30,6 +30,7 @@ import {
 } from '@/ds/AppFrame'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
+import { useCommonSettings } from '@/ui/settings/useCommonSettings'
 import { useSpaceList } from '@/ui/spaces/queries'
 
 export function AppShell(): ReactElement {
@@ -68,14 +69,20 @@ function AccountMenu({
 }): ReactElement {
   const { t } = useI18n()
   const { user, signOut } = useSession()
+  const { settings } = useCommonSettings()
   const email = user.email ?? ''
-  const name = user.name ?? email
+  const name = settings.displayName ?? user.name ?? email
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const close = (): void => {
     setAnchor(null)
   }
   const avatar = (
-    <Avatar size="m" color={nameToColor(name) ?? 'sunrise'} aria-hidden>
+    <Avatar
+      size="m"
+      color={nameToColor(name) ?? 'sunrise'}
+      src={settings.avatar ?? undefined}
+      aria-hidden
+    >
       {getInitials(name, email)}
     </Avatar>
   )

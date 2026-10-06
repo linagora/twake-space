@@ -87,10 +87,11 @@ The entrypoint script `40-twake-space-runtime.sh` reads the environment at conta
 
 The script also writes the security headers, sent on every path except `/healthz`.
 
-- `Content-Security-Policy` has a fixed part: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'`. `style-src` allows inline styles because MUI injects its styles at runtime.
+- `Content-Security-Policy` has a fixed part: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'`. `style-src` allows inline styles because MUI injects its styles at runtime.
 - `connect-src` is `'self'` plus the origin of each of `API_URL`, `SSO_BASE_URL`, `POSTHOG_HOST` and `SENTRY_DSN` that is an absolute `http` or `https` URL. The origin drops the user info, so the Sentry public key stays out of the header. `CSP_CONNECT_SRC` appends more sources.
 - `frame-src` is `CSP_FRAME_SRC` (default `'self'`) plus the origin of `TASKS_URL` when set. With `MAIL_URL`, it also gets the origins of `MAIL_URL` and `SSO_BASE_URL`, because the Mail embed signs in through a frame on the SSO.
 - `frame-ancestors` is `CSP_FRAME_ANCESTORS` (default `'self'`). Set it when another app embeds Twake Space.
+- `img-src` is `'self' data: blob:` plus `CSP_IMG_SRC`. Set it to the origins of the avatars in Twake Workplace common settings, which each person's Cozy instance serves, such as `https://*.twake.example.com`.
 - `Permissions-Policy` is `PERMISSIONS_POLICY`, by default `accelerometer=(), geolocation=(), gyroscope=(), magnetometer=(), payment=(), usb=()`.
 - `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin` are fixed.
 

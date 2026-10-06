@@ -2,6 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { fakeSession } from '@/testing/fakeSession'
+import { fakeSettings } from '@/testing/fakeSettings'
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderRoute } from '@/testing/renderWithProviders'
 
@@ -25,6 +26,25 @@ describe('AppShell', () => {
       expect(session.signOut).toHaveBeenCalled()
     }
   )
+
+  it('shows the name and picture set in Twake Workplace', async () => {
+    renderRoute('/', {
+      spaces: spaces(),
+      settings: fakeSettings({
+        displayName: 'Alice M.',
+        avatar: 'https://alice.example.com/public/avatar?v=2'
+      })
+    })
+
+    const button = await within(await screen.findByRole('banner')).findByRole(
+      'button',
+      { name: 'Alice M.' }
+    )
+    expect(button.querySelector('img')).toHaveAttribute(
+      'src',
+      'https://alice.example.com/public/avatar?v=2'
+    )
+  })
 
   it('lists the spaces in the sidebar and marks the current one', async () => {
     renderRoute('/spaces/space-2/feed', { spaces: spaces() })
