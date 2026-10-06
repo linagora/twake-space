@@ -218,7 +218,7 @@ The events carry no state; they tell the client what to reload.
 
 - `notification` with data `{}`, sent to each user who just got a new notification.
 - `spaces` with data `{"spaceId":"<uuid>"}`, sent when a space changes for the user. Who gets it depends on the change:
-  - every member, when the space is renamed, its groups change, or a resource is provisioned;
+  - every member, when the space is renamed, its groups change (a linked group renamed included), or a resource is provisioned;
   - the added or updated members, when members are added or change role;
   - the removed members, when members are removed;
   - the former members, when the space is deleted.
