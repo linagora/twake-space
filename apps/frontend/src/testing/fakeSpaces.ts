@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 
 import type {
   NewSpace,
+  SpaceApp,
   SpaceSummary,
   SpacesService
 } from '@/application/spaces'
@@ -12,6 +13,16 @@ export function fakeSpaces(initial: SpaceSummary[] = []): SpacesService {
   return {
     list: vi.fn(() => Promise.resolve([...spaces])),
     get: vi.fn(() => Promise.reject(new Error('no space here'))),
+    apps: vi.fn(() =>
+      Promise.resolve<SpaceApp[]>([
+        'feed',
+        'chat',
+        'tasks',
+        'drive',
+        'mail',
+        'calendar'
+      ])
+    ),
     create: vi.fn(({ name, color }: NewSpace) => {
       const space: SpaceSummary = {
         id: `space-${String(spaces.length + 1)}`,

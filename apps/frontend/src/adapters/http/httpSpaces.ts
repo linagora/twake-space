@@ -1,6 +1,11 @@
 import type { KyInstance } from 'ky'
 
-import type { Space, SpaceSummary, SpacesService } from '@/application/spaces'
+import type {
+  Space,
+  SpaceApp,
+  SpaceSummary,
+  SpacesService
+} from '@/application/spaces'
 
 export function httpSpaces(api: KyInstance): SpacesService {
   const space = (id: string, ...rest: string[]) =>
@@ -13,6 +18,8 @@ export function httpSpaces(api: KyInstance): SpacesService {
     list: async () =>
       (await api.get('spaces').json<{ spaces: SpaceSummary[] }>()).spaces,
     get: id => api.get(space(id)).json<Space>(),
+    apps: async () =>
+      (await api.get('spaces/apps').json<{ apps: SpaceApp[] }>()).apps,
     create: json => api.post('spaces', { json }).json<SpaceSummary>(),
     rename: (id, name) => send(api.patch(space(id), { json: { name } })),
     remove: id => send(api.delete(space(id))),

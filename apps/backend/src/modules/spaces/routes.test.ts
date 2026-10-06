@@ -169,6 +169,45 @@ describe('GET /spaces', () => {
   })
 })
 
+describe('GET /spaces/apps', () => {
+  it('offers the tabs of every app the deployment and the organization provide', async () => {
+    await testDb.db.insert(organizations).values({
+      organizationId: 'org-1',
+      domain: 'org-1.example.com',
+      chatAvailable: true,
+      mailAvailable: true
+    })
+
+    const response = await setUp()('/spaces/apps')
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual({
+      apps: ['feed', 'chat', 'tasks', 'drive', 'mail', 'calendar']
+    })
+  })
+
+  it('leaves out the apps the deployment does not provide', async () => {
+    await testDb.db.insert(organizations).values({
+      organizationId: 'org-1',
+      domain: 'org-1.example.com',
+      chatAvailable: true,
+      mailAvailable: true
+    })
+
+    const response = await setUp(aTokenCaller(), ['tasks', 'mail'])(
+      '/spaces/apps'
+    )
+
+    expect(response.json()).toEqual({ apps: ['tasks', 'mail'] })
+  })
+
+  it("leaves out feed, chat and mail while the organization's chat and mail are off", async () => {
+    const response = await setUp()('/spaces/apps')
+
+    expect(response.json()).toEqual({ apps: ['tasks', 'drive', 'calendar'] })
+  })
+})
+
 describe('GET /spaces/:id', () => {
   it('returns the space with its members, groups and resources', async () => {
     const response = await setUp()(`/spaces/${DESIGN}`)

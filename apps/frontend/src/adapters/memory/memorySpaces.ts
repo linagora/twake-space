@@ -33,6 +33,8 @@ export function memorySpaces(
         ? Promise.resolve(structuredClone(space))
         : refuse(404, 'not_found')
     },
+    // The organization's mail is off, as on a new space below.
+    apps: () => Promise.resolve(['feed', 'chat', 'tasks', 'drive', 'calendar']),
     create: created => {
       const space: Space = {
         ...created,

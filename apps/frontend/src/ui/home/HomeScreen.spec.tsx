@@ -118,13 +118,41 @@ describe('HomeScreen', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Next' }))
 
     expect(
-      within(dialog)
-        .getAllByRole('checkbox')
-        .map(box => box.closest('label')?.textContent)
+      (await within(dialog).findAllByRole('checkbox')).map(
+        box => box.closest('label')?.textContent
+      )
     ).toEqual(['Feed', 'Files', 'Chat', 'Tasks', 'Calendar', 'Mail'])
     expect(
       within(dialog).queryByRole('button', { name: 'Add shortcut' })
     ).not.toBeInTheDocument()
+  })
+
+  it('offers only the apps the deployment and the organization provide', async () => {
+    const spaces = fakeSpaces()
+    vi.mocked(spaces.apps).mockResolvedValue(['tasks', 'mail'])
+    renderWithProviders(<HomeScreen />, { spaces })
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create a space' })
+    )
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Space name'), {
+      target: { value: 'Launch' }
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Next' }))
+
+    expect(
+      (await within(dialog).findAllByRole('checkbox')).map(
+        box => box.closest('label')?.textContent
+      )
+    ).toEqual(['Tasks', 'Mail'])
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => {
+      expect(spaces.create).toHaveBeenCalledWith(
+        expect.objectContaining({ apps: ['tasks'] })
+      )
+    })
   })
 
   it('keeps the dialog open and says so when the creation fails', async () => {

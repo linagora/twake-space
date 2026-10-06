@@ -70,6 +70,7 @@
     "colorHint": "Choose a specific color for your space",
     "apps": "Apps to enable",
     "appsHint": "Choose which apps are available in this space.",
+    "appsFailed": "The available apps could not be loaded.",
     "app": {
       "feed": "Feed",
       "drive": "Files",

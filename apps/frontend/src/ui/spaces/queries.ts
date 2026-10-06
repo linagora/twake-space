@@ -9,6 +9,7 @@ import {
 import type {
   NewSpace,
   Space,
+  SpaceApp,
   SpaceSummary,
   SpacesService
 } from '@/application/spaces'
@@ -24,6 +25,14 @@ export function useSpaceList(): UseQueryResult<SpaceSummary[]> {
 export function useSpace(id: string): UseQueryResult<Space> {
   const { spaces } = useServices()
   return useQuery({ queryKey: [...SPACES, id], queryFn: () => spaces.get(id) })
+}
+
+export function useSpaceApps(): UseQueryResult<SpaceApp[]> {
+  const { spaces } = useServices()
+  return useQuery({
+    queryKey: [...SPACES, 'apps'],
+    queryFn: () => spaces.apps()
+  })
 }
 
 // The copy changes once the backend applies ldap-rest's answer, so the space

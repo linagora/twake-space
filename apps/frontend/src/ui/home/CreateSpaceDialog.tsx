@@ -24,7 +24,7 @@ import tasksTile from '@/assets/tasks.svg'
 import { AvatarPicker, ColorSwatches } from '@/ds/AvatarPicker'
 import { DialogHeader } from '@/ds/Dialog'
 import { useI18n } from '@/ui/i18n/useI18n'
-import { useCreateSpace } from '@/ui/spaces/queries'
+import { useCreateSpace, useSpaceApps } from '@/ui/spaces/queries'
 
 type Step = 'details' | 'personalize' | 'apps'
 
@@ -137,6 +137,8 @@ export function CreateSpaceDialog({
   const nameId = useId()
   const appsHintId = useId()
   const create = useCreateSpace()
+  const offered = useSpaceApps()
+  const provided = offered.data ?? []
   const [step, setStep] = useState<Step>('details')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -169,6 +171,14 @@ export function CreateSpaceDialog({
         }
       }
     />
+  )
+
+  const appColumn = (column: SpaceApp[]): ReactElement => (
+    <Grid size={{ xs: 12, sm: 6 }}>
+      <Stack spacing={1}>
+        {column.filter(app => provided.includes(app)).map(appCheckbox)}
+      </Stack>
+    </Grid>
   )
 
   const appCheckbox = (app: SpaceApp): ReactElement => (
@@ -278,7 +288,7 @@ export function CreateSpaceDialog({
                 name: trimmed,
                 description: description.trim(),
                 color,
-                apps: [...apps]
+                apps: [...apps].filter(app => provided.includes(app))
               },
               { onSuccess: onClose }
             )
@@ -295,13 +305,14 @@ export function CreateSpaceDialog({
               role="group"
               aria-labelledby={appsHintId}
             >
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Stack spacing={1}>{DEFAULT_APPS.map(appCheckbox)}</Stack>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Stack spacing={1}>{OTHER_APPS.map(appCheckbox)}</Stack>
-              </Grid>
+              {appColumn(DEFAULT_APPS)}
+              {appColumn(OTHER_APPS)}
             </Grid>
+            {offered.isError && (
+              <Alert severity="error" className="u-mt-1">
+                {t('createSpace.appsFailed')}
+              </Alert>
+            )}
             {create.isError && (
               <Alert severity="error" className="u-mt-1">
                 {t('spaces.createFailed')}
@@ -321,7 +332,7 @@ export function CreateSpaceDialog({
             <Button
               type="submit"
               variant="contained"
-              disabled={create.isPending}
+              disabled={create.isPending || !offered.isSuccess}
             >
               {t('common.create')}
             </Button>

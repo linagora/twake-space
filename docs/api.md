@@ -77,6 +77,15 @@ The refusals look like this.
 }
 ```
 
+### GET /spaces/apps
+
+- Caller: session, or token with `space:read`.
+- Returns the tabs a new space can have: those whose app this deployment provides (`SPACE_APPS` in [Deploying](deploy.md#configuration)), less `feed` and `chat` while the organization's chat is off, and `mail` while its mail is off.
+
+```json
+{ "apps": ["feed", "chat", "tasks", "mail"] }
+```
+
 ### GET /spaces/:id
 
 - Caller: session, or token with `space:read`.
