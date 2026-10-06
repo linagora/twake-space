@@ -46,7 +46,10 @@ function TasksFrame({
     `/spaces/${spaceId}/tasks`
   )
 
+  const loaded = useRef(false)
   const sendTheme = () => {
+    // Until Tasks loads, the frame holds about:blank on this page's origin.
+    if (!loaded.current) return
     frame.current?.contentWindow?.postMessage(
       { type: 'twake-space:theme', theme },
       origin
@@ -78,7 +81,10 @@ function TasksFrame({
       src={src}
       sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
       className="u-w-100 u-flex-auto u-bdw-0"
-      onLoad={sendTheme}
+      onLoad={() => {
+        loaded.current = true
+        sendTheme()
+      }}
     />
   )
 }
