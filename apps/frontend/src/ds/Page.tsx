@@ -1,12 +1,14 @@
 import {
   Box,
   Divider,
+  Empty,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
   ListSkeleton,
-  Typography
+  Typography,
+  type EmptyProps
 } from '@linagora/twake-mui'
 import type { ReactElement, ReactNode } from 'react'
 
@@ -182,4 +184,9 @@ export function Row({
       />
     </ListItem>
   )
+}
+
+// Empty sizes its icon for 128px illustrations; an app tile is 64px.
+export function TileEmpty(props: EmptyProps): ReactElement {
+  return <Empty {...props} sx={{ '& .Empty-icon': { height: 64, mb: 3 } }} />
 }
