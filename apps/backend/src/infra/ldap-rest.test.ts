@@ -8,7 +8,8 @@ import { ldapRestDirectory } from './ldap-rest.ts'
 
 const user = {
   _id: '3f2a',
-  cn: 'jdoe',
+  uid: 'jdoe',
+  cn: 'John Doe',
   sn: 'Doe',
   givenName: 'John',
   displayName: 'John Doe',
@@ -16,7 +17,7 @@ const user = {
   userPassword: 'hash',
   privateKey: 'secret',
   organizationId: 'org_acme'
-} as User
+} as User & { uid: string }
 
 const member = {
   username: 'jdoe',
