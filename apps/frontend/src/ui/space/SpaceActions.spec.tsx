@@ -11,6 +11,7 @@ const space: Space = {
   id: 'a1',
   name: 'Roadmap',
   role: 'admin',
+  createdAt: '2026-10-01T08:00:00.000Z',
   chat: false,
   mail: false,
   homeserverUrl: null,

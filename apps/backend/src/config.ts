@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { amqpTopology } from './events/topology.ts'
+import { spaceApp } from './modules/spaces/resources.ts'
 
 const HOMESERVER_KEYS = [
   'MATRIX_HOMESERVER_URL',
@@ -91,10 +92,28 @@ const configSchema = z
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
       .default('info'),
-    MATRIX_LOCALPART: z.enum(['uid', 'email']).default('uid')
+    MATRIX_LOCALPART: z.enum(['uid', 'email']).default('uid'),
+    SPACE_APPS: z
+      .string()
+      .default(spaceApp.options.join(','))
+      .transform(apps =>
+        apps
+          .split(',')
+          .map(app => app.trim())
+          .filter(Boolean)
+      )
+      .pipe(z.array(spaceApp))
   })
   .and(homeserver)
   .and(amqpTopology)
+  .transform(({ SPACE_APPS, ...config }) => ({
+    ...config,
+    // Chat's resource is a Matrix space, which needs a homeserver.
+    spaceApps:
+      config.homeserver || config.controlPlane
+        ? SPACE_APPS
+        : SPACE_APPS.filter(app => app !== 'chat')
+  }))
 
 export type Config = z.infer<typeof configSchema>
 

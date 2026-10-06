@@ -26,13 +26,17 @@ export interface LinkedGroup {
 }
 
 export interface Space extends SpaceSummary {
+  createdAt: string
   chat: boolean
   mail: boolean
   /** The organization's Matrix homeserver, once known. */
   homeserverUrl: string | null
   members: Member[]
   groups: LinkedGroup[]
-  /** An id of null: the app is still preparing the resource. */
+  /**
+   * One entry per app this deployment provides. An id of null: the app is
+   * still preparing the resource.
+   */
   resources: { kind: ResourceKind; id: string | null }[]
 }
 

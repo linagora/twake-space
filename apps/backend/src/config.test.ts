@@ -89,6 +89,40 @@ describe('loadConfig', () => {
   })
 })
 
+describe('loadConfig: space apps', () => {
+  it('provides every app by default', () => {
+    expect(loadConfig({ ...base, ...homeserver }).spaceApps).toEqual([
+      'chat',
+      'tasks',
+      'drive',
+      'mail',
+      'calendar'
+    ])
+  })
+
+  it('provides only the listed apps', () => {
+    const config = loadConfig({
+      ...base,
+      ...homeserver,
+      SPACE_APPS: 'tasks, chat'
+    })
+
+    expect(config.spaceApps).toEqual(['tasks', 'chat'])
+  })
+
+  it('leaves chat out without a homeserver or a control plane', () => {
+    expect(loadConfig({ ...base, SPACE_APPS: 'chat,tasks' }).spaceApps).toEqual(
+      ['tasks']
+    )
+  })
+
+  it('refuses an app it does not know', () => {
+    expect(() => loadConfig({ ...base, SPACE_APPS: 'tasks,wiki' })).toThrow(
+      'SPACE_APPS'
+    )
+  })
+})
+
 describe('loadConfig: RabbitMQ topology', () => {
   it('names the queue, exchanges and keys after the platform by default', () => {
     const { amqp } = loadConfig(base)

@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { Route, Routes, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -12,12 +12,14 @@ const roadmap: Space = {
   id: 'a1',
   name: 'Roadmap',
   role: 'editor',
+  createdAt: new Date().toISOString(),
   chat: false,
   mail: true,
   homeserverUrl: null,
   members: [],
   groups: [],
   resources: [
+    { kind: 'matrix_space', id: null },
     { kind: 'project', id: 'project-1' },
     { kind: 'drive', id: null },
     { kind: 'mailbox', id: 'roadmap@acme' },
@@ -33,7 +35,9 @@ const withChat: Space = {
   ...roadmap,
   chat: true,
   homeserverUrl: 'https://matrix.acme.test',
-  resources: [...roadmap.resources, { kind: 'matrix_space', id: '!s:acme' }]
+  resources: roadmap.resources.map(r =>
+    r.kind === 'matrix_space' ? { ...r, id: '!s:acme' } : r
+  )
 }
 
 function renderAt(
@@ -47,7 +51,7 @@ function renderAt(
       ? Promise.resolve(space)
       : Promise.reject(Object.assign(new Error('not found'), { status: 404 }))
   )
-  return renderWithProviders(
+  renderWithProviders(
     <>
       <Routes>
         <Route path="/spaces/:spaceId/:tab?/*" element={<SpaceScreen />} />
@@ -56,6 +60,7 @@ function renderAt(
     </>,
     { spaces, path, matrix }
   )
+  return spaces
 }
 
 describe('SpaceScreen', () => {
@@ -170,6 +175,33 @@ describe('SpaceScreen', () => {
     expect(
       await screen.findByText('Drive is being prepared for this space.')
     ).toBeInTheDocument()
+  })
+
+  it('says the app is not ready once it should have been, and checks again', async () => {
+    const spaces = renderAt('/spaces/a1/drive', {
+      ...roadmap,
+      createdAt: '2026-01-01T00:00:00.000Z'
+    })
+
+    expect(
+      await screen.findByText(
+        'Drive is not ready yet. Try again later, and tell your administrator if it stays this way.'
+      )
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
+    await waitFor(() => {
+      expect(spaces.get).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it('has no tab for an app this deployment does not provide', async () => {
+    renderAt('/spaces/a1/tasks', {
+      ...roadmap,
+      resources: roadmap.resources.filter(r => r.kind !== 'drive')
+    })
+
+    expect(await screen.findByRole('tab', { name: 'Tasks' })).toBeVisible()
+    expect(screen.queryByRole('tab', { name: 'Drive' })).not.toBeInTheDocument()
   })
 
   it('says so when the space is not found', async () => {

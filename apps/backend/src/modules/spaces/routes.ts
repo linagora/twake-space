@@ -5,6 +5,7 @@ import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import type { Authorize, Caller } from '../auth/index.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
+import { APP_KINDS, type SpaceApp } from './resources.ts'
 import {
   spaceGroups,
   spaceMembers,
@@ -58,9 +59,10 @@ function callerOf(request: FastifyRequest) {
 
 export function registerSpaceRoutes(
   app: HttpServer,
-  deps: { db: Db; authorize: Authorize }
+  deps: { db: Db; authorize: Authorize; apps: readonly SpaceApp[] }
 ) {
   const { db, authorize } = deps
+  const provided = new Set(deps.apps.map(app => APP_KINDS[app]))
 
   app.get('/spaces', { preHandler: authorize('space:read') }, async request => {
     return { spaces: await reachableSpaces(db, callerOf(request)) }
@@ -78,6 +80,10 @@ export function registerSpaceRoutes(
       if (!space) {
         return reply.code(404).send({ error: 'not_found' })
       }
+      const [created] = await db
+        .select({ createdAt: spaces.createdAt })
+        .from(spaces)
+        .where(eq(spaces.spaceId, spaceId))
 
       const [members, groups, resources, [organization]] = await Promise.all([
         db
@@ -120,16 +126,16 @@ export function registerSpaceRoutes(
 
       return {
         ...space,
+        createdAt: created?.createdAt,
         chat: organization?.chat ?? false,
         mail: organization?.mail ?? false,
         homeserverUrl: organization?.homeserverUrl ?? null,
         members,
         groups,
         // A kind without an id is still being prepared by its app.
-        resources: spaceResourceKind.enumValues.map(kind => ({
-          kind,
-          id: resourceIds.get(kind) ?? null
-        }))
+        resources: spaceResourceKind.enumValues
+          .filter(kind => provided.has(kind))
+          .map(kind => ({ kind, id: resourceIds.get(kind) ?? null }))
       }
     }
   )

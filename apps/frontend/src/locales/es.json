@@ -124,7 +124,9 @@
     "loadFailed": "No se pudo cargar el espacio.",
     "chatOff": "Novedades y Chat están desactivados: el chat no está activado para tu organización.",
     "mailOff": "Correo está desactivado: el dominio de correo de tu organización aún no está validado.",
-    "preparing": "%{app} se está preparando para este espacio."
+    "preparing": "%{app} se está preparando para este espacio.",
+    "stalled": "%{app} aún no está listo. Vuelve a intentarlo más tarde y avisa a tu administrador si sigue así.",
+    "checkAgain": "Comprobar de nuevo"
   },
   "tasks": {
     "notSetUp": "Tareas no está configurado para TwakeSpace."
