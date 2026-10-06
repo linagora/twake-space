@@ -133,6 +133,12 @@
     "loading": "Cargando novedades",
     "loadFailed": "No se pudieron cargar las novedades.",
     "empty": "Todavía no hay nada.",
+    "setup": {
+      "title": "Configurar %{name}",
+      "text": "Este espacio está listo. Invita a tu equipo, y todo lo que compartáis aparecerá aquí, en las novedades.",
+      "invite": "Invitar miembros",
+      "task": "Crear una tarea"
+    },
     "loadOlder": "Cargar anteriores",
     "loadOlderFailed": "No se pudieron cargar las entradas anteriores.",
     "filter": "Mostrar",

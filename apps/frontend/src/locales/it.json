@@ -133,6 +133,12 @@
     "loading": "Caricamento del feed",
     "loadFailed": "Impossibile caricare il feed.",
     "empty": "Ancora niente qui.",
+    "setup": {
+      "title": "Configura %{name}",
+      "text": "Questo spazio è pronto. Invita il tuo team, e tutto ciò che condividete apparirà qui, nel feed.",
+      "invite": "Invita membri",
+      "task": "Crea un'attività"
+    },
     "loadOlder": "Carica precedenti",
     "loadOlderFailed": "Impossibile caricare le voci precedenti.",
     "filter": "Mostra",

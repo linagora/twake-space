@@ -133,6 +133,12 @@
     "loading": "Đang tải bảng tin",
     "loadFailed": "Không thể tải bảng tin.",
     "empty": "Chưa có gì.",
+    "setup": {
+      "title": "Thiết lập %{name}",
+      "text": "Không gian này đã sẵn sàng. Hãy mời nhóm của bạn, mọi thứ bạn chia sẻ sẽ hiện ngay tại bảng tin này.",
+      "invite": "Mời thành viên",
+      "task": "Tạo công việc"
+    },
     "loadOlder": "Tải cũ hơn",
     "loadOlderFailed": "Không thể tải các mục cũ hơn.",
     "filter": "Hiển thị",

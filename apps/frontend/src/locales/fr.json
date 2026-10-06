@@ -133,6 +133,12 @@
     "loading": "Chargement du fil",
     "loadFailed": "Impossible de charger le fil.",
     "empty": "Rien pour l'instant.",
+    "setup": {
+      "title": "Configurer %{name}",
+      "text": "Cet espace est prêt. Invitez votre équipe, et tout ce que vous partagez apparaîtra ici, dans le fil.",
+      "invite": "Inviter des membres",
+      "task": "Créer une tâche"
+    },
     "loadOlder": "Charger les plus anciens",
     "loadOlderFailed": "Impossible de charger les plus anciens.",
     "filter": "Afficher",
