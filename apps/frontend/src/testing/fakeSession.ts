@@ -4,7 +4,11 @@ import type { SessionService, User } from '@/application/session'
 
 export function fakeSession(
   start: () => Promise<User | null> = () =>
-    Promise.resolve({ name: 'Alice Martin', email: 'alice@example.com' })
+    Promise.resolve({
+      id: 'u-me',
+      name: 'Alice Martin',
+      email: 'alice@example.com'
+    })
 ): SessionService & { endElsewhere: () => void } {
   let onEnded: (() => void) | null = null
   return {

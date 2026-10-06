@@ -2,17 +2,20 @@ import {
   useInfiniteQuery,
   useQueryClient,
   type InfiniteData,
+  type QueryClient,
   type QueryKey
 } from '@tanstack/react-query'
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 
 import {
   shows,
   toFeedChange,
   type FeedFilter,
   type FeedItem,
-  type FeedPage
+  type FeedPage,
+  type FeedService
 } from '@/application/feed'
+import { isRefusal } from '@/application/spaces'
 import { useServices } from '@/ui/services/Services'
 
 const feedKey = (spaceId: string, filter?: FeedFilter): QueryKey =>
@@ -34,7 +37,12 @@ export function useFeed(spaceId: string, filter: FeedFilter) {
 
 type Pages = InfiniteData<FeedPage, string>
 
-function withItem(data: Pages, item: FeedItem, filter: FeedFilter): Pages {
+function withItem(
+  data: Pages,
+  item: FeedItem,
+  filter: FeedFilter,
+  isNew: boolean
+): Pages {
   const known = data.pages.some(page => page.items.some(i => i.id === item.id))
   if (known) {
     return {
@@ -45,7 +53,8 @@ function withItem(data: Pages, item: FeedItem, filter: FeedFilter): Pages {
       }))
     }
   }
-  if (!shows(item, filter)) return data
+  // A changed item that is not loaded belongs to an older page.
+  if (!isNew || !shows(item, filter)) return data
   const [first, ...rest] = data.pages
   if (!first) return data
   return {
@@ -68,52 +77,80 @@ function withoutItem(data: Pages, itemId: string): Pages {
  * Writes an item into every loaded filter of the space's feed: a known one is
  * replaced in place, a new one goes on top of the filters that show it.
  */
+function putItem(
+  queryClient: QueryClient,
+  spaceId: string,
+  item: FeedItem,
+  isNew: boolean
+): void {
+  for (const [key, data] of queryClient.getQueriesData<Pages>({
+    queryKey: feedKey(spaceId)
+  })) {
+    const filter = key[2] as FeedFilter
+    if (data) {
+      queryClient.setQueryData(key, withItem(data, item, filter, isNew))
+    }
+  }
+}
+
+function dropItem(
+  queryClient: QueryClient,
+  spaceId: string,
+  itemId: string
+): void {
+  queryClient.setQueriesData<Pages>(
+    { queryKey: feedKey(spaceId) },
+    data => data && withoutItem(data, itemId)
+  )
+}
+
 export function useFeedCache(spaceId: string) {
   const queryClient = useQueryClient()
-  const put = useCallback(
+  const add = useCallback(
     (item: FeedItem) => {
-      for (const [key, data] of queryClient.getQueriesData<Pages>({
-        queryKey: feedKey(spaceId)
-      })) {
-        const filter = key[2] as FeedFilter
-        if (data) queryClient.setQueryData(key, withItem(data, item, filter))
-      }
+      putItem(queryClient, spaceId, item, true)
+    },
+    [queryClient, spaceId]
+  )
+  const replace = useCallback(
+    (item: FeedItem) => {
+      putItem(queryClient, spaceId, item, false)
     },
     [queryClient, spaceId]
   )
   const drop = useCallback(
     (itemId: string) => {
-      queryClient.setQueriesData<Pages>(
-        { queryKey: feedKey(spaceId) },
-        data => data && withoutItem(data, itemId)
-      )
+      dropItem(queryClient, spaceId, itemId)
     },
     [queryClient, spaceId]
   )
-  return { put, drop }
+  return { add, replace, drop }
 }
 
-/** Follows the `feed` live events of one space. */
-export function useFeedLive(spaceId: string): void {
-  const { live, feed } = useServices()
-  const { put, drop } = useFeedCache(spaceId)
-
-  useEffect(
-    () =>
-      live.subscribe({
-        onEvent: (event, data) => {
-          const change = event === 'feed' ? toFeedChange(data) : null
-          if (change?.spaceId !== spaceId) return
-          if (change.change === 'removed') {
-            drop(change.itemId)
-            return
-          }
-          feed.item(spaceId, change.itemId).then(put, () => {
-            drop(change.itemId)
-          })
-        },
-        onReconnect: () => undefined
-      }),
-    [live, feed, spaceId, put, drop]
+/** Applies a `feed` live event to the space's feed, if it is loaded. */
+export function followFeedChange(
+  queryClient: QueryClient,
+  feed: FeedService,
+  data: unknown
+): void {
+  const change = toFeedChange(data)
+  if (!change) return
+  const { spaceId, itemId } = change
+  if (queryClient.getQueriesData({ queryKey: feedKey(spaceId) }).length === 0) {
+    return
+  }
+  if (change.change === 'removed') {
+    dropItem(queryClient, spaceId, itemId)
+    return
+  }
+  feed.item(spaceId, itemId).then(
+    item => {
+      putItem(queryClient, spaceId, item, change.change === 'added')
+    },
+    (error: unknown) => {
+      if (isRefusal(error) && error.status === 404) {
+        dropItem(queryClient, spaceId, itemId)
+      }
+    }
   )
 }

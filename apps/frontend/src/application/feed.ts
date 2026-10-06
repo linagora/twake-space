@@ -108,6 +108,30 @@ export function shows(item: FeedItem, filter: FeedFilter): boolean {
   return filter === 'all' || item.category === filter
 }
 
+/** The item once a user has added (`on`) or taken back a reaction. */
+export function withReaction<T extends FeedItem>(
+  item: T,
+  key: string,
+  userId: string,
+  on: boolean
+): T {
+  const others = (r: Reaction) => r.userIds.filter(id => id !== userId)
+  const has = item.reactions.some(
+    r => r.key === key && r.userIds.includes(userId)
+  )
+  if (has === on) return item
+  const reactions = on
+    ? item.reactions.some(r => r.key === key)
+      ? item.reactions.map(r =>
+          r.key === key ? { ...r, userIds: [...r.userIds, userId] } : r
+        )
+      : [...item.reactions, { key, userIds: [userId] }]
+    : item.reactions
+        .map(r => (r.key === key ? { ...r, userIds: others(r) } : r))
+        .filter(r => r.userIds.length > 0)
+  return { ...item, reactions }
+}
+
 /** The app that sent a card, as in `com.twake.<app>.*`. */
 export function cardApp(card: FeedCard): string | null {
   return /^com\.twake\.([a-z]+)\./.exec(card.type)?.[1] ?? null

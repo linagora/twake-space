@@ -185,6 +185,13 @@ describe('memoryFeed', () => {
     expect(older).toEqual({ items: [message(2), message(1)], next: null })
   })
 
+  it('reads nothing before an item that is gone', async () => {
+    expect(await feedFor('admin').list('roadmap', { before: 'gone' })).toEqual({
+      items: [],
+      next: null
+    })
+  })
+
   it('keeps only the cards of a category', async () => {
     expect(
       await feedFor('admin').list('roadmap', { category: 'files' })

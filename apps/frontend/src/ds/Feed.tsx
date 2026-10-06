@@ -223,9 +223,9 @@ export function FeedAction({
 }: {
   icon: IconProps['icon']
   children: ReactNode
-} & (
-  { onClick: () => void } | { component: React.ElementType; to: string }
-)): ReactElement {
+  component: React.ElementType
+  to: string
+}): ReactElement {
   return (
     <Button
       size="small"

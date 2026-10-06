@@ -5,6 +5,7 @@ import {
   cardApp,
   toEventState,
   toFeedChange,
+  withReaction,
   type FeedCard
 } from '@/application/feed'
 
@@ -26,6 +27,41 @@ const card: FeedCard = {
   preview: null,
   state: {}
 }
+
+describe('withReaction', () => {
+  const reacted = {
+    ...card,
+    reactions: [
+      { key: '👍', userIds: ['u1'] },
+      { key: '🎉', userIds: ['u1', 'me'] }
+    ]
+  }
+
+  it('adds mine last, and a new key last', () => {
+    expect(withReaction(reacted, '👍', 'me', true).reactions).toEqual([
+      { key: '👍', userIds: ['u1', 'me'] },
+      { key: '🎉', userIds: ['u1', 'me'] }
+    ])
+    expect(withReaction(card, '👀', 'me', true).reactions).toEqual([
+      { key: '👀', userIds: ['me'] }
+    ])
+  })
+
+  it('takes mine back, and the key with it when no one is left', () => {
+    expect(withReaction(reacted, '🎉', 'me', false).reactions).toEqual([
+      { key: '👍', userIds: ['u1'] },
+      { key: '🎉', userIds: ['u1'] }
+    ])
+    expect(
+      withReaction(withReaction(card, '👀', 'me', true), '👀', 'me', false)
+        .reactions
+    ).toEqual([])
+  })
+
+  it('changes nothing when mine is already there', () => {
+    expect(withReaction(reacted, '🎉', 'me', true)).toEqual(reacted)
+  })
+})
 
 describe('toFeedChange', () => {
   it('reads a feed live event', () => {

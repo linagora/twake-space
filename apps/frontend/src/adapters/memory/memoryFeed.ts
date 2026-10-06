@@ -51,7 +51,9 @@ export function memoryFeed(
       const items = itemsOf(spaceId)
         .filter(item => shows(item, category ?? 'all'))
         .sort(newestFirst)
-      const start = before ? items.findIndex(i => i.id === before) + 1 : 0
+      const start = before
+        ? items.findIndex(i => i.id === before) + 1 || items.length
+        : 0
       const page = items.slice(start, start + pageSize)
       return Promise.resolve({
         items: structuredClone(page),

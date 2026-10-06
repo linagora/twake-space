@@ -36,7 +36,8 @@ import {
   type FeedCard,
   type FeedFilter,
   type FeedItem,
-  type FeedPost
+  type FeedPost,
+  withReaction
 } from '@/application/feed'
 import type { Space } from '@/application/spaces'
 import { containerTab } from '@/application/spaceTabs'
@@ -64,26 +65,17 @@ import { LoadingRows, SetupPrompt } from '@/ds/Page'
 import { useI18n, type TranslationKey } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
-import { useFeed, useFeedCache, useFeedLive } from '@/ui/space/feedQueries'
+import { useFeed, useFeedCache } from '@/ui/space/feedQueries'
 
 const FILTERS: FeedFilter[] = ['all', ...FEED_CATEGORIES]
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '👀', '🙏']
 
-// A session reaches a space only through its membership, so the member with
-// the session's email is the caller.
-function useMyId(space: Space): string | null {
-  const { user } = useSession()
-  const email = user.email?.toLowerCase()
-  return space.members.find(m => m.email.toLowerCase() === email)?.id ?? null
-}
-
 export function FeedPanel({ space }: { space: Space }): ReactElement {
   const { t } = useI18n()
   const [filter, setFilter] = useState<FeedFilter>('all')
   const feed = useFeed(space.id, filter)
-  const myId = useMyId(space)
-  useFeedLive(space.id)
+  const myId = useSession().user.id
 
   const items = feed.data?.pages.flatMap(page => page.items).toReversed() ?? []
 
@@ -93,7 +85,9 @@ export function FeedPanel({ space }: { space: Space }): ReactElement {
       composer={space.role !== 'viewer' && <Composer space={space} />}
     >
       {feed.isPending && <LoadingRows count={3} label={t('feed.loading')} />}
-      {feed.isError && <Alert severity="error">{t('feed.loadFailed')}</Alert>}
+      {feed.isError && !feed.isFetchNextPageError && (
+        <Alert severity="error">{t('feed.loadFailed')}</Alert>
+      )}
       {feed.hasNextPage && (
         <FeedCentered>
           <Button
@@ -179,12 +173,12 @@ function FilterMenu({
 function Composer({ space }: { space: Space }): ReactElement {
   const { t } = useI18n()
   const { feed } = useServices()
-  const { put } = useFeedCache(space.id)
+  const { add } = useFeedCache(space.id)
   const [body, setBody] = useState('')
   const send = useMutation({
     mutationFn: (text: string) => feed.post(space.id, text),
     onSuccess: item => {
-      put(item)
+      add(item)
       setBody('')
     }
   })
@@ -295,7 +289,7 @@ function Post({
 }): ReactElement {
   const { t } = useI18n()
   const { feed } = useServices()
-  const { put, drop } = useFeedCache(space.id)
+  const { replace, drop } = useFeedCache(space.id)
   const time = useTime()
   const author = useActorName(post.author) ?? t('feed.someone')
   const mine = post.author.type === 'user' && post.author.id === myId
@@ -303,7 +297,7 @@ function Post({
   const edit = useMutation({
     mutationFn: (body: string) => feed.edit(space.id, post.id, body),
     onSuccess: item => {
-      put(item)
+      replace(item)
       setDraft(null)
     }
   })
@@ -429,46 +423,49 @@ function Reactions({
 }): ReactElement {
   const { t } = useI18n()
   const { feed } = useServices()
-  const { put } = useFeedCache(spaceId)
+  const { replace } = useFeedCache(spaceId)
+  // Shown at once; the live event that follows brings the stored reactions.
   const toggle = useMutation({
-    mutationFn: async ({ key, mine }: { key: string; mine: boolean }) => {
-      await (mine
+    mutationFn: ({ key, mine }: { key: string; mine: boolean }) =>
+      mine
         ? feed.unreact(spaceId, item.id, key)
-        : feed.react(spaceId, item.id, key))
-      return feed.item(spaceId, item.id)
+        : feed.react(spaceId, item.id, key),
+    onMutate: ({ key, mine }) => {
+      if (myId) replace(withReaction(item, key, myId, !mine))
+      return item
     },
-    onSuccess: put
+    onError: (_error, _vars, before) => {
+      if (before) replace(before)
+    }
   })
   const isMine = (key: string) =>
     myId !== null &&
     (item.reactions.find(r => r.key === key)?.userIds.includes(myId) ?? false)
+  const react = (key: string) => {
+    if (!toggle.isPending) toggle.mutate({ key, mine: isMine(key) })
+  }
 
   return (
     <>
-      {item.reactions.map(reaction => {
-        const mine = isMine(reaction.key)
-        return (
-          <ReactionChip
-            key={reaction.key}
-            emoji={reaction.key}
-            count={reaction.userIds.length}
-            mine={mine}
-            label={t('feed.reaction', {
-              emoji: reaction.key,
-              count: reaction.userIds.length
-            })}
-            onClick={() => {
-              toggle.mutate({ key: reaction.key, mine })
-            }}
-          />
-        )
-      })}
+      {item.reactions.map(reaction => (
+        <ReactionChip
+          key={reaction.key}
+          emoji={reaction.key}
+          count={reaction.userIds.length}
+          mine={isMine(reaction.key)}
+          label={t('feed.reaction', {
+            emoji: reaction.key,
+            count: reaction.userIds.length
+          })}
+          onClick={() => {
+            react(reaction.key)
+          }}
+        />
+      ))}
       <ReactionPicker
         label={t('feed.react')}
         emojis={QUICK_REACTIONS}
-        onPick={key => {
-          toggle.mutate({ key, mine: isMine(key) })
-        }}
+        onPick={react}
       />
     </>
   )

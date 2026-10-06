@@ -5,8 +5,8 @@ import type { FeedCard, FeedItem, FeedPost } from '@/application/feed'
 import type { Space } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeLive } from '@/testing/fakeLive'
-import { fakeSession } from '@/testing/fakeSession'
 import { renderWithProviders } from '@/testing/renderWithProviders'
+import { useLiveUpdates } from '@/ui/live/useLiveUpdates'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 
 const roadmap: Space = {
@@ -20,16 +20,9 @@ const roadmap: Space = {
   chat: true,
   mail: true,
   homeserverUrl: null,
-  members: [
-    {
-      id: 'u-me',
-      username: 'alice',
-      email: 'Alice@Example.com',
-      displayName: 'Alice Martin',
-      role: 'editor'
-    }
-  ],
-  groups: [],
+  // I reach this space through a linked group, not as a direct member.
+  members: [],
+  groups: [{ id: 'g-team', name: 'Team', role: 'editor' }],
   resources: [
     { kind: 'project', id: 'project-1' },
     { kind: 'mailbox', id: 'roadmap@acme' },
@@ -109,10 +102,6 @@ const event: FeedCard = {
   }
 }
 
-const me = fakeSession(() =>
-  Promise.resolve({ name: 'Alice Martin', email: 'alice@example.com' })
-)
-
 function renderFeed(
   items: FeedItem[],
   {
@@ -129,12 +118,13 @@ function renderFeed(
     { a1: items },
     { roles: { a1: space.role }, ...(pageSize && { pageSize }) }
   )
-  renderWithProviders(<FeedPanel space={space} />, {
-    feed,
-    live,
-    session: me
-  })
+  renderWithProviders(<LiveFeed space={space} />, { feed, live })
   return { feed, live }
+}
+
+function LiveFeed({ space }: { space: Space }) {
+  useLiveUpdates()
+  return <FeedPanel space={space} />
 }
 
 const articles = () =>
@@ -340,6 +330,25 @@ describe('FeedPanel', () => {
     await waitFor(() => {
       expect(screen.queryByText('Message 1')).not.toBeInTheDocument()
     })
+  })
+
+  it('leaves out a changed item it has not loaded, and keeps one it cannot reread', async () => {
+    const { feed, live } = renderFeed([post(1)])
+    await screen.findByText('Message 1')
+
+    vi.mocked(feed.item)
+      .mockResolvedValueOnce(post(0))
+      .mockRejectedValueOnce(new Error('offline'))
+    act(() => {
+      live.emit('feed', { spaceId: 'a1', itemId: 'post-0', change: 'changed' })
+      live.emit('feed', { spaceId: 'a1', itemId: 'post-1', change: 'changed' })
+    })
+
+    await waitFor(() => {
+      expect(feed.item).toHaveBeenCalledTimes(2)
+    })
+    expect(screen.queryByText('Message 0')).not.toBeInTheDocument()
+    expect(screen.getByText('Message 1')).toBeInTheDocument()
   })
 
   it('shows my own post once when its live echo arrives', async () => {

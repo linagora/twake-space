@@ -56,8 +56,8 @@ ESLint enforces these boundaries, and a few more rules: named exports only, UI f
 
 - `spaces`: list, read and create spaces. A space admin also renames or deletes a space, and adds, changes and removes its members and linked groups.
 - `directory`: search the organization's people and groups, 20 per page, to pick new members from.
-- `feed`: read a space's feed by filter and page, post, edit and delete your own posts, and react. `useFeedLive` follows the backend's `feed` live events.
-- `live`: the backend's live updates. `useLiveUpdates` already refreshes the spaces queries when a space changes.
+- `feed`: read a space's feed by filter and page, post, edit and delete your own posts, and react.
+- `live`: the backend's live updates. `useLiveUpdates` refreshes the spaces queries when a space changes, and applies `feed` events to the feeds already loaded.
 - `tasksUrl`: where the Tasks tab embeds Twake Tasks, or null.
 - `mailUrl`: where the Mail tab embeds Twake Mail's team mailbox, or null.
 
