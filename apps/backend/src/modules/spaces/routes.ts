@@ -4,7 +4,7 @@ import { z } from 'zod'
 import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import type { Authorize, Caller } from '../auth/index.ts'
-import { organizations } from '../organizations/schema.ts'
+import { homeservers, organizations } from '../organizations/schema.ts'
 import {
   spaceGroups,
   spaceMembers,
@@ -106,9 +106,11 @@ export function registerSpaceRoutes(
         db
           .select({
             chat: organizations.chatAvailable,
-            mail: organizations.mailAvailable
+            mail: organizations.mailAvailable,
+            serverName: homeservers.serverName
           })
           .from(organizations)
+          .leftJoin(homeservers, eq(homeservers.id, organizations.homeserverId))
           .where(
             eq(organizations.organizationId, callerOf(request).organizationId)
           )
@@ -119,6 +121,7 @@ export function registerSpaceRoutes(
         ...space,
         chat: organization?.chat ?? false,
         mail: organization?.mail ?? false,
+        serverName: organization?.serverName ?? null,
         members,
         groups,
         // A kind without an id is still being prepared by its app.

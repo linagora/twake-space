@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createServer } from '../../infra/http.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
-import { organizations } from '../organizations/schema.ts'
+import { homeservers, organizations } from '../organizations/schema.ts'
 import type { TokenCaller } from '../tokens/authenticator.ts'
 import { registerSpaceRoutes } from './routes.ts'
 import { spaceGroups, spaceMembers, spaceResources, spaces } from './schema.ts'
@@ -28,7 +28,8 @@ beforeEach(async () => {
     spaceGroups,
     spaceResources,
     spaces,
-    organizations
+    organizations,
+    homeservers
   ]) {
     await db.delete(table)
   }
@@ -195,6 +196,32 @@ describe('GET /spaces/:id', () => {
 
     expect(before.json()).toMatchObject({ chat: false, mail: false })
     expect(after.json()).toMatchObject({ chat: true, mail: false })
+  })
+
+  it("gives the server name of the organization's homeserver", async () => {
+    const get = setUp()
+    const before = await get(`/spaces/${DESIGN}`)
+    const [homeserver] = await testDb.db
+      .insert(homeservers)
+      .values({
+        url: 'https://matrix.org-1.example.com',
+        serverName: 'org-1.example.com',
+        asToken: Buffer.from('as'),
+        hsToken: Buffer.from('hs'),
+        hsTokenHash: 'hash'
+      })
+      .returning({ id: homeservers.id })
+    await testDb.db.insert(organizations).values({
+      organizationId: 'org-1',
+      domain: 'org-1.example.com',
+      chatAvailable: true,
+      homeserverId: homeserver?.id
+    })
+
+    const after = await get(`/spaces/${DESIGN}`)
+
+    expect(before.json()).toMatchObject({ serverName: null })
+    expect(after.json()).toMatchObject({ serverName: 'org-1.example.com' })
   })
 
   it.each([
