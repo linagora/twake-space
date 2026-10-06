@@ -29,6 +29,8 @@ const BINDINGS = [
 const FIRST_RETRY_MS = 1000
 const MAX_RETRY_MS = 60_000
 const STUCK_MS = 5 * 60_000
+// The client reconnects on its own; a broker restart should not restart pods.
+const DISCONNECTED_MS = 60_000
 // The broker's consumer_timeout (30 minutes by default) closes a channel that
 // holds an unacked delivery for longer, which counts a redelivery.
 const LONG_FAILING_MS = 25 * 60_000
@@ -58,8 +60,16 @@ export function consumerStats() {
 export function consumerAlive(
   client: Pick<RabbitMQClient, 'isConnected'>,
   stats: ConsumerStats
-): boolean {
-  return client.isConnected() && !stats.stuck()
+): () => boolean {
+  let disconnectedSince: number | undefined
+  return () => {
+    if (client.isConnected()) disconnectedSince = undefined
+    else disconnectedSince ??= Date.now()
+    const lost =
+      disconnectedSince !== undefined &&
+      Date.now() - disconnectedSince > DISCONNECTED_MS
+    return !lost && !stats.stuck()
+  }
 }
 
 // With one message in flight at a time, a failure streak is that message's.
@@ -113,6 +123,8 @@ export function deadLetterQueue(
         ...(message.messageId !== undefined && {
           messageId: message.messageId
         }),
+        // Keeps the parked row when the queue is gone.
+        mandatory: true,
         headers: {
           'x-twake-space-exchange': message.exchange,
           'x-twake-space-routing-key': message.routingKey,
