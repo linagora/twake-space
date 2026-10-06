@@ -1,4 +1,8 @@
-import { AuthenticationError, ConflictError } from '@linagora/ldap-rest-client'
+import {
+  AuthenticationError,
+  ConflictError,
+  NotFoundError
+} from '@linagora/ldap-rest-client'
 import { asc, eq } from 'drizzle-orm'
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -258,6 +262,20 @@ describe('space writes', () => {
     expect(response.statusCode).toBe(409)
     expect(response.json()).toEqual({ error: 'LAST_ADMIN' })
     expect(await members()).toHaveLength(2)
+  })
+
+  it('removes a member another admin removed a moment before', async () => {
+    const { directory } = ldapRest(
+      new NotFoundError('member not found', 'MEMBER_NOT_FOUND')
+    )
+
+    const response = await setUp(directory)(
+      'DELETE',
+      `/spaces/${DESIGN}/members/${BOB}`
+    )
+
+    expect(response.statusCode).toBe(204)
+    expect(await members()).toEqual([{ userId: ALICE, role: 'admin' }])
   })
 
   it('answers 500 when ldap-rest refuses its own credentials', async () => {
