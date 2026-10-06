@@ -78,12 +78,39 @@ export function registerSpaceRoutes(
 
   app.get('/spaces', { preHandler: authorize('space:read') }, async request => {
     const reached = await reachableSpaces(db, callerOf(request))
+    // The home cards show who is in each space.
+    const members =
+      reached.length === 0
+        ? []
+        : await db
+            .select({
+              spaceId: spaceMembers.spaceId,
+              id: spaceMembers.userId,
+              username: spaceMembers.username,
+              displayName: spaceMembers.displayName
+            })
+            .from(spaceMembers)
+            .where(
+              inArray(
+                spaceMembers.spaceId,
+                reached.map(space => space.id)
+              )
+            )
+            .orderBy(asc(spaceMembers.username))
     return {
-      spaces: reached.map(({ id, name, role, color }) => ({
+      spaces: reached.map(({ id, name, role, color, description }) => ({
         id,
         name,
         role,
-        color
+        color,
+        description: description ?? '',
+        members: members
+          .filter(member => member.spaceId === id)
+          .map(({ id, username, displayName }) => ({
+            id,
+            username,
+            displayName
+          }))
       }))
     }
   })

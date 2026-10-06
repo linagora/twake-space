@@ -102,6 +102,9 @@ function setUp(
     })
 }
 
+const reached = (body: { spaces: { id: string; role: string }[] }) =>
+  body.spaces.map(({ id, role }) => ({ id, role }))
+
 describe('API tokens', () => {
   it('reaches the spaces of the account it acts for', async () => {
     const response = await setUp(aTokenCaller({ userId: BOB }))(
@@ -109,20 +112,18 @@ describe('API tokens', () => {
       'tws_bot'
     )
 
-    expect(response.json()).toEqual({
-      spaces: [
-        { id: DESIGN, name: 'Design', role: 'viewer', color: null },
-        { id: SALES, name: 'Sales', role: 'admin', color: null }
-      ]
-    })
+    expect(reached(response.json())).toEqual([
+      { id: DESIGN, role: 'viewer' },
+      { id: SALES, role: 'admin' }
+    ])
   })
 
   it('reaches only the spaces it covers', async () => {
     const get = setUp(aTokenCaller({ userId: BOB, spaceIds: [SALES] }))
 
-    expect((await get('/spaces', 'tws_bot')).json()).toEqual({
-      spaces: [{ id: SALES, name: 'Sales', role: 'admin', color: null }]
-    })
+    expect(reached((await get('/spaces', 'tws_bot')).json())).toEqual([
+      { id: SALES, role: 'admin' }
+    ])
     expect((await get(`/spaces/${DESIGN}`, 'tws_bot')).statusCode).toBe(404)
   })
 
@@ -131,12 +132,10 @@ describe('API tokens', () => {
       aTokenCaller({ userId: null, role: 'editor' })
     )('/spaces', 'tws_bot')
 
-    expect(response.json()).toEqual({
-      spaces: [
-        { id: DESIGN, name: 'Design', role: 'editor', color: null },
-        { id: SALES, name: 'Sales', role: 'editor', color: null }
-      ]
-    })
+    expect(reached(response.json())).toEqual([
+      { id: DESIGN, role: 'editor' },
+      { id: SALES, role: 'editor' }
+    ])
   })
 
   it('needs the space:read scope', async () => {
@@ -164,7 +163,33 @@ describe('GET /spaces', () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toEqual({
-      spaces: [{ id: DESIGN, name: 'Design', role: 'admin', color: null }]
+      spaces: [
+        {
+          id: DESIGN,
+          name: 'Design',
+          role: 'admin',
+          color: null,
+          description: '',
+          members: [
+            { id: ALICE, username: 'alice', displayName: 'Alice LIDDELL' },
+            { id: BOB, username: 'bob', displayName: null }
+          ]
+        }
+      ]
+    })
+  })
+
+  it('gives the description picked for each space', async () => {
+    await testDb.db.insert(spaceSettings).values({
+      spaceId: DESIGN,
+      description: 'Brand and product design',
+      apps: ['tasks']
+    })
+
+    const response = await setUp()('/spaces')
+
+    expect(response.json()).toMatchObject({
+      spaces: [{ id: DESIGN, description: 'Brand and product design' }]
     })
   })
 })
