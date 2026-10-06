@@ -147,6 +147,7 @@ Upserts and removals of members, groups and names send a `spaces` live event to 
 - `tasks` -> `project` (the Tasks project id)
 
 - It needs `twakeorg`, and rejects the event when that is not the space's organization.
+- A space the copy does not have was deleted after the app provisioned it, since the app provisions on the space's created event, which reaches the queue first. The event is logged and dropped, and the app's next sync removes the resource.
 - It upserts `space_resources`, so a new id replaces the old one, and sends a `spaces` live event to the space's members.
 - It parks an event for a space the copy does not hold yet, and ignores one for a space deleted after the event's `time`.
 
