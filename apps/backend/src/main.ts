@@ -22,6 +22,7 @@ import {
   organizationPlatformRoutes
 } from './modules/organizations/availability.ts'
 import { controlPlaneHomeservers } from './modules/organizations/control-plane.ts'
+import { registerDirectoryRoutes } from './modules/organizations/directory.ts'
 import { configureHomeserver } from './modules/organizations/homeservers.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
@@ -77,6 +78,7 @@ const authorize = await setUpAuth(server, {
 })
 registerSpaceRoutes(server, { db, authorize })
 registerTokenRoutes(server, { db, authorize, directory })
+registerDirectoryRoutes(server, { authorize, directory })
 registerNotificationRoutes(server, { db, authorize })
 registerTransactionRoutes(server, { db, localpart: config.MATRIX_LOCALPART })
 const streams = createStreams()

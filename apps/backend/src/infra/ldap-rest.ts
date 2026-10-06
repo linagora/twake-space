@@ -24,6 +24,10 @@ export interface Directory {
     orgId: string,
     query: { page: number; limit: number; search?: string }
   ): Promise<MemberPage>
+  listGroups(
+    orgId: string,
+    query: { page: number; limit: number; search?: string }
+  ): Promise<{ groups: { id: string; name: string }[]; hasNextPage: boolean }>
   findMember(
     orgId: string,
     by: 'username' | 'email' | 'id',
@@ -53,7 +57,7 @@ export function createLdapRestClient(config: Config): LdapRestClient {
 }
 
 export function ldapRestDirectory(
-  client: Pick<LdapRestClient, 'organizations' | 'users'>
+  client: Pick<LdapRestClient, 'organizations' | 'users' | 'groups'>
 ): Directory {
   return {
     async organizationOf(email) {
@@ -88,6 +92,21 @@ export function ldapRestDirectory(
         members: users.map(toMember),
         total: pagination.total,
         hasNextPage: pagination.hasNextPage
+      }
+    },
+    async listGroups(orgId, query) {
+      const { groups, pagination } = await client.groups.list(orgId, query)
+      return {
+        // The cn is the group's id; its name is in displayName, which the
+        // client does not type yet.
+        groups: groups.map(group => {
+          const { displayName } = group as { displayName?: unknown }
+          return {
+            id: group.id,
+            name: typeof displayName === 'string' ? displayName : group.cn
+          }
+        }),
+        hasNextPage: pagination.page < pagination.totalPages
       }
     },
     async findMember(orgId, by, value) {
