@@ -126,7 +126,7 @@ describe('SpaceScreen', () => {
 
     expect(await screen.findByTitle('Tasks')).toHaveAttribute(
       'src',
-      'https://tasks.test/embed/spaces/a1/boards/b1?task=T-1'
+      'https://tasks.test/embed/projects/project-1/boards/b1?task=T-1'
     )
   })
 
