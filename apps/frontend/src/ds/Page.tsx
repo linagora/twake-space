@@ -2,10 +2,6 @@ import {
   Box,
   Divider,
   Empty,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   ListSkeleton,
   Typography,
   type EmptyProps
@@ -26,37 +22,6 @@ export function Page({ children }: { children: ReactNode }): ReactElement {
       }}
     >
       {children}
-    </Box>
-  )
-}
-
-export function PageHeader({
-  title,
-  actions
-}: {
-  title: ReactNode
-  actions?: ReactNode
-}): ReactElement {
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 2,
-        minHeight: 48,
-        mb: 2
-      }}
-    >
-      <Typography
-        variant="h3"
-        component="h1"
-        noWrap
-        sx={{ fontSize: { xs: 22, lg: 24 } }}
-      >
-        {title}
-      </Typography>
-      {actions}
     </Box>
   )
 }
@@ -119,70 +84,6 @@ export function LoadingRows({
     <Box role="status" aria-label={label}>
       <ListSkeleton count={count} hasSecondary />
     </Box>
-  )
-}
-
-export function RowList({
-  label,
-  children
-}: {
-  label: string
-  children: ReactNode
-}): ReactElement {
-  return (
-    <List
-      aria-label={label}
-      sx={{
-        py: 0,
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 2,
-        overflow: 'hidden',
-        '& > li + li': { borderTop: 1, borderColor: 'divider' }
-      }}
-    >
-      {children}
-    </List>
-  )
-}
-
-// `link` is the row's name as a link; it stretches over the whole row.
-export function Row({
-  icon,
-  link,
-  secondary
-}: {
-  icon: ReactNode
-  link: ReactNode
-  secondary?: ReactNode
-}): ReactElement {
-  return (
-    <ListItem
-      sx={{
-        position: 'relative',
-        minHeight: 56,
-        px: 2,
-        '&:hover': { bgcolor: 'action.hover' },
-        '& a': { color: 'text.primary', textDecoration: 'none' },
-        '& a::after': { content: '""', position: 'absolute', inset: 0 },
-        '&:focus-within': {
-          outline: 2,
-          outlineColor: 'primary.main',
-          outlineOffset: -2
-        },
-        '& a:focus-visible': { outline: 'none' }
-      }}
-    >
-      <ListItemIcon>{icon}</ListItemIcon>
-      <ListItemText
-        primary={link}
-        secondary={secondary}
-        slotProps={{
-          primary: { variant: 'body1', noWrap: true },
-          secondary: { variant: 'caption' }
-        }}
-      />
-    </ListItem>
   )
 }
 
