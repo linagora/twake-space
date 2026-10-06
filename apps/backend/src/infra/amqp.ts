@@ -70,6 +70,7 @@ export type ConsumerStats = ReturnType<typeof consumerStats>
 export function consumerStats() {
   const outcomes = new Map<Outcome | 'failed', number>()
   let handlingSince: number | undefined
+  let unsubscribed = false
   return {
     outcomes,
     started() {
@@ -79,12 +80,19 @@ export function consumerStats() {
       handlingSince = undefined
       outcomes.set(outcome, (outcomes.get(outcome) ?? 0) + 1)
     },
+    // The client gives up on a subscription it fails to restore, and stays
+    // connected without consuming.
+    reconnected({ subscriptionsFailed }: { subscriptionsFailed: number }) {
+      unsubscribed = subscriptionsFailed > 0
+    },
+    unsubscribed: () => unsubscribed,
     stuck: () =>
       handlingSince !== undefined && Date.now() - handlingSince > STUCK_MS
   }
 }
 
-// An idle consumer is alive: only a stuck handler or a lost connection is not.
+// An idle consumer is alive: only a stuck handler, a lost connection or a lost
+// subscription is not.
 export function consumerAlive(
   client: Pick<RabbitMQClient, 'isConnected'>,
   stats: ConsumerStats
@@ -96,7 +104,7 @@ export function consumerAlive(
     const lost =
       disconnectedSince !== undefined &&
       Date.now() - disconnectedSince > DISCONNECTED_MS
-    return !lost && !stats.stuck()
+    return !lost && !stats.stuck() && !stats.unsubscribed()
   }
 }
 
@@ -175,7 +183,12 @@ export async function startConsumer(
     prefetch: 1,
     retryDelay: FIRST_RETRY_MS,
     // The client logs every message at info.
-    logger: logger.child({ component: 'amqp' }, { level: 'warn' })
+    logger: logger.child({ component: 'amqp' }, { level: 'warn' }),
+    hooks: {
+      onReconnect: info => {
+        stats.reconnected(info)
+      }
+    }
   })
   await client.init()
   const { exchange, routingKey, queue, options } = subscription(config.amqp)
