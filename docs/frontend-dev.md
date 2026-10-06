@@ -17,11 +17,13 @@ Open http://localhost:3000. You're signed in as Alice Martin, an admin of the or
 - Design Sprint: editor, Drive and Mail still being prepared, an empty feed
 - Handover: viewer, chat and mail turned off
 
-The seed lives in `apps/frontend/src/adapters/memory/seed.ts`. It uses the same organization, people (alice, bob, carol, dave) and roles as the local SSO stack, so the screens look the same on the real backend.
+The organization has four people (alice, bob, carol, dave) and one group, Designers. Each space has direct members and the Designers group with their own roles. The seed lives in `apps/frontend/src/adapters/memory/seed.ts`, and uses the same organization, people and roles as the local SSO stack, so the screens look the same on the real backend.
+
+Writes behave like the backend's: only a space admin can rename a space or change its members, and anyone else gets a 403 refusal.
 
 What mock mode doesn't do:
 
-- Spaces you create vanish on reload.
+- Changes vanish on reload.
 - Nothing arrives live, and signing out only reloads the page.
 - The Tasks tab says Tasks isn't set up unless `apps/frontend/public/.env.js` sets `TASKS_URL`.
 - Card links in the feed point nowhere.
@@ -47,6 +49,19 @@ flowchart LR
 - `index.tsx` wires the real adapters, and `mock.tsx` wires the memory ones. Rsbuild picks `mock.tsx` when `MOCK=1`, so production builds never include the seed.
 
 ESLint enforces these boundaries, and a few more rules: named exports only, UI from `@linagora/twake-mui`, layout with twake-css classes instead of `sx` or inline styles.
+
+## Services
+
+`useServices()` gives the screens:
+
+- `spaces`: list, read and create spaces. A space admin also renames or deletes a space, and adds, changes and removes its members and linked groups.
+- `directory`: search the organization's people and groups, 20 per page, to pick new members from.
+- `feed`: open a space's feed with a filter, follow it live, and load older entries.
+- `matrix`: sign in to the organization's homeserver before opening the feed.
+- `live`: the backend's live updates. `useLiveUpdates` already refreshes the spaces queries when a space changes.
+- `tasksUrl`: where the Tasks tab embeds Twake Tasks, or null.
+
+A refused request rejects with a `Refusal`: the HTTP `status`, and the backend's reason as `code` (for example `not_space_admin`). Check it with `isRefusal` from `application/spaces.ts` to explain the refusal to the user. The [HTTP API](api.md) lists every route and its refusals.
 
 ## Add a feature
 
