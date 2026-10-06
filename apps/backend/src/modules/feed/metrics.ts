@@ -1,6 +1,8 @@
 import { and, asc, count, eq, isNull } from 'drizzle-orm'
+import { parkedEvents } from '../../events/schema.ts'
 import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
+import type { ConsumerStats } from '../../infra/kafka.ts'
 import { organizations } from '../organizations/schema.ts'
 import { spaces } from '../spaces/schema.ts'
 import { activityEvents } from './schema.ts'
@@ -8,8 +10,11 @@ import { activityEvents } from './schema.ts'
 const label = (value: string) =>
   value.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('\n', '\\n')
 
-export function registerMetrics(app: HttpServer, deps: { db: Db }) {
-  const { db } = deps
+export function registerMetrics(
+  app: HttpServer,
+  deps: { db: Db; consumer: ConsumerStats }
+) {
+  const { db, consumer } = deps
 
   app.get('/metrics', async (_request, reply) => {
     // Organizations with chat and nothing waiting report 0, so alerts resolve.
@@ -30,6 +35,7 @@ export function registerMetrics(app: HttpServer, deps: { db: Db }) {
       .where(eq(organizations.chatAvailable, true))
       .groupBy(organizations.organizationId)
       .orderBy(asc(organizations.organizationId))
+    const [parked] = await db.select({ events: count() }).from(parkedEvents)
     return reply
       .type('text/plain; version=0.0.4; charset=utf-8')
       .send(
@@ -40,6 +46,15 @@ export function registerMetrics(app: HttpServer, deps: { db: Db }) {
             w =>
               `twake_space_cards_waiting{organization="${label(w.organizationId)}"} ${String(w.cards)}`
           ),
+          '# HELP twake_space_events_total Kafka messages handled, by outcome.',
+          '# TYPE twake_space_events_total counter',
+          ...[...consumer.outcomes].map(
+            ([outcome, total]) =>
+              `twake_space_events_total{outcome="${outcome}"} ${String(total)}`
+          ),
+          '# HELP twake_space_parked_events Events waiting for a space or member.',
+          '# TYPE twake_space_parked_events gauge',
+          `twake_space_parked_events ${String(parked?.events ?? 0)}`,
           ''
         ].join('\n')
       )

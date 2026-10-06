@@ -4,6 +4,7 @@ import type { Logger } from 'pino'
 export function createServer(deps: {
   logger: Logger
   isReady: () => Promise<boolean>
+  isAlive?: () => boolean
 }) {
   const app = Fastify({
     loggerInstance: deps.logger,
@@ -12,7 +13,12 @@ export function createServer(deps: {
     })
   })
 
-  app.get('/health/live', () => ({ status: 'ok' }))
+  app.get('/health/live', (_request, reply) => {
+    const alive = deps.isAlive?.() ?? true
+    return reply
+      .code(alive ? 200 : 503)
+      .send({ status: alive ? 'ok' : 'unavailable' })
+  })
 
   app.get('/health/ready', async (_request, reply) => {
     const ready = await deps.isReady().catch(() => false)
