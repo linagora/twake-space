@@ -134,7 +134,7 @@ isAlive = consumerAlive(consumer, consumerStatus)
 const stopParked = scheduleParkedRetries(
   db,
   handle,
-  deadLetterQueue(consumer),
+  deadLetterQueue(consumer, config.amqp.queue),
   logger
 )
 const stopPurge = schedulePurge(db, logger)

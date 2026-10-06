@@ -133,6 +133,19 @@ Matrix homeserver, in one of two modes. Without either, the backend runs but pos
 - Both modes need `SECRETS_KEY`: 32 random bytes in base64. The backend encrypts the homeserver tokens with it (AES-256-GCM) before storing them in Postgres. Changing it makes the stored tokens unreadable.
 - Setting only part of a group, or both groups, is a configuration error.
 
+### RabbitMQ names
+
+The defaults match the platform. [Events](events.md#consuming-rabbitmq) lists the bindings they produce.
+
+- `AMQP_QUEUE`: the queue, default `twake-space`. The dead letter queue is `<queue>.dlq`.
+- `AMQP_DEAD_LETTER_EXCHANGE`: default `<queue>.dlx`.
+- `AMQP_DELIVERY_LIMIT`: deliveries before RabbitMQ dead-letters a message, default `20`.
+- `AMQP_SPACE_EXCHANGE`, `AMQP_B2B_EXCHANGE`, `AMQP_ADMIN_PANEL_EXCHANGE`: the platform exchanges, default `space`, `b2b` and `admin-panel`.
+- `AMQP_ACTIVITY_EXCHANGE`: the exchange the apps publish their activity on, default `activity`.
+- `AMQP_EVENTS`: JSON that moves single events to another exchange or routing key, such as `{"dns.validated": {"exchange": "dns", "routingKey": "domain.dns.validated"}}`. An event the backend has no handler for, a routing key with `*` or `#`, two events on the same exchange and key, or an event on the activity exchange is a configuration error.
+
+RabbitMQ refuses to redeclare a queue with other arguments, and the queue name, the dead letter exchange, the first `space` event's binding and the delivery limit are arguments. Changing one of them means deleting the queue first, after it has drained. Bindings an older version or setting left on the queue stay until it is deleted.
+
 ### Startup
 
 The backend starts in this order. A failure at any step stops the process.
@@ -186,7 +199,7 @@ Health requests are not logged. The metrics port answers `/health/live` and `/he
 
 ### RabbitMQ
 
-- The `space`, `b2b` and `admin-panel` exchanges must exist before the backend starts, or it stops. Their owners declare them; compose declares them locally.
+- The `space`, `b2b` and `admin-panel` exchanges must exist before the backend starts, or it stops. Their owners declare them; compose declares them locally. These and the names below are the defaults: see [RabbitMQ names](#rabbitmq-names).
 - The backend declares the `activity` exchange, its `twake-space` quorum queue with the bindings, the `twake-space.dlx` exchange and the `twake-space.dlq` queue. Its user needs configure, write and read permissions on those.
 - The queue has a single active consumer, so only one replica consumes at a time. The others take over when it goes away.
 - An event the backend cannot process ends in `twake-space.dlq`. See [Events](events.md#consuming-rabbitmq).

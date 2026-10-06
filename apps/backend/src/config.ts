@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { amqpTopology } from './events/topology.ts'
 
 const HOMESERVER_KEYS = [
   'MATRIX_HOMESERVER_URL',
@@ -93,6 +94,7 @@ const configSchema = z
     MATRIX_LOCALPART: z.enum(['uid', 'email']).default('uid')
   })
   .and(homeserver)
+  .and(amqpTopology)
 
 export type Config = z.infer<typeof configSchema>
 

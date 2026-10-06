@@ -1,30 +1,58 @@
 import {
   DeadLetterError,
   RabbitMQClient,
-  type RabbitMQMessageHandler
+  type RabbitMQMessageHandler,
+  type SubscribeOptions
 } from '@linagora/rabbitmq-client'
 import type { Logger } from 'pino'
 import type { Config } from '../config.ts'
 import { ACTIVITY_EXCHANGE } from '../events/envelope.ts'
 import type { DeadLetter, IncomingMessage, Outcome } from '../events/router.ts'
-
-const QUEUE = 'twake-space'
-const DEAD_LETTER_EXCHANGE = `${QUEUE}.dlx`
-const DEAD_LETTER_QUEUE = `${QUEUE}.dlq`
+import type { AmqpTopology } from '../events/topology.ts'
 
 // Only what a handler exists for: a binding without one would only ack and drop.
-const BINDINGS = [
-  { exchange: 'space', routingKey: 'twake.space.#' },
-  { exchange: 'b2b', routingKey: 'b2b.group.updated' },
-  { exchange: 'b2b', routingKey: 'b2b.member.role.changed' },
-  { exchange: 'b2b', routingKey: 'b2b.member.disabled' },
-  { exchange: 'b2b', routingKey: 'domain.user.deleted' },
-  { exchange: 'b2b', routingKey: 'domain.organization.deleted' },
-  { exchange: 'b2b', routingKey: 'chat.deprovision' },
-  { exchange: 'b2b', routingKey: 'chat.deployment.completed' },
-  { exchange: 'admin-panel', routingKey: 'dns.validated' },
-  { exchange: ACTIVITY_EXCHANGE, routingKey: '#' }
-] as const
+export function subscription(topology: AmqpTopology) {
+  const platform = Object.values(topology.events)
+  const [primary, ...rest] = platform
+  if (!primary) throw new Error('no platform event to bind')
+  const options = {
+    bindings: [
+      ...rest,
+      { exchange: topology.activityExchange, routingKey: '#' }
+    ],
+    deadLetterExchange: topology.deadLetterExchange,
+    // Other services own these; the apps and we declare the activity one.
+    passiveExchanges: [...new Set(platform.map(b => b.exchange))].filter(
+      exchange => exchange !== topology.activityExchange
+    ),
+    maxRetries: Infinity,
+    maxRetryDelay: MAX_RETRY_MS,
+    queueArguments: {
+      'x-single-active-consumer': true,
+      // Failures retry in the process, so a redelivery means a crash or a
+      // consumer_timeout: the default 20 rides out about 10 hours of outage.
+      'x-delivery-limit': topology.deliveryLimit
+    }
+  } satisfies SubscribeOptions
+  return { ...primary, queue: topology.queue, options }
+}
+
+// The router, its handlers and the parked rows know events by their default
+// names, whatever a deployment calls the exchanges and keys.
+export function canonical(
+  topology: AmqpTopology,
+  exchange: string,
+  routingKey: string
+): { exchange: string; routingKey: string } {
+  if (exchange === topology.activityExchange) {
+    return { exchange: ACTIVITY_EXCHANGE, routingKey }
+  }
+  const match = Object.entries(topology.events).find(
+    ([, binding]) =>
+      binding.exchange === exchange && binding.routingKey === routingKey
+  )
+  return { exchange, routingKey: match ? match[0] : routingKey }
+}
 
 const FIRST_RETRY_MS = 1000
 const MAX_RETRY_MS = 60_000
@@ -112,12 +140,13 @@ export function deliveryHandler(
 }
 
 export function deadLetterQueue(
-  client: Pick<RabbitMQClient, 'publish'>
+  client: Pick<RabbitMQClient, 'publish'>,
+  queue: string
 ): DeadLetter {
   return (message, reason) =>
     client.publish(
       '',
-      DEAD_LETTER_QUEUE,
+      `${queue}.dlq`,
       message.body as Record<string, unknown>,
       {
         ...(message.messageId !== undefined && {
@@ -149,28 +178,21 @@ export async function startConsumer(
     logger: logger.child({ component: 'amqp' }, { level: 'warn' })
   })
   await client.init()
-  const [primary, ...bindings] = BINDINGS
+  const { exchange, routingKey, queue, options } = subscription(config.amqp)
   await client.subscribe(
-    primary.exchange,
-    primary.routingKey,
-    QUEUE,
-    deliveryHandler(handle, stats, logger),
-    {
-      bindings: [...bindings],
-      deadLetterExchange: DEAD_LETTER_EXCHANGE,
-      // Other services own these; the apps and we declare `activity`.
-      passiveExchanges: BINDINGS.map(b => b.exchange).filter(
-        exchange => exchange !== ACTIVITY_EXCHANGE
-      ),
-      maxRetries: Infinity,
-      maxRetryDelay: MAX_RETRY_MS,
-      queueArguments: {
-        'x-single-active-consumer': true,
-        // Failures retry in the process, so a redelivery means a crash or a
-        // consumer_timeout: 20 rides out about 10 hours of outage.
-        'x-delivery-limit': 20
-      }
-    }
+    exchange,
+    routingKey,
+    queue,
+    deliveryHandler(
+      message =>
+        handle({
+          ...message,
+          ...canonical(config.amqp, message.exchange, message.routingKey)
+        }),
+      stats,
+      logger
+    ),
+    options
   )
   return client
 }

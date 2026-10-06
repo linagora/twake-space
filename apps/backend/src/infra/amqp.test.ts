@@ -2,11 +2,14 @@ import type { RabbitMQMessageProperties } from '@linagora/rabbitmq-client'
 import { pino } from 'pino'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { IncomingMessage, Outcome } from '../events/router.ts'
+import { amqpTopology } from '../events/topology.ts'
 import {
+  canonical,
   consumerAlive,
   consumerStats,
   deadLetterQueue,
-  deliveryHandler
+  deliveryHandler,
+  subscription
 } from './amqp.ts'
 
 const properties = (
@@ -151,11 +154,67 @@ describe('consumerAlive', () => {
   })
 })
 
+describe('subscription', () => {
+  it('binds the queue to each event, and checks the exchanges others own', () => {
+    const { exchange, routingKey, queue, options } = subscription(
+      amqpTopology.parse({
+        AMQP_EVENTS: '{"dns.validated":{"exchange":"dns"}}'
+      }).amqp
+    )
+
+    expect({ exchange, routingKey, queue }).toEqual({
+      exchange: 'space',
+      routingKey: 'twake.space.created',
+      queue: 'twake-space'
+    })
+    expect(options.bindings).toHaveLength(17)
+    expect(options.bindings).toContainEqual({
+      exchange: 'dns',
+      routingKey: 'dns.validated'
+    })
+    expect(options.bindings).toContainEqual({
+      exchange: 'activity',
+      routingKey: '#'
+    })
+    expect(options.passiveExchanges).toEqual(['space', 'b2b', 'dns'])
+    expect(options.deadLetterExchange).toBe('twake-space.dlx')
+    expect(options.queueArguments).toMatchObject({ 'x-delivery-limit': 20 })
+  })
+})
+
+describe('canonical', () => {
+  const topology = amqpTopology.parse({
+    AMQP_ACTIVITY_EXCHANGE: 'apps',
+    AMQP_EVENTS: '{"chat.deployment.completed":{"routingKey":"deployed"}}'
+  }).amqp
+
+  it('names a platform message after the event bound to its key', () => {
+    expect(canonical(topology, 'b2b', 'deployed')).toEqual({
+      exchange: 'b2b',
+      routingKey: 'chat.deployment.completed'
+    })
+  })
+
+  it('names the activity exchange activity, whatever it is called', () => {
+    expect(canonical(topology, 'apps', 'com.twake.tasks.x')).toEqual({
+      exchange: 'activity',
+      routingKey: 'com.twake.tasks.x'
+    })
+  })
+
+  it('keeps any other routing key as it came', () => {
+    expect(canonical(topology, 'b2b', 'chat.deployment.completed')).toEqual({
+      exchange: 'b2b',
+      routingKey: 'chat.deployment.completed'
+    })
+  })
+})
+
 describe('deadLetterQueue', () => {
   it('publishes the event straight to the dead letter queue, with its reason', async () => {
     const client = { publish: vi.fn(() => Promise.resolve()) }
 
-    await deadLetterQueue(client)(
+    await deadLetterQueue(client, 'twake-space')(
       {
         exchange: 'space',
         routingKey: 'twake.space.member.added',
