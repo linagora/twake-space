@@ -1,22 +1,9 @@
-import {
-  AutoDiscovery,
-  createClient,
-  type ClientConfig,
-  type MatrixClient
-} from 'matrix-js-sdk'
+import { createClient, type MatrixClient } from 'matrix-js-sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { matrixSession } from '@/adapters/matrix/matrixSession'
 
-const { findClientConfig } = vi.hoisted(() => ({ findClientConfig: vi.fn() }))
-
 vi.mock('matrix-js-sdk', () => ({
-  AutoDiscovery: {
-    SUCCESS: 'SUCCESS',
-    PROMPT: 'PROMPT',
-    FAIL_PROMPT: 'FAIL_PROMPT',
-    findClientConfig
-  },
   ClientEvent: { Sync: 'sync' },
   HttpApiEvent: { SessionLoggedOut: 'Session.logged_out' },
   SyncState: { Prepared: 'PREPARED' },
@@ -46,20 +33,10 @@ const client: Partial<MatrixClient> = {
 }
 const goTo = vi.fn()
 const stored = {
-  serverName: 'acme.test',
   baseUrl: BASE_URL,
   userId: '@alice:acme.test',
   accessToken: 'syt_alice',
   deviceId: 'DEVICE'
-}
-
-function discovered(found: boolean): ClientConfig {
-  return {
-    'm.homeserver': found
-      ? { state: AutoDiscovery.SUCCESS, base_url: BASE_URL }
-      : { state: AutoDiscovery.FAIL_PROMPT, base_url: null },
-    'm.identity_server': { state: AutoDiscovery.PROMPT, base_url: null }
-  }
 }
 
 const session = () => matrixSession(localStorage, goTo)
@@ -68,15 +45,13 @@ beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   vi.mocked(createClient).mockReturnValue(client as MatrixClient)
-  findClientConfig.mockResolvedValue(discovered(true))
   window.history.replaceState(null, '', '/spaces/a1/feed')
 })
 
 describe('matrixSession', () => {
-  it("sends the browser to the homeserver's sign-in from its well-known", async () => {
-    expect(await session().signIn('acme.test')).toBe(false)
+  it("sends the browser to the homeserver's sign-in", async () => {
+    expect(await session().signIn(BASE_URL)).toBe(false)
 
-    expect(findClientConfig).toHaveBeenCalledWith('acme.test')
     expect(createClient).toHaveBeenCalledWith({ baseUrl: BASE_URL })
     expect(goTo).toHaveBeenCalledWith(
       `${BASE_URL}sso?r=http://localhost:3000/spaces/a1/feed`
@@ -91,7 +66,7 @@ describe('matrixSession', () => {
       device_id: 'DEVICE'
     })
 
-    expect(await session().signIn('acme.test')).toBe(true)
+    expect(await session().signIn(BASE_URL)).toBe(true)
 
     expect(loginRequest).toHaveBeenCalledWith({
       type: 'm.login.token',
@@ -106,24 +81,18 @@ describe('matrixSession', () => {
   it('keeps the device it already signed in with', async () => {
     localStorage.setItem(KEY, JSON.stringify(stored))
 
-    expect(await session().signIn('acme.test')).toBe(true)
+    expect(await session().signIn(BASE_URL)).toBe(true)
 
-    expect(findClientConfig).not.toHaveBeenCalled()
+    expect(createClient).not.toHaveBeenCalled()
   })
 
   it('signs in again for another homeserver', async () => {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ ...stored, serverName: 'other.test' })
+      JSON.stringify({ ...stored, baseUrl: 'https://matrix.other.test/' })
     )
 
-    expect(await session().signIn('acme.test')).toBe(false)
-  })
-
-  it('refuses a homeserver its well-known does not describe', async () => {
-    findClientConfig.mockResolvedValue(discovered(false))
-
-    await expect(session().signIn('acme.test')).rejects.toThrow(/acme\.test/)
+    expect(await session().signIn(BASE_URL)).toBe(false)
   })
 
   it('logs its device out and forgets it', async () => {

@@ -24,17 +24,17 @@ import { useServices } from '@/ui/services/Services'
 const FILTERS: FeedFilter[] = ['all', ...FEED_CATEGORIES]
 
 export function FeedPanel({
-  serverName,
+  homeserverUrl,
   roomId
 }: {
-  serverName: string
+  homeserverUrl: string
   roomId: string
 }): ReactElement {
   const { t } = useI18n()
   const { matrix } = useServices()
   const signIn = useQuery({
-    queryKey: ['matrix', serverName],
-    queryFn: () => matrix.signIn(serverName),
+    queryKey: ['matrix', homeserverUrl],
+    queryFn: () => matrix.signIn(homeserverUrl),
     // A login token works once.
     retry: false,
     staleTime: Infinity

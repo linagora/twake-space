@@ -9,7 +9,7 @@ const space: Space = {
   role: 'editor',
   chat: true,
   mail: true,
-  serverName: 'acme.test',
+  homeserverUrl: 'https://matrix.acme.test',
   resources: [
     { kind: 'matrix_space', id: '!room:acme' },
     { kind: 'tasks', id: 'board-1' },
@@ -32,7 +32,7 @@ describe('spaceTabs', () => {
   })
 
   it('prepares Feed and Chat until the homeserver is known', () => {
-    const states = spaceTabs({ ...space, serverName: null })
+    const states = spaceTabs({ ...space, homeserverUrl: null })
 
     expect(states.slice(0, 2)).toEqual([
       { tab: 'feed', state: 'preparing' },

@@ -14,7 +14,7 @@ const roadmap: Space = {
   role: 'editor',
   chat: false,
   mail: true,
-  serverName: null,
+  homeserverUrl: null,
   resources: [
     { kind: 'tasks', id: 'board-1' },
     { kind: 'drive', id: null },
@@ -30,7 +30,7 @@ function Path() {
 const withChat: Space = {
   ...roadmap,
   chat: true,
-  serverName: 'acme.test',
+  homeserverUrl: 'https://matrix.acme.test',
   resources: [...roadmap.resources, { kind: 'matrix_space', id: '!s:acme' }]
 }
 
@@ -136,7 +136,7 @@ describe('SpaceScreen', () => {
     expect(
       await screen.findByRole('tab', { name: 'Feed', selected: true })
     ).toBeInTheDocument()
-    expect(matrix.signIn).toHaveBeenCalledWith('acme.test')
+    expect(matrix.signIn).toHaveBeenCalledWith('https://matrix.acme.test')
   })
 
   it('says so when the chat sign-in fails', async () => {

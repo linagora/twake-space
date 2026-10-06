@@ -36,9 +36,12 @@ const page: FeedPage = {
 }
 
 function renderFeed(feed = fakeFeed(page)) {
-  renderWithProviders(<FeedPanel serverName="acme.test" roomId={ROOM} />, {
-    feed
-  })
+  renderWithProviders(
+    <FeedPanel homeserverUrl="https://matrix.acme.test" roomId={ROOM} />,
+    {
+      feed
+    }
+  )
   return feed
 }
 

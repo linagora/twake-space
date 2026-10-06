@@ -102,10 +102,10 @@ export function SpaceScreen(): ReactElement {
         )}
         {current.state === 'ready' &&
           current.tab === 'feed' &&
-          space.data.serverName &&
+          space.data.homeserverUrl &&
           matrixSpace && (
             <FeedPanel
-              serverName={space.data.serverName}
+              homeserverUrl={space.data.homeserverUrl}
               roomId={matrixSpace}
             />
           )}

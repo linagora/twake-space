@@ -13,7 +13,7 @@ export interface Space extends SpaceSummary {
   chat: boolean
   mail: boolean
   /** The Matrix server name of the organization's homeserver, once known. */
-  serverName: string | null
+  homeserverUrl: string | null
   /** An id of null: the app is still preparing the resource. */
   resources: { kind: ResourceKind; id: string | null }[]
 }
