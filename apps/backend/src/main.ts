@@ -119,7 +119,7 @@ const handle = createMessageHandler({
   logger
 })
 const consumer = await startConsumer(config, logger, handle, consumerStatus)
-isAlive = () => consumerAlive(consumer, consumerStatus)
+isAlive = consumerAlive(consumer, consumerStatus)
 const stopParked = scheduleParkedRetries(
   db,
   handle,
@@ -134,10 +134,11 @@ const stopPosting = secretsKey
 accepting = true
 lifecycle.started(async () => {
   accepting = false
-  stopParked()
+  const parkedStopped = stopParked()
   stopPurge()
   stopPosting()
   try {
+    await parkedStopped
     await consumer.close()
     await delay(DRAIN_MS)
     await server.close()
