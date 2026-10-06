@@ -148,7 +148,7 @@ The backend starts in this order. A failure at any step stops the process.
 7. Connects the Kafka dead letter producer, checks that every dead letter topic exists, and starts the consumer.
 8. Starts the background jobs and reports ready.
 
-On `SIGTERM` or `SIGINT` it reports not ready, stops the jobs, disconnects from Kafka, closes both servers and the Postgres pool, then flushes Sentry.
+On `SIGTERM` or `SIGINT` it reports not ready, stops the jobs and disconnects from Kafka. After 5 seconds, so the load balancer has moved traffic away, it closes both servers and the Postgres pool, then flushes Sentry. It exits with code 1 when this fails or takes over 25 seconds, which fits the default 30 second grace period. A signal during startup exits at once.
 
 ### Database migrations
 
@@ -173,8 +173,9 @@ Health requests are not logged. The metrics port answers `/health/live` and `/he
 
 ### Logs and Sentry
 
-- Logs are JSON lines from pino on stdout, at `LOG_LEVEL`. Kafka client logs carry `component: "kafka"`.
-- Sentry is initialised before the app loads, so it instruments Fastify and pino. Log lines at `error` and `fatal` go to Sentry as errors.
+- Logs are JSON lines from pino on stdout, at `LOG_LEVEL`. Kafka client logs carry `component: "kafka"`. An `access_token` in a logged URL is replaced by `[redacted]`.
+- Sentry is initialised before the app loads, so it instruments Fastify and pino. Log lines at `error` and `fatal` go to Sentry as errors. An unhandled promise rejection stops the process, as it does without Sentry.
+- ldap-rest calls time out after 5 seconds, Synapse and control plane calls after 10.
 
 ## What the backend reaches
 

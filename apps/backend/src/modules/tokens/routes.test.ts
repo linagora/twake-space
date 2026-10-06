@@ -500,6 +500,15 @@ describe('organization token policy', () => {
     expect(tooLong.statusCode).toBe(400)
   })
 
+  it('refuses a cap longer than ten years', async () => {
+    const cap = await setUp()('PUT', '/organization/token-policy', {
+      allowNoExpiry: false,
+      maxLifetimeDays: 3651
+    })
+
+    expect(cap.statusCode).toBe(400)
+  })
+
   it('is set by organization admins only', async () => {
     const response = await setUp()(
       'PUT',

@@ -6,6 +6,8 @@ Sentry.init({
   dsn: process.env.SENTRY_DSN,
   environment: process.env.SENTRY_ENVIRONMENT,
   integrations: [
-    Sentry.pinoIntegration({ error: { levels: ['error', 'fatal'] } })
+    Sentry.pinoIntegration({ error: { levels: ['error', 'fatal'] } }),
+    // Sentry's default only warns, where Node would stop the process.
+    Sentry.onUnhandledRejectionIntegration({ mode: 'strict' })
   ]
 })

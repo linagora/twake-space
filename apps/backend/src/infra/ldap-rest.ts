@@ -52,6 +52,8 @@ export function createLdapRestClient(config: Config): LdapRestClient {
       serviceId: config.LDAP_REST_SERVICE_ID,
       secret: config.LDAP_REST_SECRET
     },
+    // Calls run inside event transactions: a slow directory must not hold them.
+    timeout: 5000,
     logger: { type: 'hidden' }
   })
 }
