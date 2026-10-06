@@ -11,9 +11,15 @@
     "yourSpaces": "Vos espaces"
   },
   "session": {
-    "signingIn": "Connexion…",
-    "failed": "La connexion a échoué.",
+    "signingIn": "Connexion en cours…",
+    "openingSpace": "Ouverture de votre espace…",
+    "slow": "Connexion à votre compte toujours en cours…",
+    "failed": "Impossible de vous connecter",
+    "failedHint": "Un problème est survenu lors de la connexion à votre compte.",
+    "timeout": "Cela prend plus de temps que d'habitude",
+    "timeoutHint": "Le service de connexion met du temps à répondre.",
     "retry": "Réessayer",
+    "backToSignIn": "Retour à la connexion",
     "signOut": "Se déconnecter"
   },
   "common": {

@@ -12,8 +12,14 @@
   },
   "session": {
     "signingIn": "Đang đăng nhập…",
-    "failed": "Đăng nhập không thành công.",
+    "openingSpace": "Đang mở không gian của bạn…",
+    "slow": "Vẫn đang kết nối với tài khoản của bạn…",
+    "failed": "Không thể đăng nhập cho bạn",
+    "failedHint": "Đã xảy ra lỗi khi kết nối với tài khoản của bạn.",
+    "timeout": "Việc này mất nhiều thời gian hơn bình thường",
+    "timeoutHint": "Dịch vụ đăng nhập phản hồi chậm.",
     "retry": "Thử lại",
+    "backToSignIn": "Quay lại đăng nhập",
     "signOut": "Đăng xuất"
   },
   "common": {

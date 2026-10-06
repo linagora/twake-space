@@ -11,9 +11,15 @@
     "yourSpaces": "Your spaces"
   },
   "session": {
-    "signingIn": "Signing in…",
-    "failed": "Sign-in failed.",
+    "signingIn": "Signing you in…",
+    "openingSpace": "Opening your space…",
+    "slow": "Still connecting to your account…",
+    "failed": "We couldn't sign you in",
+    "failedHint": "Something went wrong while connecting to your account.",
+    "timeout": "This is taking longer than usual",
+    "timeoutHint": "The sign-in service is slow to answer.",
     "retry": "Try again",
+    "backToSignIn": "Back to sign-in",
     "signOut": "Sign out"
   },
   "common": {
