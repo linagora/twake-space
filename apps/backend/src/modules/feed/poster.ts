@@ -1,7 +1,16 @@
-import { and, asc, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  eq,
+  isNotNull,
+  isNull,
+  ne,
+  notInArray,
+  sql
+} from 'drizzle-orm'
 import type { Logger } from 'pino'
 import type { Db } from '../../infra/db.ts'
-import { matrixClient, type Matrix } from '../../infra/matrix.ts'
+import { matrixClient, MatrixError, type Matrix } from '../../infra/matrix.ts'
 import { decrypt } from '../../infra/secrets.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
 import { spaceResources, spaces } from '../spaces/schema.ts'
@@ -10,6 +19,7 @@ import { activityEvents } from './schema.ts'
 const POST_EVERY_MS = 1000
 const CARDS_PER_SPACE = 50
 const SPACES_PER_PASS = 50
+const MAX_BACKOFF_MS = 5 * 60_000
 
 interface StoredContent {
   object: { title: string }
@@ -54,6 +64,19 @@ async function firstCardOf(db: Db, spaceId: string, card: StoredEvent) {
   return first
 }
 
+// A card Synapse rejects as malformed or too large fails the same way every time.
+const refusedForGood = (error: unknown) =>
+  error instanceof MatrixError && (error.status === 400 || error.status === 413)
+
+export function posterState() {
+  return {
+    joined: new Set<string>(),
+    backoff: new Map<string, { failures: number; retryAt: number }>()
+  }
+}
+
+type PosterState = ReturnType<typeof posterState>
+
 // Cards of a space go out in order, so a space stops at its first failure;
 // spaces post in parallel, so one Synapse down delays only its own cards.
 export async function postCards(
@@ -61,8 +84,14 @@ export async function postCards(
   key: Buffer,
   matrix: Matrix,
   log: Logger,
-  joined = new Set<string>()
+  state: PosterState = posterState()
 ): Promise<void> {
+  const { joined, backoff } = state
+  const now = Date.now()
+  // Left out of the query, so spaces waiting out a failure don't take every slot.
+  const resting = [...backoff]
+    .filter(([, b]) => b.retryAt > now)
+    .map(([spaceId]) => spaceId)
   const waiting = await db
     .selectDistinct({
       spaceId: spaces.spaceId,
@@ -87,7 +116,13 @@ export async function postCards(
       )
     )
     .innerJoin(homeservers, eq(homeservers.id, organizations.homeserverId))
-    .where(isNull(activityEvents.matrixEventId))
+    .where(
+      and(
+        isNull(activityEvents.matrixEventId),
+        isNull(activityEvents.postFailedAt),
+        notInArray(spaces.spaceId, resting)
+      )
+    )
     .limit(SPACES_PER_PASS)
 
   await Promise.all(
@@ -102,7 +137,8 @@ export async function postCards(
         .where(
           and(
             eq(activityEvents.spaceId, space.spaceId),
-            isNull(activityEvents.matrixEventId)
+            isNull(activityEvents.matrixEventId),
+            isNull(activityEvents.postFailedAt)
           )
         )
         .orderBy(asc(activityEvents.time), asc(activityEvents.id))
@@ -115,30 +151,53 @@ export async function postCards(
             joined.add(room)
           }
           const content = cardContent(card)
-          const matrixEventId = await matrix.send(
-            homeserver,
-            space.roomId,
-            `com.twake.feed.${card.category}`,
-            card.id,
-            content
-          )
+          let matrixEventId: string
+          try {
+            matrixEventId = await matrix.send(
+              homeserver,
+              space.roomId,
+              `com.twake.feed.${card.category}`,
+              card.id,
+              content
+            )
+          } catch (error) {
+            if (!refusedForGood(error)) throw error
+            log.error(
+              { err: error, spaceId: space.spaceId, cardId: card.id },
+              'card refused by the homeserver, not posted'
+            )
+            await db
+              .update(activityEvents)
+              .set({ postFailedAt: new Date() })
+              .where(eq(activityEvents.id, card.id))
+            continue
+          }
           // Before storing the card's id, so a failed edit is retried with it.
           const first = await firstCardOf(db, space.spaceId, card)
           if (first?.matrixEventId) {
-            await matrix.send(
-              homeserver,
-              space.roomId,
-              `com.twake.feed.${first.category}`,
-              `${card.id}.edit`,
-              {
-                ...content,
-                'm.new_content': content,
-                'm.relates_to': {
-                  rel_type: 'm.replace',
-                  event_id: first.matrixEventId
+            await matrix
+              .send(
+                homeserver,
+                space.roomId,
+                `com.twake.feed.${first.category}`,
+                `${card.id}.edit`,
+                {
+                  ...content,
+                  'm.new_content': content,
+                  'm.relates_to': {
+                    rel_type: 'm.replace',
+                    event_id: first.matrixEventId
+                  }
                 }
-              }
-            )
+              )
+              .catch((error: unknown) => {
+                if (!refusedForGood(error)) throw error
+                // The card itself is posted; only the first card stays as it was.
+                log.error(
+                  { err: error, spaceId: space.spaceId, cardId: card.id },
+                  'card edit refused by the homeserver, not posted'
+                )
+              })
           }
           await db
             .update(activityEvents)
@@ -147,13 +206,23 @@ export async function postCards(
         } catch (error) {
           // The bot may have been kicked; join again on the next pass.
           joined.delete(room)
+          const failures = (backoff.get(space.spaceId)?.failures ?? 0) + 1
+          const delayMs = Math.min(
+            MAX_BACKOFF_MS,
+            POST_EVERY_MS * 2 ** (failures - 1)
+          )
+          backoff.set(space.spaceId, {
+            failures,
+            retryAt: Date.now() + delayMs
+          })
           log.warn(
-            { err: error, spaceId: space.spaceId },
+            { err: error, spaceId: space.spaceId, failures, delayMs },
             'card not posted, retrying'
           )
           return
         }
       }
+      backoff.delete(space.spaceId)
     })
   )
 }
@@ -162,7 +231,7 @@ export async function postCards(
 // Matrix ids commit on their own as each card is posted.
 export function schedulePosting(db: Db, key: Buffer, log: Logger): () => void {
   const matrix = matrixClient()
-  const joined = new Set<string>()
+  const state = posterState()
   let timer: NodeJS.Timeout | undefined
   let stopped = false
   const pass = async () => {
@@ -170,7 +239,7 @@ export function schedulePosting(db: Db, key: Buffer, log: Logger): () => void {
       const [lock] = await tx.execute<{ locked: boolean }>(
         sql`select pg_try_advisory_xact_lock(hashtext('poster')) as locked`
       )
-      if (lock?.locked) await postCards(db, key, matrix, log, joined)
+      if (lock?.locked) await postCards(db, key, matrix, log, state)
     })
   }
   const loop = () => {

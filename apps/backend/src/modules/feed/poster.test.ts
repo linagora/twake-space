@@ -1,13 +1,21 @@
 import { randomBytes } from 'node:crypto'
 import { asc } from 'drizzle-orm'
 import { pino } from 'pino'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi
+} from 'vitest'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { configureHomeserver } from '../organizations/homeservers.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
 import { spaceResources, spaces } from '../spaces/schema.ts'
-import type { Matrix } from '../../infra/matrix.ts'
-import { postCards } from './poster.ts'
+import { MatrixError, type Matrix } from '../../infra/matrix.ts'
+import { postCards, posterState } from './poster.ts'
 import { activityEvents } from './schema.ts'
 
 const DESIGN = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
@@ -216,15 +224,98 @@ describe('postCards', () => {
     expect((await posted()).every(r => r.matrixEventId !== null)).toBe(true)
   })
 
+  it('marks a card Synapse refuses for good as failed and posts the next one', async () => {
+    await stored(DESIGN, 1, 'huge')
+    await stored(DESIGN, 2, 'small')
+    const { sent, matrix } = recording()
+    const send = matrix.send.bind(matrix)
+    matrix.send = (homeserver, roomId, type, txnId, content) =>
+      (content as { body: string }).body.startsWith('huge')
+        ? Promise.reject(new MatrixError(413, 'M_TOO_LARGE'))
+        : send(homeserver, roomId, type, txnId, content)
+
+    await postCards(testDb.db, KEY, matrix, log)
+    await postCards(testDb.db, KEY, matrix, log)
+
+    expect(
+      await testDb.db
+        .select({
+          matrixEventId: activityEvents.matrixEventId,
+          failed: activityEvents.postFailedAt
+        })
+        .from(activityEvents)
+        .orderBy(asc(activityEvents.time))
+    ).toEqual([
+      { matrixEventId: null, failed: expect.any(Date) as Date },
+      { matrixEventId: '$card1', failed: null }
+    ])
+    expect(sent).toHaveLength(1)
+  })
+
+  it('keeps a posted card whose edit of the first card Synapse refuses for good', async () => {
+    const q3 = { type: 'file', category: 'files' as const, id: 'f-q3' }
+    await stored(DESIGN, 1, 'Q3 plan', q3)
+    await stored(DESIGN, 2, 'Q3 plan v2', q3)
+    const { matrix } = recording()
+    const send = matrix.send.bind(matrix)
+    matrix.send = (homeserver, roomId, type, txnId, content) =>
+      txnId.endsWith('.edit')
+        ? Promise.reject(new MatrixError(413, 'M_TOO_LARGE'))
+        : send(homeserver, roomId, type, txnId, content)
+
+    await postCards(testDb.db, KEY, matrix, log)
+
+    expect((await posted()).map(r => r.matrixEventId)).toEqual([
+      '$card1',
+      '$card2'
+    ])
+  })
+
+  it('tries a failing space again later and later, and the others meanwhile', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      await stored(DESIGN, 1)
+      let designDown = true
+      const { sent, matrix } = recording(
+        roomId => designDown && roomId.includes(DESIGN)
+      )
+      const state = posterState()
+      const pass = () => postCards(testDb.db, KEY, matrix, log, state)
+      const designSent = () =>
+        sent.filter(s => s.roomId.includes(DESIGN)).length
+
+      await pass()
+      designDown = false
+      await stored(SALES, 2)
+      await pass()
+      expect(designSent()).toBe(0)
+      expect(sent).toHaveLength(1)
+
+      vi.advanceTimersByTime(1000)
+      designDown = true
+      await pass()
+      vi.advanceTimersByTime(1000)
+      designDown = false
+      await pass()
+      expect(designSent()).toBe(0)
+
+      vi.advanceTimersByTime(1000)
+      await pass()
+      expect(designSent()).toBe(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('joins each Matrix space once before posting there', async () => {
     await stored(DESIGN, 1)
     await stored(SALES, 2)
     const { joined, matrix } = recording()
-    const already = new Set<string>()
+    const state = posterState()
 
-    await postCards(testDb.db, KEY, matrix, log, already)
+    await postCards(testDb.db, KEY, matrix, log, state)
     await stored(DESIGN, 3)
-    await postCards(testDb.db, KEY, matrix, log, already)
+    await postCards(testDb.db, KEY, matrix, log, state)
 
     expect(joined.sort()).toEqual(
       [`!${DESIGN}:example.com`, `!${SALES}:example.com`].sort()
@@ -233,9 +324,8 @@ describe('postCards', () => {
 
   it('joins a space again after a card fails there', async () => {
     await stored(DESIGN, 1)
-    const already = new Set([
-      `https://matrix.example.com|!${DESIGN}:example.com`
-    ])
+    const state = posterState()
+    state.joined.add(`https://matrix.example.com|!${DESIGN}:example.com`)
     const { joined, matrix } = recording()
 
     await postCards(
@@ -243,9 +333,10 @@ describe('postCards', () => {
       KEY,
       recording(roomId => roomId.includes(DESIGN)).matrix,
       log,
-      already
+      state
     )
-    await postCards(testDb.db, KEY, matrix, log, already)
+    state.backoff.clear()
+    await postCards(testDb.db, KEY, matrix, log, state)
 
     expect(joined).toEqual([`!${DESIGN}:example.com`])
   })

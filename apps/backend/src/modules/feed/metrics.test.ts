@@ -41,9 +41,14 @@ beforeEach(async () => {
 })
 
 let n = 0
-async function stored(spaceId: string, matrixEventId: string | null = null) {
+async function stored(
+  spaceId: string,
+  matrixEventId: string | null = null,
+  postFailedAt: Date | null = null
+) {
   n += 1
   await testDb.db.insert(activityEvents).values({
+    postFailedAt,
     source: 'twake://drive',
     eventId: `e${String(n)}`,
     spaceId,
@@ -62,6 +67,7 @@ it('counts the events waiting to be posted, per organization with chat', async (
   await stored(DESIGN)
   await stored(DESIGN, '$posted')
   await stored(SALES, '$posted')
+  await stored(SALES, null, new Date())
   await stored(HR)
   await testDb.db.insert(parkedEvents).values({
     topic: 'twake.drive.events.v1',
@@ -93,6 +99,10 @@ it('counts the events waiting to be posted, per organization with chat', async (
       '# TYPE twake_space_cards_waiting gauge',
       'twake_space_cards_waiting{organization="acme"} 2',
       'twake_space_cards_waiting{organization="globex"} 0',
+      '# HELP twake_space_cards_failed Stored events the homeserver refused for good.',
+      '# TYPE twake_space_cards_failed gauge',
+      'twake_space_cards_failed{organization="acme"} 0',
+      'twake_space_cards_failed{organization="globex"} 1',
       '# HELP twake_space_events_total Kafka messages handled, by outcome.',
       '# TYPE twake_space_events_total counter',
       'twake_space_events_total{outcome="processed"} 2',

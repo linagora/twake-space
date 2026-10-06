@@ -36,9 +36,25 @@ async function call(
     }
   )
   if (!response.ok) {
-    throw new Error(`Synapse answered ${String(response.status)}`)
+    const body = (await response.json().catch(() => ({}))) as {
+      errcode?: unknown
+    }
+    throw new MatrixError(
+      response.status,
+      typeof body.errcode === 'string' ? body.errcode : undefined
+    )
   }
   return response.json()
+}
+
+export class MatrixError extends Error {
+  readonly status: number
+  readonly errcode: string | undefined
+  constructor(status: number, errcode: string | undefined) {
+    super(`Synapse answered ${String(status)} ${errcode ?? ''}`.trim())
+    this.status = status
+    this.errcode = errcode
+  }
 }
 
 export function matrixClient(): Matrix {

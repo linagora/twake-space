@@ -165,9 +165,11 @@ Health requests are not logged. The metrics port answers `/health/live` and `/he
 
 ### Metrics
 
-`GET /metrics` on `METRICS_PORT` returns Prometheus text format with one gauge:
+`GET /metrics` on `METRICS_PORT` returns Prometheus text format, described in [api.md](api.md). Worth alerting on:
 
-- `twake_space_cards_waiting{organization="<id>"}`: stored events not posted to Matrix yet, for each organization with chat available. Organizations with nothing waiting report 0, so alerts resolve.
+- `twake_space_cards_waiting{organization="<id>"}` growing: cards are not reaching Matrix. Organizations with nothing waiting report 0, so alerts resolve.
+- `twake_space_cards_failed{organization="<id>"}` above 0: the homeserver refused cards for good.
+- `twake_space_parked_events` growing: events wait for a space or member the platform never announced.
 
 ### Logs and Sentry
 

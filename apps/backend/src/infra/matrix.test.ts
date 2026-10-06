@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { describe, expect, it } from 'vitest'
-import { matrixClient } from './matrix.ts'
+import { matrixClient, MatrixError } from './matrix.ts'
 
 describe('matrixClient', () => {
   it('sends and joins as the app service', async () => {
@@ -49,6 +49,11 @@ describe('matrixClient', () => {
         {}
       )
       await expect(broken).rejects.toThrow('500')
+      await expect(broken).rejects.toMatchObject({
+        status: 500,
+        errcode: 'M_UNKNOWN'
+      })
+      await expect(broken).rejects.toBeInstanceOf(MatrixError)
 
       await matrix.join(homeserver, '!room:example.com')
 
