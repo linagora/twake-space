@@ -90,6 +90,51 @@ describe('liveStream', () => {
     stop()
   })
 
+  it('keeps quiet about a cut it recovers from', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const cut = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(': open\n\n'))
+          controller.error(new TypeError('network error'))
+        }
+      })
+    )
+    fetchMock
+      .mockResolvedValueOnce(cut)
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(stream('event: spaces\ndata: {}\n\n'))
+      .mockReturnValue(new Promise(() => undefined))
+    const on = handlers()
+
+    const stop = live.subscribe(on)
+
+    await vi.waitFor(() => {
+      expect(on.onEvent).toHaveBeenCalledWith('spaces', {})
+    })
+    expect(warn).not.toHaveBeenCalled()
+    stop()
+  })
+
+  it('warns once reconnecting keeps failing', async () => {
+    const attempts: number[] = []
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {
+      attempts.push(fetchMock.mock.calls.length)
+    })
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const stop = live.subscribe(handlers())
+
+    await vi.waitFor(() => {
+      expect(warn).toHaveBeenCalledWith(
+        'Live updates interrupted:',
+        expect.any(TypeError)
+      )
+    })
+    stop()
+    expect(attempts[0]).toBe(3)
+  })
+
   it('stops for good once unsubscribed', async () => {
     fetchMock.mockImplementation(() => Promise.resolve(stream(': open\n\n')))
     const on = handlers()
