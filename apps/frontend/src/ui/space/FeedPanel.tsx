@@ -33,6 +33,7 @@ import {
   type FeedView
 } from '@/application/feed'
 import type { Member, Space } from '@/application/spaces'
+import { containerTab } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
 import { SetupPrompt } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
@@ -247,22 +248,6 @@ function useActorName(actor: Actor | null, members: Member[]): string | null {
   }
 }
 
-// A card reaches the space's feed only when its container is one of the
-// space's resources, so a Tasks URL here is inside the space's project, and
-// the Tasks tab frames the same path.
-function tasksTabPath(
-  url: string,
-  tasksUrl: string | null,
-  space: Space
-): string | null {
-  if (!tasksUrl || !space.resources.some(r => r.kind === 'project' && r.id)) {
-    return null
-  }
-  const target = new URL(url, tasksUrl)
-  if (target.origin !== new URL(tasksUrl).origin) return null
-  return `/spaces/${space.id}/tasks${target.pathname}${target.search}`
-}
-
 function Entry({
   entry,
   space
@@ -289,9 +274,11 @@ function Card({
   space: Space
 }): ReactElement {
   const { t } = useI18n()
-  const { tasksUrl } = useServices()
   const actor = useActorName(entry.actor, space.members)
-  const inTab = tasksTabPath(entry.object.url, tasksUrl, space)
+  // A card reaches the space's feed only when its container is one of the
+  // space's resources, so the container's tab shows it.
+  const { container } = entry.object
+  const tab = container && containerTab(space, container.kind)
   return (
     <>
       {actor && (
@@ -307,14 +294,12 @@ function Card({
                 <Icon icon={APP_ICONS[entry.app]} />
               </span>
             )}{' '}
-            {inTab ? (
-              <Link component={RouterLink} to={inTab}>
+            {tab ? (
+              <Link component={RouterLink} to={`/spaces/${space.id}/${tab}`}>
                 {entry.object.title}
               </Link>
             ) : (
-              <Link href={entry.object.url} target="_blank" rel="noreferrer">
-                {entry.object.title}
-              </Link>
+              entry.object.title
             )}
           </>
         }

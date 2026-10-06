@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { Actor, FeedEntry, FeedPage } from '@/application/feed'
+import type { Actor, FeedEntry, FeedObject, FeedPage } from '@/application/feed'
 import type { Space } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { renderWithProviders } from '@/testing/renderWithProviders'
@@ -39,7 +39,7 @@ const space: Space = {
 function card(
   id: string,
   actor: Actor | null,
-  object: { title: string; url: string },
+  object: { title: string; container?: FeedObject['container'] },
   app: string | null = 'drive'
 ): FeedEntry {
   return {
@@ -49,7 +49,7 @@ function card(
     category: 'files',
     app,
     actor,
-    object: { type: 'file', id, ...object },
+    object: { type: 'file', id, container: null, ...object },
     preview: null
   }
 }
@@ -75,7 +75,7 @@ const page: FeedPage = {
         type: 'task',
         id: 'T-1',
         title: 'Write the brief',
-        url: 'https://tasks.test/boards/b1?task=T-1'
+        container: { kind: 'project', id: 'p1' }
       },
       preview: 'Due Friday'
     }
@@ -83,12 +83,12 @@ const page: FeedPage = {
   hasOlder: true
 }
 
-function renderFeed(feed = fakeFeed(page)) {
+function renderFeed(feed = fakeFeed(page), on = space) {
   renderWithProviders(
     <FeedPanel
       homeserverUrl="https://matrix.acme.test"
       roomId={ROOM}
-      space={space}
+      space={on}
     />,
     { feed }
   )
@@ -106,35 +106,55 @@ describe('FeedPanel', () => {
     expect(feed.open).toHaveBeenCalledWith(ROOM, 'all', expect.any(Function))
   })
 
-  it("opens a task card in the space's Tasks tab", async () => {
-    renderFeed()
+  it("opens a card in the space's tab of its container", async () => {
+    renderFeed(
+      fakeFeed({
+        entries: [
+          card('$t', null, {
+            title: 'Write the brief',
+            container: { kind: 'project', id: 'p1' }
+          }),
+          card('$c', null, {
+            title: 'Standup',
+            container: { kind: 'matrix_space', id: ROOM }
+          })
+        ],
+        hasOlder: false
+      }),
+      { ...space, apps: ['feed', 'chat', 'tasks'] }
+    )
 
     expect(
       await screen.findByRole('link', { name: 'Write the brief' })
-    ).toHaveAttribute('href', '/spaces/a1/tasks/boards/b1?task=T-1')
+    ).toHaveAttribute('href', '/spaces/a1/tasks')
+    expect(screen.getByRole('link', { name: 'Standup' })).toHaveAttribute(
+      'href',
+      '/spaces/a1/chat'
+    )
   })
 
-  it('opens another card in its app', async () => {
+  it('links no card whose container has no tab in the space', async () => {
     renderFeed(
       fakeFeed({
         entries: [
           card('$f', null, {
             title: 'brief.pdf',
-            url: 'https://drive.test/f/1'
-          })
+            container: { kind: 'drive', id: 'd1' }
+          }),
+          card('$n', null, { title: 'notes.txt' })
         ],
         hasOlder: false
       })
     )
 
-    const link = await screen.findByRole('link', { name: 'brief.pdf' })
-    expect(link).toHaveAttribute('href', 'https://drive.test/f/1')
-    expect(link).toHaveAttribute('target', '_blank')
-    expect(screen.getByRole('img', { name: 'Drive' })).toBeInTheDocument()
+    expect(await screen.findByText('brief.pdf')).toBeInTheDocument()
+    expect(screen.getByText('notes.txt')).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('img', { name: 'Drive' })).toHaveLength(2)
   })
 
   it('names who acted on a card', async () => {
-    const file = { title: 'brief.pdf', url: 'https://drive.test/f/1' }
+    const file = { title: 'brief.pdf' }
     renderFeed(
       fakeFeed({
         entries: [

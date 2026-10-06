@@ -23,7 +23,12 @@ const SPACES_PER_PASS = 50
 const MAX_BACKOFF_MS = 5 * 60_000
 
 interface StoredContent {
-  object: { title: string }
+  object: {
+    type: string
+    id: string
+    title: string
+    container?: { kind: string; id: string }
+  }
   preview?: string
   state?: object
 }
@@ -32,11 +37,14 @@ type StoredEvent = typeof activityEvents.$inferSelect
 
 function cardContent(card: StoredEvent) {
   const content = card.content as StoredContent
+  // Ids only: a card is kept 12 months, and a link the app sent would outlive
+  // its host and routes.
+  const { type, id, title, container } = content.object
   return {
     type: card.type,
     id: card.eventId,
     actor: card.actor,
-    object: content.object,
+    object: { type, id, title, container },
     preview: content.preview,
     state: content.state ?? {},
     body: [content.object.title, content.preview].filter(Boolean).join('\n'),

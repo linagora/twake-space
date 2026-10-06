@@ -62,8 +62,7 @@ function anEvent(overrides: Record<string, unknown> = {}): CloudEvent {
         type: 'file',
         id: 'f1',
         container: { kind: 'drive', id: 'drive-1' },
-        title: 'Roadmap.odt',
-        url: 'https://drive.example.com/f1'
+        title: 'Roadmap.odt'
       },
       preview: 'First draft'
     },
@@ -116,8 +115,7 @@ describe('activity events', () => {
             type: 'file',
             id: 'f1',
             container: { kind: 'drive', id: 'drive-1' },
-            title: 'Roadmap.odt',
-            url: 'https://drive.example.com/f1'
+            title: 'Roadmap.odt'
           },
           preview: 'First draft'
         },
@@ -162,7 +160,7 @@ describe('activity events', () => {
 
   it('stores an event outside any space for notifications only', async () => {
     const event = anEvent({ twakeorg: undefined, twakeactorid: BOB })
-    event.data.object = { type: 'file', id: 'f2', title: 'Taxes', url: 'u' }
+    event.data.object = { type: 'file', id: 'f2', title: 'Taxes' }
 
     await store(event)
 

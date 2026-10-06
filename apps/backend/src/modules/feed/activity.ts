@@ -45,8 +45,7 @@ const activity = z.looseObject({
           id: z.string().min(1)
         })
         .optional(),
-      title: z.string().min(1),
-      url: z.string().min(1)
+      title: z.string().min(1)
     }),
     preview: z
       .string()

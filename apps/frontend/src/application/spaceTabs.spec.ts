@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
+import { containerTab, PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import type { Space } from '@/application/spaces'
 
 const CREATED = Date.UTC(2026, 9, 1, 8)
@@ -90,5 +90,22 @@ describe('spaceTabs', () => {
       tab: 'drive',
       state: 'stalled'
     })
+  })
+})
+
+describe('containerTab', () => {
+  it("opens each container in its app's tab, and a Matrix space in Chat", () => {
+    expect(
+      (
+        ['project', 'drive', 'mailbox', 'calendar', 'matrix_space'] as const
+      ).map(kind => containerTab(space, kind))
+    ).toEqual(['tasks', 'drive', 'mail', 'calendar', 'chat'])
+  })
+
+  it('opens no tab the space does not show', () => {
+    expect(containerTab({ ...space, mail: false }, 'mailbox')).toBeNull()
+    expect(
+      containerTab({ ...space, apps: ['feed', 'chat'] }, 'project')
+    ).toBeNull()
   })
 })
