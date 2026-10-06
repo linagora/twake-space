@@ -68,7 +68,14 @@
     "tasks": "Aufgaben",
     "drive": "Drive",
     "mail": "Mail",
-    "calendar": "Kalender"
+    "calendar": "Kalender",
+    "members": "Mitglieder"
+  },
+  "members": {
+    "members": "Mitglieder",
+    "groups": "Gruppen",
+    "noMembers": "Keine direkten Mitglieder.",
+    "noGroups": "Keine verknüpften Gruppen."
   },
   "space": {
     "back": "Alle Spaces",

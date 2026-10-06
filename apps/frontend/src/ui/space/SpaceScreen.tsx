@@ -13,6 +13,7 @@ import { NameAvatar } from '@/ds/AppFrame'
 import { LoadingRows, Page, SpaceHeader } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { FeedPanel } from '@/ui/space/FeedPanel'
+import { MembersPanel } from '@/ui/space/MembersPanel'
 import { TasksPanel } from '@/ui/space/TasksPanel'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
@@ -125,6 +126,7 @@ export function SpaceScreen(): ReactElement {
         {current.state === 'ready' && current.tab === 'tasks' && (
           <TasksPanel spaceId={spaceId} />
         )}
+        {current.tab === 'members' && <MembersPanel space={space.data} />}
       </div>
     </Page>
   )

@@ -29,7 +29,8 @@ describe('spaceTabs', () => {
       { tab: 'tasks', state: 'ready' },
       { tab: 'drive', state: 'preparing' },
       { tab: 'mail', state: 'ready' },
-      { tab: 'calendar', state: 'ready' }
+      { tab: 'calendar', state: 'ready' },
+      { tab: 'members', state: 'ready' }
     ])
   })
 
