@@ -24,11 +24,12 @@
     "title": "Không gian",
     "loading": "Đang tải không gian…",
     "loadFailed": "Không thể tải các không gian của bạn.",
-    "none": "Bạn chưa tham gia không gian nào.",
-    "noneHint": "Hãy tạo một không gian để chia sẻ trò chuyện, tệp và công việc với nhóm của bạn.",
+    "none": "Tạo không gian đầu tiên của bạn",
+    "noneHint": "Không gian tập hợp nhóm, tệp, công việc và cuộc trò chuyện của bạn ở một nơi. Hãy tạo một không gian để bắt đầu.",
     "create": "Tạo không gian",
     "name": "Tên",
-    "createFailed": "Không thể tạo không gian."
+    "createFailed": "Không thể tạo không gian.",
+    "channelsHint": "Một không gian có thể chứa nhiều kênh cho các chủ đề hoặc nhóm khác nhau"
   },
   "tabs": {
     "feed": "Bảng tin",

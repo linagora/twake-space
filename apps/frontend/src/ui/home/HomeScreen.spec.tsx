@@ -44,7 +44,7 @@ describe('HomeScreen', () => {
     renderWithProviders(<HomeScreen />)
 
     expect(
-      await screen.findByText('You are not in any space yet.')
+      await screen.findByText('Create your first space')
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Create a space' })

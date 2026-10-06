@@ -24,11 +24,12 @@
     "title": "Spaces",
     "loading": "Loading spaces…",
     "loadFailed": "Your spaces could not be loaded.",
-    "none": "You are not in any space yet.",
-    "noneHint": "Create one to share chat, files and tasks with your team.",
+    "none": "Create your first space",
+    "noneHint": "Spaces bring your team, files, tasks, and conversations together in one place. Create one to get your workspace started.",
     "create": "Create a space",
     "name": "Name",
-    "createFailed": "The space could not be created."
+    "createFailed": "The space could not be created.",
+    "channelsHint": "A space can hold multiple channels for different topics or teams"
   },
   "tabs": {
     "feed": "Feed",

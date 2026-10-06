@@ -24,11 +24,12 @@
     "title": "Espaces",
     "loading": "Chargement des espaces…",
     "loadFailed": "Vos espaces n'ont pas pu être chargés.",
-    "none": "Vous n'êtes encore dans aucun espace.",
-    "noneHint": "Créez-en un pour partager discussions, fichiers et tâches avec votre équipe.",
+    "none": "Créez votre premier espace",
+    "noneHint": "Les espaces réunissent votre équipe, vos fichiers, vos tâches et vos conversations au même endroit. Créez-en un pour démarrer.",
     "create": "Créer un espace",
     "name": "Nom",
-    "createFailed": "L'espace n'a pas pu être créé."
+    "createFailed": "L'espace n'a pas pu être créé.",
+    "channelsHint": "Un espace peut contenir plusieurs canaux pour différents sujets ou équipes"
   },
   "tabs": {
     "feed": "Fil",
