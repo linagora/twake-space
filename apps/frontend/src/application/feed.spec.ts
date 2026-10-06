@@ -15,7 +15,7 @@ const card: RoomEvent = {
       type: 'task',
       id: 'T-1',
       title: 'Write the brief',
-      url: 'https://tasks.test/T-1'
+      container: { kind: 'project', id: 'p1' }
     },
     preview: 'Due Friday',
     state: {},
@@ -53,10 +53,43 @@ describe('toFeedEntry', () => {
         type: 'task',
         id: 'T-1',
         title: 'Write the brief',
-        url: 'https://tasks.test/T-1'
+        container: { kind: 'project', id: 'p1' }
       },
       preview: 'Due Friday'
     })
+  })
+
+  it('reads a card with no container, or one it does not know', () => {
+    const object = { type: 'task', id: 'T-1', title: 'Write the brief' }
+    for (const container of [undefined, { kind: 'board', id: 'b1' }]) {
+      expect(
+        toFeedEntry({
+          ...card,
+          content: { ...card.content, object: { ...object, container } }
+        })
+      ).toMatchObject({ object: { ...object, container: null } })
+    }
+  })
+
+  it('ignores the link of a card posted before cards held ids only', () => {
+    const object = {
+      type: 'task',
+      id: 'T-1',
+      title: 'Write the brief',
+      url: 'https://tasks.test/T-1'
+    }
+
+    const entry = toFeedEntry({ ...card, content: { ...card.content, object } })
+
+    expect(entry).toMatchObject({
+      object: {
+        type: 'task',
+        id: 'T-1',
+        title: 'Write the brief',
+        container: null
+      }
+    })
+    expect(entry).not.toHaveProperty('object.url')
   })
 
   it('reads a text message', () => {

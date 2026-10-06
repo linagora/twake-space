@@ -1,3 +1,5 @@
+import { RESOURCE_KINDS, type ResourceKind } from '@/application/spaces'
+
 export const FEED_CATEGORIES = [
   'messages',
   'files',
@@ -26,11 +28,12 @@ export type Actor =
   | { type: 'token'; id: string; name: string }
   | { type: 'deleted_user' }
 
+/** A card holds ids, never a link: the frontend opens the container's tab. */
 export interface FeedObject {
   type: string
   id: string
   title: string
-  url: string
+  container: { kind: ResourceKind; id: string } | null
 }
 
 export type FeedEntry =
@@ -88,11 +91,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function isObject(value: unknown): value is FeedObject {
+function isObject(
+  value: unknown
+): value is Omit<FeedObject, 'container'> & { container?: unknown } {
   return (
     isRecord(value) &&
-    ['type', 'id', 'title', 'url'].every(key => typeof value[key] === 'string')
+    ['type', 'id', 'title'].every(key => typeof value[key] === 'string')
   )
+}
+
+function toContainer(value: unknown): FeedObject['container'] {
+  if (!isRecord(value) || typeof value.id !== 'string') return null
+  const kind = RESOURCE_KINDS.find(k => k === value.kind)
+  return kind ? { kind, id: value.id } : null
 }
 
 function isActor(value: unknown): value is Actor {
@@ -121,7 +132,7 @@ export function toFeedEntry(event: RoomEvent): FeedEntry | null {
 
   const category = categoryOf(type)
   if (!category || !isObject(content.object)) return null
-  const { type: objectType, id: objectId, title, url } = content.object
+  const { type: objectType, id: objectId, title, container } = content.object
   return {
     kind: 'card',
     id,
@@ -132,7 +143,12 @@ export function toFeedEntry(event: RoomEvent): FeedEntry | null {
         ? (/^com\.twake\.([a-z]+)\./.exec(content.type)?.[1] ?? null)
         : null,
     actor: isActor(content.actor) ? content.actor : null,
-    object: { type: objectType, id: objectId, title, url },
+    object: {
+      type: objectType,
+      id: objectId,
+      title,
+      container: toContainer(container)
+    },
     preview: typeof content.preview === 'string' ? content.preview : null
   }
 }

@@ -155,7 +155,7 @@ function roadmapFeed(): FeedEntry[] {
             type: 'task',
             id: `ROA-${String(i)}`,
             title: `ROA-${String(i)} Draft the Q${String((round % 4) + 1)} milestones`,
-            url: `#task-${String(i)}`
+            container: { kind: 'project', id: 'project-roadmap' }
           },
           preview: 'Moved to In progress'
         }
@@ -171,7 +171,7 @@ function roadmapFeed(): FeedEntry[] {
             type: 'file',
             id: `file-${String(i)}`,
             title: `roadmap-v${String(i)}.pdf`,
-            url: `#file-${String(i)}`
+            container: { kind: 'drive', id: 'drive-roadmap' }
           },
           preview: null
         }
@@ -187,7 +187,7 @@ function roadmapFeed(): FeedEntry[] {
             type: 'event',
             id: `event-${String(i)}`,
             title: 'Roadmap review',
-            url: `#event-${String(i)}`
+            container: { kind: 'calendar', id: 'calendar-roadmap' }
           },
           preview: 'Thursday, 10:00'
         }

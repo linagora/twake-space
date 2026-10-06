@@ -62,7 +62,7 @@ const file: FeedEntry = {
   category: 'files',
   app: 'drive',
   actor: { type: 'user', id: 'u-bob', email: 'bob@acme.test' },
-  object: { type: 'file', id: 'f-1', title: 'brief.pdf', url: '#' },
+  object: { type: 'file', id: 'f-1', title: 'brief.pdf', container: null },
   preview: null
 }
 

@@ -148,7 +148,7 @@ The CloudEvent fields the handler reads:
 
 - `twakeorg`: the organization, absent for a B2C user.
 - `twakeactorid`, `twakeactor`: the acting user's uuid and email.
-- `data.object`: `type`, `id`, `title`, `url`, and an optional `container` (`kind`, `id`): the app's own resource the object lives in.
+- `data.object`: `type`, `id`, `title`, and an optional `container` (`kind`, `id`): the app's own resource the object lives in. Apps send ids, never a link.
 - `data.preview`: optional text, cut to 280 characters.
 - `data.actor`: `{ type: 'token', id, name }` when an API token acted.
 - `data.recipients`: who to notify (see Notifications).
@@ -203,7 +203,7 @@ The event type is `com.twake.feed.<category>`, with `<category>` one of `message
 - `type`: the CloudEvent type.
 - `id`: the CloudEvent id.
 - `actor`: the stored actor.
-- `object`: `type`, `id`, `title`, `url` (and any other field the app sent).
+- `object`: `type`, `id`, `title` and `container`. A `url` the app still sends is left out: cards are kept 12 months, longer than an app keeps its host and routes.
 - `preview`: the preview, when sent.
 - `state`: `data.state` when the app sent one, else `{}`.
 - `body`: the title and the preview, one per line, for Matrix clients that only read `body`.
@@ -298,8 +298,9 @@ sequenceDiagram
   - files, activities, events: their `com.twake.feed.*` type only
 - An event becomes a feed entry:
   - `m.room.message` with a string `body` -> a message.
-  - `com.twake.feed.<category>` with an `object` holding string `type`, `id`, `title`, `url` -> a card with its `actor` (when it has a known `type`) and `preview` (when it is a string).
+  - `com.twake.feed.<category>` with an `object` holding string `type`, `id`, `title` -> a card with its `actor` (when it has a known `type`) and `preview` (when it is a string).
   - An `m.replace` event is not an entry. The SDK gives each event the content of its latest edit, so the first card about an object shows the latest content.
+- A card's title opens the space's tab for its container: `project` -> Tasks, `drive` -> Drive, `mailbox` -> Mail, `calendar` -> Calendar, `matrix_space` -> Chat. With no container, or a tab the space does not show, the title is plain text.
 - After a gap in the sync the timeline resets; the feed then loads older entries again.
 
 ## Retention

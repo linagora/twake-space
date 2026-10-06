@@ -49,3 +49,15 @@ export function spaceTabs(
     return [{ tab, state: ready ? 'ready' : waiting }]
   })
 }
+
+/** The tab a card about an object in this container opens, if the space shows it. */
+export function containerTab(space: Space, kind: ResourceKind): Tab | null {
+  const tab = TABS.find(
+    t => t !== 'feed' && t !== 'members' && RESOURCE[t] === kind
+  )
+  // Preparing or stalled, the tab is shown all the same.
+  const shown = spaceTabs(space, Date.now()).some(
+    item => item.tab === tab && item.state !== 'off'
+  )
+  return tab && shown ? tab : null
+}

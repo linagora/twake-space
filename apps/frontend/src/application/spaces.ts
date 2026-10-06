@@ -17,8 +17,15 @@ export interface NewSpace {
   apps: SpaceApp[]
 }
 
-export type ResourceKind =
-  'matrix_space' | 'project' | 'drive' | 'mailbox' | 'calendar'
+export const RESOURCE_KINDS = [
+  'matrix_space',
+  'project',
+  'drive',
+  'mailbox',
+  'calendar'
+] as const
+
+export type ResourceKind = (typeof RESOURCE_KINDS)[number]
 
 /** A person given a role on the space directly. */
 export interface Member {

@@ -89,7 +89,12 @@ async function stored(
     objectType: object.type,
     objectId,
     content: {
-      object: { type: object.type, id: objectId, title, url: 'https://drive' },
+      object: {
+        type: object.type,
+        id: objectId,
+        title,
+        container: { kind: 'drive', id: 'drive-1' }
+      },
       preview: 'First draft'
     },
     time: new Date(`2026-10-05T09:${String(minute).padStart(2, '0')}:00Z`)
@@ -157,7 +162,7 @@ describe('postCards', () => {
           type: 'file',
           id: expect.any(String) as string,
           title: 'earlier',
-          url: 'https://drive'
+          container: { kind: 'drive', id: 'drive-1' }
         },
         preview: 'First draft',
         state: {},
@@ -166,6 +171,28 @@ describe('postCards', () => {
       }
     })
     expect(rows.map(r => r.matrixEventId)).toEqual(['$card1', '$card2'])
+  })
+
+  it('leaves out a link an app sent with the object', async () => {
+    await stored(DESIGN, 1)
+    await testDb.db.update(activityEvents).set({
+      content: {
+        object: {
+          type: 'file',
+          id: 'f1',
+          title: 'Q3 plan',
+          url: 'https://drive'
+        }
+      }
+    })
+    const { sent, matrix } = recording()
+
+    await postCards(testDb.db, KEY, matrix, log)
+
+    expect(sent[0]?.content).toMatchObject({
+      object: { type: 'file', id: 'f1', title: 'Q3 plan' }
+    })
+    expect(sent[0]?.content).not.toHaveProperty('object.url')
   })
 
   it('edits the first card of an object with each later event about it', async () => {
