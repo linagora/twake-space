@@ -39,13 +39,13 @@ To work on the frontend without a backend or SSO, run it on seed data with `npm 
 
 Twake Space shows in the Twake Workplace home and bar as a Cozy app. The app ships no code: [apps/frontend/manifest.webapp](apps/frontend/manifest.webapp) and its icon are the whole archive. The manifest marks it `standalone`, so the home and the bar open the URL held by the `space.embedded-app-url` flag instead of a Cozy subdomain. Set that flag to the Twake Space URL on each context.
 
-Every frontend release attaches the archive, `space.tar.gz`, to its GitHub release. To publish it, check out the release tag and give its URL:
+Every frontend release attaches the archive, `space.tar.gz`, to its GitHub release. The manifest's `version` follows the frontend's, and the release fails when they differ. To publish it, check out the release tag and give its URL:
 
 ```bash
-npx cozy-app-publish --token $REGISTRY_TOKEN --build-dir apps/frontend --build-url https://github.com/linagora/twake-space/releases/download/frontend-v0.1.3/space.tar.gz
+npx cozy-app-publish --token $REGISTRY_TOKEN --build-dir apps/frontend --build-url https://github.com/linagora/twake-space/releases/download/frontend-v0.1.4/space.tar.gz
 ```
 
-`REGISTRY_TOKEN` is the registry token of the `Cozy` editor. The app goes to the dev channel as `0.1.0-dev.<commit>`.
+`REGISTRY_TOKEN` is the registry token of the `Cozy` editor. The app goes to the dev channel as `<version>-dev.<commit>`.
 
 ## Docs
 
