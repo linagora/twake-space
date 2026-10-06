@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { Route, Routes, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -72,14 +72,16 @@ describe('TasksPanel', () => {
     renderAt('/spaces/a1/tasks')
     await screen.findByTitle('Tasks')
 
-    postFromFrame({
-      type: 'twake-tasks:path',
-      path: '/embed/projects/p1/boards/b2?task=T-9'
+    // The panel may not listen yet when the frame first renders.
+    await waitFor(() => {
+      postFromFrame({
+        type: 'twake-tasks:path',
+        path: '/embed/projects/p1/boards/b2?task=T-9'
+      })
+      expect(screen.getByLabelText('path')).toHaveTextContent(
+        '/spaces/a1/tasks/boards/b2?task=T-9'
+      )
     })
-
-    expect(screen.getByLabelText('path')).toHaveTextContent(
-      '/spaces/a1/tasks/boards/b2?task=T-9'
-    )
     expect(frame()).toHaveAttribute('src', `${TASKS}/embed/projects/p1`)
   })
 
