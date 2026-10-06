@@ -10,6 +10,8 @@ const space: Space = {
   chat: true,
   mail: true,
   homeserverUrl: 'https://matrix.acme.test',
+  members: [],
+  groups: [],
   resources: [
     { kind: 'matrix_space', id: '!room:acme' },
     { kind: 'tasks', id: 'board-1' },

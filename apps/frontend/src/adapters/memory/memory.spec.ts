@@ -13,8 +13,33 @@ const roadmap: Space = {
   chat: true,
   mail: true,
   homeserverUrl: 'https://matrix.acme.test',
+  members: [
+    {
+      id: 'u-alice',
+      username: 'alice',
+      email: 'alice@acme.test',
+      role: 'admin'
+    }
+  ],
+  groups: [],
   resources: [{ kind: 'matrix_space', id: '!roadmap:acme.test' }]
 }
+
+const people = [
+  {
+    id: 'u-alice',
+    username: 'alice',
+    email: 'alice@acme.test',
+    displayName: 'Alice Martin'
+  },
+  {
+    id: 'u-bob',
+    username: 'bob',
+    email: 'bob@acme.test',
+    displayName: 'Bob Durand'
+  }
+]
+const groups = [{ id: 'g-designers', name: 'Designers' }]
 
 const message = (ts: number): FeedEntry => ({
   kind: 'message',
@@ -35,8 +60,58 @@ const file: FeedEntry = {
 }
 
 describe('memorySpaces', () => {
+  it('renames and removes a space', async () => {
+    const spaces = memorySpaces([roadmap], { people, groups })
+
+    await spaces.rename('roadmap', 'Roadmap 2027')
+    expect(await spaces.list()).toEqual([
+      { id: 'roadmap', name: 'Roadmap 2027', role: 'admin' }
+    ])
+    await spaces.remove('roadmap')
+    expect(await spaces.list()).toEqual([])
+  })
+
+  it('adds, changes and removes members', async () => {
+    const spaces = memorySpaces([roadmap], { people, groups })
+
+    await spaces.addMembers('roadmap', ['bob'], 'viewer')
+    await spaces.setMemberRole('roadmap', 'u-bob', 'editor')
+    expect((await spaces.get('roadmap')).members).toContainEqual({
+      id: 'u-bob',
+      username: 'bob',
+      email: 'bob@acme.test',
+      role: 'editor'
+    })
+    await spaces.removeMember('roadmap', 'u-bob')
+    expect((await spaces.get('roadmap')).members).toHaveLength(1)
+  })
+
+  it('links, changes and unlinks groups', async () => {
+    const spaces = memorySpaces([roadmap], { people, groups })
+
+    await spaces.linkGroups('roadmap', ['g-designers'], 'viewer')
+    await spaces.setGroupRole('roadmap', 'g-designers', 'editor')
+    expect((await spaces.get('roadmap')).groups).toEqual([
+      { id: 'g-designers', name: 'Designers', role: 'editor' }
+    ])
+    await spaces.unlinkGroup('roadmap', 'g-designers')
+    expect((await spaces.get('roadmap')).groups).toEqual([])
+  })
+
+  it('refuses a write on a space the caller does not administer', async () => {
+    const spaces = memorySpaces([{ ...roadmap, role: 'editor' }], {
+      people,
+      groups
+    })
+
+    await expect(spaces.rename('roadmap', 'Q3')).rejects.toMatchObject({
+      status: 403,
+      code: 'not_space_admin'
+    })
+  })
+
   it('lists, gets and creates spaces', async () => {
-    const spaces = memorySpaces([roadmap])
+    const spaces = memorySpaces([roadmap], { people, groups })
 
     const created = await spaces.create('Launch')
 
@@ -96,21 +171,6 @@ describe('memoryFeed', () => {
 })
 
 describe('memoryDirectory', () => {
-  const people = [
-    {
-      id: 'u-alice',
-      username: 'alice',
-      email: 'alice@acme.test',
-      displayName: 'Alice Martin'
-    },
-    {
-      id: 'u-bob',
-      username: 'bob',
-      email: 'bob@acme.test',
-      displayName: 'Bob Durand'
-    }
-  ]
-  const groups = [{ id: 'g-designers', name: 'Designers' }]
   const directory = memoryDirectory({ people, groups }, { pageSize: 1 })
 
   it('searches people by name, username or email, by page', async () => {

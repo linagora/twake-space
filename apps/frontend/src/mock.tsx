@@ -28,7 +28,7 @@ const session = {
   onEndedElsewhere: () => () => undefined
 }
 const services = {
-  spaces: memorySpaces(seedSpaces),
+  spaces: memorySpaces(seedSpaces, seedOrganization),
   directory: memoryDirectory(seedOrganization),
   live: { subscribe: () => () => undefined },
   matrix: {
