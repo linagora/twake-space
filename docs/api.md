@@ -66,13 +66,22 @@ The refusals look like this.
 ### GET /spaces
 
 - Caller: session, or token with `space:read`.
-- Returns the spaces the caller reaches, sorted by name, with the role it acts with in each and the avatar color picked at creation (null when none was).
+- Returns the spaces the caller reaches, sorted by name, with the role it acts with in each, the avatar color picked at creation (null when none was), the description (empty when none was) and the people who are members of it, sorted by username.
 - A session caller or an account token reaches the spaces its account is a member of. An organization token reaches every space of the organization and acts with its own role. A token that covers a list of spaces reaches only those.
 
 ```json
 {
   "spaces": [
-    { "id": "<uuid>", "name": "Design", "role": "admin", "color": "#46a2ff" }
+    {
+      "id": "<uuid>",
+      "name": "Design",
+      "role": "admin",
+      "color": "#46a2ff",
+      "description": "Brand and product design",
+      "members": [
+        { "id": "<uuid>", "username": "jdoe", "displayName": "Jane Doe" }
+      ]
+    }
   ]
 }
 ```
