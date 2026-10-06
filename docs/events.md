@@ -4,8 +4,8 @@ How events reach Twake Space, what the backend does with them, and how the resul
 
 ## Terms
 
-- Platform event: a message on `twake.platform.events.v1`. It carries an AMQP routing key and message id as Kafka headers, and a JSON body.
-- Activity event: a CloudEvent (specversion `1.0`) on one of the app topics `twake.<app>.events.v1`.
+- Platform event: a RabbitMQ message from ldap-rest or another platform service (exchanges `space`, `b2b`, `admin-panel`). It has a routing key, a message id, and a JSON body.
+- Activity event: a CloudEvent (specversion `1.0`) an app publishes on the `activity` exchange, with the CloudEvent `type` as routing key.
 - Copy: the backend's Postgres copy of organizations, spaces, members, linked groups and resources.
 - Card: an activity event stored in `activity_events`, then posted to the space's Matrix space as a `com.twake.feed.<category>` event.
 - Bot: the application service user. It posts with the homeserver's `as_token`.
@@ -15,14 +15,16 @@ How events reach Twake Space, what the backend does with them, and how the resul
 
 ```mermaid
 flowchart LR
-  subgraph Kafka
-    P[twake.platform.events.v1]
-    A["twake.{chat,mail,drive,calendar,meet,tasks}.events.v1"]
+  subgraph RabbitMQ
+    P["space, b2b, admin-panel"]
+    A[activity]
+    Q[twake-space queue]
   end
-  P --> R[Router]
-  A --> R
+  P --> Q
+  A --> Q
+  Q --> R[Router]
   R -->|dedupe + handler, one transaction| PG[(Postgres)]
-  R -->|RejectedEventError| DLQ["topic.dlq.twake-space"]
+  R -->|RejectedEventError| DLQ["twake-space.dlx → twake-space.dlq"]
   PG -->|pg_notify live| SSE[GET /stream]
   PG -->|poster, every second| MX[Synapse: Matrix space]
   MX -->|app service transactions| PG
@@ -30,28 +32,41 @@ flowchart LR
   MX -->|sync| B
 ```
 
-## Consuming Kafka
+## Consuming RabbitMQ
 
-- One consumer subscribes to the six app topics and the platform topic, with group id `KAFKA_GROUP_ID` (default `twake-space`), from the beginning, with auto commit off.
-- After each message is handled, the offset is committed. A handler error that is neither malformed nor rejected propagates, so that offset is not committed.
-- Local `docker-compose.yml` creates the seven topics with 3 partitions, and turns off topic auto creation.
+The backend consumes one queue, `twake-space`, through [@linagora/rabbitmq-client](https://github.com/linagora/rabbitmq-client/tree/v0.6.0). At startup it declares the queue and binds it:
+
+- `space`: `twake.space.#`
+- `b2b`: `b2b.group.updated`, `b2b.member.role.changed`, `b2b.member.disabled`, `domain.user.deleted`, `domain.organization.deleted`, `chat.deprovision`, `chat.deployment.completed`
+- `admin-panel`: `dns.validated`
+- `activity`: `#`
+
+The queue:
+
+- Is a quorum queue with a single active consumer and a delivery limit of 5. Each replica consumes with prefetch 1, so messages are handled one at a time, in the order they were published.
+- Dead-letters to the `twake-space.dlx` exchange, which routes to the `twake-space.dlq` queue. The backend declares both.
+- Gets each message acknowledged only after its Postgres transaction commits.
+
+Startup fails when `space`, `b2b` or `admin-panel` is missing, since other services own them. The backend declares `activity` itself, as a durable topic exchange, the same way the apps do.
+
+Local `docker-compose.yml` runs RabbitMQ and declares the three exchanges the backend only checks.
 
 ## Routing
 
-The router picks a handler by topic:
+The router picks a handler by exchange:
 
-- Platform topic: the key is the `amqp_routing_key` header. The dedupe key is `{ source: 'amqp', id: amqp_message_id }`.
-- App topics: the key is the CloudEvent `type`. The dedupe key is `{ source, id }` of the CloudEvent.
+- `activity`: the key is the CloudEvent `type`. The dedupe key is `{ source, id }` of the CloudEvent.
+- Any other exchange: the key is the routing key. The dedupe key is `{ source: 'amqp', id: messageId }`.
 
 Each message ends in one outcome:
 
 - processed: the handler ran.
 - duplicate: `processed_events` already holds `(consumer, source, id)`, so the handler did not run.
-- unrouted: no handler for the key. Logged at debug and skipped.
-- malformed: unparseable, or a handler threw `MalformedEventError`. Logged and skipped.
-- rejected: a handler threw `RejectedEventError`, or Postgres refused the event's data (an error of class 22 or 23, such as a NUL byte in a preview). The message goes to `<topic>.dlq.twake-space` with a `twake-space-reason` header.
-- parked: a handler threw `NotYetKnownError`, because the event is about a space or member the copy does not hold yet. The event goes to the `parked_events` table and the partition moves on. One replica retries parked events every 5 seconds, and sends one still waiting after 5 minutes to the dead letter topic.
-- failed: any other error, or a failed offset commit. The offset is not committed and the partition pauses, 1 second after the first failure, doubling up to a minute, before the same message comes back. Other partitions keep flowing.
+- unrouted: no handler for the key. Logged at debug and acknowledged.
+- malformed: a CloudEvent that does not parse, a platform event without a message id, or a handler threw `MalformedEventError`. Logged and acknowledged. A body that is not JSON goes to the dead letter queue.
+- rejected: a handler threw `RejectedEventError`, or Postgres refused the event's data (an error of class 22 or 23, such as a NUL byte in a preview). The message is dead-lettered to `twake-space.dlq`.
+- parked: a handler threw `NotYetKnownError`, because the event is about a space or member the copy does not hold yet. The event goes to the `parked_events` table and is acknowledged. One replica retries parked events every 5 seconds. One still waiting after 5 minutes is published to `twake-space.dlq` with the headers `x-twake-space-exchange`, `x-twake-space-routing-key` and `x-twake-space-reason`.
+- failed: any other error, such as Postgres being down. The message stays unacknowledged and is retried in the process, 1 second after the first failure, doubling up to a minute, until it succeeds. Nothing behind it is handled meanwhile. After 25 minutes of failures the backend logs an error, because RabbitMQ's `consumer_timeout` (30 minutes by default) then closes the channel and delivers the message again.
 
 The dedupe claim and the handler run in the same Postgres transaction, so a handler failure releases the claim.
 
@@ -143,7 +158,7 @@ The actor stored on the card is one of:
 - `{ type: 'deleted_user' }` once the user is deleted.
 - null when the event names no actor.
 
-The space is the one whose resource of that kind has the container's id. An app publishes a resource's provisioned event before any activity on it, on the same partition, so a container no space has belongs to a person: the card is for personal notifications only. A container held only by another organization's space is rejected to the dead letter topic. A user actor who is not a member may only mean the platform topic is behind, so the event is parked. A parked event is handled after the events that came after it on its partition. A space with linked groups accepts a non member actor with a warning, since the copy does not hold group members.
+The space is the one whose resource of that kind has the container's id. An app publishes a resource's provisioned event before any activity on it, and both reach the same queue in that order, so a container no space has belongs to a person: the card is for personal notifications only. A container held only by another organization's space is rejected to the dead letter queue. A user actor who is not a member may only mean the platform event that adds them has not arrived yet, so the event is parked. A parked event is handled after the events that came after it in the queue. A space with linked groups accepts a non member actor with a warning, since the copy does not hold group members.
 
 The card stores everything in `data` except `recipients`.
 
@@ -151,7 +166,7 @@ The card stores everything in `data` except `recipients`.
 
 ```mermaid
 sequenceDiagram
-  participant K as Kafka
+  participant K as RabbitMQ
   participant BE as Backend
   participant PG as Postgres
   participant S as Synapse
@@ -302,7 +317,7 @@ The purge does not touch the copy, `processed_events` or `last_changes`, nor the
 
 ## Open questions
 
-- @rezk2ll Which component puts AMQP platform messages on `twake.platform.events.v1` with the `amqp_routing_key` and `amqp_message_id` headers?
+- @rezk2ll In SaaS, which exchange carries `chat.deployment.completed`? The queue binds it on `b2b` for now (ADR 008 leaves it open).
 - @rezk2ll A second card about the same object is posted as a new card and also edits the first one. Should the feed show both, or should the later card only be an edit?
 - @rezk2ll The card content carries `state`, which the activity schema does not declare and the frontend does not read. What is it for, and what shape should apps send?
 - @rezk2ll The frontend ignores the `notification` live event and has no notifications view yet. Is that planned under #90?
