@@ -17,6 +17,9 @@ vi.mock('matrix-js-sdk', () => ({
     FAIL_PROMPT: 'FAIL_PROMPT',
     findClientConfig
   },
+  ClientEvent: { Sync: 'sync' },
+  HttpApiEvent: { SessionLoggedOut: 'Session.logged_out' },
+  SyncState: { Prepared: 'PREPARED' },
   createClient: vi.fn()
 }))
 
@@ -24,10 +27,22 @@ const BASE_URL = 'https://matrix.acme.test/'
 const KEY = 'twake-space:matrix'
 const loginRequest = vi.fn()
 const logout = vi.fn(() => Promise.resolve({}))
+const listeners = new Map<string, (state?: string) => void>()
+const startClient = vi.fn(() => {
+  listeners.get('sync')?.('PREPARED')
+  return Promise.resolve()
+})
+const stopClient = vi.fn()
 const client: Partial<MatrixClient> = {
   getSsoLoginUrl: redirect => `${BASE_URL}sso?r=${redirect}`,
   loginRequest,
-  logout
+  logout,
+  startClient,
+  stopClient,
+  on: vi.fn<MatrixClient['on']>((event, listener) => {
+    listeners.set(event, listener as (state?: string) => void)
+    return client as MatrixClient
+  })
 }
 const goTo = vi.fn()
 const stored = {
@@ -124,6 +139,52 @@ describe('matrixSession', () => {
     })
     expect(logout).toHaveBeenCalled()
     expect(localStorage.getItem(KEY)).toBeNull()
+  })
+
+  it('starts one client with its device and waits for the first sync', async () => {
+    localStorage.setItem(KEY, JSON.stringify(stored))
+    const matrix = session()
+
+    const [first, second] = await Promise.all([
+      matrix.client(),
+      matrix.client()
+    ])
+
+    expect(first).toBe(client)
+    expect(second).toBe(client)
+    expect(createClient).toHaveBeenCalledTimes(1)
+    expect(createClient).toHaveBeenCalledWith({
+      baseUrl: BASE_URL,
+      userId: '@alice:acme.test',
+      accessToken: 'syt_alice',
+      deviceId: 'DEVICE',
+      timelineSupport: true
+    })
+  })
+
+  it('forgets a device logged out elsewhere', async () => {
+    localStorage.setItem(KEY, JSON.stringify(stored))
+    startClient.mockImplementationOnce(() => {
+      listeners.get('Session.logged_out')?.()
+      return Promise.resolve()
+    })
+
+    await expect(session().client()).rejects.toThrow(/logged out/)
+
+    expect(localStorage.getItem(KEY)).toBeNull()
+    expect(stopClient).toHaveBeenCalled()
+  })
+
+  it('stops its client when signing out', async () => {
+    localStorage.setItem(KEY, JSON.stringify(stored))
+    const matrix = session()
+    await matrix.client()
+
+    await matrix.signOut()
+
+    expect(createClient).toHaveBeenCalledTimes(1)
+    expect(stopClient).toHaveBeenCalled()
+    expect(logout).toHaveBeenCalled()
   })
 
   it('forgets its device even when the homeserver does not answer', async () => {

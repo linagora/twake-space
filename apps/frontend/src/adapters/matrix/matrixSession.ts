@@ -1,3 +1,5 @@
+import type { MatrixClient } from 'matrix-js-sdk'
+
 import type { MatrixService } from '@/application/matrix'
 
 // Loaded on first use: it would double the startup bundle.
@@ -35,7 +37,10 @@ export function matrixSession(
   goTo: (url: string) => void = url => {
     window.location.assign(url)
   }
-): MatrixService {
+): MatrixService & {
+  /** The signed-in client, synced once. */
+  client: () => Promise<MatrixClient>
+} {
   const stored = (): Device | null => {
     try {
       const value: unknown = JSON.parse(storage.getItem(KEY) ?? 'null')
@@ -43,6 +48,37 @@ export function matrixSession(
     } catch {
       return null
     }
+  }
+
+  let started: Promise<MatrixClient> | null = null
+
+  async function start(): Promise<MatrixClient> {
+    const device = stored()
+    if (!device) throw new Error('not signed in to Matrix')
+    const { createClient, ClientEvent, HttpApiEvent, SyncState } = await sdk()
+    const { baseUrl, userId, accessToken, deviceId } = device
+    const client = createClient({
+      baseUrl,
+      userId,
+      accessToken,
+      deviceId,
+      timelineSupport: true
+    })
+    const synced = new Promise<void>((resolve, reject) => {
+      client.on(ClientEvent.Sync, state => {
+        if (state === SyncState.Prepared) resolve()
+      })
+      // Logged out elsewhere: the next sign-in gets a new device.
+      client.on(HttpApiEvent.SessionLoggedOut, () => {
+        storage.removeItem(KEY)
+        started = null
+        client.stopClient()
+        reject(new Error('the Matrix device was logged out'))
+      })
+    })
+    await client.startClient({ initialSyncLimit: 20, lazyLoadMembers: true })
+    await synced
+    return client
   }
 
   return {
@@ -77,14 +113,27 @@ export function matrixSession(
       storage.setItem(KEY, JSON.stringify(device))
       return true
     },
+    client() {
+      started ??= start().catch((error: unknown) => {
+        started = null
+        throw error
+      })
+      return started
+    },
     async signOut() {
       const device = stored()
       storage.removeItem(KEY)
+      const running = started
+      started = null
       if (!device) return
       const { baseUrl, userId, accessToken, deviceId } = device
       try {
         const { createClient } = await sdk()
-        await createClient({ baseUrl, userId, accessToken, deviceId }).logout()
+        const client =
+          (await running?.catch(() => null)) ??
+          createClient({ baseUrl, userId, accessToken, deviceId })
+        client.stopClient()
+        await client.logout()
       } catch {
         // The device stays on the homeserver until its admin removes it.
       }
