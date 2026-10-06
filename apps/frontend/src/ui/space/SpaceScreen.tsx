@@ -1,12 +1,4 @@
-import {
-  Alert,
-  Chip,
-  CircularProgress,
-  Link,
-  Tab,
-  Tabs,
-  Typography
-} from '@linagora/twake-mui'
+import { Alert, Chip, Link, Tab, Tabs, Typography } from '@linagora/twake-mui'
 import type { ReactElement } from 'react'
 import {
   Navigate,
@@ -17,6 +9,8 @@ import {
 
 import { isRefusal } from '@/application/spaces'
 import { spaceTabs } from '@/application/spaceTabs'
+import { NameAvatar } from '@/ds/AppFrame'
+import { LoadingRows, Page, SpaceHeader } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 import { TasksPanel } from '@/ui/space/TasksPanel'
@@ -31,12 +25,16 @@ export function SpaceScreen(): ReactElement {
   useDocumentTitle(space.data?.name ?? null)
 
   if (space.isPending) {
-    return <CircularProgress aria-label={t('space.loading')} />
+    return (
+      <Page>
+        <LoadingRows count={3} label={t('space.loading')} />
+      </Page>
+    )
   }
   if (space.isError) {
     return (
-      <main className="u-p-2">
-        <Alert severity="error">
+      <Page>
+        <Alert severity="error" className="u-mb-1">
           {t(
             isRefusal(space.error) && space.error.status === 404
               ? 'space.notFound'
@@ -46,7 +44,7 @@ export function SpaceScreen(): ReactElement {
         <Link component={RouterLink} to="/">
           {t('space.back')}
         </Link>
-      </main>
+      </Page>
     )
   }
 
@@ -62,31 +60,50 @@ export function SpaceScreen(): ReactElement {
   )?.id
 
   return (
-    <main className="u-p-2 u-flex u-flex-column u-h-100">
-      <Link component={RouterLink} to="/">
-        {t('space.back')}
-      </Link>
-      <Typography variant="h1">{space.data.name}</Typography>
-      <Chip label={t(`roles.${space.data.role}`)} size="small" />
-      <Tabs
-        value={current.tab}
-        onChange={(_event, value: string) => {
-          void navigate(`/spaces/${spaceId}/${value}`)
-        }}
-      >
-        {tabs.map(item => (
-          <Tab
-            key={item.tab}
-            value={item.tab}
-            label={t(`tabs.${item.tab}`)}
-            disabled={item.state === 'off'}
-            id={`tab-${item.tab}`}
-            aria-controls={`panel-${item.tab}`}
+    <Page>
+      <SpaceHeader
+        avatar={<NameAvatar name={space.data.name} size="m" />}
+        title={space.data.name}
+        meta={
+          <Chip
+            label={t(`roles.${space.data.role}`)}
+            size="small"
+            variant="outlined"
           />
-        ))}
-      </Tabs>
-      {!space.data.chat && <Alert severity="info">{t('space.chatOff')}</Alert>}
-      {!space.data.mail && <Alert severity="info">{t('space.mailOff')}</Alert>}
+        }
+        tabs={
+          <Tabs
+            narrowed
+            variant="scrollable"
+            scrollButtons={false}
+            value={current.tab}
+            onChange={(_event, value: string) => {
+              void navigate(`/spaces/${spaceId}/${value}`)
+            }}
+          >
+            {tabs.map(item => (
+              <Tab
+                key={item.tab}
+                value={item.tab}
+                label={t(`tabs.${item.tab}`)}
+                disabled={item.state === 'off'}
+                id={`tab-${item.tab}`}
+                aria-controls={`panel-${item.tab}`}
+              />
+            ))}
+          </Tabs>
+        }
+      />
+      {!space.data.chat && (
+        <Alert severity="info" className="u-mb-1">
+          {t('space.chatOff')}
+        </Alert>
+      )}
+      {!space.data.mail && (
+        <Alert severity="info" className="u-mb-1">
+          {t('space.mailOff')}
+        </Alert>
+      )}
       <div
         role="tabpanel"
         id={`panel-${current.tab}`}
@@ -109,6 +126,6 @@ export function SpaceScreen(): ReactElement {
           <TasksPanel spaceId={spaceId} />
         )}
       </div>
-    </main>
+    </Page>
   )
 }

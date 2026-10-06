@@ -93,6 +93,16 @@ describe('HomeScreen', () => {
     ).toBeInTheDocument()
   })
 
+  it('says the spaces are loading', async () => {
+    const spaces = fakeSpaces()
+    vi.mocked(spaces.list).mockReturnValue(new Promise(() => undefined))
+    renderWithProviders(<HomeScreen />, { spaces })
+
+    expect(
+      await screen.findByRole('status', { name: 'Loading spaces…' })
+    ).toBeInTheDocument()
+  })
+
   it('says so when the spaces cannot be loaded', async () => {
     const spaces = fakeSpaces()
     vi.mocked(spaces.list).mockRejectedValue(

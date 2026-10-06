@@ -25,6 +25,7 @@
     "loading": "Đang tải không gian…",
     "loadFailed": "Không thể tải các không gian của bạn.",
     "none": "Bạn chưa tham gia không gian nào.",
+    "noneHint": "Hãy tạo một không gian để chia sẻ trò chuyện, tệp và công việc với nhóm của bạn.",
     "create": "Tạo không gian",
     "name": "Tên",
     "createFailed": "Không thể tạo không gian."

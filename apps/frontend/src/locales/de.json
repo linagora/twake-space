@@ -25,6 +25,7 @@
     "loading": "Spaces werden geladen…",
     "loadFailed": "Deine Spaces konnten nicht geladen werden.",
     "none": "Du bist noch in keinem Space.",
+    "noneHint": "Erstelle einen, um Chat, Dateien und Aufgaben mit deinem Team zu teilen.",
     "create": "Space erstellen",
     "name": "Name",
     "createFailed": "Der Space konnte nicht erstellt werden."
