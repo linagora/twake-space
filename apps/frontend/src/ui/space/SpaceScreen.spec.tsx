@@ -1,8 +1,16 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor
+} from '@testing-library/react'
 import { Route, Routes, useLocation, useNavigate } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
+import type { FeedItem } from '@/application/feed'
 import type { Space } from '@/application/spaces'
+import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { SpaceScreen } from '@/ui/space/SpaceScreen'
@@ -33,7 +41,11 @@ function Path() {
   return <output aria-label="path">{useLocation().pathname}</output>
 }
 
-function renderAt(path: string, space: Space | null = roadmap) {
+function renderAt(
+  path: string,
+  space: Space | null = roadmap,
+  feedItems: FeedItem[] = []
+) {
   const spaces = fakeSpaces()
   vi.mocked(spaces.get).mockImplementation(id =>
     space?.id === id
@@ -47,7 +59,7 @@ function renderAt(path: string, space: Space | null = roadmap) {
       </Routes>
       <Path />
     </>,
-    { spaces, path }
+    { spaces, path, feed: fakeFeed({ a1: feedItems }) }
   )
   return spaces
 }
@@ -222,6 +234,29 @@ describe('SpaceScreen', () => {
     expect(
       await screen.findByRole('textbox', { name: 'Text message' })
     ).toBeInTheDocument()
+  })
+
+  it('keeps the cover over an empty feed, and drops it once the feed has items', async () => {
+    renderAt('/spaces/a1/feed')
+    await screen.findByRole('heading', { name: 'Set up Roadmap' })
+    expect(document.querySelector('main img')).not.toBeNull()
+
+    cleanup()
+    renderAt('/spaces/a1/feed', roadmap, [
+      {
+        id: 'p1',
+        kind: 'post',
+        category: 'messages',
+        time: '2026-10-07T08:00:00.000Z',
+        updatedAt: '2026-10-07T08:00:00.000Z',
+        reactions: [],
+        author: { type: 'user', id: 'u-bob', name: 'Bob' },
+        body: 'Hello',
+        editedAt: null
+      }
+    ])
+    await screen.findByText('Hello')
+    expect(document.querySelector('main img')).toBeNull()
   })
 
   it("lists the space's people on the Members tab", async () => {

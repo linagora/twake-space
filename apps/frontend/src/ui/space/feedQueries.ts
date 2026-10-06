@@ -21,9 +21,10 @@ import { useServices } from '@/ui/services/Services'
 const feedKey = (spaceId: string, filter?: FeedFilter): QueryKey =>
   filter ? ['feed', spaceId, filter] : ['feed', spaceId]
 
-export function useFeed(spaceId: string, filter: FeedFilter) {
+export function useFeed(spaceId: string, filter: FeedFilter, enabled = true) {
   const { feed } = useServices()
   return useInfiniteQuery({
+    enabled,
     queryKey: feedKey(spaceId, filter),
     queryFn: ({ pageParam }) =>
       feed.list(spaceId, {
