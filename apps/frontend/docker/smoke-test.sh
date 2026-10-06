@@ -19,6 +19,7 @@ docker run -d --name "$NAME" \
   -e POSTHOG_HOST='https://posthog.example.com' \
   -e SENTRY_DSN='https://public-key@errors.example.com/42' \
   -e CSP_FRAME_ANCESTORS="'self' https://workplace.example.com" \
+  -e API_UPSTREAM='http://127.0.0.1:8080' \
   "$IMAGE" >/dev/null
 BASE="http://$(docker port "$NAME" 8080/tcp | head -1)"
 
@@ -60,6 +61,7 @@ expect 'CSP: Tasks origin in frame-src' "$csp" "*frame-src 'self' https://tasks.
 expect 'CSP: frame-ancestors from the environment' "$csp" "*frame-ancestors 'self' https://workplace.example.com;*"
 expect 'CSP on the SPA fallback too' "$(header /spaces/42 Content-Security-Policy)" "$csp"
 expect 'CSP on assets too' "$(header "$script" Content-Security-Policy)" "$csp"
+expect '/api/ goes to API_UPSTREAM without the prefix' "$(body "$BASE/api/healthz")" 'ok'
 expect 'X-Content-Type-Options' "$(header / X-Content-Type-Options)" 'nosniff'
 expect 'Referrer-Policy' "$(header / Referrer-Policy)" 'same-origin'
 expect 'no nginx version disclosed' "$(header / Server)" 'nginx'
