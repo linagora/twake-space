@@ -5,15 +5,15 @@ import { loadConfig } from './config.ts'
 import { postgresDeduplicator } from './events/dedupe.ts'
 import { parkIn, scheduleParkedRetries } from './events/parking.ts'
 import { createMessageHandler, type Routes } from './events/router.ts'
-import { createDb, migrateDb } from './infra/db.ts'
-import { createServer } from './infra/http.ts'
-import { handleSignals } from './infra/lifecycle.ts'
 import {
   consumerAlive,
   consumerStats,
-  startConsumer,
-  startDeadLetterProducer
-} from './infra/kafka.ts'
+  deadLetterQueue,
+  startConsumer
+} from './infra/amqp.ts'
+import { createDb, migrateDb } from './infra/db.ts'
+import { createServer } from './infra/http.ts'
+import { handleSignals } from './infra/lifecycle.ts'
 import { createLdapRestClient, ldapRestDirectory } from './infra/ldap-rest.ts'
 import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
@@ -112,17 +112,20 @@ const metrics = createServer({ logger, isReady: () => Promise.resolve(true) })
 registerMetrics(metrics, { db, consumer: consumerStatus })
 await metrics.listen({ host: config.HTTP_HOST, port: config.METRICS_PORT })
 
-const deadLetters = await startDeadLetterProducer(config, logger)
 const handle = createMessageHandler({
   routes,
-  dedupe: postgresDeduplicator(db, config.KAFKA_GROUP_ID),
-  deadLetter: deadLetters.send,
+  dedupe: postgresDeduplicator(db, 'twake-space'),
   park: parkIn(db),
   logger
 })
 const consumer = await startConsumer(config, logger, handle, consumerStatus)
 isAlive = () => consumerAlive(consumer, consumerStatus)
-const stopParked = scheduleParkedRetries(db, handle, deadLetters.send, logger)
+const stopParked = scheduleParkedRetries(
+  db,
+  handle,
+  deadLetterQueue(consumer),
+  logger
+)
 const stopPurge = schedulePurge(db, logger)
 const secretsKey = (config.homeserver ?? config.controlPlane)?.key
 const stopPosting = secretsKey
@@ -135,8 +138,7 @@ lifecycle.started(async () => {
   stopPurge()
   stopPosting()
   try {
-    await consumer.disconnect()
-    await deadLetters.disconnect()
+    await consumer.close()
     await delay(DRAIN_MS)
     await server.close()
     await metrics.close()

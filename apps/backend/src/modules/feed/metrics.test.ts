@@ -2,7 +2,7 @@ import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest'
 import { parkedEvents } from '../../events/schema.ts'
 import { createServer } from '../../infra/http.ts'
-import { consumerStats } from '../../infra/kafka.ts'
+import { consumerStats } from '../../infra/amqp.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { organizations } from '../organizations/schema.ts'
 import { spaces } from '../spaces/schema.ts'
@@ -70,11 +70,11 @@ it('counts the events waiting to be posted, per organization with chat', async (
   await stored(SALES, null, new Date())
   await stored(HR)
   await testDb.db.insert(parkedEvents).values({
-    topic: 'twake.drive.events.v1',
     source: 'twake://drive',
     id: 'e-late',
-    value: '{}',
-    headers: {},
+    exchange: 'activity',
+    routingKey: 'com.twake.drive.file.created.v1',
+    body: {},
     reason: 'unknown space'
   })
   const stats = consumerStats()
@@ -103,7 +103,7 @@ it('counts the events waiting to be posted, per organization with chat', async (
       '# TYPE twake_space_cards_failed gauge',
       'twake_space_cards_failed{organization="acme"} 0',
       'twake_space_cards_failed{organization="globex"} 1',
-      '# HELP twake_space_events_total Kafka messages handled, by outcome.',
+      '# HELP twake_space_events_total Messages handled, by outcome.',
       '# TYPE twake_space_events_total counter',
       'twake_space_events_total{outcome="processed"} 2',
       'twake_space_events_total{outcome="failed"} 1',

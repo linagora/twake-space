@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Boots the image as in production (uid 1000, read-only root filesystem, no capability)
-# next to Postgres, Kafka and a stub OIDC issuer, then checks it serves and stops cleanly.
+# next to Postgres, RabbitMQ and a stub OIDC issuer, then checks it serves and stops cleanly.
 #
 #   apps/backend/docker/smoke-test.sh twake-space-backend:dev
 set -euo pipefail
@@ -9,7 +9,7 @@ IMAGE="${1:?usage: $0 <image>}"
 RUN="twake-space-backend-smoke-$$"
 WORK="$(mktemp -d)"
 cleanup() {
-  docker rm -f "$RUN-backend" "$RUN-oidc" "$RUN-kafka" "$RUN-postgres" >/dev/null 2>&1 || true
+  docker rm -f "$RUN-backend" "$RUN-oidc" "$RUN-rabbitmq" "$RUN-postgres" >/dev/null 2>&1 || true
   docker network rm "$RUN" >/dev/null 2>&1 || true
   rm -rf "$WORK"
 }
@@ -22,15 +22,8 @@ docker run -d --name "$RUN-postgres" --network "$RUN" --network-alias postgres \
   -e POSTGRES_USER=twake_space -e POSTGRES_PASSWORD=twake_space -e POSTGRES_DB=twake_space \
   postgres:18 >/dev/null
 
-docker run -d --name "$RUN-kafka" --network "$RUN" --network-alias kafka \
-  -e KAFKA_NODE_ID=1 -e KAFKA_PROCESS_ROLES=broker,controller \
-  -e KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093 \
-  -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092 \
-  -e KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER \
-  -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093 \
-  -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
-  -e KAFKA_AUTO_CREATE_TOPICS_ENABLE=false \
-  apache/kafka:4.2.2 >/dev/null
+docker run -d --name "$RUN-rabbitmq" --network "$RUN" --network-alias rabbitmq \
+  rabbitmq:4.1-management >/dev/null
 
 # The backend only accepts an https issuer: a self-signed one it is told to trust.
 openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=oidc -addext subjectAltName=DNS:oidc \
@@ -63,16 +56,12 @@ docker run -d --name "$RUN-oidc" --network "$RUN" --network-alias oidc \
   -v "$WORK:/work:ro" node:24-slim node /work/oidc.mjs >/dev/null
 
 for _ in $(seq 1 60); do
-  docker exec "$RUN-kafka" /opt/kafka/bin/kafka-broker-api-versions.sh \
-    --bootstrap-server localhost:9092 >/dev/null 2>&1 && break
+  docker exec "$RUN-rabbitmq" rabbitmqadmin --non-interactive show overview >/dev/null 2>&1 && break
   sleep 2
 done
-for topic in twake.chat.events.v1 twake.mail.events.v1 twake.drive.events.v1 \
-  twake.calendar.events.v1 twake.meet.events.v1 twake.tasks.events.v1 twake.platform.events.v1; do
-  for name in "$topic" "$topic.dlq.twake-space"; do
-    docker exec "$RUN-kafka" /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
-      --create --if-not-exists --topic "$name" --partitions 1 --replication-factor 1 >/dev/null
-  done
+for exchange in space b2b admin-panel; do
+  docker exec "$RUN-rabbitmq" rabbitmqadmin --non-interactive declare exchange \
+    --name "$exchange" --type topic --durable true >/dev/null
 done
 for _ in $(seq 1 30); do
   docker exec "$RUN-postgres" pg_isready -U twake_space >/dev/null 2>&1 && break
@@ -83,7 +72,7 @@ docker run -d --name "$RUN-backend" --network "$RUN" \
   --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges \
   -v "$WORK/cert.pem:/certs/oidc.pem:ro" -e NODE_EXTRA_CA_CERTS=/certs/oidc.pem \
   -p 127.0.0.1::8080 -p 127.0.0.1::9464 \
-  -e KAFKA_BOOTSTRAP=kafka:9092 -e KAFKA_SECURITY=plaintext \
+  -e AMQP_URL=amqp://guest:guest@rabbitmq:5672 \
   -e DATABASE_URL=postgres://twake_space:twake_space@postgres:5432/twake_space \
   -e LDAP_REST_URL=http://ldap-rest:8081 -e LDAP_REST_SERVICE_ID=twake-space \
   -e LDAP_REST_SECRET=smoke-test-secret-that-is-long-enough \
@@ -110,7 +99,9 @@ for _ in $(seq 1 60); do
 done
 
 expect 'ready once started' "$(status "$API/health/ready")" '200'
-expect 'alive with its Kafka consumer' "$(status "$API/health/live")" '200'
+expect 'alive with its RabbitMQ consumer' "$(status "$API/health/live")" '200'
+expect 'declared its queue with a single active consumer' \
+  "$(docker exec "$RUN-rabbitmq" rabbitmqctl list_queues -q name arguments 2>&1 | grep -c '^twake-space\b.*x-single-active-consumer' || true)" '1'
 expect 'runs as uid 1000' "$(docker exec "$RUN-backend" stat -c %u /proc/1)" '1000'
 expect 'applied every migration shipped' \
   "$(docker exec "$RUN-postgres" psql -U twake_space -tAc 'select count(*) from drizzle.__drizzle_migrations' 2>&1)" \

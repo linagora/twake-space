@@ -12,21 +12,21 @@ export const processedEvents = pgTable(
   table => [primaryKey({ columns: [table.consumer, table.source, table.id] })]
 )
 
-// Events about a space or member the copy doesn't hold yet, set aside so their
-// partition keeps flowing.
+// Events about a space or member the copy doesn't hold yet, set aside so the
+// queue keeps flowing.
 export const parkedEvents = pgTable(
   'parked_events',
   {
-    topic: text().notNull(),
     source: text().notNull(),
     id: text().notNull(),
-    key: text(),
-    value: text().notNull(),
-    headers: jsonb().$type<Record<string, string>>().notNull(),
+    exchange: text().notNull(),
+    routingKey: text('routing_key').notNull(),
+    messageId: text('message_id'),
+    body: jsonb().notNull(),
     reason: text().notNull(),
     parkedAt: timestamptz('parked_at').notNull().defaultNow()
   },
-  table => [primaryKey({ columns: [table.topic, table.source, table.id] })]
+  table => [primaryKey({ columns: [table.source, table.id] })]
 )
 
 // Kept after the object itself is removed, so a replayed event cannot bring it back.

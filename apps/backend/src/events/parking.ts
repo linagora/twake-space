@@ -1,36 +1,25 @@
 import { and, eq, lt, sql } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import type { Db } from '../infra/db.ts'
-import { headerString } from './envelope.ts'
-import {
-  deadLetterTopic,
-  type DeadLetter,
-  type IncomingMessage,
-  type Outcome,
-  type Park
-} from './router.ts'
+import type { DeadLetter, IncomingMessage, Outcome, Park } from './router.ts'
 import { parkedEvents } from './schema.ts'
 
-// Long enough for the platform topic to catch up after a restart.
+// Long enough for the event that brings what it waits for to arrive after a
+// restart.
 const WAIT_SECONDS = 5 * 60
 const RETRY_EVERY_MS = 5000
 const BATCH = 100
 
 export function parkIn(db: Db): Park {
-  return async (topic, message, key, reason) => {
-    const headers: Record<string, string> = {}
-    for (const [name, value] of Object.entries(message.headers ?? {})) {
-      const text = headerString(value)
-      if (text !== undefined) headers[name] = text
-    }
+  return async (message, key, reason) => {
     await db
       .insert(parkedEvents)
       .values({
-        topic,
         ...key,
-        key: message.key?.toString() ?? null,
-        value: message.value?.toString() ?? '',
-        headers,
+        exchange: message.exchange,
+        routingKey: message.routingKey,
+        messageId: message.messageId ?? null,
+        body: message.body,
         reason
       })
       .onConflictDoNothing()
@@ -39,7 +28,7 @@ export function parkIn(db: Db): Park {
 
 export async function retryParked(
   db: Db,
-  handle: (topic: string, message: IncomingMessage) => Promise<Outcome>,
+  handle: (message: IncomingMessage) => Promise<Outcome>,
   deadLetter: DeadLetter,
   log: Logger
 ): Promise<void> {
@@ -50,24 +39,21 @@ export async function retryParked(
     .limit(BATCH)
   for (const row of rows) {
     const message: IncomingMessage = {
-      key: row.key === null ? null : Buffer.from(row.key),
-      value: Buffer.from(row.value),
-      offset: 'parked',
-      headers: row.headers
+      exchange: row.exchange,
+      routingKey: row.routingKey,
+      ...(row.messageId !== null && { messageId: row.messageId }),
+      body: row.body
     }
+    const context = { routingKey: row.routingKey, id: row.id }
     const done = and(
-      eq(parkedEvents.topic, row.topic),
       eq(parkedEvents.source, row.source),
       eq(parkedEvents.id, row.id)
     )
     let outcome: Outcome
     try {
-      outcome = await handle(row.topic, message)
+      outcome = await handle(message)
     } catch (error) {
-      log.warn(
-        { err: error, topic: row.topic, id: row.id },
-        'parked event failed'
-      )
+      log.warn({ err: error, ...context }, 'parked event failed')
       continue
     }
     if (outcome === 'parked') {
@@ -87,16 +73,16 @@ export async function retryParked(
             )
             .returning({ reason: parkedEvents.reason })
           if (!expired) return
-          await deadLetter(deadLetterTopic(row.topic), message, expired.reason)
+          await deadLetter(message, expired.reason)
           log.warn(
-            { topic: row.topic, id: row.id, reason: expired.reason },
-            'parked event sent to the dead letter topic'
+            { ...context, reason: expired.reason },
+            'parked event sent to the dead letter queue'
           )
         })
         .catch((error: unknown) => {
           log.error(
-            { err: error, topic: row.topic, id: row.id },
-            'parked event could not reach the dead letter topic'
+            { err: error, ...context },
+            'parked event could not reach the dead letter queue'
           )
         })
       continue
@@ -108,7 +94,7 @@ export async function retryParked(
 // One replica retries at a time, so a parked event is handled once.
 export function scheduleParkedRetries(
   db: Db,
-  handle: (topic: string, message: IncomingMessage) => Promise<Outcome>,
+  handle: (message: IncomingMessage) => Promise<Outcome>,
   deadLetter: DeadLetter,
   log: Logger
 ): () => void {
