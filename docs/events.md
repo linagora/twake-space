@@ -43,7 +43,7 @@ The backend consumes one queue, `twake-space`, through [@linagora/rabbitmq-clien
 
 The queue:
 
-- Is a quorum queue with a single active consumer and a delivery limit of 5. Each replica consumes with prefetch 1, so messages are handled one at a time, in the order they were published.
+- Is a quorum queue with a single active consumer and a delivery limit of 20. Each replica consumes with prefetch 1, so messages are handled one at a time, in the order they were published.
 - Dead-letters to the `twake-space.dlx` exchange, which routes to the `twake-space.dlq` queue. The backend declares both.
 - Gets each message acknowledged only after its Postgres transaction commits.
 
@@ -66,7 +66,7 @@ Each message ends in one outcome:
 - malformed: a CloudEvent that does not parse, a platform event without a message id, or a handler threw `MalformedEventError`. Logged and acknowledged. A body that is not JSON goes to the dead letter queue.
 - rejected: a handler threw `RejectedEventError`, or Postgres refused the event's data (an error of class 22 or 23, such as a NUL byte in a preview). The message is dead-lettered to `twake-space.dlq`. It carries RabbitMQ's `x-death` header but no reason: the `event rejected` log line has it.
 - parked: a handler threw `NotYetKnownError`, because the event is about a space or member the copy does not hold yet. The event goes to the `parked_events` table and is acknowledged. One replica retries parked events every 5 seconds. One still waiting after 5 minutes is published to `twake-space.dlq` with the headers `x-twake-space-exchange`, `x-twake-space-routing-key` and `x-twake-space-reason`.
-- failed: any other error, such as Postgres being down. The message stays unacknowledged and is retried in the process, 1 second after the first failure, doubling up to a minute. Nothing behind it is handled meanwhile. After 25 minutes of failures the backend logs an error, because RabbitMQ's `consumer_timeout` (30 minutes by default) then closes the channel and delivers the message again. Each such redelivery, like one after a restart, counts toward the delivery limit: once a message has been delivered 6 times, RabbitMQ sends it to `twake-space.dlq` and the queue moves on.
+- failed: any other error, such as Postgres being down. The message stays unacknowledged and is retried in the process, 1 second after the first failure, doubling up to a minute. Nothing behind it is handled meanwhile. After 25 minutes of failures the backend logs an error, because RabbitMQ's `consumer_timeout` (30 minutes by default) then closes the channel and delivers the message again. Each such redelivery, like one after a restart, counts toward the delivery limit: once a message has been delivered 21 times (about 10 hours of failures), RabbitMQ sends it to `twake-space.dlq` and the queue moves on.
 
 The dedupe claim and the handler run in the same Postgres transaction, so a handler failure releases the claim.
 
