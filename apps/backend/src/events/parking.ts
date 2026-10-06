@@ -97,9 +97,10 @@ export function scheduleParkedRetries(
   handle: (message: IncomingMessage) => Promise<Outcome>,
   deadLetter: DeadLetter,
   log: Logger
-): () => void {
+): () => Promise<void> {
   let timer: NodeJS.Timeout | undefined
   let stopped = false
+  let running: Promise<void> = Promise.resolve()
   const pass = () =>
     db.transaction(async tx => {
       const [lock] = await tx.execute<{ locked: boolean }>(
@@ -108,7 +109,7 @@ export function scheduleParkedRetries(
       if (lock?.locked) await retryParked(db, handle, deadLetter, log)
     })
   const loop = () => {
-    pass()
+    running = pass()
       .catch((error: unknown) => {
         log.error({ err: error }, 'retrying parked events failed')
       })
@@ -117,8 +118,10 @@ export function scheduleParkedRetries(
       })
   }
   loop()
+  // A pass may still dead-letter, so the broker connection must outlive it.
   return () => {
     stopped = true
     clearTimeout(timer)
+    return running
   }
 }
