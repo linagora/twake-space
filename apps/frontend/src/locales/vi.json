@@ -124,7 +124,9 @@
     "loadFailed": "Không thể tải không gian.",
     "chatOff": "Bảng tin và Trò chuyện đang tắt: tổ chức của bạn chưa bật trò chuyện.",
     "mailOff": "Thư đang tắt: tên miền thư của tổ chức bạn chưa được xác thực.",
-    "preparing": "%{app} đang được chuẩn bị cho không gian này."
+    "preparing": "%{app} đang được chuẩn bị cho không gian này.",
+    "stalled": "%{app} chưa sẵn sàng. Hãy thử lại sau và báo cho quản trị viên nếu tình trạng này vẫn tiếp diễn.",
+    "checkAgain": "Kiểm tra lại"
   },
   "tasks": {
     "notSetUp": "Công việc chưa được thiết lập cho TwakeSpace."

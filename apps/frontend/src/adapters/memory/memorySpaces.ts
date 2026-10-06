@@ -36,6 +36,7 @@ export function memorySpaces(
         id: crypto.randomUUID(),
         name,
         role: 'admin',
+        createdAt: new Date().toISOString(),
         chat: true,
         mail: false,
         homeserverUrl: spaces[0]?.homeserverUrl ?? null,

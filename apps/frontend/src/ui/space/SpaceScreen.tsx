@@ -1,5 +1,13 @@
-import { Alert, Chip, Link, Tab, Tabs, Typography } from '@linagora/twake-mui'
-import type { ReactElement } from 'react'
+import {
+  Alert,
+  Button,
+  Chip,
+  Link,
+  Tab,
+  Tabs,
+  Typography
+} from '@linagora/twake-mui'
+import { useEffect, useState, type ReactElement } from 'react'
 import {
   Navigate,
   Link as RouterLink,
@@ -8,7 +16,7 @@ import {
 } from 'react-router'
 
 import { isRefusal } from '@/application/spaces'
-import { spaceTabs } from '@/application/spaceTabs'
+import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
 import { LoadingRows, Page, SpaceHeader } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
@@ -19,12 +27,31 @@ import { TasksPanel } from '@/ui/space/TasksPanel'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
+function useNowAfter(at: number): number {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const timer = setTimeout(
+      () => {
+        setNow(Date.now())
+      },
+      Math.max(0, at - Date.now())
+    )
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [at])
+  return now
+}
+
 export function SpaceScreen(): ReactElement {
   const { t } = useI18n()
   const navigate = useNavigate()
   const { spaceId = '', tab } = useParams()
   const space = useSpace(spaceId)
   useDocumentTitle(space.data?.name ?? null)
+  const now = useNowAfter(
+    space.data ? Date.parse(space.data.createdAt) + PREPARING_MS : 0
+  )
 
   if (space.isPending) {
     return (
@@ -50,7 +77,7 @@ export function SpaceScreen(): ReactElement {
     )
   }
 
-  const tabs = spaceTabs(space.data)
+  const tabs = spaceTabs(space.data, now)
   const current = tabs.find(item => item.tab === tab && item.state !== 'off')
   if (!current) {
     const first = tabs.find(item => item.state !== 'off')
@@ -118,6 +145,24 @@ export function SpaceScreen(): ReactElement {
       >
         {current.state === 'preparing' && (
           <Typography>{t('space.preparing', { app: label })}</Typography>
+        )}
+        {current.state === 'stalled' && (
+          <Alert
+            severity="warning"
+            action={
+              <Button
+                size="small"
+                disabled={space.isFetching}
+                onClick={() => {
+                  void space.refetch()
+                }}
+              >
+                {t('space.checkAgain')}
+              </Button>
+            }
+          >
+            {t('space.stalled', { app: label })}
+          </Alert>
         )}
         {current.state === 'ready' &&
           current.tab === 'feed' &&

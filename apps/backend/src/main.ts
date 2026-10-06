@@ -102,7 +102,7 @@ const authorize = await setUpAuth(server, {
   },
   directory
 })
-registerSpaceRoutes(server, { db, authorize })
+registerSpaceRoutes(server, { db, authorize, apps: config.spaceApps })
 registerSpaceWriteRoutes(server, {
   db,
   authorize,

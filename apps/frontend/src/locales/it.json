@@ -124,7 +124,9 @@
     "loadFailed": "Non è stato possibile caricare lo spazio.",
     "chatOff": "Feed e Chat sono disattivati: la chat non è attiva per la tua organizzazione.",
     "mailOff": "Mail è disattivato: il dominio mail della tua organizzazione non è ancora convalidato.",
-    "preparing": "%{app} è in preparazione per questo spazio."
+    "preparing": "%{app} è in preparazione per questo spazio.",
+    "stalled": "%{app} non è ancora pronto. Riprova più tardi e avvisa l'amministratore se resta così.",
+    "checkAgain": "Controlla di nuovo"
   },
   "tasks": {
     "notSetUp": "Attività non è configurato per TwakeSpace."

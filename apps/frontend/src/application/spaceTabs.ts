@@ -12,7 +12,10 @@ export const TABS = [
 
 export type Tab = (typeof TABS)[number]
 
-export type TabState = 'off' | 'preparing' | 'ready'
+export type TabState = 'off' | 'preparing' | 'stalled' | 'ready'
+
+/** How long an app may take to prepare a new space's resource. */
+export const PREPARING_MS = 2 * 60_000
 
 const RESOURCE: Record<Exclude<Tab, 'members'>, ResourceKind> = {
   feed: 'matrix_space',
@@ -29,14 +32,20 @@ function isOn(space: Space, tab: Tab): boolean {
   return true
 }
 
-export function spaceTabs(space: Space): { tab: Tab; state: TabState }[] {
-  return TABS.map(tab => {
-    if (tab === 'members') return { tab, state: 'ready' }
-    if (!isOn(space, tab)) return { tab, state: 'off' }
+export function spaceTabs(
+  space: Space,
+  now: number
+): { tab: Tab; state: TabState }[] {
+  const waiting =
+    now < Date.parse(space.createdAt) + PREPARING_MS ? 'preparing' : 'stalled'
+  return TABS.flatMap((tab): { tab: Tab; state: TabState }[] => {
+    if (tab === 'members') return [{ tab, state: 'ready' }]
     const resource = space.resources.find(r => r.kind === RESOURCE[tab])
+    if (!resource) return []
+    if (!isOn(space, tab)) return [{ tab, state: 'off' }]
     const ready =
-      Boolean(resource?.id) &&
-      (RESOURCE[tab] !== 'matrix_space' || space.homeserverUrl !== null)
-    return { tab, state: ready ? 'ready' : 'preparing' }
+      resource.id !== null &&
+      (resource.kind !== 'matrix_space' || space.homeserverUrl !== null)
+    return [{ tab, state: ready ? 'ready' : waiting }]
   })
 }

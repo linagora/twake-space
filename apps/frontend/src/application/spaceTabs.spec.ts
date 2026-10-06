@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { spaceTabs } from '@/application/spaceTabs'
+import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import type { Space } from '@/application/spaces'
+
+const CREATED = Date.UTC(2026, 9, 1, 8)
+const SOON = CREATED + 1000
 
 const space: Space = {
   id: 'a1',
   name: 'Roadmap',
   role: 'editor',
+  createdAt: new Date(CREATED).toISOString(),
   chat: true,
   mail: true,
   homeserverUrl: 'https://matrix.acme.test',
@@ -23,7 +27,7 @@ const space: Space = {
 
 describe('spaceTabs', () => {
   it("gives each tab its app's resource state", () => {
-    expect(spaceTabs(space)).toEqual([
+    expect(spaceTabs(space, SOON)).toEqual([
       { tab: 'feed', state: 'ready' },
       { tab: 'chat', state: 'ready' },
       { tab: 'tasks', state: 'ready' },
@@ -35,7 +39,7 @@ describe('spaceTabs', () => {
   })
 
   it('prepares Feed and Chat until the homeserver is known', () => {
-    const states = spaceTabs({ ...space, homeserverUrl: null })
+    const states = spaceTabs({ ...space, homeserverUrl: null }, SOON)
 
     expect(states.slice(0, 2)).toEqual([
       { tab: 'feed', state: 'preparing' },
@@ -44,7 +48,7 @@ describe('spaceTabs', () => {
   })
 
   it('turns Feed and Chat off without chat, and Mail off without mail', () => {
-    const states = spaceTabs({ ...space, chat: false, mail: false })
+    const states = spaceTabs({ ...space, chat: false, mail: false }, SOON)
 
     expect(states.filter(t => t.state === 'off').map(t => t.tab)).toEqual([
       'feed',
@@ -53,10 +57,29 @@ describe('spaceTabs', () => {
     ])
   })
 
-  it('shows a resource missing from the answer as being prepared', () => {
-    expect(spaceTabs({ ...space, resources: [] })).toContainEqual({
-      tab: 'tasks',
-      state: 'preparing'
+  it('has no tab for an app this deployment does not provide', () => {
+    const tabs = spaceTabs(
+      {
+        ...space,
+        resources: space.resources.filter(
+          r => r.kind !== 'drive' && r.kind !== 'matrix_space'
+        )
+      },
+      SOON
+    )
+
+    expect(tabs.map(t => t.tab)).toEqual([
+      'tasks',
+      'mail',
+      'calendar',
+      'members'
+    ])
+  })
+
+  it('says a resource still missing after a while is not ready', () => {
+    expect(spaceTabs(space, CREATED + PREPARING_MS)).toContainEqual({
+      tab: 'drive',
+      state: 'stalled'
     })
   })
 })

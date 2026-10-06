@@ -14,13 +14,16 @@ import { spaceResourceKind, spaceResources, spaces } from './schema.ts'
 
 type SpaceResourceKind = (typeof spaceResourceKind.enumValues)[number]
 
-const APP_KINDS = {
+export const spaceApp = z.enum(['chat', 'tasks', 'drive', 'mail', 'calendar'])
+export type SpaceApp = z.infer<typeof spaceApp>
+
+export const APP_KINDS = {
   drive: 'drive',
   mail: 'mailbox',
   calendar: 'calendar',
   chat: 'matrix_space',
   tasks: 'project'
-} as const satisfies Record<string, SpaceResourceKind>
+} as const satisfies Record<SpaceApp, SpaceResourceKind>
 
 function onProvisioned(kind: SpaceResourceKind): Handler<CloudEvent> {
   const provisioned = z.looseObject({

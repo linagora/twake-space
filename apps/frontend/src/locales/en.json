@@ -124,7 +124,9 @@
     "loadFailed": "The space could not be loaded.",
     "chatOff": "Feed and Chat are off: chat is not turned on for your organization.",
     "mailOff": "Mail is off: your organization's mail domain is not validated yet.",
-    "preparing": "%{app} is being prepared for this space."
+    "preparing": "%{app} is being prepared for this space.",
+    "stalled": "%{app} is not ready yet. Try again later, and tell your administrator if it stays this way.",
+    "checkAgain": "Check again"
   },
   "tasks": {
     "notSetUp": "Tasks is not set up for TwakeSpace."

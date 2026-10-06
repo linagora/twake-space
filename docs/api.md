@@ -79,13 +79,15 @@ The refusals look like this.
 - Path: `id` is a UUID.
 - `404 {"error":"not_found"}` when `id` is not a UUID or the caller does not reach the space.
 - `chat` and `mail` are the organization's chat and mail availability, false when the organization is unknown. `homeserverUrl` is the organization's Matrix homeserver, or null.
-- `resources` lists every kind (`drive`, `mailbox`, `calendar`, `matrix_space`, `project`). A kind whose `id` is null is still being prepared by its app.
+- `createdAt` is when the backend learned of the space.
+- `resources` lists the kind (`drive`, `mailbox`, `calendar`, `matrix_space`, `project`) of each app this deployment provides, set by `SPACE_APPS` in [Deploying](deploy.md#configuration). A kind whose `id` is null is still being prepared by its app.
 
 ```json
 {
   "id": "<uuid>",
   "name": "Design",
   "role": "editor",
+  "createdAt": "2026-10-01T08:00:00.000Z",
   "chat": true,
   "mail": false,
   "homeserverUrl": "https://matrix.example.com",

@@ -5,6 +5,7 @@ import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
 import type { TokenCaller } from '../tokens/authenticator.ts'
+import { spaceApp, type SpaceApp } from './resources.ts'
 import { registerSpaceRoutes } from './routes.ts'
 import { spaceGroups, spaceMembers, spaceResources, spaces } from './schema.ts'
 
@@ -72,7 +73,10 @@ beforeEach(async () => {
   })
 })
 
-function setUp(tokenCaller: TokenCaller = aTokenCaller()) {
+function setUp(
+  tokenCaller: TokenCaller = aTokenCaller(),
+  apps: readonly SpaceApp[] = spaceApp.options
+) {
   const app = createServer({
     logger: pino({ level: 'silent' }),
     isReady: () => Promise.resolve(true)
@@ -82,7 +86,7 @@ function setUp(tokenCaller: TokenCaller = aTokenCaller()) {
     token => (token === 'alice' ? anIdentity({ userId: ALICE }) : null),
     token => (token === 'tws_bot' ? tokenCaller : null)
   )
-  registerSpaceRoutes(app, { db: testDb.db, authorize })
+  registerSpaceRoutes(app, { db: testDb.db, authorize, apps })
   return (url: string, token = 'alice') =>
     app.inject({
       method: 'GET',
@@ -191,6 +195,30 @@ describe('GET /spaces/:id', () => {
     expect(body.resources).toHaveLength(5)
   })
 
+  it('says when the space was created', async () => {
+    const createdAt = new Date('2026-10-01T08:00:00Z')
+    await testDb.db.update(spaces).set({ createdAt })
+
+    const response = await setUp()(`/spaces/${DESIGN}`)
+
+    expect(response.json()).toMatchObject({
+      createdAt: '2026-10-01T08:00:00.000Z'
+    })
+  })
+
+  it('lists only the resources of the apps this deployment provides', async () => {
+    const response = await setUp(aTokenCaller(), ['tasks', 'drive'])(
+      `/spaces/${DESIGN}`
+    )
+
+    expect(response.json()).toMatchObject({
+      resources: [
+        { kind: 'drive', id: 'folder-1' },
+        { kind: 'project', id: null }
+      ]
+    })
+  })
+
   it("says whether the organization's chat and mail are on", async () => {
     const get = setUp()
     const before = await get(`/spaces/${DESIGN}`)
@@ -253,7 +281,8 @@ it('asks for a bearer token', async () => {
   })
   registerSpaceRoutes(app, {
     db: testDb.db,
-    authorize: fakeAuth(app, () => null)
+    authorize: fakeAuth(app, () => null),
+    apps: []
   })
 
   const response = await app.inject({ method: 'GET', url: '/spaces' })

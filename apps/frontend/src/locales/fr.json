@@ -124,7 +124,9 @@
     "loadFailed": "L'espace n'a pas pu être chargé.",
     "chatOff": "Le fil et le chat sont désactivés : le chat n'est pas activé pour votre organisation.",
     "mailOff": "Le mail est désactivé : le domaine mail de votre organisation n'est pas encore validé.",
-    "preparing": "%{app} est en cours de préparation pour cet espace."
+    "preparing": "%{app} est en cours de préparation pour cet espace.",
+    "stalled": "%{app} n'est pas encore prêt. Réessayez plus tard, et prévenez votre administrateur si cela persiste.",
+    "checkAgain": "Vérifier à nouveau"
   },
   "tasks": {
     "notSetUp": "Tâches n'est pas configuré pour TwakeSpace."

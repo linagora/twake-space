@@ -10,6 +10,7 @@ const roadmap: Space = {
   id: 'roadmap',
   name: 'Roadmap',
   role: 'admin',
+  createdAt: '2026-10-01T08:00:00.000Z',
   chat: true,
   mail: true,
   homeserverUrl: 'https://matrix.acme.test',

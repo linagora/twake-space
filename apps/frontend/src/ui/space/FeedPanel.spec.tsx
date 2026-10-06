@@ -13,6 +13,7 @@ const space: Space = {
   id: 'a1',
   name: 'Roadmap',
   role: 'editor',
+  createdAt: '2026-10-01T08:00:00.000Z',
   chat: true,
   mail: false,
   homeserverUrl: 'https://matrix.acme.test',
