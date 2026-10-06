@@ -1,11 +1,11 @@
 import { asc, eq } from 'drizzle-orm'
 import { pino } from 'pino'
-import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { PlatformEvent } from '../../events/envelope.ts'
 import { lastChanges } from '../../events/schema.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { spacePlatformRoutes } from '../spaces/events.ts'
-import { spaceMembers, spaces } from '../spaces/schema.ts'
+import { organizationMembers, spaceMembers, spaces } from '../spaces/schema.ts'
 import { apiTokens, apiTokenSpaces, tokenAudit } from './schema.ts'
 
 const ALICE = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
@@ -26,6 +26,7 @@ beforeEach(async () => {
     apiTokenSpaces,
     apiTokens,
     spaceMembers,
+    organizationMembers,
     spaces,
     lastChanges
   ]) {
@@ -156,6 +157,34 @@ it('finds a disabled member sent without an email by their username, in that org
 
   expect(afterNamesake).toEqual(['alice', 'alice elsewhere'])
   expect(await active()).toEqual(['alice elsewhere'])
+})
+
+describe('someone in no space, known as an organization member', () => {
+  beforeEach(async () => {
+    await testDb.db.insert(organizationMembers).values({
+      organizationId: 'org-1',
+      userId: BOB,
+      email: 'bob@example.com',
+      role: 'admin'
+    })
+    await token('bob', { accountId: BOB })
+  })
+
+  it('revokes their tokens when disabled by email', async () => {
+    await handle('b2b.member.disabled', {
+      organizationId: 'org-1',
+      username: 'bob',
+      email: 'bob@example.com'
+    })
+
+    expect(await active()).toEqual([])
+  })
+
+  it('revokes their tokens when deleted by email', async () => {
+    await handle('domain.user.deleted', { internalEmail: 'bob@example.com' })
+
+    expect(await active()).toEqual([])
+  })
 })
 
 it('spares tokens created after a replayed disable', async () => {

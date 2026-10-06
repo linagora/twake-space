@@ -99,6 +99,7 @@ const groupUnlinked = spaceEvent.extend({
 interface Person {
   uuid?: string | undefined
   email?: string | undefined
+  organizationId?: string
 }
 
 // ldap-rest lifecycle events carry no entryUUID, so a person without one is
@@ -130,19 +131,38 @@ async function withUserIds<T extends Person>(
   people: T[]
 ): Promise<(T & { uuid: string })[]> {
   const emails = withoutUuid(log, people)
-  const known = new Map<string, string>()
-  if (emails.length > 0) {
-    const rows = await tx
-      .selectDistinct({
-        email: spaceMembers.email,
-        userId: spaceMembers.userId
-      })
-      .from(spaceMembers)
-      .where(inArray(spaceMembers.email, emails))
-    for (const row of rows) known.set(row.email, row.userId)
-  }
+  const inSpaces =
+    emails.length === 0
+      ? []
+      : await tx
+          .selectDistinct({
+            email: spaceMembers.email,
+            userId: spaceMembers.userId
+          })
+          .from(spaceMembers)
+          .where(inArray(spaceMembers.email, emails))
+  // Organization admins need not be in any space.
+  const inOrganizations =
+    emails.length === 0
+      ? []
+      : await tx
+          .select({
+            organizationId: organizationMembers.organizationId,
+            email: organizationMembers.email,
+            userId: organizationMembers.userId
+          })
+          .from(organizationMembers)
+          .where(inArray(organizationMembers.email, emails))
+  const byEmail = (p: T) =>
+    inSpaces.find(row => row.email === p.email)?.userId ??
+    inOrganizations.find(
+      row =>
+        row.email === p.email &&
+        (p.organizationId === undefined ||
+          row.organizationId === p.organizationId)
+    )?.userId
   return people.flatMap(p => {
-    const uuid = p.uuid ?? (p.email ? known.get(p.email) : undefined)
+    const uuid = p.uuid ?? byEmail(p)
     return uuid ? [{ ...p, uuid }] : []
   })
 }

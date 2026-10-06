@@ -500,6 +500,24 @@ describe('organization roles', () => {
     expect(await readRoles()).toMatchObject([{ userId: JDOE_ID }])
   })
 
+  it('demotes an admin in no space, sent by email only', async () => {
+    await roleChanged({ uuid: JDOE_ID })
+
+    await roleChanged({ role: 'member', timestamp: '2026-10-05T10:00:00Z' })
+
+    expect(await readRoles()).toMatchObject([{ role: 'member' }])
+  })
+
+  it('finds a user by email in their own organization only', async () => {
+    await roleChanged({ uuid: JDOE_ID, organizationId: 'other-org' })
+
+    await roleChanged({ role: 'admin' })
+
+    expect(await readRoles()).toEqual([
+      { organizationId: 'other-org', userId: JDOE_ID, role: 'admin' }
+    ])
+  })
+
   it('removes the role of a deleted user', async () => {
     await roleChanged({ uuid: JDOE_ID })
 

@@ -95,7 +95,7 @@ Every platform handler is wrapped: when the body has an `organizationId` the cop
 - `domain.user.deleted`: deletes the person's notifications, turns them into `deleted_user` on stored cards, revokes their tokens, and removes them from every space and organization.
 - `domain.organization.deleted`: revokes the organization's tokens.
 
-A person sent without a `uuid` (ldap-rest lifecycle events carry none) is matched in the copy by email. `b2b.member.disabled` also falls back to the username.
+A person sent without a `uuid` (ldap-rest lifecycle events carry none) is matched in the copy by email, among space members and then among the organization roles (in the event's organization when it names one). `b2b.member.disabled` also falls back to the username, among space members only: organization roles hold no username.
 
 Upserts and removals of members, groups and names send a `spaces` live event to the members concerned.
 
