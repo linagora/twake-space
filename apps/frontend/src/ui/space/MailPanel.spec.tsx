@@ -206,6 +206,22 @@ describe('MailPanel', () => {
     )
   })
 
+  it('takes the page out of reach while Mail blocks it', async () => {
+    const root = document.createElement('div')
+    root.id = 'root'
+    document.body.appendChild(root)
+    renderAt('/spaces/a1/mail')
+    await screen.findByTitle('Mail')
+    const intentId = startOverlay()
+
+    postFromOverlay(region(intentId, 'full'))
+    expect(root.inert).toBe(true)
+
+    postFromOverlay(region(intentId, []))
+    expect(root.inert).toBe(false)
+    root.remove()
+  })
+
   it('shows nothing of the overlay until Mail draws there', async () => {
     renderAt('/spaces/a1/mail')
     await screen.findByTitle('Mail')
