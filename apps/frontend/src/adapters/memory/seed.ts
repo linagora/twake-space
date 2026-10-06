@@ -1,3 +1,4 @@
+import type { MemoryOrganization } from '@/adapters/memory/memoryDirectory'
 import type { FeedEntry } from '@/application/feed'
 import type { User } from '@/application/session'
 import type { Space } from '@/application/spaces'
@@ -7,6 +8,23 @@ import type { Space } from '@/application/spaces'
 const DOMAIN = 'acme.twake.local'
 const HOMESERVER = `https://matrix.${DOMAIN}`
 const matrixId = (name: string) => `@${name}:${DOMAIN}`
+
+const person = (username: string, displayName: string) => ({
+  id: `uuid-${username}`,
+  username,
+  email: `${username}@${DOMAIN}`,
+  displayName
+})
+
+export const seedOrganization: MemoryOrganization = {
+  people: [
+    person('alice', 'Alice Martin'),
+    person('bob', 'Bob Durand'),
+    person('carol', 'Carol Petit'),
+    person('dave', 'Dave Moreau')
+  ],
+  groups: [{ id: 'uuid-designers', name: 'Designers' }]
+}
 
 export const seedUser: User = {
   name: 'Alice Martin',

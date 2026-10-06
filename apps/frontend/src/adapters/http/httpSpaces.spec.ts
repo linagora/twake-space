@@ -70,13 +70,14 @@ describe('httpSpaces', () => {
     expect(sent).toEqual({ name: 'Launch' })
   })
 
-  it('rejects with the HTTP status of a refusal', async () => {
+  it('rejects with the status and the reason of a refusal', async () => {
     fetchMock.mockResolvedValue(
       Response.json({ error: 'needs_an_account' }, { status: 403 })
     )
 
     await expect(spaces.create('Launch')).rejects.toMatchObject({
-      status: 403
+      status: 403,
+      code: 'needs_an_account'
     })
   })
 })

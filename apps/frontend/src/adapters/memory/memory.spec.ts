@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { memoryDirectory } from '@/adapters/memory/memoryDirectory'
 import { memoryFeed } from '@/adapters/memory/memoryFeed'
 import { memorySpaces } from '@/adapters/memory/memorySpaces'
 import type { FeedEntry, FeedPage } from '@/application/feed'
@@ -91,5 +92,47 @@ describe('memoryFeed', () => {
     await feed.open('!roadmap:acme.test', 'files', page => pages.push(page))
 
     expect(pages.at(-1)).toEqual({ entries: [file], hasOlder: false })
+  })
+})
+
+describe('memoryDirectory', () => {
+  const people = [
+    {
+      id: 'u-alice',
+      username: 'alice',
+      email: 'alice@acme.test',
+      displayName: 'Alice Martin'
+    },
+    {
+      id: 'u-bob',
+      username: 'bob',
+      email: 'bob@acme.test',
+      displayName: 'Bob Durand'
+    }
+  ]
+  const groups = [{ id: 'g-designers', name: 'Designers' }]
+  const directory = memoryDirectory({ people, groups }, { pageSize: 1 })
+
+  it('searches people by name, username or email, by page', async () => {
+    expect(await directory.people('', 1)).toEqual({
+      people: [
+        {
+          username: 'alice',
+          email: 'alice@acme.test',
+          displayName: 'Alice Martin'
+        }
+      ],
+      hasNextPage: true
+    })
+    expect((await directory.people('DURAND', 1)).people).toEqual([
+      { username: 'bob', email: 'bob@acme.test', displayName: 'Bob Durand' }
+    ])
+  })
+
+  it('searches groups by name', async () => {
+    expect(await directory.groups('design', 1)).toEqual({
+      groups,
+      hasNextPage: false
+    })
   })
 })
