@@ -49,6 +49,18 @@
   },
   "feed": {
     "signingIn": "Connexion au chat",
-    "signInFailed": "Impossible de se connecter au chat."
+    "signInFailed": "Impossible de se connecter au chat.",
+    "loading": "Chargement du fil",
+    "loadFailed": "Impossible de charger le fil.",
+    "empty": "Rien pour l'instant.",
+    "loadOlder": "Charger les plus anciens",
+    "filter": "Afficher",
+    "filters": {
+      "all": "Tout",
+      "messages": "Messages",
+      "files": "Fichiers",
+      "activities": "Activités",
+      "events": "Événements"
+    }
   }
 }

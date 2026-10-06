@@ -49,6 +49,18 @@
   },
   "feed": {
     "signingIn": "Signing in to chat",
-    "signInFailed": "Could not sign in to chat."
+    "signInFailed": "Could not sign in to chat.",
+    "loading": "Loading the feed",
+    "loadFailed": "Could not load the feed.",
+    "empty": "Nothing here yet.",
+    "loadOlder": "Load older",
+    "filter": "Show",
+    "filters": {
+      "all": "All",
+      "messages": "Messages",
+      "files": "Files",
+      "activities": "Activities",
+      "events": "Events"
+    }
   }
 }

@@ -49,6 +49,18 @@
   },
   "feed": {
     "signingIn": "Accesso alla chat",
-    "signInFailed": "Impossibile accedere alla chat."
+    "signInFailed": "Impossibile accedere alla chat.",
+    "loading": "Caricamento del feed",
+    "loadFailed": "Impossibile caricare il feed.",
+    "empty": "Ancora niente qui.",
+    "loadOlder": "Carica precedenti",
+    "filter": "Mostra",
+    "filters": {
+      "all": "Tutto",
+      "messages": "Messaggi",
+      "files": "File",
+      "activities": "Attività",
+      "events": "Eventi"
+    }
   }
 }

@@ -61,6 +61,9 @@ export function SpaceScreen(): ReactElement {
     return <Navigate to={`/spaces/${spaceId}/${first?.tab ?? ''}`} replace />
   }
   const label = t(`tabs.${current.tab}`)
+  const matrixSpace = space.data.resources.find(
+    r => r.kind === 'matrix_space'
+  )?.id
 
   return (
     <main className="u-p-2 u-flex u-flex-column u-h-100">
@@ -99,8 +102,12 @@ export function SpaceScreen(): ReactElement {
         )}
         {current.state === 'ready' &&
           current.tab === 'feed' &&
-          space.data.serverName && (
-            <FeedPanel serverName={space.data.serverName} />
+          space.data.serverName &&
+          matrixSpace && (
+            <FeedPanel
+              serverName={space.data.serverName}
+              roomId={matrixSpace}
+            />
           )}
         {current.state === 'ready' && current.tab === 'tasks' && (
           <TasksPanel spaceId={spaceId} />

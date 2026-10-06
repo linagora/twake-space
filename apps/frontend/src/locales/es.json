@@ -49,6 +49,18 @@
   },
   "feed": {
     "signingIn": "Iniciando sesión en el chat",
-    "signInFailed": "No se pudo iniciar sesión en el chat."
+    "signInFailed": "No se pudo iniciar sesión en el chat.",
+    "loading": "Cargando novedades",
+    "loadFailed": "No se pudieron cargar las novedades.",
+    "empty": "Todavía no hay nada.",
+    "loadOlder": "Cargar anteriores",
+    "filter": "Mostrar",
+    "filters": {
+      "all": "Todo",
+      "messages": "Mensajes",
+      "files": "Archivos",
+      "activities": "Actividades",
+      "events": "Eventos"
+    }
   }
 }

@@ -49,6 +49,18 @@
   },
   "feed": {
     "signingIn": "Đang đăng nhập vào trò chuyện",
-    "signInFailed": "Không thể đăng nhập vào trò chuyện."
+    "signInFailed": "Không thể đăng nhập vào trò chuyện.",
+    "loading": "Đang tải bảng tin",
+    "loadFailed": "Không thể tải bảng tin.",
+    "empty": "Chưa có gì.",
+    "loadOlder": "Tải cũ hơn",
+    "filter": "Hiển thị",
+    "filters": {
+      "all": "Tất cả",
+      "messages": "Tin nhắn",
+      "files": "Tệp",
+      "activities": "Hoạt động",
+      "events": "Sự kiện"
+    }
   }
 }

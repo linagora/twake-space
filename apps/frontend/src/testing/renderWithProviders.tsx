@@ -2,12 +2,14 @@ import { render, type RenderResult } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { MemoryRouter } from 'react-router'
 
+import type { FeedService } from '@/application/feed'
 import type { LiveService } from '@/application/live'
 import type { MatrixService } from '@/application/matrix'
 import type { SessionService } from '@/application/session'
 import type { SpacesService } from '@/application/spaces'
 import { AppProviders } from '@/app/AppProviders'
 import { makeQueryClient } from '@/app/queryClient'
+import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeLive } from '@/testing/fakeLive'
 import { fakeMatrix } from '@/testing/fakeMatrix'
 import { fakeSession } from '@/testing/fakeSession'
@@ -23,6 +25,7 @@ export function renderWithProviders(
     spaces = fakeSpaces(),
     live = fakeLive(),
     matrix = fakeMatrix(),
+    feed = fakeFeed(),
     path = '/',
     tasksUrl = 'https://tasks.test/'
   }: {
@@ -31,6 +34,7 @@ export function renderWithProviders(
     spaces?: SpacesService
     live?: LiveService
     matrix?: MatrixService
+    feed?: FeedService
     path?: string
     tasksUrl?: string | null
   } = {}
@@ -39,7 +43,7 @@ export function renderWithProviders(
     <AppProviders
       lang={lang}
       queryClient={makeQueryClient()}
-      services={{ spaces, live, matrix, tasksUrl }}
+      services={{ spaces, live, matrix, feed, tasksUrl }}
     >
       <SessionGate session={session}>
         <MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>
