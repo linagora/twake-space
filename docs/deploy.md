@@ -3,7 +3,7 @@
 Twake Space ships as two container images:
 
 - The frontend image serves the single page app with nginx.
-- The backend image runs the Node.js API, the Kafka consumer and the background jobs.
+- The backend image runs the Node.js API, the RabbitMQ consumer and the background jobs.
 
 ## Runtime dependencies
 
@@ -13,7 +13,7 @@ flowchart LR
   fe[Frontend image<br/>nginx :8080]
   be[Backend image<br/>API :8080, metrics :9464]
   pg[(PostgreSQL)]
-  kafka[(Kafka)]
+  rabbitmq[(RabbitMQ)]
   ldap[ldap-rest]
   oidc[OIDC provider]
   hs[Matrix homeserver]
@@ -29,7 +29,7 @@ flowchart LR
   browser -.-> sentry
   browser -.-> posthog
   be --> pg
-  be -->|consume, dead letters| kafka
+  be -->|consume, dead letters| rabbitmq
   be --> ldap
   be -->|discovery, introspection, userinfo, JWKS| oidc
   oidc -->|back-channel logout| be
@@ -50,7 +50,7 @@ Both images go to `ghcr.io/<repository owner>/twake-space-frontend` and `ghcr.io
 The image build in CI runs `apps/<app>/docker/smoke-test.sh`. Both apps start their image as in production (read-only root filesystem, all capabilities dropped):
 
 - Frontend (uid 101, `/tmp` as tmpfs): checks the served files, cache headers, CSP and logs.
-- Backend (uid 1000), next to Postgres, Kafka and a stub OIDC issuer: checks readiness, liveness, migrations, an unauthenticated API call, metrics, and a clean stop on `SIGTERM`.
+- Backend (uid 1000), next to Postgres, RabbitMQ and a stub OIDC issuer: checks readiness, liveness, the queue's arguments, migrations, an unauthenticated API call, metrics, and a clean stop on `SIGTERM`.
 
 ## Frontend
 
@@ -105,8 +105,7 @@ The backend reads its configuration from environment variables only, and refuses
 Required:
 
 - `DATABASE_URL`: a `postgres://` or `postgresql://` URL.
-- `KAFKA_BOOTSTRAP`: the Kafka bootstrap servers.
-- `KAFKA_SECURITY`: `plaintext`, `ssl` or `sasl_ssl` (see Kafka below).
+- `AMQP_URL`: an `amqp://` or `amqps://` URL to RabbitMQ, with the user and password. Use `amqps://` for TLS; `NODE_EXTRA_CA_CERTS` adds a private CA.
 - `LDAP_REST_URL`: an `http` or `https` URL.
 - `LDAP_REST_SERVICE_ID`: the service id for HMAC authentication to ldap-rest.
 - `LDAP_REST_SECRET`: the HMAC secret, at least 32 characters.
@@ -115,7 +114,6 @@ Required:
 
 Optional, with defaults:
 
-- `KAFKA_GROUP_ID`: consumer group, default `twake-space`.
 - `OIDC_CLIENT_ID`: default `twakespace-backend`.
 - `OIDC_AUDIENCE`: the audience access tokens must carry, default `twakespace`.
 - `HTTP_HOST`: default `0.0.0.0`, used by both the API and the metrics server.
@@ -124,12 +122,6 @@ Optional, with defaults:
 - `LOG_LEVEL`: `fatal`, `error`, `warn`, `info`, `debug` or `trace`, default `info`.
 - `MATRIX_LOCALPART`: `uid` or `email`, default `uid`. It tells the backend how Matrix user localparts map to directory users.
 - `SENTRY_DSN`, `SENTRY_ENVIRONMENT`: error reporting. Unset `SENTRY_DSN` disables it.
-
-Kafka security, by `KAFKA_SECURITY`:
-
-- `plaintext`: nothing else.
-- `ssl`: `KAFKA_SSL_CA`, `KAFKA_SSL_CERT` and `KAFKA_SSL_KEY`, all required. They are file paths, so mount the files into the container.
-- `sasl_ssl`: `KAFKA_SASL_USERNAME` and `KAFKA_SASL_PASSWORD` required, `KAFKA_SSL_CA` optional (a file path). The mechanism is SCRAM-SHA-512.
 
 Matrix homeserver, in one of two modes. Without either, the backend runs but posts nothing to Matrix.
 
@@ -148,10 +140,10 @@ The backend starts in this order. A failure at any step stops the process.
 4. Runs OIDC discovery on `OIDC_ISSUER` (5 second timeout).
 5. Opens the Postgres `LISTEN` channels for live updates and session revocations.
 6. Starts the API and metrics servers.
-7. Connects the Kafka dead letter producer, checks that every dead letter topic exists, and starts the consumer.
+7. Connects to RabbitMQ, checks the exchanges other services own, declares its queue, bindings and dead letter queue, and starts consuming.
 8. Starts the background jobs and reports ready.
 
-On `SIGTERM` or `SIGINT` it reports not ready, stops the jobs and disconnects from Kafka. After 5 seconds, so the load balancer has moved traffic away, it closes both servers and the Postgres pool, then flushes Sentry. It exits with code 1 when this fails or takes over 25 seconds, which fits the default 30 second grace period. A signal during startup exits at once.
+On `SIGTERM` or `SIGINT` it reports not ready, stops the jobs and closes the RabbitMQ connection, after waiting up to 5 seconds for the message in its handler. A message still unacknowledged then is delivered again. After 5 seconds, so the load balancer has moved traffic away, it closes both servers and the Postgres pool, then flushes Sentry. It exits with code 1 when this fails or takes over 25 seconds, which fits the default 30 second grace period. A signal during startup exits at once.
 
 ### Database migrations
 
@@ -161,7 +153,7 @@ Migrations run at every startup, from the `apps/backend/drizzle` folder shipped 
 
 On the API port:
 
-- `GET /health/live` answers `503 {"status":"unavailable"}` when the Kafka consumer is disconnected or one message has been in its handler for over 5 minutes, `200 {"status":"ok"}` otherwise. Restarting the pod is the fix for both.
+- `GET /health/live` answers `503 {"status":"unavailable"}` when the RabbitMQ connection is down or one message has been in its handler for over 5 minutes, `200 {"status":"ok"}` otherwise. Restarting the pod is the fix for both.
 - `GET /health/ready` answers `200` when startup has finished and `select 1` succeeds on Postgres, `503 {"status":"unavailable"}` otherwise. It turns `503` as soon as shutdown starts.
 
 Health requests are not logged. The metrics port answers `/health/live` and `/health/ready` too, but its readiness is always `200`: probe the API port.
@@ -176,7 +168,7 @@ Health requests are not logged. The metrics port answers `/health/live` and `/he
 
 ### Logs and Sentry
 
-- Logs are JSON lines from pino on stdout, at `LOG_LEVEL`. Kafka client logs carry `component: "kafka"`. An `access_token` in a logged URL is replaced by `[redacted]`.
+- Logs are JSON lines from pino on stdout, at `LOG_LEVEL`. RabbitMQ client logs carry `component: "amqp"`, at `warn` and above. An `access_token` in a logged URL is replaced by `[redacted]`.
 - Sentry is initialised before the app loads, so it instruments Fastify and pino. Log lines at `error` and `fatal` go to Sentry as errors. An unhandled promise rejection stops the process, as it does without Sentry.
 - ldap-rest calls time out after 5 seconds, Synapse and control plane calls after 10.
 
@@ -189,19 +181,13 @@ Health requests are not logged. The metrics port answers `/health/live` and `/he
 - Uses advisory locks so only one replica runs the hourly purge and the single installation homeserver setup at a time.
 - The hourly purge deletes feed events, messages and reactions after 365 days, notifications after 90 days, and Matrix app service transactions after 7 days.
 
-### Kafka
+### RabbitMQ
 
-The consumer reads from the beginning with manual offset commits, on these topics:
-
-- `twake.chat.events.v1`
-- `twake.mail.events.v1`
-- `twake.drive.events.v1`
-- `twake.calendar.events.v1`
-- `twake.meet.events.v1`
-- `twake.tasks.events.v1`
-- `twake.platform.events.v1`
-
-An event the backend cannot process goes to `<topic>.dlq.twake-space` (for example `twake.chat.events.v1.dlq.twake-space`) with a `twake-space-reason` header. The producer is idempotent with `acks` set to all. The seven dead letter topics must exist before the backend starts, or it stops; compose creates them.
+- The `space`, `b2b` and `admin-panel` exchanges must exist before the backend starts, or it stops. Their owners declare them; compose declares them locally.
+- The backend declares the `activity` exchange, its `twake-space` quorum queue with the bindings, the `twake-space.dlx` exchange and the `twake-space.dlq` queue. Its user needs configure, write and read permissions on those.
+- The queue has a single active consumer, so only one replica consumes at a time. The others take over when it goes away.
+- An event the backend cannot process ends in `twake-space.dlq`. See [Events](events.md#consuming-rabbitmq).
+- A message that fails for over 25 minutes is logged as an error. RabbitMQ's `consumer_timeout` (30 minutes by default) then closes the channel and delivers it again.
 
 ### ldap-rest
 
@@ -224,12 +210,12 @@ The directory: organizations, users, groups and technical accounts. Calls are au
 
 ## Local stack
 
-`docker compose up` starts Kafka (creating the seven topics, with auto creation off) and Postgres. `docker compose --profile app up` also builds and runs both images. The frontend runs read-only with a tmpfs `/tmp`, as in production. Compose has no ldap-rest or SSO: see [Backend development](backend-dev.md#run-it).
+`docker compose up` starts RabbitMQ (declaring the `space`, `b2b` and `admin-panel` exchanges) and Postgres. The RabbitMQ management UI is on `http://localhost:15672` (`guest` / `guest`). `docker compose --profile app up` also builds and runs both images. The frontend runs read-only with a tmpfs `/tmp`, as in production. Compose has no ldap-rest or SSO: see [Backend development](backend-dev.md#run-it).
 
 ## Open questions
 
 - @rezk2ll The entrypoint writes `POSTHOG_KEY` and `POSTHOG_HOST` to `/.env.js` and adds `POSTHOG_HOST` to `connect-src`, but the frontend source does not read either. Is PostHog planned, or should the script drop them?
-- @rezk2ll Who creates the `<topic>.dlq.twake-space` topics in a deployment, and with which retention?
+- @rezk2ll `twake-space.dlq` has no length limit or TTL. Who watches it, and should it get a limit?
 - @rezk2ll Several replicas start together and each runs the migrations. Does the Drizzle migrator lock against concurrent runs, or should one replica (or a job) migrate first?
 - @rezk2ll The backend relies on Postgres `LISTEN`. Is a transaction pooling proxy (PgBouncer) in front of Postgres ruled out for deployments?
 - @rezk2ll CI builds the images without a `platforms` setting. Is an arm64 image needed?
