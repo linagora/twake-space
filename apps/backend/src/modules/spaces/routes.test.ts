@@ -198,7 +198,7 @@ describe('GET /spaces/:id', () => {
     expect(after.json()).toMatchObject({ chat: true, mail: false })
   })
 
-  it("gives the server name of the organization's homeserver", async () => {
+  it("gives the URL of the organization's homeserver", async () => {
     const get = setUp()
     const before = await get(`/spaces/${DESIGN}`)
     const [homeserver] = await testDb.db
@@ -220,8 +220,10 @@ describe('GET /spaces/:id', () => {
 
     const after = await get(`/spaces/${DESIGN}`)
 
-    expect(before.json()).toMatchObject({ serverName: null })
-    expect(after.json()).toMatchObject({ serverName: 'org-1.example.com' })
+    expect(before.json()).toMatchObject({ homeserverUrl: null })
+    expect(after.json()).toMatchObject({
+      homeserverUrl: 'https://matrix.org-1.example.com'
+    })
   })
 
   it.each([

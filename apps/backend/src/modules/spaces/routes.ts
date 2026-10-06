@@ -107,7 +107,7 @@ export function registerSpaceRoutes(
           .select({
             chat: organizations.chatAvailable,
             mail: organizations.mailAvailable,
-            serverName: homeservers.serverName
+            homeserverUrl: homeservers.url
           })
           .from(organizations)
           .leftJoin(homeservers, eq(homeservers.id, organizations.homeserverId))
@@ -121,7 +121,7 @@ export function registerSpaceRoutes(
         ...space,
         chat: organization?.chat ?? false,
         mail: organization?.mail ?? false,
-        serverName: organization?.serverName ?? null,
+        homeserverUrl: organization?.homeserverUrl ?? null,
         members,
         groups,
         // A kind without an id is still being prepared by its app.
