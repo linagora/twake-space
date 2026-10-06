@@ -53,7 +53,7 @@ export function MembersPanel({ space }: { space: Space }): ReactElement {
         empty={t('members.noMembers')}
         rows={space.members.map(m => ({
           id: m.id,
-          primary: m.username,
+          primary: m.displayName ?? m.username,
           secondary: m.email,
           role: m.role
         }))}

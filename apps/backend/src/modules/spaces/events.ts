@@ -59,12 +59,27 @@ const deletedEmailKey = (email: string) => `email:${email}:deleted`
 
 const role = z.enum(spaceRole.enumValues)
 
-const member = z.looseObject({
-  uuid: z.uuid().optional(),
-  username: z.string().min(1),
-  email: z.email(),
-  role
-})
+// ldap-rest's space events carry the first and last name, not the display name.
+const member = z
+  .looseObject({
+    uuid: z.uuid().optional(),
+    username: z.string().min(1),
+    email: z.email(),
+    displayName: z.string().optional(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    role
+  })
+  .transform(({ firstName, lastName, ...m }) => ({
+    ...m,
+    displayName:
+      m.displayName?.trim() ||
+      [firstName, lastName]
+        .map(part => part?.trim())
+        .filter(Boolean)
+        .join(' ') ||
+      null
+  }))
 
 const group = z.looseObject({
   id: z.uuid(),
@@ -270,9 +285,9 @@ export async function upsertMembers(
   const byUser = new Map(
     known
       .filter(m => changed.has(memberKey(spaceId, m.uuid)))
-      .map(({ uuid, username, email, role }) => [
+      .map(({ uuid, username, email, displayName, role }) => [
         uuid,
-        { spaceId, userId: uuid, username, email, role }
+        { spaceId, userId: uuid, username, email, displayName, role }
       ])
   )
   if (byUser.size === 0) return
@@ -284,6 +299,7 @@ export async function upsertMembers(
       set: {
         username: sql`excluded.username`,
         email: sql`excluded.email`,
+        displayName: sql`excluded.display_name`,
         role: sql`excluded.role`
       }
     })

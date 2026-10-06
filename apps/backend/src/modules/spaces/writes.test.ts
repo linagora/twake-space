@@ -25,9 +25,24 @@ const DESIGNERS = 'c2a8e1f0-7b3d-4e9a-8f61-2d5b9c0e4a17'
 const log = pino({ level: 'silent' })
 
 const people: Person[] = [
-  { uuid: ALICE, username: 'alice', email: 'alice@example.com' },
-  { uuid: BOB, username: 'bob', email: 'bob@example.com' },
-  { uuid: CAROL, username: 'carol', email: 'carol@example.com' }
+  {
+    uuid: ALICE,
+    username: 'alice',
+    email: 'alice@example.com',
+    displayName: 'Alice LIDDELL'
+  },
+  {
+    uuid: BOB,
+    username: 'bob',
+    email: 'bob@example.com',
+    displayName: 'Bob MARTIN'
+  },
+  {
+    uuid: CAROL,
+    username: 'carol',
+    email: 'carol@example.com',
+    displayName: 'Carol KING'
+  }
 ]
 
 let testDb: TestDb
@@ -57,6 +72,7 @@ beforeEach(async () => {
       userId: BOB,
       username: 'bob',
       email: 'bob@example.com',
+      displayName: 'Bob MARTIN',
       role: 'viewer'
     }
   ])
@@ -133,6 +149,16 @@ const members = (spaceId = DESIGN) =>
     .select({ userId: spaceMembers.userId, role: spaceMembers.role })
     .from(spaceMembers)
     .where(eq(spaceMembers.spaceId, spaceId))
+    .orderBy(asc(spaceMembers.username))
+
+const displayNames = () =>
+  testDb.db
+    .select({
+      userId: spaceMembers.userId,
+      displayName: spaceMembers.displayName
+    })
+    .from(spaceMembers)
+    .where(eq(spaceMembers.spaceId, DESIGN))
     .orderBy(asc(spaceMembers.username))
 
 const nameOf = async (spaceId: string) =>
@@ -247,6 +273,22 @@ describe('space writes', () => {
     ])
     expect(afterChange).toContainEqual({ userId: BOB, role: 'editor' })
     expect(await members()).toEqual([{ userId: ALICE, role: 'admin' }])
+  })
+
+  it('keeps the display names of the members it adds and changes', async () => {
+    const write = setUp(ldapRest().directory)
+
+    await write('POST', `/spaces/${DESIGN}/members`, {
+      usernames: ['carol'],
+      role: 'editor'
+    })
+    await write('PATCH', `/spaces/${DESIGN}/members/${BOB}`, { role: 'admin' })
+
+    expect(await displayNames()).toEqual([
+      { userId: ALICE, displayName: null },
+      { userId: BOB, displayName: 'Bob MARTIN' },
+      { userId: CAROL, displayName: 'Carol KING' }
+    ])
   })
 
   it("passes on ldap-rest's refusal and keeps the copy", async () => {

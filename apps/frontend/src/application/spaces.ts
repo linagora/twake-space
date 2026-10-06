@@ -14,6 +14,7 @@ export interface Member {
   id: string
   username: string
   email: string
+  displayName: string | null
   role: SpaceRole
 }
 
