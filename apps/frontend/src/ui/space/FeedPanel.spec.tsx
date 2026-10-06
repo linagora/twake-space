@@ -192,13 +192,46 @@ describe('FeedPanel', () => {
     ).toBeInTheDocument()
   })
 
-  it('says when the feed is empty', async () => {
-    renderFeed(fakeFeed({ entries: [], hasOlder: false }))
+  it('offers to set up an empty space with what is ready in it', async () => {
+    renderWithProviders(
+      <FeedPanel
+        homeserverUrl="https://matrix.acme.test"
+        roomId={ROOM}
+        space={{ ...space, role: 'admin', apps: ['feed', 'chat', 'tasks'] }}
+      />,
+      { feed: fakeFeed({ entries: [], hasOlder: false }) }
+    )
 
-    expect(await screen.findByText('Nothing here yet.')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Set up Roadmap' })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Invite members' })
+    ).toHaveAttribute('href', '/spaces/a1/members')
+    expect(screen.getByRole('link', { name: 'Create a task' })).toHaveAttribute(
+      'href',
+      '/spaces/a1/tasks'
+    )
     expect(
       screen.queryByRole('button', { name: 'Load older' })
     ).not.toBeInTheDocument()
+  })
+
+  it('leaves inviting to the admins and tasks to spaces that have them', async () => {
+    renderFeed(fakeFeed({ entries: [], hasOlder: false }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Set up Roadmap' })
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('says when a filter shows nothing', async () => {
+    renderFeed(fakeFeed({ entries: [], hasOlder: false }))
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Files' }))
+
+    expect(await screen.findByText('Nothing here yet.')).toBeInTheDocument()
   })
 
   it('says so when the feed cannot be loaded', async () => {

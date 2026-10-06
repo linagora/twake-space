@@ -133,6 +133,12 @@
     "loading": "Loading the feed",
     "loadFailed": "Could not load the feed.",
     "empty": "Nothing here yet.",
+    "setup": {
+      "title": "Set up %{name}",
+      "text": "This space is ready to go. Invite your team, and everything you share together will show up right here in the feed.",
+      "invite": "Invite members",
+      "task": "Create a task"
+    },
     "loadOlder": "Load older",
     "loadOlderFailed": "Could not load older entries.",
     "filter": "Show",

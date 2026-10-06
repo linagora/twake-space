@@ -101,15 +101,13 @@ export function SpaceScreen(): ReactElement {
         }
         title={space.data.name}
         meta={
-          <>
-            <Chip
-              label={t(`roles.${space.data.role}`)}
-              size="small"
-              variant="outlined"
-            />
-            <SpaceActions space={space.data} />
-          </>
+          <Chip
+            label={t(`roles.${space.data.role}`)}
+            size="small"
+            variant="outlined"
+          />
         }
+        actions={<SpaceActions space={space.data} />}
         tabs={
           <Tabs
             narrowed

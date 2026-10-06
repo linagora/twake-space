@@ -3,10 +3,13 @@ import {
   Divider,
   Empty,
   ListSkeleton,
+  Stack,
   Typography,
   type EmptyProps
 } from '@linagora/twake-mui'
 import type { ReactElement, ReactNode } from 'react'
+
+import cover from '@/assets/space-cover.png'
 
 export function Page({ children }: { children: ReactNode }): ReactElement {
   return (
@@ -30,32 +33,58 @@ export function SpaceHeader({
   avatar,
   title,
   tabs,
-  meta
+  meta,
+  actions
 }: {
   avatar: ReactNode
   title: ReactNode
   tabs: ReactNode
   meta?: ReactNode
+  actions?: ReactNode
 }): ReactElement {
   return (
-    <Box sx={{ mx: { xs: -2, lg: -3 }, mt: -2, mb: 2 }}>
+    <Box sx={{ mb: 2 }}>
+      <Box
+        sx={{
+          position: 'relative',
+          overflow: 'hidden',
+          height: { xs: 120, md: 211 },
+          borderRadius: '8px',
+          bgcolor: 'primary.dark',
+          containerType: 'size'
+        }}
+      >
+        {/* The artwork is portrait; turned, it spans the banner's width. */}
+        <Box
+          component="img"
+          src={cover}
+          alt=""
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            height: '100cqw',
+            maxWidth: 'none',
+            transform: 'translate(-50%, -50%) rotate(-90deg)'
+          }}
+        />
+      </Box>
       <Box
         sx={{
           display: 'flex',
           flexWrap: { xs: 'wrap', md: 'nowrap' },
           alignItems: 'center',
-          columnGap: 3,
-          px: { xs: 2, lg: 3 },
-          pt: 1
+          columnGap: 2,
+          pl: 1.5
         }}
       >
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1.5,
+            gap: 1,
             minWidth: 0,
-            minHeight: 48
+            minHeight: 52
           }}
         >
           {avatar}
@@ -67,8 +96,55 @@ export function SpaceHeader({
         <Box sx={{ minWidth: 0, flex: '1 1 auto', order: { xs: 1, md: 0 } }}>
           {tabs}
         </Box>
+        {actions && (
+          <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>{actions}</Box>
+        )}
       </Box>
       <Divider />
+    </Box>
+  )
+}
+
+export function SetupPrompt({
+  title,
+  text,
+  actions
+}: {
+  title: string
+  text: string
+  actions: ReactNode
+}): ReactElement {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 3,
+        textAlign: 'center',
+        py: { xs: 6, md: 15 }
+      }}
+    >
+      <Stack spacing={1.25} sx={{ alignItems: 'center' }}>
+        <Typography variant="h3" component="h2">
+          {title}
+        </Typography>
+        <Typography
+          variant="body2"
+          color="textSecondary"
+          sx={{ maxWidth: 393 }}
+        >
+          {text}
+        </Typography>
+      </Stack>
+      <Stack
+        direction="row"
+        useFlexGap
+        spacing={2}
+        sx={{ flexWrap: 'wrap', justifyContent: 'center' }}
+      >
+        {actions}
+      </Stack>
     </Box>
   )
 }

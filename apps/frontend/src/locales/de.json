@@ -133,6 +133,12 @@
     "loading": "Feed wird geladen",
     "loadFailed": "Feed konnte nicht geladen werden.",
     "empty": "Noch nichts hier.",
+    "setup": {
+      "title": "%{name} einrichten",
+      "text": "Dieser Space ist bereit. Laden Sie Ihr Team ein, und alles, was Sie gemeinsam teilen, erscheint hier im Feed.",
+      "invite": "Mitglieder einladen",
+      "task": "Aufgabe erstellen"
+    },
     "loadOlder": "Ältere laden",
     "loadOlderFailed": "Ältere Einträge konnten nicht geladen werden.",
     "filter": "Anzeigen",

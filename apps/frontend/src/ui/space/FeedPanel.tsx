@@ -1,8 +1,10 @@
 import {
   Calendar,
+  CheckList,
   Drive,
   Icon,
   Mail,
+  PersonAdd,
   Task,
   Videos,
   type IconProps
@@ -32,6 +34,7 @@ import {
 } from '@/application/feed'
 import type { Member, Space } from '@/application/spaces'
 import { NameAvatar } from '@/ds/AppFrame'
+import { SetupPrompt } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 
@@ -156,9 +159,13 @@ function FeedEntries({
           {olderFailed && (
             <Alert severity="error">{t('feed.loadOlderFailed')}</Alert>
           )}
-          {page.entries.length === 0 && !page.hasOlder && (
-            <Alert severity="info">{t('feed.empty')}</Alert>
-          )}
+          {page.entries.length === 0 &&
+            !page.hasOlder &&
+            (filter === 'all' ? (
+              <Setup space={space} />
+            ) : (
+              <Alert severity="info">{t('feed.empty')}</Alert>
+            ))}
           <List>
             {page.entries.map(entry => (
               <ListItem key={entry.id}>
@@ -169,6 +176,42 @@ function FeedEntries({
         </>
       )}
     </>
+  )
+}
+
+function Setup({ space }: { space: Space }): ReactElement {
+  const { t } = useI18n()
+  const tasks =
+    space.apps.includes('tasks') &&
+    space.resources.some(r => r.kind === 'project' && r.id)
+  return (
+    <SetupPrompt
+      title={t('feed.setup.title', { name: space.name })}
+      text={t('feed.setup.text')}
+      actions={
+        <>
+          {space.role === 'admin' && (
+            <Button
+              component={RouterLink}
+              to={`/spaces/${space.id}/members`}
+              startIcon={<Icon icon={PersonAdd} />}
+            >
+              {t('feed.setup.invite')}
+            </Button>
+          )}
+          {tasks && (
+            <Button
+              component={RouterLink}
+              to={`/spaces/${space.id}/tasks`}
+              variant="ghost"
+              startIcon={<Icon icon={CheckList} />}
+            >
+              {t('feed.setup.task')}
+            </Button>
+          )}
+        </>
+      }
+    />
   )
 }
 
