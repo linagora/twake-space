@@ -1,0 +1,171 @@
+## Keeping one frame per app across spaces: what the browsers do
+
+I measured the joint session history of a page (`localhost:8001`) and a cross-origin frame (`localhost:8002`) with Playwright, in Chromium 153, Firefox 155 and WebKit 26.6, on 27 scenarios. Harness and matrix: [`docs/experiments/adr010-history`](https://github.com/linagora/twake-space/tree/test-adr010-iframe-persistence/docs/experiments/adr010-history) in twake-space, [`results.md`](https://github.com/linagora/twake-space/blob/test-adr010-iframe-persistence/docs/experiments/adr010-history/results.md). Three findings change this ADR.
+
+### 1. Removing a frame removes its history entries in Firefox only
+
+The ADR says: "removing the old one removes its history entries, so Back never brings back another space's resource". Firefox does that. Chromium and WebKit do not: `history.length` does not move, and the entries stay as dead entries. Back lands on them, restores the page URL recorded with them, and does nothing else.
+
+Scenario 5b: a hidden frame pushes two entries, TwakeSpace pushes one (a space change), the frame is removed. Back: the address goes back to the previous space, the URL recorded with the frame's entry. Back again: nothing. Back again: nothing. Then the page before TwakeSpace. Every dropped frame leaves as many dead Back presses as entries it had pushed, hidden frames included. Point 4 above (drop every frame of the previous space) multiplies this, it does not fix it.
+
+Back does not bring the resource back, true. The reason is that the frame is gone, not that its entries are.
+
+### 2. One frame per app for the whole session works, if the frame never writes to the history
+
+Scenario 11, identical in the three engines: one frame, the app only uses `replaceState`, TwakeSpace pushes one entry per path it receives (`/spaces/<id>/<tab>/<path>`) with the resource and the path in `history.state`. On `popstate` it sends `load` when the resource differs and `navigate` with the path. The frame moves from resource A to resource B and back, four Backs and four Forwards, same document throughout (`bootId` unchanged), `history.length` grows only with TwakeSpace's own entries. A `path` message tagged with the previous resource is dropped.
+
+What a frame can do without adding an entry, in the three engines: be inserted (`src` set before or after append, named or not, hidden or not), `replaceState`, `location.replace`, follow a 302. What adds one: `pushState`, `location.assign`, `location.href =`, and TwakeSpace changing its `src` (scenario 4). That last one confirms the alternative the ADR rejects today, and only that one.
+
+The alternative rejected in `c147f3a`, "showing another resource in the same frame, with a `load` carrying the new resource id", is not rejected by the browsers. Its cost is in the apps: switch resource in place, reset the store, resubscribe the realtime, drop the requests in flight for the old resource.
+
+### 3. The rule is stronger than "no `pushState`": no cross-document navigation after boot, because of Chromium
+
+Each history entry of the page records the document each frame showed. When TwakeSpace traverses between two of its own same-document entries, Chromium reloads a frame whose recorded document differs from its current one. Firefox and WebKit leave the frame alone.
+
+- Scenarios 6 and 6b: TwakeSpace pushes, the frame does `location.replace` (or follows a 302), Back: Chromium reloads the frame to the document it had before. Forward reloads it again.
+- Scenario 10d, the case that matters: the frame is on the OIDC callback document when TwakeSpace pushes (a tab change during the silent login). Back: Chromium reloads the callback URL, with its already used code. Firefox and WebKit: nothing.
+- Scenario 9: the same with a hidden frame that signs in again. This exists in the current ADR too, not only with one frame per app.
+- Scenarios 6f and 6g: entries older than the frame, or pushed after the frame's last cross-document navigation, are safe in the three engines.
+- Scenario 13: a silent login run in a nested frame inside the app (the usual silent renew) never moves the app document: immune in the three engines, `history.length` unchanged, same document after two logins, two Backs and two Forwards.
+
+Hence the embed mode rule: the app signs in at boot, then never navigates its own document again. `replaceState` only, renewals in a nested frame or with a refresh token, and the callback page tolerates a replayed code (it restarts a `prompt=none` instead of showing an error), for the one window Chromium leaves open: a tab or space change during the first login. For point 3 (`notifyLoginRequired`): TwakeSpace signs the user in at the top level, then replaces the iframe elements. A `reload()` of a frame is a cross-document navigation after its pushes, the Chromium case again.
+
+### What it asks of each app
+
+The library does the history part, the apps do the resource part.
+
+1. **Initialise the embed side of the bridge at boot**, when the app finds itself framed. In embed mode the library replaces `history.pushState` with a `replaceState` followed by `updateHistory(url, { replace: false })`, wraps `replaceState` to send `updateHistory(url, { replace: true })`, stays silent while the app applies a `navigate` or a `load`, and receives `load` and `navigate`. Routers go through `window.history`, so no route and no call changes in the app. A `pushState` forgotten somewhere is caught by construction. What it cannot catch: `location.assign`, `location.href =`, a plain `<a href>` to the app itself and a form submit. Those reload the whole app, so a SPA only does them for its login.
+2. **The silent login**: at boot, with `location.replace`, as today. Renewals never navigate the embed document (nested frame or refresh token, as the app's OIDC library allows), and the callback page treats an already used code as a normal case and restarts a `prompt=none`.
+3. **Switch resource in place on `load`**: the real cost, and it differs per app. The app navigates with a replace to its embed route with the new id; when the id is a route param the components remount by themselves. The data layer then has to drop the requests in flight for the old resource, reset what is indexed by resource and resubscribe its realtime. Chat changes room on the same Matrix client. Drive and Tasks keep stores keyed by document ids. Mail depends on what the facade keeps per team mailbox.
+
+An app that is not ready for 3 can start with `location.replace` to the new embed route on `load`: the history is right in the three engines and leaves no dead entry, the app just boots again on every space change, and Chromium boots it again on a Back to the previous space. That is the behaviour of the current ADR, without its dead entries, and it lets the apps migrate one by one.
+
+### What I propose for the ADR
+
+- One frame per app for the whole session. A space change sends `load {resourceId}` and the app switches resource in place. A frame is replaced only after a top level sign in or when the app is gone.
+- TwakeSpace owns the history: one `pushState` per path it receives from the active frame, a `replaceState` when the app says the path was a replace (an internal redirect, a query change, the first path after boot or after a `load`), and on `popstate` a `navigate` or a `load` from `history.state`. The app does not report the path it writes while it applies a `navigate` or a `load`, and TwakeSpace ignores a path equal to its current `history.state`: otherwise Back would push an entry and break Forward (the lab's app does not report those paths, so scenario 11 does not show this). The address stays `/spaces/<id>/<tab>/<path>`; a reload or a deep link frames `embedPath + path`, which adds no entry. A hidden frame's path waits for its tab, as the code does today.
+- Every message carries the `resourceId`, both sides drop a mismatch: a late message of a previous resource is lost, a `navigate` that arrives after a `load` applies to the new resource or is dropped.
+- The messages exist: `EmbeddedAppFrame.tsx` exposes `updateHistory` and `notifyLoginRequired` through cozy-external-bridge (comlink), so the library question is settled by the code, not by `ab09dcb`. `updateHistory` becomes a push, and `load` / `navigate` go the other way.
+- Point 4 (drop every frame on a space change) and `useOpenedFrames` (9b2a760) become moot: no frame has entries. Replacing the element would also be harmless under the same rule (scenario 7b); what it still costs is a boot per space change.
+
+Also measured: hidden frames behave as visible ones (1, 5b, 9); Back during a frame navigation lets it complete (10); a frame inserted after a reload loads its `src`, never a session URL, named or not (8, 8b, 8d); a frame recreated with the same name is not restored from history (7, 7b).
+
+The amendment of the ADR text is in the same folder ([`adr010-amendment.diff`](https://github.com/linagora/twake-space/blob/test-adr010-iframe-persistence/docs/experiments/adr010-history/adr010-amendment.diff)), and below.
+
+<details>
+<summary>ADR010.md amendment</summary>
+
+```diff
+diff --git a/ADR010.md b/ADR010.md
+index 691b2e1..4839c71 100644
+--- a/ADR010.md
++++ b/ADR010.md
+@@ -11,6 +11,7 @@ date: 06/10/2026
+ 2. These are whole applications, each with its own frontend, origin, backend and release cycle. TwakeSpace shows them in iframes, as ADR 009 already does for Tasks.
+ 3. An embedded app is a single page app served from its own origin, signing in with LemonLDAP over OIDC. The first ones are Drive (served outside the cozy-stack, see cozy-stack [#4965](https://github.com/linagora/cozy-stack/pull/4965)), Calendar, Tasks, and the new Mail and Chat apps.
+ 4. A user moves between spaces and tabs all day. Booting an app costs seconds (silent login, token exchange, data queries), and a frame kept alive costs memory. Both have to be bounded.
++7. The page and its frames share one browser history. What a frame writes to it, and what the browsers do when a frame is removed or when the page traverses its own entries, was measured in Chromium, Firefox and WebKit (twake-space, `docs/experiments/adr010-history`). The decisions below rest on that matrix.
+ 5. Today the Tasks tab unmounts its iframe on every tab change. Every embedded app needs the same contract.
+ 6. An embedded app has no notion of a space. It knows its own resource, and TwakeSpace knows which resource belongs to which space.
+ 
+@@ -22,6 +23,15 @@ date: 06/10/2026
+ - The app allows framing only from the TwakeSpace origin, with `Content-Security-Policy: frame-ancestors`, set from its deployment configuration.
+ - The app signs in on its own with a silent authorization request (`prompt=none`) against LemonLDAP, with its own client id, as ADR 009 describes. LemonLDAP refuses to show its portal in a frame, and a frame cannot tell a blocked page from a slow one. With `prompt=none`, LemonLDAP never shows a page: it redirects back with a code, or with `login_required` that the app turns into its popup sign-in. TwakeSpace hands no token to a frame, and its backend forwards none (ADR 003).
+ - TwakeSpace, every embedded app and the LemonLDAP portal are served on one registrable domain, not a domain on the Public Suffix List, so the LemonLDAP cookie reaches the frame and the silent login works. In development, `localhost` on different ports is one site.
++- The frame and TwakeSpace talk through cozy-external-bridge (Comlink over `postMessage`, one origin each way, the source window checked on the TwakeSpace side), as `EmbeddedAppFrame` does today. Every message carries the `resourceId` it is about, and both sides drop a message whose `resourceId` is not the one they show. The messages:
++
++| Direction | Message | Fields | When |
++|---|---|---|---|
++| TwakeSpace to app | `load` | `resourceId`, `path` relative to the embed route | when the frame is shown for another space's resource, and on Back or Forward across a space change |
++| TwakeSpace to app | `navigate` | `resourceId`, `path` | on Back or Forward within the resource, and to open the target of a feed card |
++| app to TwakeSpace | `updateHistory` | `url` of the frame, below its embed route, `replace` (true when the app replaced its path: a redirect, a query change, the first path after its boot or a `load`) | on every in-app navigation |
++| app to TwakeSpace | `notifyLoginRequired` | | when the silent login is refused |
++| app to TwakeSpace | `twake-embed:overlay-region` | `region` | see the overlay contract |
+ 
+ ```mermaid
+ sequenceDiagram
+@@ -33,9 +43,12 @@ sequenceDiagram
+   S->>F: iframe src = DRIVE_URL + /space/<drive A>
+   F->>L: prompt=none
+   L-->>F: code, in the frame
++  F->>S: updateHistory(/space/<drive A>/<folder>)
++  S->>S: pushState /spaces/A/files/<folder>
+   U->>S: opens the Files tab of space B
+-  S->>S: removes the frame of drive A
+-  S->>F: new iframe, src = DRIVE_URL + /space/<drive B>
++  S->>S: pushState /spaces/B/files
++  S->>F: load {resourceId: drive B}
++  F->>F: replaceState /space/<drive B>, same document
+ ```
+ 
+ ### The table of embedded apps
+@@ -47,39 +60,50 @@ sequenceDiagram
+ 
+ ### Frames stay alive
+ 
+-- There is one frame per app, not per space and app, and memory is bounded by the number of apps. A tab change only hides and shows frames.
+-- When an app is shown for another space's resource, TwakeSpace replaces its frame with a new `iframe` element, and never changes the `src` of a frame. A new frame starts with no history of its own, and removing the old one removes its history entries, so Back never brings back another space's resource.
++- There is one frame per app for the whole session, not per space and app, and memory is bounded by the number of apps. A tab change only hides and shows frames.
++- When an app is shown for another space's resource, TwakeSpace sends `load` with the new resource id, and the app switches resource in place: it resets its store, drops the requests in flight for the old resource, resubscribes its realtime and shows the new one, with a `replaceState` to its embed route. Nothing restarts: no silent login, no token exchange. The `src` of a frame never changes after its creation.
++- A frame is replaced by a new `iframe` element in two cases only: after TwakeSpace signed the user in again at the top level (see below), and when the user asks the tab to retry an app that is gone.
+ - A frame is created the first time its tab is opened. On a tab change it is hidden, not unmounted: `visibility: hidden` and taken out of the layout, not `display: none`, so the app keeps its size and its state.
+ - TwakeSpace warms up a tab when the pointer hovers it, and the user's last used tab when the browser is idle.
+ - We may limit the number of mounted iframe.
+-- A failed silent login is the app's business: it shows a button that signs in through a popup (ADR 009).
+-
+-### URL and history
+-
+-- The address bar is `/spaces/<space id>/<tab>`. A link to it reopens the space and the tab, with the app on its embed route.
+-- TwakeSpace enforces nothing on the browser history for now, and the browser keeps one history for the page and all its frames:
+-  - every `pushState` an app makes in its frame, and every redirect of the silent login that is not a `replace`, adds an entry
+-  - Back first undoes the most recent of these entries, so it can navigate inside the visible frame or go back to the login callback URL, always within the resource of the current space
+-  - Back leaves the tab only once the frame's entries made since the last tab change are used up, and then TwakeSpace shows the previous space or tab from its own URL, replacing the frame if the resource differs
++- A refused silent login is TwakeSpace's business. The app shows that the session expired and calls `notifyLoginRequired`. TwakeSpace goes through the portal logout (`/?logout=1`, which clears the pending request LemonLDAP 2.21 keeps after a `prompt=none` refusal), signs the user in at the top level, then replaces the iframe elements. It never reloads a frame.
++
++### TwakeSpace owns the URL and the history
++
++- The address bar is `/spaces/<space id>/<tab>/<path>`, `<path>` being the last one the app reported with `updateHistory`, relative to its embed route. A link to it reopens the space and the tab, and frames `embedPath + path`. `path` comes from the address bar, so TwakeSpace resolves it with `new URL` and uses it only if it stays on the app's origin and under `embedPath`.
++- The browser keeps one history for the page and all its frames, and TwakeSpace is the only one who writes to it:
++  - on `updateHistory` from the shown frame, TwakeSpace does a `pushState` with the resource id and the path in `history.state`, or a `replaceState` when the message says `replace`, so an internal redirect of the app never costs a Back press; a hidden frame's path waits for its tab to show again;
++  - an app does not report the path it writes while it applies a `navigate` or a `load`, and TwakeSpace ignores a path equal to the one in its current `history.state`: without both, Back would push a new entry and break Forward;
++  - on a space or tab change, TwakeSpace does a `pushState` as it does today;
++  - on `popstate`, TwakeSpace reads `history.state`, sends `load` when the resource of the shown frame differs, then `navigate` with the path. Back and Forward therefore walk through the spaces, tabs and in-app paths the user visited, with no frame restarted.
++- In embed mode, an app never writes to the history and never navigates its own document after its boot:
++  - it uses `replaceState` only, never `pushState`, never `location.assign` or a plain link to itself: each one would add an entry that TwakeSpace does not own, and leave a dead Back press behind in Chromium and WebKit. The embed side of the library replaces `history.pushState` with a `replaceState` and the `updateHistory` message when the app runs in a frame, so routers need no change and a forgotten `pushState` is caught;
++  - an app that cannot yet switch resource in place answers `load` with a `location.replace` to the new embed route: the history stays TwakeSpace's, the app boots again on every space change;
++  - its silent login runs at boot, with `location.replace` and server redirects, which add no entry; a renewal later runs in a nested frame or with a refresh token, never by navigating the embed document;
++  - its OIDC callback tolerates a replayed code: it restarts a `prompt=none` instead of showing an error. Chromium reloads a frame to the document recorded with an entry when the page goes back to that entry, and a tab change during the first login records the callback document.
++- Measured (Chromium 153, Firefox 155, WebKit 26.6): inserting a frame, `replaceState`, `location.replace` and a 302 add no entry; `pushState`, `location.assign`, `location.href =` and a change of `src` add one; a removed frame keeps its entries in Chromium and WebKit, Firefox drops them; Chromium alone reloads a frame whose recorded document differs when the page traverses its own entries, Firefox and WebKit leave it alone.
+ 
+ ## Consequences
+ 
+ - Each app owns its embed route, its silent login and its `frame-ancestors`. TwakeSpace only holds a URL and a path template per app.
+ - Four live apps are four sets of connections, timers and realtime subscriptions, since a hidden frame still sees `document.visibilityState` as visible. To watch: if this shows, TwakeSpace needs a way to tell an app it is hidden.
+ - The memory of live frames is monitored, to tell whether every frame can stay alive and the cap can go.
+-- Opening an app in another space boots it again: silent login, token exchange and data queries. Only tab changes within a space are free.
+-- Back navigates inside the visible frame. To watch: if users trip on it, apps use `replaceState` in embed mode.
++- An app boots once per session, however many spaces the user visits. Each app has to switch resource in place, which is new code in every app, and a `pushState` or a self navigation left in embed mode brings a dead Back press back.
++- Back and Forward are TwakeSpace's: they walk through spaces, tabs and in-app paths, and the apps follow with `navigate` and `load`.
++- Chromium reloads a frame when the page goes back to an entry recorded while the frame was on another document. The only window is the first login of a frame during a tab or space change; the callback page covers it. Firefox and WebKit are not affected.
+ - Popups escape the sandbox, so a window an app opens has no restriction beyond its own origin.
+ - An app URL is one value per TwakeSpace deployment. If Drive's URL becomes per organization, as a feature flag allows, TwakeSpace's backend serves the table and the `frame-src` per organization instead of the frontend image.
+ - The whole set must be deployed on one registrable domain, with the LemonLDAP portal. A customer domain on the Public Suffix List cannot host it.
+ - Tab badges, app to app messages, the Contact tab and mobile are out of scope. On a small screen the cap of live frames would drop to one.
+-- TwakeSpace and a frame exchange no message for now: the address bar does not follow navigation inside an app, a link opens a tab on its embed route, a feed card opens its tab but not its target, and an app does not follow TwakeSpace's theme or locale.
+-- The Tasks tab changes to this contract, and its frame survives tab changes. ADR 009's "Inside TwakeSpace" section defers to this ADR for the frame contract.
++- The address bar follows navigation inside an app, a link reopens the app at that path, and a feed card opens its tab at its target with `navigate`. Theme and locale are not in the contract yet.
++- The Tasks tab changes to this contract: its frame survives tab and space changes, and Twake Tasks switches project on `load`. `useOpenedFrames`, which drops the frames of a space when the user leaves it, goes away. ADR 009's "Inside TwakeSpace" section defers to this ADR for the frame contract.
+ 
+ ## Alternatives considered
+ 
+ - Building the Files tab (and others) inside TwakeSpace with shared components. Rejected: apps with their own teams, releases and data layers; the shell would re-implement each one.
+-- Showing another resource in the same frame, by changing its `src`. Rejected: the frame keeps the history of the previous resource, so Back brings it back while the address bar shows the current space.
++- Showing another resource in the same frame by changing its `src`. Rejected: a change of `src` adds a history entry in the three engines, so Back brings the previous resource back while the address bar shows the current space.
++- Replacing the `iframe` element on every space change, so the app restarts with an empty history. Rejected: every space change boots the app again; and with apps that write the history as they do standalone, a removed frame keeps its entries in Chromium and WebKit, so every space change leaves as many dead Back presses as the dropped frames, hidden ones included, had pushed.
++- Letting the apps write the history as they do standalone, TwakeSpace mirroring their path with a replace. Rejected: the entries are then the frames', Back navigates inside a frame before leaving the tab, and the dead entries above follow.
+ - One frame per space and app, unmounted on tab change (as the Tasks tab today). Rejected: every tab change boots an app again, and memory grows with the number of spaces visited.
+ - TwakeSpace passing its access token to the frames. Rejected: the token's audience is TwakeSpace, and the silent login costs one redirect per frame, hidden by lazy loading.
+ - Opening the Files tab as a cozy-stack intent (cozy-stack #4965 allows intent handlers on an external origin). Rejected for tabs: a stack round trip and a stack token in TwakeSpace on every visit, for one app only. Intents stay for pickers.
+```
+
+</details>

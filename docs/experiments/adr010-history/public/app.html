@@ -1,0 +1,43 @@
+<!doctype html>
+<title>app</title>
+<body style="font: 14px sans-serif">
+<p>app <span id="where"></span> boot <span id="boot"></span></p>
+<script>
+  // A new document gets a new bootId: it tells a frame kept alive from one
+  // that reloaded.
+  window.bootId = Math.random().toString(36).slice(2, 8)
+  window.pops = 0
+  window.msgs = []
+  window.resourceId = location.pathname.split('/')[2] ?? null
+  document.getElementById('boot').textContent = window.bootId
+  const show = () => { document.getElementById('where').textContent = location.pathname + location.search + location.hash }
+  show()
+  addEventListener('popstate', () => { window.pops++; show() })
+  addEventListener('message', e => {
+    window.msgs.push(e.data)
+    const m = e.data
+    if (m.type === 'navigate') { history.replaceState(m.state ?? null, '', m.path); show() }
+    if (m.type === 'load') {
+      window.resourceId = m.resourceId
+      history.replaceState(null, '', '/app/' + m.resourceId)
+      show()
+      parent.postMessage({ type: 'ready', resourceId: m.resourceId, bootId: window.bootId }, '*')
+    }
+  })
+  // A silent login done in a nested frame: the app document never moves.
+  window.nestedLogin = () => new Promise(resolve => {
+    const f = document.createElement('iframe')
+    f.style.display = 'none'
+    f.onload = () => { f.remove(); window.nestedLogins = (window.nestedLogins ?? 0) + 1; resolve() }
+    f.src = '/redirect?to=/blank.html'
+    document.body.appendChild(f)
+  })
+  // The app reports a path below its resource, as the real one would on a
+  // route change; in embed mode it writes it with replaceState.
+  window.goTo = (sub, { push = false } = {}) => {
+    const path = '/app/' + window.resourceId + '/' + sub
+    if (push) history.pushState(null, '', path); else history.replaceState(null, '', path)
+    show()
+    parent.postMessage({ type: 'path', path, resourceId: window.resourceId, bootId: window.bootId }, '*')
+  }
+</script>

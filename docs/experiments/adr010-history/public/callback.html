@@ -1,0 +1,11 @@
+<!doctype html>
+<title>callback</title>
+<body style="font: 14px sans-serif">
+<p>callback (OIDC callback stand-in) boot <span id="boot"></span></p>
+<script>
+  // The callback page of a silent login: it exchanges the code, then
+  // replaces itself with the app. Here, 2 s later.
+  window.bootId = 'cb-' + Math.random().toString(36).slice(2, 6)
+  document.getElementById('boot').textContent = window.bootId
+  setTimeout(() => location.replace('/app/B'), 2000)
+</script>

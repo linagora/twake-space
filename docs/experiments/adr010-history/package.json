@@ -1,0 +1,12 @@
+{
+  "name": "adr010-history-lab",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "node server.mjs",
+    "run": "node run.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

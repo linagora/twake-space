@@ -1,0 +1,42 @@
+<!doctype html>
+<title>host</title>
+<style>
+  iframe { width: 400px; height: 120px; border: 1px solid #888 }
+  .hidden { position: absolute; inset: 0; visibility: hidden; pointer-events: none }
+</style>
+<h1>host (TwakeSpace stand-in)</h1>
+<div id="frames"></div>
+<script>
+  const APP = 'http://localhost:8002'
+  window.pops = 0
+  window.msgs = []
+  addEventListener('popstate', e => { window.pops++; window.lastPop = { state: e.state, url: location.pathname + location.search } })
+  addEventListener('message', e => {
+    if (e.origin !== APP) return
+    window.msgs.push(e.data)
+    if (window.onAppMessage) window.onAppMessage(e.data, e.source)
+  })
+
+  // Inserts a named frame as React would: attributes set, then appended.
+  // `srcAfter` sets src once the element is in the document.
+  // `hidden` hides it like KeptAlive does.
+  window.addFrame = ({ name, path, hidden = false, srcAfter = false, unnamed = false }) => {
+    const f = document.createElement('iframe')
+    if (!unnamed) f.name = name
+    f.id = name
+    f.sandbox = 'allow-scripts allow-same-origin allow-popups allow-forms allow-downloads'
+    if (hidden) { f.className = 'hidden'; f.inert = true }
+    if (!srcAfter) f.src = APP + path
+    document.getElementById('frames').appendChild(f)
+    if (srcAfter) f.src = APP + path
+    return name
+  }
+  window.removeFrame = name => document.getElementById(name)?.remove()
+  window.setFrameSrc = (name, path) => { document.getElementById(name).src = APP + path }
+  window.setHidden = (name, hidden) => {
+    const f = document.getElementById(name)
+    f.className = hidden ? 'hidden' : ''
+    f.inert = hidden
+  }
+  window.send = (name, data) => document.getElementById(name).contentWindow.postMessage(data, APP)
+</script>
