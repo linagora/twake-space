@@ -3,6 +3,7 @@ import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { CloudEvent } from '../../events/envelope.ts'
 import {
+  NotYetKnownError,
   parseOrDrop,
   RejectedEventError,
   type Handler
@@ -71,31 +72,19 @@ async function findUser(
   return { type: 'user', id: member?.userId ?? null, email }
 }
 
-// Platform events, which bring spaces and members, have their own topic and may
-// lag behind an app's.
-const PLATFORM_LAG_MS = 5 * 60_000
-
-function notKnownYet(reason: string, time: string | undefined): Error {
-  const age = time ? Date.now() - Date.parse(time) : Infinity
-  return Math.abs(age) < PLATFORM_LAG_MS
-    ? new Error(`${reason}, retrying`)
-    : new RejectedEventError(reason)
-}
-
 // So a wrong space_id never shows content to another space.
 async function checkSpace(
   tx: Tx,
   log: Logger,
   spaceId: string,
   organizationId: string | undefined,
-  actor: Actor | null,
-  time: string | undefined
+  actor: Actor | null
 ) {
   const [space] = await tx
     .select({ organizationId: spaces.organizationId })
     .from(spaces)
     .where(eq(spaces.spaceId, spaceId))
-  if (!space) throw notKnownYet(`unknown space ${spaceId}`, time)
+  if (!space) throw new NotYetKnownError(`unknown space ${spaceId}`)
   if (space.organizationId !== organizationId) {
     throw new RejectedEventError(
       `space ${spaceId} is not in organization ${organizationId ?? 'none'}`
@@ -121,7 +110,7 @@ async function checkSpace(
     .where(eq(spaceGroups.spaceId, spaceId))
     .limit(1)
   if (!group) {
-    throw notKnownYet(`actor is not a member of space ${spaceId}`, time)
+    throw new NotYetKnownError(`actor is not a member of space ${spaceId}`)
   }
   log.warn(
     { spaceId, actorId: actor.id },
@@ -140,7 +129,7 @@ function store(category: Category): Handler<CloudEvent> {
     const actor: Actor | null = data.actor
       ? { type: 'token', id: data.actor.id, name: data.actor.name }
       : await findUser(tx, spaceId, twakeactorid, twakeactor)
-    if (spaceId) await checkSpace(tx, log, spaceId, twakeorg, actor, event.time)
+    if (spaceId) await checkSpace(tx, log, spaceId, twakeorg, actor)
     // Recipients stay out of the card every space member sees.
     const { recipients, ...content } = data
     const organizationId = twakeorg ?? null

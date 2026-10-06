@@ -20,7 +20,18 @@ export class MalformedEventError extends Error {}
 // dead letter topic for someone to look at.
 export class RejectedEventError extends Error {}
 
+// Thrown for an event about a space or member the copy doesn't hold yet: the
+// platform event that brings it may only be late.
+export class NotYetKnownError extends Error {}
+
 export const deadLetterTopic = (topic: string) => `${topic}.dlq.twake-space`
+
+export type Park = (
+  topic: string,
+  message: IncomingMessage,
+  key: EventKey,
+  reason: string
+) => Promise<void>
 
 export type DeadLetter = (
   topic: string,
@@ -57,15 +68,16 @@ export interface IncomingMessage {
 }
 
 export type Outcome =
-  'processed' | 'duplicate' | 'unrouted' | 'malformed' | 'rejected'
+  'processed' | 'duplicate' | 'unrouted' | 'malformed' | 'rejected' | 'parked'
 
 export function createMessageHandler(deps: {
   routes: Routes
   dedupe: Deduplicator
   deadLetter: DeadLetter
+  park: Park
   logger: Logger
 }) {
-  const { routes, dedupe, deadLetter, logger } = deps
+  const { routes, dedupe, deadLetter, park, logger } = deps
 
   async function dispatch<E>(
     topic: string,
@@ -96,6 +108,14 @@ export function createMessageHandler(deps: {
         handler(parsed.event, tx, logger.child({ ...context, key }))
       )
     } catch (error) {
+      if (error instanceof NotYetKnownError) {
+        await park(topic, message, dedupeKey, error.message)
+        logger.info(
+          { ...context, key, ...dedupeKey, reason: error.message },
+          'event parked'
+        )
+        return 'parked'
+      }
       const reason =
         error instanceof RejectedEventError
           ? error.message

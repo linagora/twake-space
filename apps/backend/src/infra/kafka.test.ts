@@ -97,6 +97,14 @@ describe('eachMessageWithBackoff', () => {
     ])
   })
 
+  it('pauses the partition when the commit fails', async () => {
+    const { consumer, deliver } = setup(() => Promise.resolve('processed'))
+    consumer.commitOffsets.mockRejectedValueOnce(new Error('rebalancing'))
+
+    await expect(deliver('41')).rejects.toThrow('rebalancing')
+    expect(consumer.pause).toHaveBeenCalledWith([{ topic, partitions: [2] }])
+  })
+
   it('pauses the partition after a failure, longer each time, and starts over after a success', async () => {
     const handle = vi
       .fn<(topic: string, m: IncomingMessage) => Promise<Outcome>>()

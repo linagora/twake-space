@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/node'
 import { pino } from 'pino'
 import { loadConfig } from './config.ts'
 import { postgresDeduplicator } from './events/dedupe.ts'
+import { parkIn, scheduleParkedRetries } from './events/parking.ts'
 import { createMessageHandler, type Routes } from './events/router.ts'
 import { createDb, migrateDb } from './infra/db.ts'
 import { createServer } from './infra/http.ts'
@@ -93,16 +94,15 @@ registerMetrics(metrics, { db })
 await metrics.listen({ host: config.HTTP_HOST, port: config.METRICS_PORT })
 
 const deadLetters = await startDeadLetterProducer(config, logger)
-const consumer = await startConsumer(
-  config,
-  logger,
-  createMessageHandler({
-    routes,
-    dedupe: postgresDeduplicator(db, config.KAFKA_GROUP_ID),
-    deadLetter: deadLetters.send,
-    logger
-  })
-)
+const handle = createMessageHandler({
+  routes,
+  dedupe: postgresDeduplicator(db, config.KAFKA_GROUP_ID),
+  deadLetter: deadLetters.send,
+  park: parkIn(db),
+  logger
+})
+const consumer = await startConsumer(config, logger, handle)
+const stopParked = scheduleParkedRetries(db, handle, deadLetters.send, logger)
 const stopPurge = schedulePurge(db, logger)
 const secretsKey = (config.homeserver ?? config.controlPlane)?.key
 const stopPosting = secretsKey
@@ -117,6 +117,7 @@ async function shutdown(signal: string): Promise<void> {
   stopping = true
   accepting = false
   logger.info({ signal }, 'shutting down')
+  stopParked()
   stopPurge()
   stopPosting()
   try {
