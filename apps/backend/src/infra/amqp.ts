@@ -166,7 +166,9 @@ export async function startConsumer(
       maxRetryDelay: MAX_RETRY_MS,
       queueArguments: {
         'x-single-active-consumer': true,
-        'x-delivery-limit': 5
+        // Failures retry in the process, so a redelivery means a crash or a
+        // consumer_timeout: 20 rides out about 10 hours of outage.
+        'x-delivery-limit': 20
       }
     }
   )
