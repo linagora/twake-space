@@ -2,11 +2,7 @@ import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { CloudEvent } from '../../events/envelope.ts'
 import { lastChanges } from '../../events/schema.ts'
-import {
-  MalformedEventError,
-  NotYetKnownError,
-  RejectedEventError
-} from '../../events/router.ts'
+import { MalformedEventError, RejectedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { resourceActivityRoutes } from './resources.ts'
 import { spaceResources, spaces } from './schema.ts'
@@ -76,12 +72,28 @@ describe('provisioned events', () => {
     expect(await readResources()).toEqual([])
   })
 
-  it('waits for a space it does not know yet', async () => {
+  it('drops a resource of a space deleted before the event', async () => {
+    await testDb.db.delete(spaces)
+    await testDb.db.insert(lastChanges).values({
+      object: `space:${SPACE_ID}`,
+      at: new Date('2026-10-05T10:00:00Z')
+    })
+
+    await provisioned(
+      'drive',
+      { kind: 'drive', id: 'a1f0c3e2d4b5' },
+      { time: '2026-10-05T10:00:01Z' }
+    )
+
+    expect(await readResources()).toEqual([])
+  })
+
+  it('drops a resource of a space it never had', async () => {
     await testDb.db.delete(spaces)
 
-    await expect(
-      provisioned('drive', { kind: 'drive', id: 'a1f0c3e2d4b5' })
-    ).rejects.toBeInstanceOf(NotYetKnownError)
+    await provisioned('drive', { kind: 'drive', id: 'a1f0c3e2d4b5' })
+
+    expect(await readResources()).toEqual([])
   })
 
   it('rejects a resource sent for a space of another organization', async () => {

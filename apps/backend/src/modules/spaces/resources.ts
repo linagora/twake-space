@@ -3,7 +3,6 @@ import { z } from 'zod'
 import type { CloudEvent } from '../../events/envelope.ts'
 import { fresh } from '../../events/freshness.ts'
 import {
-  NotYetKnownError,
   parseOrDrop,
   RejectedEventError,
   type Handler
@@ -33,7 +32,7 @@ function onProvisioned(kind: SpaceResourceKind): Handler<CloudEvent> {
       resource: z.looseObject({ kind: z.literal(kind), id: z.string().min(1) })
     })
   })
-  return async (event, tx) => {
+  return async (event, tx, log) => {
     const {
       twakeorg,
       data: { space_id, resource }
@@ -44,7 +43,13 @@ function onProvisioned(kind: SpaceResourceKind): Handler<CloudEvent> {
       .select({ organizationId: spaces.organizationId })
       .from(spaces)
       .where(eq(spaces.spaceId, space_id))
-    if (!space) throw new NotYetKnownError(`unknown space ${space_id}`)
+    // An app provisions on the space's created event, which reached our queue
+    // before this one, so the space was deleted meanwhile; the app's next sync
+    // removes the resource.
+    if (!space) {
+      log.warn({ spaceId: space_id, kind }, 'resource of an unknown space')
+      return
+    }
     if (space.organizationId !== twakeorg) {
       throw new RejectedEventError(
         `space ${space_id} belongs to another organization`
