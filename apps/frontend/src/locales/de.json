@@ -2,6 +2,11 @@
   "app": {
     "name": "Twake Space"
   },
+  "home": {
+    "morning": "Guten Morgen, %{name}",
+    "afternoon": "Guten Tag, %{name}",
+    "evening": "Guten Abend, %{name}"
+  },
   "shell": {
     "yourSpaces": "Ihre Spaces"
   },
@@ -33,7 +38,9 @@
     "noneHint": "Bereiche bringen Ihr Team, Ihre Dateien, Aufgaben und Unterhaltungen an einem Ort zusammen. Erstellen Sie einen, um loszulegen.",
     "create": "Space erstellen",
     "createFailed": "Der Space konnte nicht erstellt werden.",
-    "channelsHint": "Ein Bereich kann mehrere Kanäle für verschiedene Themen oder Teams enthalten"
+    "channelsHint": "Ein Bereich kann mehrere Kanäle für verschiedene Themen oder Teams enthalten",
+    "all": "Alle Bereiche",
+    "createHint": "Projekt, Abteilung, Themengruppe…"
   },
   "createSpace": {
     "name": "Name des Bereichs",

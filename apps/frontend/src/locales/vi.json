@@ -2,6 +2,11 @@
   "app": {
     "name": "Twake Space"
   },
+  "home": {
+    "morning": "Chào buổi sáng, %{name}",
+    "afternoon": "Chào buổi chiều, %{name}",
+    "evening": "Chào buổi tối, %{name}"
+  },
   "shell": {
     "yourSpaces": "Không gian của bạn"
   },
@@ -33,7 +38,9 @@
     "noneHint": "Không gian tập hợp nhóm, tệp, công việc và cuộc trò chuyện của bạn ở một nơi. Hãy tạo một không gian để bắt đầu.",
     "create": "Tạo không gian",
     "createFailed": "Không thể tạo không gian.",
-    "channelsHint": "Một không gian có thể chứa nhiều kênh cho các chủ đề hoặc nhóm khác nhau"
+    "channelsHint": "Một không gian có thể chứa nhiều kênh cho các chủ đề hoặc nhóm khác nhau",
+    "all": "Tất cả không gian",
+    "createHint": "Dự án, phòng ban, nhóm chủ đề…"
   },
   "createSpace": {
     "name": "Tên không gian",
