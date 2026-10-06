@@ -5,6 +5,9 @@ import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
 
+// Twake Tasks serves the overlay its task panel and dialogs go onto.
+const TASKS_OVERLAY = '/embed/overlay.html'
+
 function framedPath(data: unknown): string | null {
   if (typeof data !== 'object' || data === null) return null
   const { type, path } = data as Record<string, unknown>
@@ -69,6 +72,7 @@ function TasksFrame({
       embedPath={`/embed/projects/${projectId}`}
       tabPath={`/spaces/${spaceId}/tasks`}
       title={t('tabs.tasks')}
+      overlayPath={TASKS_OVERLAY}
       frameRef={frame}
       active={active}
       onFrameLoad={() => {
