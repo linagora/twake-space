@@ -24,17 +24,19 @@ export function memorySpaces(
 
   return {
     list: () =>
-      Promise.resolve(spaces.map(({ id, name, role }) => ({ id, name, role }))),
+      Promise.resolve(
+        spaces.map(({ id, name, role, color }) => ({ id, name, role, color }))
+      ),
     get: id => {
       const space = find(id)
       return space
         ? Promise.resolve(structuredClone(space))
         : refuse(404, 'not_found')
     },
-    create: name => {
+    create: created => {
       const space: Space = {
+        ...created,
         id: crypto.randomUUID(),
-        name,
         role: 'admin',
         createdAt: new Date().toISOString(),
         chat: true,
@@ -52,7 +54,8 @@ export function memorySpaces(
         ]
       }
       spaces.push(space)
-      return Promise.resolve({ id: space.id, name, role: space.role })
+      const { id, name, role, color } = space
+      return Promise.resolve({ id, name, role, color })
     },
     rename: (id, name) =>
       write(id, space => {

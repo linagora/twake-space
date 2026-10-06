@@ -107,7 +107,9 @@ export function HomeScreen(): ReactElement {
             {spaces.data.map(space => (
               <SpaceCard
                 key={space.id}
-                avatar={<NameAvatar name={space.name} size="s" />}
+                avatar={
+                  <NameAvatar name={space.name} color={space.color} size="s" />
+                }
                 link={
                   <RouterLink to={`/spaces/${space.id}`}>
                     {space.name}

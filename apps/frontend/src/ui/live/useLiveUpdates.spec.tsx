@@ -7,6 +7,8 @@ import { renderWithProviders } from '@/testing/renderWithProviders'
 import { HomeScreen } from '@/ui/home/HomeScreen'
 import { useLiveUpdates } from '@/ui/live/useLiveUpdates'
 
+const launch = { name: 'Launch', description: '', color: null, apps: [] }
+
 function Home() {
   useLiveUpdates()
   return <HomeScreen />
@@ -15,11 +17,13 @@ function Home() {
 describe('useLiveUpdates', () => {
   it('refreshes the spaces when one of them changes', async () => {
     const live = fakeLive()
-    const spaces = fakeSpaces([{ id: 'a1', name: 'Roadmap', role: 'viewer' }])
+    const spaces = fakeSpaces([
+      { id: 'a1', name: 'Roadmap', role: 'viewer', color: null }
+    ])
     renderWithProviders(<Home />, { spaces, live })
     await screen.findByRole('link', { name: 'Roadmap' })
 
-    await spaces.create('Launch')
+    await spaces.create(launch)
     act(() => {
       live.emit('spaces', { spaceId: 'space-2' })
     })
@@ -35,7 +39,7 @@ describe('useLiveUpdates', () => {
     renderWithProviders(<Home />, { spaces, live })
     await screen.findByText('Create your first space')
 
-    await spaces.create('Launch')
+    await spaces.create(launch)
     act(() => {
       live.reconnect()
     })

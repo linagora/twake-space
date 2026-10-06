@@ -66,27 +66,17 @@
     "name": "Nome dello spazio",
     "description": "Descrizione (facoltativa)",
     "personalize": "Personalizza lo spazio",
-    "uploadPhoto": "Carica una foto",
     "colors": "Colori",
-    "emojis": "Emoji",
-    "icons": "Icone",
     "colorHint": "Scegli un colore per il tuo spazio",
     "apps": "App da attivare",
-    "appsHint": "Scegli quali app sono disponibili in questo spazio. Potrai cambiarlo in seguito.",
-    "addShortcut": "Aggiungi collegamento",
-    "shortcut": "Crea un collegamento",
-    "shortcutHint": "Aggiungi un link a una pagina o a un’app usata dal tuo team.",
-    "shortcutUrl": "Link",
-    "shortcutName": "Nome",
+    "appsHint": "Scegli quali app sono disponibili in questo spazio.",
     "app": {
       "feed": "Feed",
       "drive": "File",
       "chat": "Chat",
       "tasks": "Attività",
       "calendar": "Calendario",
-      "contacts": "Contatti",
-      "mail": "Mail",
-      "assistant": "Assistente IA"
+      "mail": "Mail"
     }
   },
   "tabs": {

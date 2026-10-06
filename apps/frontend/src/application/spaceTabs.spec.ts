@@ -11,6 +11,9 @@ const space: Space = {
   name: 'Roadmap',
   role: 'editor',
   createdAt: new Date(CREATED).toISOString(),
+  color: null,
+  description: '',
+  apps: ['feed', 'chat', 'tasks', 'drive', 'mail', 'calendar'],
   chat: true,
   mail: true,
   homeserverUrl: 'https://matrix.acme.test',
@@ -55,6 +58,12 @@ describe('spaceTabs', () => {
       'chat',
       'mail'
     ])
+  })
+
+  it('leaves out the tabs of the apps the space does not use', () => {
+    const tabs = spaceTabs({ ...space, apps: ['feed', 'drive'] }, SOON)
+
+    expect(tabs.map(t => t.tab)).toEqual(['feed', 'drive', 'members'])
   })
 
   it('has no tab for an app this deployment does not provide', () => {

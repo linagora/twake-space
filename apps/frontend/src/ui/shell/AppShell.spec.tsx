@@ -7,8 +7,8 @@ import { renderRoute } from '@/testing/renderWithProviders'
 
 const spaces = () =>
   fakeSpaces([
-    { id: 'space-1', name: 'Design', role: 'admin' },
-    { id: 'space-2', name: 'Launch', role: 'viewer' }
+    { id: 'space-1', name: 'Design', role: 'admin', color: null },
+    { id: 'space-2', name: 'Launch', role: 'viewer', color: null }
   ])
 
 describe('AppShell', () => {

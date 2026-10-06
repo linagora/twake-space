@@ -1,7 +1,7 @@
 import type { MemoryOrganization } from '@/adapters/memory/memoryDirectory'
 import type { FeedEntry } from '@/application/feed'
 import type { User } from '@/application/session'
-import type { Member, Space, SpaceRole } from '@/application/spaces'
+import type { Member, Space, SpaceApp, SpaceRole } from '@/application/spaces'
 
 // The same organization, people and roles as the local SSO stack, so moving
 // from the mock to the real backend changes nothing on screen.
@@ -49,12 +49,24 @@ const designers = (role: SpaceRole) => ({
 const ROADMAP_ROOM = `!roadmap:${DOMAIN}`
 const DESIGN_ROOM = `!design-sprint:${DOMAIN}`
 
+const ALL_APPS: SpaceApp[] = [
+  'feed',
+  'chat',
+  'tasks',
+  'drive',
+  'mail',
+  'calendar'
+]
+
 export const seedSpaces: Space[] = [
   {
     id: 'roadmap',
     name: 'Roadmap',
     role: 'admin',
     createdAt: '2026-09-01T08:00:00.000Z',
+    color: '#46a2ff',
+    description: 'What we ship this year, and when.',
+    apps: ALL_APPS,
     chat: true,
     mail: true,
     homeserverUrl: HOMESERVER,
@@ -77,6 +89,9 @@ export const seedSpaces: Space[] = [
     name: 'Design Sprint',
     role: 'editor',
     createdAt: '2026-09-15T08:00:00.000Z',
+    color: null,
+    description: '',
+    apps: ['feed', 'chat', 'tasks', 'drive', 'calendar'],
     chat: true,
     mail: false,
     homeserverUrl: HOMESERVER,
@@ -95,6 +110,9 @@ export const seedSpaces: Space[] = [
     name: 'Handover',
     role: 'viewer',
     createdAt: '2026-09-20T08:00:00.000Z',
+    color: null,
+    description: '',
+    apps: ALL_APPS,
     chat: false,
     mail: false,
     homeserverUrl: null,

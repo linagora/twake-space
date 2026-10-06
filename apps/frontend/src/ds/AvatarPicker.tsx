@@ -6,59 +6,43 @@ import {
   RadioGroup,
   radioClasses
 } from '@linagora/twake-mui'
-import { useRef, type ReactElement, type ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 
-// The avatar opens a picker; the pen badge uploads a photo instead.
+// The pen badge tells the avatar opens a picker.
 export function AvatarPicker({
   avatar,
   pickLabel,
-  uploadLabel,
-  onPick,
-  onUpload
+  onPick
 }: {
   avatar: ReactNode
   pickLabel: string
-  uploadLabel: string
   onPick: () => void
-  onUpload: (file: File) => void
 }): ReactElement {
-  const input = useRef<HTMLInputElement>(null)
-
   return (
     <Box sx={{ position: 'relative', flex: 'none' }}>
       <IconButton aria-label={pickLabel} onClick={onPick} sx={{ p: 0 }}>
         {avatar}
+        <Box
+          component="span"
+          sx={{
+            position: 'absolute',
+            right: -1,
+            bottom: -1,
+            width: 38,
+            height: 38,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '50%',
+            border: 4,
+            borderColor: 'background.paper',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText'
+          }}
+        >
+          <Icon icon={Pen} size={15} />
+        </Box>
       </IconButton>
-      <IconButton
-        aria-label={uploadLabel}
-        onClick={() => input.current?.click()}
-        sx={{
-          position: 'absolute',
-          right: -1,
-          bottom: -1,
-          width: 38,
-          height: 38,
-          p: 0,
-          border: 4,
-          borderColor: 'background.paper',
-          bgcolor: 'primary.main',
-          color: 'primary.contrastText',
-          '&:hover': { bgcolor: 'primary.dark' }
-        }}
-      >
-        <Icon icon={Pen} size={15} />
-      </IconButton>
-      <input
-        ref={input}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={event => {
-          const file = event.target.files?.[0]
-          if (file) onUpload(file)
-          event.target.value = ''
-        }}
-      />
     </Box>
   )
 }

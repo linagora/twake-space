@@ -152,7 +152,7 @@ function SpaceList(): ReactElement | null {
       {spaces.map(space => (
         <NavItem key={space.id}>
           <NavLink component={RouterNavLink} to={`/spaces/${space.id}`}>
-            <NavAvatar name={space.name} />
+            <NavAvatar name={space.name} color={space.color} />
             <NavText>{space.name}</NavText>
           </NavLink>
         </NavItem>

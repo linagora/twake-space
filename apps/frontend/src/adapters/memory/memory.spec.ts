@@ -11,6 +11,9 @@ const roadmap: Space = {
   name: 'Roadmap',
   role: 'admin',
   createdAt: '2026-10-01T08:00:00.000Z',
+  color: null,
+  description: '',
+  apps: ['feed', 'chat'],
   chat: true,
   mail: true,
   homeserverUrl: 'https://matrix.acme.test',
@@ -69,7 +72,7 @@ describe('memorySpaces', () => {
 
     await spaces.rename('roadmap', 'Roadmap 2027')
     expect(await spaces.list()).toEqual([
-      { id: 'roadmap', name: 'Roadmap 2027', role: 'admin' }
+      { id: 'roadmap', name: 'Roadmap 2027', role: 'admin', color: null }
     ])
     await spaces.remove('roadmap')
     expect(await spaces.list()).toEqual([])
@@ -118,15 +121,23 @@ describe('memorySpaces', () => {
   it('lists, gets and creates spaces', async () => {
     const spaces = memorySpaces([roadmap], { people, groups })
 
-    const created = await spaces.create('Launch')
+    const created = await spaces.create({
+      name: 'Launch',
+      description: 'Ship it',
+      color: '#46a2ff',
+      apps: ['feed']
+    })
 
     expect(await spaces.list()).toEqual([
-      { id: 'roadmap', name: 'Roadmap', role: 'admin' },
+      { id: 'roadmap', name: 'Roadmap', role: 'admin', color: null },
       created
     ])
     expect(await spaces.get(created.id)).toMatchObject({
       name: 'Launch',
-      role: 'admin'
+      role: 'admin',
+      description: 'Ship it',
+      color: '#46a2ff',
+      apps: ['feed']
     })
     await expect(spaces.get('nowhere')).rejects.toMatchObject({ status: 404 })
   })

@@ -92,7 +92,13 @@ export function SpaceScreen(): ReactElement {
   return (
     <Page>
       <SpaceHeader
-        avatar={<NameAvatar name={space.data.name} size="m" />}
+        avatar={
+          <NameAvatar
+            name={space.data.name}
+            color={space.data.color}
+            size="m"
+          />
+        }
         title={space.data.name}
         meta={
           <>
@@ -127,6 +133,11 @@ export function SpaceScreen(): ReactElement {
           </Tabs>
         }
       />
+      {space.data.description && (
+        <Typography variant="body2" color="textSecondary" className="u-mb-1">
+          {space.data.description}
+        </Typography>
+      )}
       {!space.data.chat && (
         <Alert severity="info" className="u-mb-1">
           {t('space.chatOff')}
