@@ -28,27 +28,36 @@ function setUp() {
   const events = [message('$2', 'Second', 2)]
   const older = [message('$1', 'First', 1)]
   const filters: Filter[] = []
-  const timeline = { getEvents: () => events }
+  let timeline = { getEvents: () => events }
+  const timelineSet = { getLiveTimeline: () => timeline }
   const room = Object.assign(new EventEmitter(), {
     getOrCreateFilteredTimelineSet: (filter: Filter) => {
       filters.push(filter)
-      return { getLiveTimeline: () => timeline }
+      return timelineSet
     }
+  })
+  // A gappy sync swaps in an empty live timeline.
+  const reset = () => {
+    events.splice(0)
+    older.push(message('$1', 'First', 1), message('$2', 'Second', 2))
+    timeline = { getEvents: () => events }
+    room.emit(RoomEvent.TimelineReset, room, timelineSet, true)
+  }
+  const paginate = vi.fn(() => {
+    events.unshift(...older.splice(0))
+    return Promise.resolve(false)
   })
   const client: FeedClient & EventEmitter = Object.assign(new EventEmitter(), {
     getUserId: () => '@alice:acme.test',
     getRoom: (id: string) => (id === ROOM ? room : null),
-    paginateEventTimeline: vi.fn(() => {
-      events.unshift(...older.splice(0))
-      return Promise.resolve(false)
-    })
+    paginateEventTimeline: paginate
   })
   const pages: FeedPage[] = []
   const open = (roomId = ROOM) =>
     matrixFeed(() => Promise.resolve(client)).open(roomId, 'messages', page =>
       pages.push(page)
     )
-  return { events, room, client, filters, pages, open }
+  return { events, room, client, paginate, filters, pages, open, reset }
 }
 
 describe('matrixFeed', () => {
@@ -90,6 +99,18 @@ describe('matrixFeed', () => {
       '$2',
       '$3'
     ])
+  })
+
+  it('reloads a first page when the homeserver resets the timeline', async () => {
+    const { paginate, pages, open, reset } = setUp()
+    await open()
+
+    reset()
+
+    await vi.waitFor(() => {
+      expect(paginate).toHaveBeenCalledTimes(2)
+      expect(pages.at(-1)?.entries.map(entry => entry.id)).toEqual(['$1', '$2'])
+    })
   })
 
   it('refuses a Matrix space the user is not in', async () => {
