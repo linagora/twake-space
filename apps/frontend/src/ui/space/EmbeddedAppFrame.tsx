@@ -10,10 +10,9 @@ import {
 
 import {
   overlayClipPath,
-  parseSurfaceMessage,
-  surfaceInit,
+  parseOverlayRegionMessage,
   type OverlayRegion
-} from '@/application/embedSurface'
+} from '@/application/embedOverlay'
 import { OverlayFrame } from '@/ds/OverlayFrame'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
@@ -38,7 +37,8 @@ function isLoginRequired(data: unknown): boolean {
 // - a new sign in when its session expired (`notifyLoginRequired`), through
 //   cozy-external-bridge (comlink),
 // - with `overlayPath`, an overlay over the whole page, on the app's origin,
-//   for its docked windows and dialogs.
+//   for its docked windows and dialogs: an empty page the app renders into,
+//   shown within the region the app reports (`twake-embed:overlay-region`).
 export function EmbeddedAppFrame({
   app,
   appUrl,
@@ -91,6 +91,8 @@ export function EmbeddedAppFrame({
     if (active && lastPath.current !== null) followAlways(lastPath.current)
   }, [active, followAlways])
 
+  const [region, setRegion] = useState<OverlayRegion | null>(null)
+
   const messageHandler = useRef(onFrameMessage)
   useEffect(() => {
     messageHandler.current = onFrameMessage
@@ -109,7 +111,12 @@ export function EmbeddedAppFrame({
       'message',
       event => {
         if (!fromFrame(event)) return
-        if (isLoginRequired(event.data)) void signIn()
+        if (isLoginRequired(event.data)) {
+          void signIn()
+          return
+        }
+        const reported = parseOverlayRegionMessage(event.data)
+        if (reported !== null) setRegion(reported)
         else messageHandler.current?.(event.data, follow)
       },
       { signal: listening.signal }
@@ -156,64 +163,36 @@ export function EmbeddedAppFrame({
         sandbox={SANDBOX}
         allow={ALLOW}
         className="u-w-100 u-flex-auto u-bdw-0"
-        onLoad={onFrameLoad}
+        onLoad={() => {
+          // A frame loaded again draws nothing on the overlay yet
+          setRegion(null)
+          onFrameLoad?.()
+        }}
       />
       {overlayPath === undefined ? null : (
         <AppOverlay
           name={`${name}:overlay`}
           src={new URL(overlayPath, appUrl).href}
-          origin={origin}
           title={t('embed.overlay', { app: title })}
+          region={region}
         />
       )}
     </>
   )
 }
 
-// Answers the overlay's `intent:ready` with `intent:init`, then shows the
-// region it reports for that intent only.
+// The overlay, shown within the region its app reports.
 function AppOverlay({
   name,
   src,
-  origin,
-  title
+  title,
+  region
 }: {
   name: string
   src: string
-  origin: string
   title: string
+  region: OverlayRegion | null
 }): ReactElement {
-  const overlay = useRef<HTMLIFrameElement>(null)
-  const [region, setRegion] = useState<OverlayRegion | null>(null)
-
-  useEffect(() => {
-    let intentId: string | null = null
-    const onMessage = (event: MessageEvent) => {
-      const target = overlay.current?.contentWindow
-      if (!target || event.origin !== origin || event.source !== target) return
-      const message = parseSurfaceMessage(event.data)
-      if (message === null) return
-      if (message.type === 'ready') {
-        // A reloaded overlay starts a new intent
-        intentId = crypto.randomUUID()
-        setRegion(null)
-        target.postMessage(surfaceInit(intentId), origin)
-        return
-      }
-      if (message.intentId !== intentId) return
-      if (message.type === 'region') setRegion(message.region)
-      else {
-        console.warn(`[embed] the overlay of ${origin} failed: ${message.code}`)
-        intentId = null
-        setRegion(null)
-      }
-    }
-    window.addEventListener('message', onMessage)
-    return () => {
-      window.removeEventListener('message', onMessage)
-    }
-  }, [origin])
-
   // While the app blocks the page (a dialog), the rest of it, the app's own
   // frame included, is out of reach of the keyboard and screen readers
   useEffect(() => {
@@ -228,7 +207,6 @@ function AppOverlay({
 
   return (
     <OverlayFrame
-      frameRef={overlay}
       name={name}
       src={src}
       title={title}

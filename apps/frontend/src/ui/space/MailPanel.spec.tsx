@@ -1,6 +1,6 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { Route, Routes, useLocation } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import type { SessionService } from '@/application/session'
 import { fakeSession } from '@/testing/fakeSession'
@@ -57,32 +57,8 @@ function overlay(): HTMLIFrameElement {
   return element
 }
 
-function postFromOverlay(
-  data: unknown,
-  { origin = MAIL, source = overlay().contentWindow } = {}
-) {
-  act(() => {
-    window.dispatchEvent(new MessageEvent('message', { data, origin, source }))
-  })
-}
-
-// Answers the overlay's ready, and gives the id of the intent it started.
-function startOverlay(): string {
-  const target = overlay().contentWindow
-  if (!target) throw new Error('no overlay window')
-  const post = vi.spyOn(target, 'postMessage')
-  postFromOverlay({ type: 'intent:ready' })
-  const [[init, targetOrigin]] = post.mock.calls as [[unknown, string]]
-  expect(targetOrigin).toBe(MAIL)
-  expect(init).toMatchObject({
-    type: 'intent:init',
-    payload: { action: 'TWAKE_SURFACE', protocol: 'twake-surface/1' }
-  })
-  return (init as { intentId: string }).intentId
-}
-
-function region(intentId: string, value: unknown) {
-  return { type: 'twake-surface:region', intentId, payload: { region: value } }
+function region(value: unknown) {
+  return { type: 'twake-embed:overlay-region', region: value }
 }
 
 let calls = 0
@@ -212,12 +188,13 @@ describe('MailPanel', () => {
     document.body.appendChild(root)
     renderAt('/spaces/a1/mail')
     await screen.findByTitle('Mail')
-    const intentId = startOverlay()
 
-    postFromOverlay(region(intentId, 'full'))
-    expect(root.inert).toBe(true)
+    await waitFor(() => {
+      postFromFrame(region('full'))
+      expect(root.inert).toBe(true)
+    })
 
-    postFromOverlay(region(intentId, []))
+    postFromFrame(region([]))
     expect(root.inert).toBe(false)
     root.remove()
   })
@@ -234,31 +211,47 @@ describe('MailPanel', () => {
   it('shows the region Mail draws in, then the whole page', async () => {
     renderAt('/spaces/a1/mail')
     await screen.findByTitle('Mail')
-    const intentId = startOverlay()
 
-    postFromOverlay(
-      region(intentId, [{ x: 600, y: 300, width: 400, height: 500 }])
-    )
-    expect(overlay().style.clipPath).toBe("path('M600 300h400v500h-400Z')")
+    await waitFor(() => {
+      postFromFrame(region([{ x: 600, y: 300, width: 400, height: 500 }]))
+      expect(overlay().style.clipPath).toBe("path('M600 300h400v500h-400Z')")
+    })
     expect(overlay()).not.toHaveAttribute('aria-hidden')
 
-    postFromOverlay(region(intentId, 'full'))
+    postFromFrame(region('full'))
     expect(overlay().style.clipPath).toBe('none')
 
-    postFromOverlay(region(intentId, []))
+    postFromFrame(region([]))
     expect(overlay().style.clipPath).toBe('inset(0 0 100% 0)')
   })
 
-  it('takes a region only from the overlay, for its intent', async () => {
+  it('takes a region only from the Mail frame', async () => {
     renderAt('/spaces/a1/mail')
     await screen.findByTitle('Mail')
-    const intentId = startOverlay()
 
-    postFromOverlay(region(intentId, 'full'), { origin: 'https://evil.test' })
-    postFromOverlay(region(intentId, 'full'), {
-      source: frame().contentWindow
+    postFromFrame(region('full'), 'https://evil.test')
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: region('full'),
+          origin: MAIL,
+          source: overlay().contentWindow
+        })
+      )
     })
-    postFromOverlay(region('another', 'full'))
+
+    expect(overlay().style.clipPath).toBe('inset(0 0 100% 0)')
+  })
+
+  it('shows nothing of the overlay once the Mail frame loads again', async () => {
+    renderAt('/spaces/a1/mail')
+    await screen.findByTitle('Mail')
+    await waitFor(() => {
+      postFromFrame(region('full'))
+      expect(overlay().style.clipPath).toBe('none')
+    })
+
+    fireEvent.load(frame())
 
     expect(overlay().style.clipPath).toBe('inset(0 0 100% 0)')
   })
