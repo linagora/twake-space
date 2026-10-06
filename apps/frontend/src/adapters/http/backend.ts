@@ -8,9 +8,23 @@ export function backend(apiUrl: string): KyInstance {
     hooks: {
       beforeRequest: [addAuthorization],
       afterResponse: [redirectOnUnauthorized],
-      // The query client reads the status to retry server errors only.
+      // A Refusal: the query client retries server errors only, and the UI
+      // explains a refused write by its code.
       beforeError: [
-        error => Object.assign(error, { status: error.response.status })
+        async error => {
+          const body: unknown = await error.response
+            .clone()
+            .json()
+            .catch(() => null)
+          const code =
+            typeof body === 'object' &&
+            body !== null &&
+            'error' in body &&
+            typeof body.error === 'string'
+              ? body.error
+              : null
+          return Object.assign(error, { status: error.response.status, code })
+        }
       ]
     }
   })

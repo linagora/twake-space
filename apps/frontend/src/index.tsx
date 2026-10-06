@@ -5,6 +5,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { backend } from '@/adapters/http/backend'
+import { httpDirectory } from '@/adapters/http/httpDirectory'
 import { httpSpaces } from '@/adapters/http/httpSpaces'
 import { liveStream } from '@/adapters/http/liveStream'
 import { matrixFeed } from '@/adapters/matrix/matrixFeed'
@@ -38,6 +39,7 @@ const session = {
 const api = backend(apiUrl)
 const services = {
   spaces: httpSpaces(api),
+  directory: httpDirectory(api),
   live: liveStream(api),
   matrix,
   feed: matrixFeed(matrix.client),

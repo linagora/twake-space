@@ -1,20 +1,16 @@
 import { QueryClient } from '@tanstack/react-query'
 
-const MAX_QUERY_RETRIES = 2
+import { isRefusal } from '@/application/spaces'
 
-function httpStatus(error: unknown): number | null {
-  if (typeof error !== 'object' || error === null || !('status' in error)) {
-    return null
-  }
-  return typeof error.status === 'number' ? error.status : null
-}
+const MAX_QUERY_RETRIES = 2
 
 export function shouldRetryQuery(
   failureCount: number,
   error: unknown
 ): boolean {
-  const status = httpStatus(error)
-  if (status !== null && status >= 400 && status < 500) return false
+  if (isRefusal(error) && error.status >= 400 && error.status < 500) {
+    return false
+  }
   return failureCount < MAX_QUERY_RETRIES
 }
 

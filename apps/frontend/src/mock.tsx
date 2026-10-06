@@ -3,9 +3,15 @@ import '@linagora/twake-css/dist/utils.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import { memoryDirectory } from '@/adapters/memory/memoryDirectory'
 import { memoryFeed } from '@/adapters/memory/memoryFeed'
 import { memorySpaces } from '@/adapters/memory/memorySpaces'
-import { seedFeed, seedSpaces, seedUser } from '@/adapters/memory/seed'
+import {
+  seedFeed,
+  seedOrganization,
+  seedSpaces,
+  seedUser
+} from '@/adapters/memory/seed'
 import { App } from '@/app/App'
 
 // `npm run dev:mock`: the app on seed data, with no backend, SSO or homeserver.
@@ -23,6 +29,7 @@ const session = {
 }
 const services = {
   spaces: memorySpaces(seedSpaces),
+  directory: memoryDirectory(seedOrganization),
   live: { subscribe: () => () => undefined },
   matrix: {
     signIn: () => Promise.resolve(true),

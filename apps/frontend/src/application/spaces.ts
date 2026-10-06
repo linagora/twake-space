@@ -18,6 +18,24 @@ export interface Space extends SpaceSummary {
   resources: { kind: ResourceKind; id: string | null }[]
 }
 
+/**
+ * What a write rejects with when the backend refuses it. `code` is the
+ * reason, for example ldap-rest refusing to remove the last admin.
+ */
+export interface Refusal {
+  status: number
+  code: string | null
+}
+
+export function isRefusal(error: unknown): error is Refusal {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof error.status === 'number'
+  )
+}
+
 export interface SpacesService {
   list: () => Promise<SpaceSummary[]>
   get: (id: string) => Promise<Space>

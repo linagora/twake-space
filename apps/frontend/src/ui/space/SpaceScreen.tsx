@@ -15,21 +15,13 @@ import {
   useParams
 } from 'react-router'
 
+import { isRefusal } from '@/application/spaces'
 import { spaceTabs } from '@/application/spaceTabs'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 import { TasksPanel } from '@/ui/space/TasksPanel'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
-
-function isNotFound(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'status' in error &&
-    error.status === 404
-  )
-}
 
 export function SpaceScreen(): ReactElement {
   const { t } = useI18n()
@@ -45,7 +37,11 @@ export function SpaceScreen(): ReactElement {
     return (
       <main className="u-p-2">
         <Alert severity="error">
-          {t(isNotFound(space.error) ? 'space.notFound' : 'space.loadFailed')}
+          {t(
+            isRefusal(space.error) && space.error.status === 404
+              ? 'space.notFound'
+              : 'space.loadFailed'
+          )}
         </Alert>
         <Link component={RouterLink} to="/">
           {t('space.back')}
