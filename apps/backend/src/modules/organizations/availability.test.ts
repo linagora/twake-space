@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest'
 import type { PlatformEvent } from '../../events/envelope.ts'
-import type { Handler } from '../../events/router.ts'
+import { NotYetKnownError, type Handler } from '../../events/router.ts'
 import { lastChanges } from '../../events/schema.ts'
 import type { Directory } from '../../infra/ldap-rest.ts'
 import { decrypt, hashSecret } from '../../infra/secrets.ts'
@@ -170,6 +170,29 @@ it('refreshes the homeserver on each chat deployment', async () => {
     { ...first, hsTokenHash: hashSecret('hs-2') }
   ])
   expect(await testDb.db.$count(homeservers)).toBe(1)
+})
+
+it('handles the event of a new organization when the chat control plane fails', async () => {
+  const homeserverOf = vi.fn(() => Promise.reject(new Error('503')))
+  const { other, handle } = setUp(acme, undefined, { homeserverOf })
+
+  await handle('twake.space.created', { organizationId: 'org_acme' })
+
+  expect(other).toHaveBeenCalledOnce()
+  expect(await linked()).toMatchObject([{ homeserverId: null }])
+})
+
+it('waits for the chat control plane on a chat deployment', async () => {
+  const homeserverOf = vi.fn(() => Promise.reject(new Error('503')))
+  const { handle } = setUp(acme, undefined, { homeserverOf })
+  await handle('twake.space.created', { organizationId: 'org_acme' })
+
+  await expect(
+    handle('chat.deployment.completed', {
+      organizationId: 'org_acme',
+      deployment: { completedAt: '2026-10-05T09:00:00Z' }
+    })
+  ).rejects.toBeInstanceOf(NotYetKnownError)
 })
 
 it('keeps an organization the directory does not have out of the copy', async () => {

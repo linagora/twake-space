@@ -3,7 +3,12 @@ import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { PlatformEvent } from '../../events/envelope.ts'
 import { fresh } from '../../events/freshness.ts'
-import { parseOrDrop, type Handler, type Routes } from '../../events/router.ts'
+import {
+  NotYetKnownError,
+  parseOrDrop,
+  type Handler,
+  type Routes
+} from '../../events/router.ts'
 import type { Tx } from '../../infra/db.ts'
 import type { Directory } from '../../infra/ldap-rest.ts'
 import type { TenantHomeservers } from './control-plane.ts'
@@ -22,15 +27,34 @@ interface MeetingDeps {
   tenants?: { homeservers: TenantHomeservers; key: Buffer } | null | undefined
 }
 
+// A failing control plane leaves the organization's homeserver as it was: the
+// event that met the organization goes on, a chat deployment is retried.
 async function refreshHomeserver(
   tx: Tx,
   deps: MeetingDeps,
-  organizationId: string
+  log: Logger,
+  organizationId: string,
+  { retry }: { retry: boolean }
 ) {
-  if (!deps.tenants) return
-  const homeserver = await deps.tenants.homeservers.homeserverOf(organizationId)
-  if (homeserver) {
-    await linkHomeserver(tx, deps.tenants.key, organizationId, homeserver)
+  const tenants = deps.tenants
+  if (!tenants) return
+  try {
+    await tx.transaction(async savepoint => {
+      const homeserver = await tenants.homeservers.homeserverOf(organizationId)
+      if (homeserver) {
+        await linkHomeserver(savepoint, tenants.key, organizationId, homeserver)
+      }
+    })
+  } catch (error) {
+    log.warn(
+      { err: error, organizationId },
+      'could not refresh the homeserver from the chat control plane'
+    )
+    if (retry) {
+      throw new NotYetKnownError(
+        `homeserver of ${organizationId} from the chat control plane`
+      )
+    }
   }
 }
 
@@ -62,7 +86,7 @@ async function meet(
       homeserverId: deps.homeserverId
     })
     .onConflictDoNothing()
-  await refreshHomeserver(tx, deps, organizationId)
+  await refreshHomeserver(tx, deps, log, organizationId, { retry: false })
 }
 
 export function meetingOrganizations(
@@ -80,7 +104,9 @@ export function meetingOrganizations(
         }
         await handler(event, tx, log)
         if (about.success && key === 'chat.deployment.completed') {
-          await refreshHomeserver(tx, deps, about.data.organizationId)
+          await refreshHomeserver(tx, deps, log, about.data.organizationId, {
+            retry: true
+          })
         }
       }
     }
