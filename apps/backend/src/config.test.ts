@@ -3,8 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { loadConfig } from './config.ts'
 
 const base = {
-  KAFKA_BOOTSTRAP: 'localhost:9092',
-  KAFKA_SECURITY: 'plaintext',
+  AMQP_URL: 'amqp://guest:guest@localhost:5672',
   DATABASE_URL: 'postgres://u:p@localhost:5432/db',
   LDAP_REST_URL: 'http://localhost:8081',
   LDAP_REST_SERVICE_ID: 'twake-space',
@@ -27,6 +26,12 @@ const controlPlane = {
 }
 
 describe('loadConfig', () => {
+  it('refuses a broker URL that is not AMQP', () => {
+    expect(() =>
+      loadConfig({ ...base, AMQP_URL: 'kafka://localhost:9092' })
+    ).toThrow('AMQP_URL')
+  })
+
   it('has no homeserver unless one is configured', () => {
     expect(loadConfig(base).homeserver).toBeNull()
   })

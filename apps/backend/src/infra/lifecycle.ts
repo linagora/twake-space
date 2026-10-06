@@ -1,7 +1,7 @@
 import type { EventEmitter } from 'node:events'
 import type { Logger } from 'pino'
 
-// Before `started`, nothing serves traffic or holds a Kafka assignment, and an
+// Before `started`, nothing serves traffic or holds a delivery, and an
 // unfinished migration rolls back, so a signal ends the process right away.
 export function handleSignals(deps: {
   log: Logger

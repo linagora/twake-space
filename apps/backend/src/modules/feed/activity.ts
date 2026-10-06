@@ -86,7 +86,7 @@ async function findUser(
 
 // A resource no space has belongs to a person: notifications only. The app
 // publishes a space resource's provisioned event before any activity on it,
-// in the same partition, so it is never just late.
+// and both reach the one queue in that order, so it is never just late.
 async function findSpace(
   tx: Tx,
   container: { kind: SpaceResourceKind; id: string } | undefined,

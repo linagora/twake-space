@@ -42,7 +42,7 @@ it('stops once started, then exits', async () => {
 
 it('exits with an error when stopping fails', async () => {
   const { signals, exit, lifecycle } = setUp()
-  lifecycle.started(() => Promise.reject(new Error('kafka gone')))
+  lifecycle.started(() => Promise.reject(new Error('broker gone')))
 
   signals.emit('SIGTERM', 'SIGTERM')
   await vi.runAllTimersAsync()

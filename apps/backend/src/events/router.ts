@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { postgresRefusal, type Tx } from '../infra/db.ts'
 import type { Deduplicator, EventKey } from './dedupe.ts'
 import {
-  PLATFORM_TOPIC,
+  ACTIVITY_EXCHANGE,
   parseCloudEvent,
   parsePlatformEvent,
   type CloudEvent,
@@ -13,28 +13,25 @@ import {
 
 export type Handler<E> = (event: E, tx: Tx, log: Logger) => Promise<void>
 
-// Thrown by a handler for an event it can never process, so the offset moves on.
+// Thrown by a handler for an event it can never process, so it is acknowledged
+// and dropped.
 export class MalformedEventError extends Error {}
 
-// Thrown by a handler for a well-formed event that contradicts the copy; kept on a
-// dead letter topic for someone to look at.
+// Thrown by a handler for a well-formed event that contradicts the copy; kept on
+// the dead letter queue for someone to look at.
 export class RejectedEventError extends Error {}
 
 // Thrown for an event about a space or member the copy doesn't hold yet: the
 // platform event that brings it may only be late.
 export class NotYetKnownError extends Error {}
 
-export const deadLetterTopic = (topic: string) => `${topic}.dlq.twake-space`
-
 export type Park = (
-  topic: string,
   message: IncomingMessage,
   key: EventKey,
   reason: string
 ) => Promise<void>
 
 export type DeadLetter = (
-  topic: string,
   message: IncomingMessage,
   reason: string
 ) => Promise<void>
@@ -61,10 +58,10 @@ export interface Routes {
 }
 
 export interface IncomingMessage {
-  key?: Buffer | null
-  value: Buffer | null
-  offset: string
-  headers?: Record<string, unknown>
+  exchange: string
+  routingKey: string
+  messageId?: string
+  body: unknown
 }
 
 export type Outcome =
@@ -73,14 +70,12 @@ export type Outcome =
 export function createMessageHandler(deps: {
   routes: Routes
   dedupe: Deduplicator
-  deadLetter: DeadLetter
   park: Park
   logger: Logger
 }) {
-  const { routes, dedupe, deadLetter, park, logger } = deps
+  const { routes, dedupe, park, logger } = deps
 
   async function dispatch<E>(
-    topic: string,
     message: IncomingMessage,
     parsed: ParseResult<E>,
     route: (event: E) => {
@@ -89,7 +84,10 @@ export function createMessageHandler(deps: {
       dedupeKey: EventKey
     }
   ): Promise<Outcome> {
-    const context = { topic, offset: message.offset }
+    const context = {
+      exchange: message.exchange,
+      routingKey: message.routingKey
+    }
     if (!parsed.ok) {
       logger.error(
         { ...context, error: parsed.error },
@@ -109,7 +107,7 @@ export function createMessageHandler(deps: {
       )
     } catch (error) {
       if (error instanceof NotYetKnownError) {
-        await park(topic, message, dedupeKey, error.message)
+        await park(message, dedupeKey, error.message)
         logger.info(
           { ...context, key, ...dedupeKey, reason: error.message },
           'event parked'
@@ -121,11 +119,7 @@ export function createMessageHandler(deps: {
           ? error.message
           : postgresRefusal(error)
       if (reason) {
-        await deadLetter(deadLetterTopic(topic), message, reason)
-        logger.warn(
-          { ...context, key, ...dedupeKey, reason },
-          'event sent to the dead letter topic'
-        )
+        logger.warn({ ...context, key, ...dedupeKey, reason }, 'event rejected')
         return 'rejected'
       }
       if (!(error instanceof MalformedEventError)) throw error
@@ -142,21 +136,16 @@ export function createMessageHandler(deps: {
     return processed ? 'processed' : 'duplicate'
   }
 
-  return (topic: string, message: IncomingMessage): Promise<Outcome> =>
-    topic === PLATFORM_TOPIC
-      ? dispatch(
-          topic,
-          message,
-          parsePlatformEvent(message.value, message.headers),
-          event => ({
-            key: event.routingKey,
-            handler: routes.platform.get(event.routingKey),
-            dedupeKey: { source: 'amqp', id: event.messageId }
-          })
-        )
-      : dispatch(topic, message, parseCloudEvent(message.value), event => ({
+  return (message: IncomingMessage): Promise<Outcome> =>
+    message.exchange === ACTIVITY_EXCHANGE
+      ? dispatch(message, parseCloudEvent(message.body), event => ({
           key: event.type,
           handler: routes.activity.get(event.type),
           dedupeKey: { source: event.source, id: event.id }
+        }))
+      : dispatch(message, parsePlatformEvent(message), event => ({
+          key: event.routingKey,
+          handler: routes.platform.get(event.routingKey),
+          dedupeKey: { source: 'amqp', id: event.messageId }
         }))
 }
