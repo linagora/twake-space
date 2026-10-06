@@ -1,9 +1,9 @@
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray, or } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import { z } from 'zod'
 import type { Tx } from '../../infra/db.ts'
 import { tell } from '../live/notify.ts'
-import { spaceMembers } from '../spaces/schema.ts'
+import { organizationMembers, spaceMembers, spaces } from '../spaces/schema.ts'
 import {
   notifications,
   notificationSettings,
@@ -28,6 +28,51 @@ const recipient = z.looseObject({
   reason: z.enum(Object.keys(TYPES) as (keyof typeof TYPES)[])
 })
 
+// The people the copy holds under these uuids or emails, and whether they belong to
+// the event's organization. The copy does not hold every member of an organization,
+// so a uuid it does not know at all still gets its notification.
+async function peopleOf(
+  tx: Tx,
+  organizationId: string | null,
+  recipients: { uuid?: string | undefined; email: string }[]
+) {
+  const uuids = recipients.flatMap(r => (r.uuid ? [r.uuid] : []))
+  const emails = recipients.flatMap(r => (r.uuid ? [] : [r.email]))
+  if (uuids.length === 0 && emails.length === 0) return []
+  const inSpaces = await tx
+    .selectDistinct({
+      userId: spaceMembers.userId,
+      email: spaceMembers.email,
+      organizationId: spaces.organizationId
+    })
+    .from(spaceMembers)
+    .innerJoin(spaces, eq(spaces.spaceId, spaceMembers.spaceId))
+    .where(
+      or(
+        inArray(spaceMembers.userId, uuids),
+        inArray(spaceMembers.email, emails)
+      )
+    )
+  const inOrganizations = await tx
+    .select({
+      userId: organizationMembers.userId,
+      email: organizationMembers.email,
+      organizationId: organizationMembers.organizationId
+    })
+    .from(organizationMembers)
+    .where(
+      or(
+        inArray(organizationMembers.userId, uuids),
+        inArray(organizationMembers.email, emails)
+      )
+    )
+  return [...inSpaces, ...inOrganizations].map(p => ({
+    userId: p.userId,
+    email: p.email,
+    here: p.organizationId === organizationId
+  }))
+}
+
 export async function notifyRecipients(
   tx: Tx,
   log: Logger,
@@ -49,21 +94,17 @@ export async function notifyRecipients(
       'skipping invalid recipients'
     )
   }
-  const emails = recipients.flatMap(r => (r.uuid ? [] : [r.email]))
-  const known = new Map<string, string>()
-  if (emails.length > 0) {
-    const rows = await tx
-      .selectDistinct({
-        email: spaceMembers.email,
-        userId: spaceMembers.userId
-      })
-      .from(spaceMembers)
-      .where(inArray(spaceMembers.email, emails))
-    for (const row of rows) known.set(row.email, row.userId)
-  }
+  const people = await peopleOf(tx, event.organizationId, recipients)
+  const byEmail = new Map(
+    people.filter(p => p.here).map(p => [p.email, p.userId])
+  )
+  const elsewhere = new Set(people.map(p => p.userId))
+  for (const p of people) if (p.here) elsewhere.delete(p.userId)
   const wanted = recipients.flatMap(r => {
-    const userId = r.uuid ?? known.get(r.email)
-    return userId ? [{ userId, type: TYPES[r.reason] }] : []
+    const userId = r.uuid ?? byEmail.get(r.email)
+    return userId && !elsewhere.has(userId)
+      ? [{ userId, type: TYPES[r.reason] }]
+      : []
   })
   if (wanted.length < recipients.length) {
     log.warn(

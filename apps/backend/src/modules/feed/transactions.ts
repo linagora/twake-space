@@ -148,6 +148,7 @@ async function storeEvent(
         .where(
           and(
             eq(feedMessages.matrixEventId, replaced),
+            eq(feedMessages.spaceId, space.spaceId),
             eq(feedMessages.sender, event.sender),
             or(
               isNull(feedMessages.editedAt),
@@ -180,6 +181,7 @@ async function storeEvent(
       .insert(feedReactions)
       .values({
         matrixEventId: event.event_id,
+        spaceId: space.spaceId,
         targetEventId: reacted.data['m.relates_to'].event_id,
         sender: event.sender,
         key: reacted.data['m.relates_to'].key
@@ -195,11 +197,21 @@ async function storeEvent(
     await tx
       .update(feedMessages)
       .set({ redactedAt: event.origin_server_ts })
-      .where(eq(feedMessages.matrixEventId, redacts))
+      .where(
+        and(
+          eq(feedMessages.matrixEventId, redacts),
+          eq(feedMessages.spaceId, space.spaceId)
+        )
+      )
     await tx
       .update(feedReactions)
       .set({ redactedAt: event.origin_server_ts })
-      .where(eq(feedReactions.matrixEventId, redacts))
+      .where(
+        and(
+          eq(feedReactions.matrixEventId, redacts),
+          eq(feedReactions.spaceId, space.spaceId)
+        )
+      )
   }
 }
 

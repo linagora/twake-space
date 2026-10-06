@@ -111,7 +111,9 @@ Upserts and removals of members, groups and names send a `spaces` live event to 
 - `chat` -> `matrix_space` (the room id the bot posts cards to)
 - `tasks` -> `tasks`
 
-It needs `twakeorg`, upserts `space_resources`, and sends a `spaces` live event to the space's members. It is ignored when the space was deleted after the event's `time`.
+- It needs `twakeorg`, and rejects the event when that is not the space's organization.
+- It upserts `space_resources` and sends a `spaces` live event to the space's members.
+- It parks an event for a space the copy does not hold yet, and ignores one for a space deleted after the event's `time`.
 
 ### Activity that becomes a card
 
@@ -206,9 +208,9 @@ flowchart LR
 - Synapse authenticates with its `hs_token` (bearer or `access_token` query). The backend finds the homeserver by the token's hash.
 - A transaction id already seen for that homeserver is answered `{}` without processing.
 - Events are matched to a space by room id against the `matrix_space` resources of the homeserver's organizations. Events in other rooms are ignored.
-- `m.room.message` is stored. An `m.replace` edit updates the original if the sender matches and it is newer.
-- `m.reaction` with `m.annotation` is stored.
-- `m.room.redaction` marks the redacted message or reaction (`redacts` at the top level or, for room v11, in the content).
+- `m.room.message` is stored. An `m.replace` edit updates the original if it is in the same space, the sender matches and it is newer.
+- `m.reaction` with `m.annotation` is stored with its space.
+- `m.room.redaction` marks the redacted message or reaction of the same space (`redacts` at the top level or, for room v11, in the content).
 - A malformed event, or one Postgres refuses to store, is skipped so Synapse does not resend the batch forever.
 
 ## Notifications
@@ -232,7 +234,8 @@ Each entry in `data.recipients` is `{ uuid?, email, reason }`. The reason sets t
 - `member` -> `space_change`
 
 - An invalid entry is skipped with a warning; the card is still stored.
-- A recipient without a `uuid` is found by email among space members, or skipped.
+- A recipient without a `uuid` is found by email among the people the copy holds in the event's organization (space members of its spaces, and organization roles), or skipped.
+- A recipient whose `uuid` the copy holds only in other organizations is skipped. A `uuid` the copy does not hold at all is notified, since the copy does not hold every member of an organization.
 - Tasks events (`com.twake.tasks.*`) notify no one: Twake Tasks notifies its own users.
 
 ### From Matrix mentions
@@ -302,3 +305,4 @@ The purge does not touch the copy, `processed_events` or `last_changes`, nor the
 - @rezk2ll The card content carries `state`, which the activity schema does not declare and the frontend does not read. What is it for, and what shape should apps send?
 - @rezk2ll The frontend ignores the `notification` live event and has no notifications view yet. Is that planned under #90?
 - @rezk2ll `processed_events` and `last_changes` grow without a purge. Is that intended?
+- @rezk2ll A recipient `uuid` the copy does not hold is notified, because the copy has no full list of an organization's members. Should the backend check it against the directory instead, or should apps only name people of the event's organization?

@@ -315,6 +315,43 @@ describe('notifications', () => {
     expect(await readNotifications()).toEqual([])
   })
 
+  describe('in another organization', () => {
+    const OTHER_SPACE = '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b'
+    const CAROL = '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e'
+    beforeEach(async () => {
+      await testDb.db.insert(spaces).values({
+        spaceId: OTHER_SPACE,
+        organizationId: 'globex',
+        name: 'Sales'
+      })
+      await testDb.db.insert(spaceMembers).values({
+        spaceId: OTHER_SPACE,
+        userId: CAROL,
+        username: 'carol',
+        email: 'carol@globex.com',
+        role: 'viewer'
+      })
+    })
+
+    it('does not find a recipient by email', async () => {
+      await store(
+        withRecipients([{ email: 'carol@globex.com', reason: 'mentioned' }])
+      )
+
+      expect(await readNotifications()).toEqual([])
+    })
+
+    it('skips a recipient the copy knows only there', async () => {
+      await store(
+        withRecipients([
+          { uuid: CAROL, email: 'carol@globex.com', reason: 'mentioned' }
+        ])
+      )
+
+      expect(await readNotifications()).toEqual([])
+    })
+  })
+
   it('makes none from task events', async () => {
     await store(
       withRecipients(

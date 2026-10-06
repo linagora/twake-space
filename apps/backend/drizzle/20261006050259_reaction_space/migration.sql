@@ -1,0 +1,1 @@
+ALTER TABLE "feed_reactions" ADD COLUMN "space_id" uuid;
