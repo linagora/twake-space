@@ -83,6 +83,7 @@ export function AppFrame({
           role={undefined}
           sx={theme => ({
             height: 'auto',
+            position: 'relative',
             [theme.breakpoints.up('lg')]: bare
               ? {
                   m: '12px 12px 12px 0',

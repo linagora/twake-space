@@ -15,6 +15,7 @@ docker run -d --name "$NAME" \
   -e API_URL='https://api.example.com/v1' \
   -e TASKS_URL='https://tasks.example.com/' \
   -e MAIL_URL='https://mail.example.com/' \
+  -e CHAT_URL='https://chat.example.com/' \
   -e DRIVE_URL='https://{slug}-drive.{domain}/' \
   -e CHAT_URL='https://chat.example.com/' \
   -e SSO_BASE_URL='https://sso.example.com/' \

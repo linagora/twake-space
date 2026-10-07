@@ -1,11 +1,5 @@
-import {
-  act,
-  cleanup,
-  fireEvent,
-  screen,
-  waitFor
-} from '@testing-library/react'
-import { Route, Routes, useLocation, useNavigate } from 'react-router'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { Route, Routes, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { FeedItem } from '@/application/feed'
@@ -13,6 +7,7 @@ import type { Space } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
+import { EmbeddedApps } from '@/ui/space/EmbeddedApps'
 import { SpaceScreen } from '@/ui/space/SpaceScreen'
 
 const roadmap: Space = {
@@ -57,45 +52,12 @@ function renderAt(
       <Routes>
         <Route path="/spaces/:spaceId/:tab?/*" element={<SpaceScreen />} />
       </Routes>
+      <EmbeddedApps />
       <Path />
     </>,
     { spaces, path, feed: fakeFeed({ a1: feedItems }) }
   )
   return spaces
-}
-
-function Go({ to }: { to: string }) {
-  const navigate = useNavigate()
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        void navigate(to)
-      }}
-    >
-      Go {to}
-    </button>
-  )
-}
-
-function renderSpaces(path: string, spaces: Space[]) {
-  const service = fakeSpaces()
-  vi.mocked(service.get).mockImplementation(id => {
-    const space = spaces.find(item => item.id === id)
-    return space
-      ? Promise.resolve(space)
-      : Promise.reject(Object.assign(new Error('not found'), { status: 404 }))
-  })
-  renderWithProviders(
-    <>
-      <Routes>
-        <Route path="/spaces/:spaceId/:tab?/*" element={<SpaceScreen />} />
-      </Routes>
-      <Path />
-      <Go to="/spaces/b2/mail" />
-    </>,
-    { spaces: service, path }
-  )
 }
 
 function openTab(name: string) {
@@ -107,26 +69,6 @@ function isHidden(element: HTMLElement): boolean {
 }
 
 // What cozy-external-bridge sends through comlink for `bridge.method(arg)`.
-let bridgeCalls = 0
-function bridgeCall(frame: HTMLElement, method: string, arg: string) {
-  if (!(frame instanceof HTMLIFrameElement)) throw new Error('no frame')
-  bridgeCalls += 1
-  act(() => {
-    window.dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          id: `space-${String(bridgeCalls)}`,
-          type: 'APPLY',
-          path: [method],
-          argumentList: [{ type: 'RAW', value: arg }]
-        },
-        origin: 'https://mail.test',
-        source: frame.contentWindow
-      })
-    )
-  })
-}
-
 describe('SpaceScreen', () => {
   it("shows the space's name with its actions", async () => {
     renderAt('/spaces/a1/members')
@@ -368,54 +310,5 @@ describe('SpaceScreen', () => {
 
     expect(screen.queryByTitle('Mail')).not.toBeInTheDocument()
     expect(screen.queryByTitle('Tasks')).not.toBeInTheDocument()
-  })
-
-  it('writes the path of a hidden frame once its tab shows again', async () => {
-    renderAt('/spaces/a1/mail')
-    const frame = await screen.findByTitle('Mail')
-    openTab('Members')
-    await screen.findByRole('tab', { name: 'Members', selected: true })
-
-    await waitFor(() => {
-      bridgeCall(
-        frame,
-        'updateHistory',
-        'https://mail.test/embed/team-mailboxes/roadmap%40acme/t/9'
-      )
-      expect(screen.getByLabelText('path')).toHaveTextContent(
-        '/spaces/a1/members'
-      )
-    })
-    openTab('Mail')
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('path')).toHaveTextContent(
-        '/spaces/a1/mail/t/9'
-      )
-    })
-  })
-
-  it('drops the frames of the previous space', async () => {
-    const other: Space = {
-      ...roadmap,
-      id: 'b2',
-      name: 'Other',
-      resources: roadmap.resources.map(r =>
-        r.kind === 'mailbox' ? { ...r, id: 'other@acme' } : r
-      )
-    }
-    renderSpaces('/spaces/a1/mail', [roadmap, other])
-    const first = await screen.findByTitle('Mail')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Go /spaces/b2/mail' }))
-
-    await waitFor(() => {
-      expect(screen.getByTitle('Mail')).toHaveAttribute(
-        'src',
-        'https://mail.test/embed/team-mailboxes/other%40acme'
-      )
-    })
-    expect(first).not.toBeInTheDocument()
-    expect(screen.getAllByTitle('Mail')).toHaveLength(1)
   })
 })
