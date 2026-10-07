@@ -12,11 +12,10 @@ import {
   Nav,
   NavIcon,
   NavItem,
-  NavLink,
   NavText,
   Typography
 } from '@linagora/twake-mui'
-import { useState, type ReactElement } from 'react'
+import { useState, type ReactElement, type ReactNode } from 'react'
 import { Outlet, NavLink as RouterNavLink, useMatch } from 'react-router'
 
 import {
@@ -28,6 +27,7 @@ import {
   SidebarHeader,
   SidebarSection
 } from '@/ds/AppFrame'
+import { NavDestination } from '@/ds/NavDestination'
 import { useFeedbackButton } from '@/ui/feedback/useFeedbackButton'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
@@ -159,16 +159,38 @@ function AccountMenu({
   )
 }
 
+function RouteNavLink({
+  to,
+  end = false,
+  children
+}: {
+  to: string
+  end?: boolean
+  children: ReactNode
+}): ReactElement {
+  const selected = useMatch({ path: to, end }) !== null
+
+  return (
+    <NavDestination
+      link={RouterNavLink}
+      linkProps={{ to, end }}
+      selected={selected}
+    >
+      {children}
+    </NavDestination>
+  )
+}
+
 function AppNav(): ReactElement {
   const { t } = useI18n()
 
   return (
     <Nav>
       <NavItem>
-        <NavLink component={RouterNavLink} to="/" end>
+        <RouteNavLink to="/" end>
           <NavIcon icon={Cube} />
           <NavText>{t('shell.allSpaces')}</NavText>
-        </NavLink>
+        </RouteNavLink>
       </NavItem>
     </Nav>
   )
@@ -183,10 +205,10 @@ function SpaceList(): ReactElement | null {
     <SidebarSection label={t('shell.yourSpaces')}>
       {spaces.map(space => (
         <NavItem key={space.id}>
-          <NavLink component={RouterNavLink} to={`/spaces/${space.id}`}>
+          <RouteNavLink to={`/spaces/${space.id}`}>
             <NavAvatar name={space.name} color={space.color} />
             <NavText>{space.name}</NavText>
-          </NavLink>
+          </RouteNavLink>
         </NavItem>
       ))}
     </SidebarSection>
