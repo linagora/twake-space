@@ -29,7 +29,9 @@ const directory = {
   isTechnicalAccount: (organizationId: string, accountId: string) =>
     Promise.resolve(organizationId === 'org-1' && accountId === CI),
   organizationRole: (organizationId: string, accountId: string) =>
-    Promise.resolve(roles.get(`${organizationId}|${accountId}`))
+    Promise.resolve(roles.get(`${organizationId}|${accountId}`)),
+  isMember: (organizationId: string, accountId: string) =>
+    Promise.resolve(roles.has(`${organizationId}|${accountId}`))
 }
 const roles = new Map<
   string,
