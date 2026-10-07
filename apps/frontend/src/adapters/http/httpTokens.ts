@@ -4,7 +4,9 @@ import type {
   ApiToken,
   CreatedToken,
   TokenOwner,
-  TokensService
+  TokenPolicy,
+  TokensService,
+  TokenSpace
 } from '@/application/tokens'
 
 const PREFIX: Record<TokenOwner, string> = {
@@ -22,10 +24,26 @@ export function httpTokens(api: KyInstance): TokensService {
   return {
     list: async owner =>
       (await api.get(PREFIX[owner]).json<{ tokens: ApiToken[] }>()).tokens,
-    create: (owner, json) =>
-      api.post(PREFIX[owner], { json }).json<CreatedToken>(),
+    create: (owner, { expiresInDays, ...rest }) =>
+      api
+        .post(PREFIX[owner], {
+          json: {
+            ...rest,
+            ...(expiresInDays === null
+              ? { expiresAt: null }
+              : { expiresInDays })
+          }
+        })
+        .json<CreatedToken>(),
     rename: (owner, id, name) =>
       send(api.patch(token(owner, id), { json: { name } })),
-    revoke: (owner, id) => send(api.delete(token(owner, id)))
+    revoke: (owner, id) => send(api.delete(token(owner, id))),
+    policy: () => api.get('organization/token-policy').json<TokenPolicy>(),
+    organizationSpaces: async () =>
+      (
+        await api
+          .get('organization/token-spaces')
+          .json<{ spaces: TokenSpace[] }>()
+      ).spaces
   }
 }

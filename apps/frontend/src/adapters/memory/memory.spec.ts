@@ -256,9 +256,24 @@ describe('memoryDirectory', () => {
 
 describe('memoryTokens', () => {
   const empty = { personal: [], organization: [] }
+  const digest = {
+    id: 'digest',
+    name: 'Digest',
+    scopes: ['feed:read' as const],
+    spaces: 'all' as const,
+    role: 'viewer' as const,
+    expiresAt: null,
+    lastUsedAt: null,
+    createdAt: '2026-10-01T08:00:00.000Z'
+  }
+  const options = {
+    organizationAdmin: true,
+    policy: { allowNoExpiry: false, maxLifetimeDays: 90 },
+    spaces: [{ id: 'roadmap', name: 'Roadmap' }]
+  }
 
   it('creates, renames and revokes a token', async () => {
-    const tokens = memoryTokens(empty, { organizationAdmin: true })
+    const tokens = memoryTokens(empty, options)
 
     const { id, token } = await tokens.create('organization', {
       name: 'Digest',
@@ -279,12 +294,37 @@ describe('memoryTokens', () => {
   })
 
   it('refuses the organization tokens to someone who is not an admin', async () => {
-    const tokens = memoryTokens(empty, { organizationAdmin: false })
+    const tokens = memoryTokens(
+      { personal: [], organization: [{ ...digest }] },
+      { ...options, organizationAdmin: false }
+    )
 
     await expect(tokens.list('organization')).rejects.toMatchObject({
       status: 403,
       reason: 'not an admin of the organization'
     })
+    await expect(
+      tokens.revoke('organization', digest.id)
+    ).rejects.toMatchObject({ status: 404 })
+    await expect(tokens.organizationSpaces()).rejects.toMatchObject({
+      status: 403
+    })
     await expect(tokens.list('personal')).resolves.toEqual([])
+  })
+
+  it('follows the organization policy', async () => {
+    const tokens = memoryTokens(empty, options)
+    const token = (expiresInDays: 7 | 365 | null) =>
+      tokens.create('personal', {
+        name: 'CI',
+        scopes: ['space:read'],
+        spaces: 'all',
+        expiresInDays
+      })
+
+    await expect(token(365)).rejects.toMatchObject({ status: 400 })
+    await expect(token(null)).rejects.toMatchObject({ status: 400 })
+    await expect(token(7)).resolves.toMatchObject({ scopes: ['space:read'] })
+    await expect(tokens.policy()).resolves.toEqual(options.policy)
   })
 })

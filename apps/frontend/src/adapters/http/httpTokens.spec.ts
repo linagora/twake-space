@@ -44,6 +44,46 @@ describe('httpTokens', () => {
     expect(requests).toEqual([{ method: 'GET', url, body: null }])
   })
 
+  it('sends a token that never expires as a null expiry', async () => {
+    const requests = answer(() => Response.json({}, { status: 201 }))
+
+    await tokens.create('personal', {
+      name: 'Agent',
+      scopes: ['space:read'],
+      spaces: 'all',
+      expiresInDays: null
+    })
+
+    expect(requests[0]?.body).toEqual({
+      name: 'Agent',
+      scopes: ['space:read'],
+      spaces: 'all',
+      expiresAt: null
+    })
+  })
+
+  it('reads the policy and the spaces an organization token may cover', async () => {
+    const requests = answer(() =>
+      Response.json({
+        allowNoExpiry: true,
+        maxLifetimeDays: 90,
+        spaces: [{ id: 's-1', name: 'Design' }]
+      })
+    )
+
+    await expect(tokens.policy()).resolves.toMatchObject({
+      allowNoExpiry: true,
+      maxLifetimeDays: 90
+    })
+    await expect(tokens.organizationSpaces()).resolves.toEqual([
+      { id: 's-1', name: 'Design' }
+    ])
+    expect(requests.map(r => r.url)).toEqual([
+      'https://api.test/organization/token-policy',
+      'https://api.test/organization/token-spaces'
+    ])
+  })
+
   it('creates a token and answers its secret', async () => {
     const created = { id: 't-1', name: 'Agent', token: 'tws_secret' }
     const requests = answer(() => Response.json(created, { status: 201 }))

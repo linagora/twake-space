@@ -17,6 +17,8 @@ export interface Services {
   feed: FeedService
   // Null without a Sentry DSN
   feedback: FeedbackService | null
+  // The backend's base URL, shown to API token users
+  apiUrl: string
   tasksUrl: string | null
   mailUrl: string | null
   driveUrlTemplate: string | null
