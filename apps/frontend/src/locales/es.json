@@ -248,5 +248,8 @@
     "errorTimeoutText": "El envío ha tardado demasiado. Inténtelo de nuevo.",
     "errorForbiddenText": "No se pudo enviar la opinión: no tiene permiso para hacerlo.",
     "errorGenericText": "No se pudo enviar la opinión. Inténtelo de nuevo."
+  },
+  "chat": {
+    "notSetUp": "El chat no está configurado para TwakeSpace."
   }
 }

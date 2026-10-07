@@ -35,6 +35,7 @@ interface Options {
   tasksUrl?: string | null
   mailUrl?: string | null
   driveUrlTemplate?: string | null
+  chatUrl?: string | null
 }
 
 function withProviders(
@@ -50,7 +51,8 @@ function withProviders(
     feedback = null,
     tasksUrl = 'https://tasks.test/',
     mailUrl = 'https://mail.test/',
-    driveUrlTemplate = 'https://{slug}-drive.{domain}/'
+    driveUrlTemplate = 'https://{slug}-drive.{domain}/',
+    chatUrl = 'https://chat.test/'
   }: Options
 ): ReactElement {
   return (
@@ -66,7 +68,8 @@ function withProviders(
         feedback,
         tasksUrl,
         mailUrl,
-        driveUrlTemplate
+        driveUrlTemplate,
+        chatUrl
       }}
     >
       <SessionGate session={session}>

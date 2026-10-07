@@ -248,5 +248,8 @@
     "errorTimeoutText": "L'invio ha richiesto troppo tempo. Riprova.",
     "errorForbiddenText": "Impossibile inviare il feedback: non hai l'autorizzazione per farlo.",
     "errorGenericText": "Impossibile inviare il feedback. Riprova."
+  },
+  "chat": {
+    "notSetUp": "La chat non è configurata per TwakeSpace."
   }
 }

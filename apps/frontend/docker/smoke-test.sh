@@ -16,6 +16,7 @@ docker run -d --name "$NAME" \
   -e TASKS_URL='https://tasks.example.com/' \
   -e MAIL_URL='https://mail.example.com/' \
   -e DRIVE_URL='https://{slug}-drive.{domain}/' \
+  -e CHAT_URL='https://chat.example.com/' \
   -e SSO_BASE_URL='https://sso.example.com/' \
   -e SSO_CLIENT_ID='twake-space' \
   -e POSTHOG_HOST='https://posthog.example.com' \
@@ -64,7 +65,7 @@ expect 'hashed assets are cached for a year' "$(header "$script" Cache-Control)"
 csp="$(header / Content-Security-Policy)"
 expect 'CSP sent' "$csp" "default-src 'self'; script-src 'self';*"
 expect 'CSP: API, SSO, PostHog and Sentry origins in connect-src' "$csp" "*connect-src 'self' https://api.example.com https://sso.example.com https://posthog.example.com https://errors.example.com;*"
-expect 'CSP: instances, Tasks, Mail and SSO origins in frame-src' "$csp" "*frame-src 'self' https://*.twake.example.com https://tasks.example.com https://mail.example.com https://sso.example.com;*"
+expect 'CSP: instances, Tasks, Chat, Mail and SSO origins in frame-src' "$csp" "*frame-src 'self' https://*.twake.example.com https://tasks.example.com https://chat.example.com https://mail.example.com https://sso.example.com;*"
 expect 'CSP: avatar origins in img-src' "$csp" "*img-src 'self' data: blob: https://*.twake.example.com;*"
 expect 'CSP: frame-ancestors from the environment' "$csp" "*frame-ancestors 'self' https://workplace.example.com;*"
 expect 'CSP on the SPA fallback too' "$(header /spaces/42 Content-Security-Policy)" "$csp"

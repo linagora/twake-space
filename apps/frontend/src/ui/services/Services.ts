@@ -18,6 +18,7 @@ export interface Services {
   tasksUrl: string | null
   mailUrl: string | null
   driveUrlTemplate: string | null
+  chatUrl: string | null
 }
 
 export const ServicesContext = createContext<Services | null>(null)

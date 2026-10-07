@@ -248,5 +248,8 @@
     "errorTimeoutText": "L'envoi a pris trop de temps. Réessayez.",
     "errorForbiddenText": "L'avis n'a pas pu être envoyé : vous n'y êtes pas autorisé.",
     "errorGenericText": "L'avis n'a pas pu être envoyé. Réessayez."
+  },
+  "chat": {
+    "notSetUp": "Le chat n’est pas configuré pour TwakeSpace."
   }
 }
