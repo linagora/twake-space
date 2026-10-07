@@ -63,13 +63,13 @@ export const EMBEDDED_APPS: Record<EmbeddedApp, EmbeddedAppSpec> = {
     embedPath: id => `/embed/team-mailboxes/${encodeURIComponent(id)}`,
     overlayPath: '/embed/overlay.html'
   },
-  // Twake Calendar shows the team calendar of the space. It serves an
-  // overlay page but draws nothing on it yet.
+  // Twake Calendar shows the team calendar of the space, and draws its
+  // dialogs on its overlay (twake-calendar-frontend#1539).
   calendar: {
     app: 'calendar',
     resource: 'calendar',
     embedPath: id => `/embed/calendars/${encodeURIComponent(id)}`,
-    overlayPath: null
+    overlayPath: '/embed/overlay.html'
   }
 }
 

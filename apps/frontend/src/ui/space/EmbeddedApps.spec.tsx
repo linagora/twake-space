@@ -474,6 +474,19 @@ describe('EmbeddedApps', () => {
     expect(getComputedStyle(frame()).position).not.toBe('fixed')
   })
 
+  it("frames the space's team calendar with its overlay", async () => {
+    renderAt('/spaces/a1/calendar')
+
+    expect(await screen.findByTitle('Calendar')).toHaveAttribute(
+      'src',
+      'https://calendar.test/embed/calendars/cal-1'
+    )
+    expect(screen.getByTitle('Calendar windows')).toHaveAttribute(
+      'src',
+      'https://calendar.test/embed/overlay.html'
+    )
+  })
+
   it("frames the space's shared drive on the person's own Twake Drive, without an overlay", async () => {
     renderAt('/spaces/a1/drive/folder/f1')
 
