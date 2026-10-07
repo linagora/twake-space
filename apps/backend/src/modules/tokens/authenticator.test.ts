@@ -160,6 +160,28 @@ describe('apiTokenAuthenticator', () => {
     expect(row?.lastUsedAt).toBeInstanceOf(Date)
   })
 
+  it('records the last use at most once a minute', async () => {
+    const recently = new Date(Date.now() - 30_000)
+    const anHourAgo = new Date(Date.now() - 60 * 60_000)
+    await aToken('tws_recent', { lastUsedAt: recently })
+    await aToken('tws_stale', { lastUsedAt: anHourAgo })
+
+    await authenticate('tws_recent')
+    await authenticate('tws_stale')
+
+    const lastUsed = async (token: string) =>
+      (
+        await testDb.db
+          .select({ lastUsedAt: apiTokens.lastUsedAt })
+          .from(apiTokens)
+          .where(eq(apiTokens.tokenHash, sha256(token)))
+      )[0]?.lastUsedAt
+    expect(await lastUsed('tws_recent')).toEqual(recently)
+    expect((await lastUsed('tws_stale'))?.getTime()).toBeGreaterThan(
+      anHourAgo.getTime()
+    )
+  })
+
   it.each([
     ['unknown', {}, 'tws_other'],
     ['revoked', { revokedAt: new Date() }, 'tws_alice'],

@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, or, sql } from 'drizzle-orm'
+import { and, eq, gt, isNull, lt, or, sql } from 'drizzle-orm'
 import type { Db } from '../../infra/db.ts'
 import type { Directory } from '../../infra/ldap-rest.ts'
 import { sha256 } from '../auth/authenticator.ts'
@@ -52,16 +52,7 @@ export function apiTokenAuthenticator(
 
   return async (token: string): Promise<TokenCaller | null> => {
     const [row] = await db
-      .update(apiTokens)
-      .set({ lastUsedAt: sql`now()` })
-      .where(
-        and(
-          eq(apiTokens.tokenHash, sha256(token)),
-          isNull(apiTokens.revokedAt),
-          or(isNull(apiTokens.expiresAt), gt(apiTokens.expiresAt, sql`now()`))
-        )
-      )
-      .returning({
+      .select({
         tokenId: apiTokens.id,
         name: apiTokens.name,
         organizationId: apiTokens.organizationId,
@@ -72,7 +63,28 @@ export function apiTokenAuthenticator(
         allSpaces: apiTokens.allSpaces,
         expiresAt: apiTokens.expiresAt
       })
+      .from(apiTokens)
+      .where(
+        and(
+          eq(apiTokens.tokenHash, sha256(token)),
+          isNull(apiTokens.revokedAt),
+          or(isNull(apiTokens.expiresAt), gt(apiTokens.expiresAt, sql`now()`))
+        )
+      )
     if (!row) return null
+    // A busy token would otherwise rewrite its row on every request.
+    await db
+      .update(apiTokens)
+      .set({ lastUsedAt: sql`now()` })
+      .where(
+        and(
+          eq(apiTokens.id, row.tokenId),
+          or(
+            isNull(apiTokens.lastUsedAt),
+            lt(apiTokens.lastUsedAt, sql`now() - interval '1 minute'`)
+          )
+        )
+      )
     const { allSpaces, ...caller } = row
     if (
       caller.userId &&
