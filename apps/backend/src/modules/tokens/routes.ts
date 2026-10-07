@@ -452,25 +452,37 @@ export function registerTokenRoutes(
     manageTechnicalAccount(deps.directory, manageOrganization)
   )
 
+  // Not only admins: a client offers only the lifetimes it allows.
+  app.get('/organization/token-policy', { preHandler }, async request => {
+    const [policy] = await db
+      .select({
+        allowNoExpiry: organizationTokenPolicy.allowNoExpiry,
+        maxLifetimeDays: organizationTokenPolicy.maxLifetimeDays
+      })
+      .from(organizationTokenPolicy)
+      .where(
+        eq(
+          organizationTokenPolicy.organizationId,
+          callerOf(request).organizationId
+        )
+      )
+    return policy ?? { allowNoExpiry: false, maxLifetimeDays: null }
+  })
+
+  // The spaces an organization token may cover, members or not.
   app.get(
-    '/organization/token-policy',
+    '/organization/token-spaces',
     { preHandler },
     async (request, reply) => {
       const manager = await manageOrganization(request, db)
       if (typeof manager === 'string') return forbidden(reply, manager)
-      const [policy] = await db
-        .select({
-          allowNoExpiry: organizationTokenPolicy.allowNoExpiry,
-          maxLifetimeDays: organizationTokenPolicy.maxLifetimeDays
-        })
-        .from(organizationTokenPolicy)
-        .where(
-          eq(
-            organizationTokenPolicy.organizationId,
-            manager.caller.organizationId
-          )
-        )
-      return policy ?? { allowNoExpiry: false, maxLifetimeDays: null }
+      return {
+        spaces: await db
+          .select({ id: spaces.spaceId, name: spaces.name })
+          .from(spaces)
+          .where(eq(spaces.organizationId, manager.caller.organizationId))
+          .orderBy(asc(spaces.name))
+      }
     }
   )
 

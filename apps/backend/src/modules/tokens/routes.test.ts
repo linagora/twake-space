@@ -541,6 +541,32 @@ describe('organization tokens', () => {
   })
 })
 
+describe('GET /organization/token-spaces', () => {
+  it('lists every space of the organization to its admins', async () => {
+    await testDb.db
+      .insert(spaces)
+      .values({ spaceId: CI, organizationId: 'org-2', name: 'Elsewhere' })
+    const call = setUp()
+
+    const listed = await call('GET', '/organization/token-spaces')
+    const byBob = await call(
+      'GET',
+      '/organization/token-spaces',
+      undefined,
+      'bob'
+    )
+
+    expect(listed.json()).toEqual({
+      spaces: [
+        { id: DESIGN, name: 'Design' },
+        { id: HR, name: 'HR' },
+        { id: SALES, name: 'Sales' }
+      ]
+    })
+    expect(byBob.statusCode).toBe(403)
+  })
+})
+
 describe('technical account tokens', () => {
   const url = `/organization/technical-accounts/${CI}/tokens`
 
@@ -646,6 +672,23 @@ describe('organization token policy', () => {
     })
 
     expect(cap.statusCode).toBe(400)
+  })
+
+  it('is read by every member', async () => {
+    await testDb.db.insert(organizationTokenPolicy).values({
+      organizationId: 'org-1',
+      allowNoExpiry: true,
+      maxLifetimeDays: 90
+    })
+
+    const read = await setUp()(
+      'GET',
+      '/organization/token-policy',
+      undefined,
+      'bob'
+    )
+
+    expect(read.json()).toEqual({ allowNoExpiry: true, maxLifetimeDays: 90 })
   })
 
   it('is set by organization admins only', async () => {
