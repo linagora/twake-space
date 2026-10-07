@@ -329,10 +329,12 @@ data: {"spaceId":"<uuid>"}
 All token routes use `authorize('tokens:write')`: a session caller, or a token caller holding `tokens:write`. The same five routes exist under three prefixes, one per owner.
 
 - `/tokens` manages the caller's own account tokens. An organization token gets `403 {"error":"forbidden","message":"not an account token"}`.
-- `/organization/tokens` manages organization tokens. The caller's account must be an `owner` or `admin` of the organization.
+- `/organization/tokens` manages organization tokens. The caller's account must be an `owner` or `admin` of the organization, as ldap-rest answers on each call.
 - `/organization/technical-accounts/:accountId/tokens` manages the tokens of one technical account. The caller must be an organization admin and `accountId` must be a technical account of the organization in ldap-rest.
 
-An organization token itself manages no tokens on the two organization prefixes (`403 forbidden`, `"an organization token manages no tokens"`).
+No token manages tokens on the two organization prefixes, sets the policy, reads the audit log or lists the token spaces (`403 forbidden`, `"the organization tokens are managed from a signed-in session"`). Through the tokens it created, a token would reach spaces its own account is not in.
+
+A token created by a token records it as its parent, and is revoked whenever its parent is, by hand or by an event.
 
 ### POST {prefix}
 
@@ -392,15 +394,24 @@ Lists active tokens, oldest first.
 
 ### DELETE {prefix}/:id
 
-Revokes the token. Answers `204`, or `404 not_found` under the same conditions as PATCH.
+Revokes the token and the tokens it created, down the line. Answers `204`, or `404 not_found` under the same conditions as PATCH.
 
 ### GET /organization/token-policy
 
-- Caller: organization admin.
+- Caller: any session caller of the organization, or a token holding `tokens:write`, so a client offers only the lifetimes the policy allows.
 - Without a stored policy it returns the default below.
 
 ```json
 { "allowNoExpiry": false, "maxLifetimeDays": null }
+```
+
+### GET /organization/token-spaces
+
+- Caller: organization admin.
+- Lists every space of the organization, by name: the spaces an organization token may cover, including those the admin is not in.
+
+```json
+{ "spaces": [{ "id": "<uuid>", "name": "Design" }] }
 ```
 
 ### PUT /organization/token-policy
