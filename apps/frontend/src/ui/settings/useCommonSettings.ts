@@ -14,6 +14,8 @@ export function useCommonSettings(): {
   const query = useQuery({
     queryKey: SETTINGS,
     queryFn: () => settings.get(),
+    // People change them in another Twake Workplace app, then come back.
+    refetchOnWindowFocus: true,
     select: withKnownTimeZone
   })
   return { settings: query.data ?? NO_SETTINGS, isSuccess: query.isSuccess }

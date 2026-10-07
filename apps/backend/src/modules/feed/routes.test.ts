@@ -34,7 +34,7 @@ const live = vi.fn()
 let testDb: TestDb
 beforeAll(async () => {
   testDb = await createTestDb()
-  await listenForLive(testDb.sql, { send: live, sendToEmail: vi.fn() })
+  await listenForLive(testDb.sql, { send: live })
 })
 afterAll(() => testDb.drop())
 

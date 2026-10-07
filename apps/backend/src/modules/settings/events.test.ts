@@ -1,25 +1,21 @@
 import { pino } from 'pino'
-import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest'
 import type { PlatformEvent } from '../../events/envelope.ts'
 import { MalformedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
-import { listenForLive } from '../live/notify.ts'
 import { settingsPlatformRoutes } from './events.ts'
 import { userSettings } from './schema.ts'
 
 const log = pino({ level: 'silent' })
-const sendToEmail = vi.fn()
 
 let testDb: TestDb
 beforeAll(async () => {
   testDb = await createTestDb()
-  await listenForLive(testDb.sql, { send: vi.fn(), sendToEmail })
 })
 afterAll(() => testDb.drop())
 
 beforeEach(async () => {
   await testDb.db.delete(userSettings)
-  sendToEmail.mockClear()
 })
 
 function updated(
@@ -99,21 +95,6 @@ it('drops a version it already holds or an older one', async () => {
   expect(await stored()).toMatchObject([
     { version: 2, settings: { language: 'fr' } }
   ])
-})
-
-it("tells the person's open sessions, only when the settings change", async () => {
-  await updated(2, { email: 'alice@example.com', language: 'fr' })
-  await updated(1, { email: 'alice@example.com', language: 'it' })
-
-  await vi.waitFor(() => {
-    expect(sendToEmail).toHaveBeenCalledWith(
-      'alice@example.com',
-      'settings',
-      {}
-    )
-  })
-  await new Promise(resolve => setTimeout(resolve, 200))
-  expect(sendToEmail).toHaveBeenCalledTimes(1)
 })
 
 it('leaves out a theme or field it does not know', async () => {

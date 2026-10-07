@@ -9,7 +9,7 @@ How events reach Twake Space, what the backend does with them, and how the resul
 - Copy: the backend's Postgres copy of organizations, spaces, members, linked groups and resources.
 - Card: a space feed item showing the activity events about one object, stored in `feed_cards` and pointing at the object's latest event in `activity_events`.
 - Post: a space feed item a member writes, stored in `feed_posts`.
-- Live event: a message the backend pushes to a browser over SSE: `spaces`, `notification`, `settings` or `feed`.
+- Live event: a message the backend pushes to a browser over SSE: `spaces`, `notification` or `feed`.
 
 ## Overview
 
@@ -105,10 +105,10 @@ Every platform handler is wrapped: when the body has an `organizationId` the cop
 - A `version` at or below the stored one is dropped. A newer one replaces the stored settings whole. Versions count per common settings account, so a message from another `nickname` behind the same email replaces them whatever its version.
 - Only what the UI applies is kept: `language`, `timezone`, `theme` (`light`, `dark` or `auto`), `avatar` and `display_name`. A value of another type is left out.
 - Common settings publishes without a message id, so the body's `request_id` stands in for it. A republish of the same version gets a new `request_id`, and the version check drops it.
-- A stored change sends a `settings` live event to the person's open streams. `GET /settings` gives the caller theirs, with `null` for anything not set.
+- `GET /settings` gives the caller theirs, with `null` for anything not set.
 - TwakeSpace never calls the common settings API. A person it has had no message about gets the browser's defaults until their settings change, or until an admin republishes everyone with common settings' `POST /api/admin/user/settings/sync`.
 
-The browser reads `GET /settings` once signed in, and applies the answer when it comes. Until then, or when the read fails, the app keeps its own defaults and the theme it last had.
+The browser reads `GET /settings` once signed in and again each time the tab comes back into focus, since people change their settings in another Twake Workplace app. It applies the answer when it comes. Until then, or when the read fails, the app keeps its own defaults and the theme it last had.
 
 - The language is the one set if TwakeSpace has it, else the browser's.
 - The theme is the one set. `auto`, or nothing set, follows the system.
@@ -278,10 +278,10 @@ sequenceDiagram
 ```
 
 - Handlers call `pg_notify` on the `live` channel inside their transaction, so replicas only hear about committed changes. One notify carries up to 100 users, to stay under the payload limit.
-- Every replica listens and writes the event to each open stream of the listed users. A `settings` event names an email instead, and goes to the streams of sessions with that email.
+- Every replica listens and writes the event to each open stream of the listed users.
 - `GET /stream` needs a session. It is `text/event-stream`, sends a heartbeat comment every 25 seconds, and closes when the session expires, when the session is revoked, or when the server stops.
 - The frontend reads it with `fetch` (EventSource cannot send the bearer token) and reconnects with a backoff from 1 to 30 seconds.
-- On `spaces`, the frontend invalidates its spaces queries, and on `settings` it reads the settings again. On a reconnect it invalidates every query, since events sent while the stream was closed are lost.
+- On `spaces`, the frontend invalidates its spaces queries. On a reconnect it invalidates every query, since events sent while the stream was closed are lost.
 
 ## The feed in the browser
 

@@ -8,9 +8,11 @@ const CHANNEL = 'live'
 // A NOTIFY payload stays under 8000 bytes.
 const USERS_PER_NOTIFY = 100
 
-type Message = { event: LiveEvent; data: object } & (
-  { users: string[] } | { email: string }
-)
+interface Message {
+  event: LiveEvent
+  users: string[]
+  data: object
+}
 
 // Sent with the transaction, so a replica only hears about committed changes.
 async function notify(tx: Tx, message: Message): Promise<void> {
@@ -35,14 +37,6 @@ export async function tell(
   }
 }
 
-export async function tellEmail(
-  tx: Tx,
-  event: LiveEvent,
-  email: string
-): Promise<void> {
-  await notify(tx, { event, email, data: {} })
-}
-
 export async function tellSpaceMembers(
   tx: Tx,
   spaceId: string,
@@ -63,14 +57,12 @@ export async function tellSpaceMembers(
 
 export async function listenForLive(
   client: postgres.Sql,
-  streams: Pick<Streams, 'send' | 'sendToEmail'>
+  streams: Pick<Streams, 'send'>
 ): Promise<void> {
   await client.listen(CHANNEL, payload => {
-    const message = JSON.parse(payload) as Message
-    if ('email' in message) {
-      streams.sendToEmail(message.email, message.event, message.data)
-      return
-    }
+    // A replica still on 0.1.8 sends settings by email during a rolling deploy.
+    const message = JSON.parse(payload) as Message | { email: string }
+    if (!('users' in message)) return
     for (const userId of message.users) {
       streams.send(userId, message.event, message.data)
     }

@@ -1,5 +1,5 @@
 import { useColorScheme } from '@linagora/twake-mui'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { fakeSettings } from '@/testing/fakeSettings'
@@ -20,6 +20,23 @@ describe('FollowCommonSettings', () => {
   it('speaks the language set in Twake Workplace', async () => {
     renderWithProviders(<Shown />, {
       settings: fakeSettings({ language: 'fr' })
+    })
+
+    await waitFor(() => {
+      expect(document.documentElement.lang).toBe('fr')
+    })
+  })
+
+  it('rereads the settings when the tab comes back into focus', async () => {
+    const settings = fakeSettings({ language: 'de' })
+    renderWithProviders(<Shown />, { settings })
+    await waitFor(() => {
+      expect(document.documentElement.lang).toBe('de')
+    })
+
+    settings.set({ language: 'fr' })
+    act(() => {
+      window.dispatchEvent(new Event('visibilitychange'))
     })
 
     await waitFor(() => {
