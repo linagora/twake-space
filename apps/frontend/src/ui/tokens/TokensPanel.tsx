@@ -1,12 +1,10 @@
-import { Icon, Rename, Trash } from '@linagora/twake-icons'
+import { Dots, Icon, Key, Plus, Rename, Trash } from '@linagora/twake-icons'
 import {
   Alert,
   Button,
   Chip,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
+  Menu,
   Stack,
   Typography
 } from '@linagora/twake-mui'
@@ -14,7 +12,9 @@ import { useId, useState, type ReactElement } from 'react'
 
 import { isRefusal } from '@/application/spaces'
 import type { ApiToken, CreatedToken, TokenOwner } from '@/application/tokens'
+import { MenuEntry } from '@/ds/Menu'
 import { LoadingRows } from '@/ds/Page'
+import { EmptyCard, IconTile, ItemCard, ItemList } from '@/ds/Panel'
 import { useI18n } from '@/ui/i18n/useI18n'
 import {
   CreateTokenDialog,
@@ -28,14 +28,30 @@ type Opened =
   | { kind: 'secret'; created: CreatedToken }
   | { kind: 'rename' | 'revoke'; token: ApiToken }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+// Below this, an expiry is close enough to warn about.
+const SOON_DAYS = 7
+
 export function TokensPanel({ owner }: { owner: TokenOwner }): ReactElement {
   const { t } = useI18n()
   const listId = useId()
   const tokens = useTokens(owner)
+  const [now] = useState(Date.now)
   const [opened, setOpened] = useState<Opened | null>(null)
   const close = () => {
     setOpened(null)
   }
+  const create = (
+    <Button
+      variant="contained"
+      startIcon={<Icon icon={Plus} />}
+      onClick={() => {
+        setOpened({ kind: 'create' })
+      }}
+    >
+      {t('apiTokens.create')}
+    </Button>
+  )
 
   if (tokens.isPending) {
     return <LoadingRows label={t('apiTokens.loading')} count={2} />
@@ -51,42 +67,45 @@ export function TokensPanel({ owner }: { owner: TokenOwner }): ReactElement {
 
   return (
     <section>
-      <Stack
-        direction="row"
-        spacing={2}
-        className="u-flex-items-center u-flex-justify-between u-mb-half"
-      >
-        <Typography variant="h6" component="h2" id={listId}>
-          {t(`apiTokens.heading.${owner}`)}
-        </Typography>
-        <Button
-          variant="contained"
-          onClick={() => {
-            setOpened({ kind: 'create' })
-          }}
-        >
-          {t('apiTokens.create')}
-        </Button>
-      </Stack>
       {tokens.data.length === 0 ? (
-        <Typography color="textSecondary">
-          {t(`apiTokens.empty.${owner}`)}
-        </Typography>
+        <EmptyCard
+          icon={
+            <IconTile>
+              <Icon icon={Key} />
+            </IconTile>
+          }
+          title={t(`apiTokens.empty.${owner}`)}
+          text={t('apiTokens.emptyText')}
+          action={create}
+        />
       ) : (
-        <List aria-labelledby={listId}>
-          {tokens.data.map(token => (
-            <TokenRow
-              key={token.id}
-              token={token}
-              onRename={() => {
-                setOpened({ kind: 'rename', token })
-              }}
-              onRevoke={() => {
-                setOpened({ kind: 'revoke', token })
-              }}
-            />
-          ))}
-        </List>
+        <>
+          <Stack
+            direction="row"
+            spacing={2}
+            className="u-flex-items-center u-flex-justify-between u-mb-1"
+          >
+            <Typography variant="h5" component="h2" id={listId}>
+              {t(`apiTokens.heading.${owner}`)}
+            </Typography>
+            {create}
+          </Stack>
+          <ItemList labelledBy={listId}>
+            {tokens.data.map(token => (
+              <TokenCard
+                key={token.id}
+                token={token}
+                now={now}
+                onRename={() => {
+                  setOpened({ kind: 'rename', token })
+                }}
+                onRevoke={() => {
+                  setOpened({ kind: 'revoke', token })
+                }}
+              />
+            ))}
+          </ItemList>
+        </>
       )}
       {opened?.kind === 'create' && (
         <CreateTokenDialog
@@ -110,59 +129,145 @@ export function TokensPanel({ owner }: { owner: TokenOwner }): ReactElement {
   )
 }
 
-function TokenRow({
+function ExpiryChip({
+  expiresAt,
+  now
+}: {
+  expiresAt: string | null
+  now: number
+}): ReactElement {
+  const { t, lang } = useI18n()
+  if (!expiresAt) {
+    return (
+      <Chip
+        size="small"
+        variant="outlined"
+        label={t('apiTokens.neverExpires')}
+      />
+    )
+  }
+  const days = Math.ceil((new Date(expiresAt).getTime() - now) / DAY_MS)
+  if (days <= 0) {
+    return <Chip size="small" color="error" label={t('apiTokens.expired')} />
+  }
+  const when = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' }).format(
+    days,
+    'day'
+  )
+  return (
+    <Chip
+      size="small"
+      variant={days <= SOON_DAYS ? 'filled' : 'outlined'}
+      color={days <= SOON_DAYS ? 'warning' : 'default'}
+      label={t('apiTokens.expiresWhen', { when })}
+      title={new Intl.DateTimeFormat(lang, { dateStyle: 'long' }).format(
+        new Date(expiresAt)
+      )}
+    />
+  )
+}
+
+function TokenCard({
   token,
+  now,
   onRename,
   onRevoke
 }: {
   token: ApiToken
+  now: number
   onRename: () => void
   onRevoke: () => void
 }): ReactElement {
   const { t, lang } = useI18n()
-  const formatter = new Intl.DateTimeFormat(lang, { dateStyle: 'medium' })
-  const date = (iso: string) => formatter.format(new Date(iso))
-  const details = [
-    token.scopes.map(scope => t(`apiTokens.scope.${scope}`)).join(', '),
-    token.spaces === 'all'
-      ? t('apiTokens.allSpaces')
-      : t('apiTokens.someSpaces', { smart_count: token.spaces.length }),
-    token.expiresAt
-      ? t('apiTokens.expires', { date: date(token.expiresAt) })
-      : t('apiTokens.neverExpires'),
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const date = new Intl.DateTimeFormat(lang, { dateStyle: 'medium' })
+  const relative = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' })
+  const ago = (iso: string) => {
+    const days = Math.round((new Date(iso).getTime() - now) / DAY_MS)
+    return relative.format(days, 'day')
+  }
+  const meta = [
+    t('apiTokens.createdOn', { date: date.format(new Date(token.createdAt)) }),
     token.lastUsedAt
-      ? t('apiTokens.lastUsed', { date: date(token.lastUsedAt) })
+      ? t('apiTokens.lastUsed', { date: ago(token.lastUsedAt) })
       : t('apiTokens.neverUsed')
-  ]
+  ].join(' · ')
+  const pick = (then: () => void) => () => {
+    setAnchor(null)
+    then()
+  }
 
   return (
-    <ListItem>
-      <ListItemText primary={token.name} secondary={details.join(' · ')} />
-      <Stack
-        direction="row"
-        spacing={1}
-        className="u-flex-items-center u-flex-none u-ml-half"
-      >
-        {token.role && (
+    <ItemCard
+      icon={
+        <IconTile>
+          <Icon icon={Key} />
+        </IconTile>
+      }
+      title={token.name}
+      status={<ExpiryChip expiresAt={token.expiresAt} now={now} />}
+      meta={meta}
+      chips={
+        <>
+          {token.scopes.map(scope => (
+            <Chip
+              key={scope}
+              size="small"
+              label={t(`apiTokens.scope.${scope}`)}
+            />
+          ))}
           <Chip
-            label={t(`roles.${token.role}`)}
             size="small"
             variant="outlined"
+            label={
+              token.spaces === 'all'
+                ? t('apiTokens.allSpaces')
+                : t('apiTokens.someSpaces', {
+                    smart_count: token.spaces.length
+                  })
+            }
           />
-        )}
-        <IconButton
-          aria-label={t('apiTokens.rename', { name: token.name })}
-          onClick={onRename}
-        >
-          <Icon icon={Rename} />
-        </IconButton>
-        <IconButton
-          aria-label={t('apiTokens.revoke', { name: token.name })}
-          onClick={onRevoke}
-        >
-          <Icon icon={Trash} />
-        </IconButton>
-      </Stack>
-    </ListItem>
+          {token.role && (
+            <Chip
+              size="small"
+              variant="outlined"
+              color="primary"
+              label={t(`roles.${token.role}`)}
+            />
+          )}
+        </>
+      }
+      menu={
+        <>
+          <IconButton
+            aria-label={t('apiTokens.actions', { name: token.name })}
+            aria-haspopup="menu"
+            onClick={event => {
+              setAnchor(event.currentTarget)
+            }}
+          >
+            <Icon icon={Dots} />
+          </IconButton>
+          <Menu
+            anchorEl={anchor}
+            open={anchor !== null}
+            onClose={() => {
+              setAnchor(null)
+            }}
+          >
+            <MenuEntry icon={<Icon icon={Rename} />} onClick={pick(onRename)}>
+              {t('apiTokens.renameAction')}
+            </MenuEntry>
+            <MenuEntry
+              icon={<Icon icon={Trash} />}
+              onClick={pick(onRevoke)}
+              danger
+            >
+              {t('apiTokens.revokeConfirm')}
+            </MenuEntry>
+          </Menu>
+        </>
+      }
+    />
   )
 }
