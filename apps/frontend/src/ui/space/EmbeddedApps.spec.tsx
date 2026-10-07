@@ -10,6 +10,7 @@ import { EmbeddedApps } from '@/ui/space/EmbeddedApps'
 import { SpaceScreen } from '@/ui/space/SpaceScreen'
 
 const TASKS = 'https://tasks.test'
+const MAIL = 'https://mail.test'
 
 const roadmap: Space = {
   id: 'a1',
@@ -119,13 +120,13 @@ function frame(title = 'Tasks'): HTMLIFrameElement {
   return element
 }
 
-function postFromFrame(data: unknown, origin = TASKS) {
+function postFromFrame(data: unknown, origin = TASKS, title = 'Tasks') {
   act(() => {
     window.dispatchEvent(
       new MessageEvent('message', {
         data,
         origin,
-        source: frame().contentWindow
+        source: frame(title).contentWindow
       })
     )
   })
@@ -143,8 +144,8 @@ async function reported(data: unknown, expected: string) {
   })
 }
 
-function spyOnFrame() {
-  const contentWindow = frame().contentWindow
+function spyOnFrame(title = 'Tasks') {
+  const contentWindow = frame(title).contentWindow
   if (!contentWindow) throw new Error('no frame window')
   return vi.spyOn(contentWindow, 'postMessage')
 }
@@ -506,5 +507,119 @@ describe('EmbeddedApps', () => {
       await screen.findByText('Tasks is not set up for TwakeSpace.')
     ).toBeInTheDocument()
     expect(screen.queryByTitle('Tasks')).not.toBeInTheDocument()
+  })
+
+  describe('with every ready frame mounted up front', () => {
+    it("mounts a frame for each app of the space that is ready, only the tab's shown", async () => {
+      renderAt('/spaces/a1/tasks')
+      await screen.findByTitle('Tasks')
+
+      const isHidden = (title: string) =>
+        frame(title).closest('[aria-hidden="true"]') !== null
+      expect(isHidden('Tasks')).toBe(false)
+      for (const title of ['Chat', 'Drive', 'Mail']) {
+        expect(isHidden(title)).toBe(true)
+      }
+      expect(frame('Mail')).toHaveAttribute(
+        'src',
+        `${MAIL}/embed/team-mailboxes/roadmap%40acme`
+      )
+      expect(frame('Chat')).toHaveAttribute(
+        'src',
+        'https://chat.test/embed/rooms/!s%3Aacme'
+      )
+    })
+
+    it('mounts no frame for an app that is not set up', async () => {
+      renderAt('/spaces/a1/mail', null, { template: null, fqdn: null })
+      await screen.findByTitle('Mail')
+
+      expect(screen.queryByTitle('Tasks')).not.toBeInTheDocument()
+      expect(screen.queryByTitle('Drive')).not.toBeInTheDocument()
+      expect(screen.getByTitle('Chat')).toBeInTheDocument()
+    })
+
+    it('mounts the frames on a tab of the space that has none', async () => {
+      renderAt('/spaces/a1/feed')
+
+      expect(await screen.findByTitle('Mail')).toBeInTheDocument()
+      expect(screen.getByTitle('Tasks')).toBeInTheDocument()
+    })
+
+    it('moves the hidden frames to the new space, without touching the history', async () => {
+      renderAt('/spaces/a1/tasks')
+      const mail = await screen.findByTitle('Mail')
+      postFromFrame(embedPath('roadmap@acme', '', true), MAIL, 'Mail')
+      const post = spyOnFrame('Mail')
+
+      go('/spaces/b2/tasks')
+      await waitFor(() => {
+        expect(post).toHaveBeenCalledWith(
+          { type: 'twake-embed:load', resourceId: 'other@acme', path: '' },
+          MAIL
+        )
+      })
+      expect(screen.getByTitle('Mail')).toBe(mail)
+      expect(post).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'twake-embed:navigate' }),
+        MAIL
+      )
+      expect(path()).toHaveTextContent('/spaces/b2/tasks')
+
+      // The hidden frame's load took no entry: one Back is the first space
+      go(-1)
+      await waitFor(() => {
+        expect(path()).toHaveTextContent('/spaces/a1/tasks')
+      })
+      await waitFor(() => {
+        expect(post).toHaveBeenCalledWith(
+          { type: 'twake-embed:load', resourceId: 'roadmap@acme', path: '' },
+          MAIL
+        )
+      })
+    })
+
+    it('replaces the hidden frame of an app that cannot load another resource', async () => {
+      renderAt('/spaces/a1/tasks')
+      const mail = await screen.findByTitle('Mail')
+
+      go('/spaces/b2/tasks')
+      await waitFor(() => {
+        expect(screen.getByTitle('Mail')).toHaveAttribute(
+          'src',
+          `${MAIL}/embed/team-mailboxes/other%40acme`
+        )
+      })
+      expect(mail).not.toBeInTheDocument()
+      expect(screen.getAllByTitle('Mail')).toHaveLength(1)
+    })
+
+    it('moves the hidden frames when the space changes from a tab with no frame', async () => {
+      renderAt('/spaces/a1/feed')
+      await screen.findByTitle('Mail')
+      postFromFrame(embedPath('roadmap@acme', '', true), MAIL, 'Mail')
+      const post = spyOnFrame('Mail')
+
+      go('/spaces/b2/tasks')
+      await waitFor(() => {
+        expect(post).toHaveBeenCalledWith(
+          { type: 'twake-embed:load', resourceId: 'other@acme', path: '' },
+          MAIL
+        )
+      })
+    })
+
+    it('never writes the address for a hidden frame, and keeps its path for later', async () => {
+      renderAt('/spaces/a1/tasks')
+      await screen.findByTitle('Mail')
+
+      postFromFrame(embedPath('roadmap@acme', '/inbox', false), MAIL, 'Mail')
+      await act(() => Promise.resolve())
+      expect(path()).toHaveTextContent('/spaces/a1/tasks')
+      go(-1)
+      await act(() => Promise.resolve())
+      // Nothing was pushed: the only entry is still the first
+      expect(path()).toHaveTextContent('/spaces/a1/tasks')
+    })
   })
 })

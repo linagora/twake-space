@@ -20,6 +20,7 @@ import {
   loadMessage,
   navigateMessage,
   reconcile,
+  reconcileHidden,
   tabPath,
   type EmbedPath,
   type EmbeddedApp,
@@ -41,7 +42,9 @@ type Frames = Partial<Record<EmbeddedApp, FrameState>>
 // the shell (ADR 010): a space change shows another resource in the same
 // frame, with a `load`, and the frames never write the browser history.
 // The address is the source of truth: on every change, the frame shown is
-// brought to what the address says.
+// brought to what the address says. The space's other ready apps have their
+// frame too, hidden and alive, moved to the space's resources on a space
+// change: only the frame shown ever writes the address.
 export function EmbeddedApps(): ReactElement | null {
   const { t } = useI18n()
   const appUrls = useAppUrls()
@@ -75,6 +78,24 @@ export function EmbeddedApps(): ReactElement | null {
           path: `${rest ? `/${rest}` : ''}${location.search}${location.hash}`
         }
       : null
+  // The ready tabs of the space that have an app, and the resource of each
+  const targets = space.data
+    ? spaceTabs(space.data, 0).flatMap(item => {
+        const itemSpec = embeddedApp(item.tab)
+        const itemUrl = itemSpec ? appUrls[itemSpec.app] : null
+        const id = space.data.resources.find(
+          r => r.kind === itemSpec?.resource
+        )?.id
+        return item.state === 'ready' &&
+          itemSpec &&
+          itemUrl !== null &&
+          id !== undefined &&
+          id !== null
+          ? [{ spec: itemSpec, appUrl: itemUrl, resourceId: id }]
+          : []
+      })
+    : []
+  const hiddenTargets = targets.filter(target => target.spec.app !== shown?.app)
   const here = location.pathname + location.search + location.hash
 
   const [frames, setFrames] = useState<Frames>({})
@@ -89,65 +110,104 @@ export function EmbeddedApps(): ReactElement | null {
 
   // The frames follow the address: a state adjusted while rendering, as
   // React derives state from props. Each step settles on the next render.
+  // The frames of the space's other ready tabs are mounted up front, hidden,
+  // so that every app can report its counts: they follow the space shown,
+  // never the address.
   let adopt: string | null = null
+  let next = frames
+  for (const target of hiddenTargets) {
+    const { spec: hiddenSpec, resourceId: hiddenResource } = target
+    const frame = frames[hiddenSpec.app] ?? null
+    const step = reconcileHidden(
+      frame,
+      hiddenResource,
+      hiddenSpec,
+      target.appUrl
+    )
+    if (step.kind === 'create' || step.kind === 'replace') {
+      next = {
+        ...next,
+        [hiddenSpec.app]: {
+          key: (frame?.key ?? 0) + 1,
+          src: step.src,
+          resourceId: hiddenResource,
+          path: '',
+          dialect: null,
+          pending: null,
+          writtenFrom: null
+        }
+      }
+    } else if (step.kind === 'load' && frame) {
+      next = {
+        ...next,
+        [hiddenSpec.app]: {
+          ...frame,
+          resourceId: hiddenResource,
+          path: '',
+          pending: loadMessage(hiddenResource, '')
+        }
+      }
+    }
+  }
   const written = (Object.keys(frames) as EmbeddedApp[]).find(app => {
     const from = frames[app]?.writtenFrom
     return from !== undefined && from !== null && from !== here
   })
   if (written !== undefined) {
     // The address TwakeSpace wrote shows: the frame follows it again
-    setFrames(withFrame(frames, written, { writtenFrom: null }))
+    next = withFrame(next, written, { writtenFrom: null })
   } else if (shown !== null && appUrl !== null && spec !== null) {
     const frame = frames[shown.app] ?? null
-    const next = reconcile(frame, shown, spec, appUrl, popped, here)
-    switch (next.kind) {
+    const step = reconcile(frame, shown, spec, appUrl, popped, here)
+    switch (step.kind) {
       case 'create':
       case 'replace':
-        setFrames({
-          ...frames,
+        next = {
+          ...next,
           [shown.app]: {
             key: (frame?.key ?? 0) + 1,
-            src: next.src,
+            src: step.src,
             resourceId: shown.resourceId,
             path: shown.path,
             dialect: null,
             pending: null,
             writtenFrom: null
           }
-        })
+        }
         break
       case 'load':
         if (frame) {
-          setFrames({
-            ...frames,
+          next = {
+            ...next,
             [shown.app]: {
               ...frame,
               resourceId: shown.resourceId,
               path: shown.path,
               pending: loadMessage(shown.resourceId, shown.path)
             }
-          })
+          }
         }
         break
       case 'navigate':
         if (frame) {
-          setFrames({
-            ...frames,
+          next = {
+            ...next,
             [shown.app]: {
               ...frame,
               path: shown.path,
               pending: navigateMessage(shown.resourceId, shown.path)
             }
-          })
+          }
         }
         break
       case 'adopt':
-        adopt = next.to
+        adopt = step.to
         break
       case 'none':
         break
     }
   }
+  if (next !== frames) setFrames(next)
 
   useEffect(() => {
     if (adopt !== null) void navigate(adopt, { replace: true })

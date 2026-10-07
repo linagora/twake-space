@@ -6,6 +6,7 @@ import {
   parseEmbedPath,
   pathBelow,
   reconcile,
+  reconcileHidden,
   type FrameState,
   type ShownApp
 } from '@/application/embeddedApps'
@@ -250,5 +251,57 @@ describe('reconcile', () => {
         '/spaces/a1/tasks/b'
       )
     ).toEqual({ kind: 'none' })
+  })
+})
+
+describe('reconcileHidden', () => {
+  const frame = (over: Partial<FrameState> = {}): FrameState => ({
+    key: 1,
+    src: 'https://tasks.test/embed/projects/p1',
+    resourceId: 'p1',
+    path: '/kept',
+    dialect: 'embed',
+    pending: null,
+    writtenFrom: null,
+    ...over
+  })
+
+  it('creates the frame on the embed route, with no path', () => {
+    expect(reconcileHidden(null, 'p1', tasks, TASKS)).toEqual({
+      kind: 'create',
+      src: 'https://tasks.test/embed/projects/p1'
+    })
+  })
+
+  it('leaves a frame on its resource alone, whatever path it keeps', () => {
+    expect(reconcileHidden(frame(), 'p1', tasks, TASKS)).toEqual({
+      kind: 'none'
+    })
+  })
+
+  it('loads another resource in a frame that speaks embed', () => {
+    expect(reconcileHidden(frame(), 'p2', tasks, TASKS)).toEqual({
+      kind: 'load'
+    })
+  })
+
+  it('replaces the frame of an app that does not', () => {
+    for (const dialect of ['legacy', null] as const) {
+      expect(reconcileHidden(frame({ dialect }), 'p2', tasks, TASKS)).toEqual({
+        kind: 'replace',
+        src: 'https://tasks.test/embed/projects/p2'
+      })
+    }
+  })
+
+  it('never asks to navigate or to adopt an address', () => {
+    const kinds = [
+      reconcileHidden(null, 'p1', tasks, TASKS),
+      reconcileHidden(frame(), 'p1', tasks, TASKS),
+      reconcileHidden(frame(), 'p2', tasks, TASKS),
+      reconcileHidden(frame({ dialect: 'legacy' }), 'p2', tasks, TASKS)
+    ].map(next => next.kind)
+    expect(kinds).not.toContain('navigate')
+    expect(kinds).not.toContain('adopt')
   })
 })
