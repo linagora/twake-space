@@ -29,16 +29,12 @@ const directory = {
   isTechnicalAccount: (organizationId: string, accountId: string) =>
     Promise.resolve(organizationId === 'org-1' && accountId === CI),
   organizationRole: (organizationId: string, accountId: string) =>
-    Promise.resolve(
-      organizationId !== 'org-1'
-        ? undefined
-        : accountId === DANA
-          ? { email: 'dana@example.com', role: 'owner' as const }
-          : accountId === BOB
-            ? { email: 'bob@example.com', role: 'member' as const }
-            : undefined
-    )
+    Promise.resolve(roles.get(`${organizationId}|${accountId}`))
 }
+const roles = new Map<
+  string,
+  { email: string; role: 'owner' | 'admin' | 'member' }
+>()
 const authenticate = (token: string) =>
   apiTokenAuthenticator(testDb.db, directory)(token)
 
@@ -61,6 +57,11 @@ beforeEach(async () => {
   ]) {
     await db.delete(table)
   }
+  roles.clear()
+  roles.set(`org-1|${ALICE}`, { email: 'alice@example.com', role: 'admin' })
+  roles.set(`org-1|${BOB}`, { email: 'bob@example.com', role: 'member' })
+  roles.set(`org-1|${DANA}`, { email: 'dana@example.com', role: 'owner' })
+  roles.set(`org-2|${CAROL}`, { email: 'carol@example.org', role: 'admin' })
   await db.insert(spaces).values([
     { spaceId: DESIGN, organizationId: 'org-1', name: 'Design' },
     { spaceId: SALES, organizationId: 'org-1', name: 'Sales' },
@@ -507,6 +508,17 @@ describe('organization tokens', () => {
         role: 'owner'
       }
     ])
+  })
+
+  it('is refused to a demoted or departed admin even when the copy missed it', async () => {
+    const call = setUp()
+    roles.set(`org-1|${ALICE}`, { email: 'alice@example.com', role: 'member' })
+    const demoted = await call('GET', '/organization/tokens')
+    roles.delete(`org-1|${ALICE}`)
+    const departed = await call('GET', '/organization/tokens')
+
+    expect(demoted.statusCode).toBe(403)
+    expect(departed.statusCode).toBe(403)
   })
 
   it('renames and revokes only organization tokens', async () => {

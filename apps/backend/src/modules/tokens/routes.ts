@@ -147,24 +147,15 @@ function manageTechnicalAccount(
 
 const ADMIN_ROLES: readonly string[] = ['owner', 'admin']
 
-// The copy only learns a role from a role change, so a role held before then
-// is read from ldap-rest and kept.
+// Read from ldap-rest every time: the copy only hears of a demotion or a
+// departure through an event, and a lost one would leave a former admin in
+// charge of the organization's tokens. The answer refreshes the copy.
 async function isOrganizationAdmin(
   db: Db,
   directory: Pick<Directory, 'organizationRole'>,
   organizationId: string,
   userId: string
 ) {
-  const [row] = await db
-    .select({ role: organizationMembers.role })
-    .from(organizationMembers)
-    .where(
-      and(
-        eq(organizationMembers.organizationId, organizationId),
-        eq(organizationMembers.userId, userId)
-      )
-    )
-  if (row && ADMIN_ROLES.includes(row.role)) return true
   const live = await directory.organizationRole(organizationId, userId)
   if (!live) return false
   await db
