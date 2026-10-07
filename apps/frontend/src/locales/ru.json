@@ -139,6 +139,9 @@
   "mail": {
     "notSetUp": "Почта не настроена для TwakeSpace."
   },
+  "drive": {
+    "notSetUp": "Диск не настроен для TwakeSpace."
+  },
   "feed": {
     "composer": "Сообщение",
     "send": "Отправить",

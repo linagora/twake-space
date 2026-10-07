@@ -17,6 +17,7 @@ export interface Services {
   feedback: FeedbackService | null
   tasksUrl: string | null
   mailUrl: string | null
+  driveUrlTemplate: string | null
 }
 
 export const ServicesContext = createContext<Services | null>(null)

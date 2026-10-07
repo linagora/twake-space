@@ -139,6 +139,9 @@
   "mail": {
     "notSetUp": "Mail n'est pas configuré pour TwakeSpace."
   },
+  "drive": {
+    "notSetUp": "Drive n'est pas configuré pour TwakeSpace."
+  },
   "feed": {
     "composer": "Message",
     "send": "Envoyer",

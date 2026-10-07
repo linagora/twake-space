@@ -25,7 +25,7 @@ What mock mode doesn't do:
 
 - Changes vanish on reload.
 - Nothing arrives live, and signing out only reloads the page.
-- The Tasks tab says Tasks isn't set up unless `apps/frontend/public/.env.js` sets `TASKS_URL`, and the Mail tab likewise with `MAIL_URL`.
+- The Tasks tab says Tasks isn't set up unless `apps/frontend/public/.env.js` sets `TASKS_URL`, and the Mail tab likewise with `MAIL_URL`. The Drive tab always says it, since the mock user has no Twake Workplace address.
 - Card links in the feed point nowhere.
 
 ## Run it against the backend

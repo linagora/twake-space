@@ -15,11 +15,13 @@ docker run -d --name "$NAME" \
   -e API_URL='https://api.example.com/v1' \
   -e TASKS_URL='https://tasks.example.com/' \
   -e MAIL_URL='https://mail.example.com/' \
+  -e DRIVE_URL='https://{slug}-drive.{domain}/' \
   -e SSO_BASE_URL='https://sso.example.com/' \
   -e SSO_CLIENT_ID='twake-space' \
   -e POSTHOG_HOST='https://posthog.example.com' \
   -e SENTRY_DSN='https://public-key@errors.example.com/42' \
   -e SENTRY_FEEDBACK_ENABLED='true' \
+  -e CSP_FRAME_SRC="'self' https://*.twake.example.com" \
   -e CSP_FRAME_ANCESTORS="'self' https://workplace.example.com" \
   -e CSP_IMG_SRC='https://*.twake.example.com' \
   -e API_UPSTREAM='http://127.0.0.1:8080' \
@@ -54,6 +56,7 @@ expect '/ serves index.html' "$(body "$BASE/")" '*<div id="root"*'
 expect 'unknown routes fall back to index.html' "$(body "$BASE/spaces/42")" '*<div id="root"*'
 expect 'index.html is revalidated' "$(header / Cache-Control)" 'no-cache'
 expect '/.env.js comes from the environment' "$(body "$BASE/.env.js")" '*var SSO_CLIENT_ID = "twake-space"*'
+expect '/.env.js carries the Drive template' "$(body "$BASE/.env.js")" '*var DRIVE_URL = "https://{slug}-drive.{domain}/"*'
 expect '/.env.js carries the feedback switch' "$(body "$BASE/.env.js")" '*var SENTRY_FEEDBACK_ENABLED = "true"*'
 expect '/.env.js is never cached' "$(header /.env.js Cache-Control)" 'no-store'
 script="$(body "$BASE/" | grep -o 'src="/static/js/index[^"]*"' | head -1 | cut -d'"' -f2)"
@@ -61,7 +64,7 @@ expect 'hashed assets are cached for a year' "$(header "$script" Cache-Control)"
 csp="$(header / Content-Security-Policy)"
 expect 'CSP sent' "$csp" "default-src 'self'; script-src 'self';*"
 expect 'CSP: API, SSO, PostHog and Sentry origins in connect-src' "$csp" "*connect-src 'self' https://api.example.com https://sso.example.com https://posthog.example.com https://errors.example.com;*"
-expect 'CSP: Tasks, Mail and SSO origins in frame-src' "$csp" "*frame-src 'self' https://tasks.example.com https://mail.example.com https://sso.example.com;*"
+expect 'CSP: instances, Tasks, Mail and SSO origins in frame-src' "$csp" "*frame-src 'self' https://*.twake.example.com https://tasks.example.com https://mail.example.com https://sso.example.com;*"
 expect 'CSP: avatar origins in img-src' "$csp" "*img-src 'self' data: blob: https://*.twake.example.com;*"
 expect 'CSP: frame-ancestors from the environment' "$csp" "*frame-ancestors 'self' https://workplace.example.com;*"
 expect 'CSP on the SPA fallback too' "$(header /spaces/42 Content-Security-Policy)" "$csp"

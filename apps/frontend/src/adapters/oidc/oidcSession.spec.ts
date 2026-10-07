@@ -43,7 +43,8 @@ describe('oidcSession', () => {
     const userinfo: LoginResult['userinfo'] = {
       sub: 'alice',
       uuid: 'uuid-alice',
-      name: 'Alice Martin'
+      name: 'Alice Martin',
+      workplaceFqdn: 'alice.twake.test'
     }
     vi.mocked(completeLogin).mockResolvedValue({
       userinfo,
@@ -55,7 +56,8 @@ describe('oidcSession', () => {
     expect(user).toEqual({
       id: 'uuid-alice',
       name: 'Alice Martin',
-      email: null
+      email: null,
+      workplaceFqdn: 'alice.twake.test'
     })
     expect(window.location.pathname + window.location.search).toBe(
       '/spaces?tab=2'
