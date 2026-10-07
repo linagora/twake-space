@@ -7,7 +7,7 @@ import { apiTokens, apiTokenSpaces, type tokenScope } from './schema.ts'
 
 export const API_TOKEN_PREFIX = 'tws_'
 
-const TECHNICAL_ACCOUNT_TTL_MS = 5 * 60_000
+const ACCOUNT_CHECK_TTL_MS = 5 * 60_000
 
 export type Scope = (typeof tokenScope.enumValues)[number]
 
@@ -28,19 +28,25 @@ export interface TokenCaller {
 
 export function apiTokenAuthenticator(
   db: Db,
-  directory: Pick<Directory, 'isTechnicalAccount'>,
+  directory: Pick<Directory, 'isTechnicalAccount' | 'organizationRole'>,
   now: () => number = Date.now
 ) {
   const checked = new Map<string, { exists: boolean; until: number }>()
-  async function technicalAccountExists(
+  // No event covers every way out of an organization (a technical account
+  // sends none at all), so an account token re-checks its account.
+  async function stillInOrganization(
     organizationId: string,
-    accountId: string
+    accountId: string,
+    technical: boolean
   ) {
     const key = `${organizationId}|${accountId}`
     const cached = checked.get(key)
     if (cached && cached.until > now()) return cached.exists
-    const exists = await directory.isTechnicalAccount(organizationId, accountId)
-    checked.set(key, { exists, until: now() + TECHNICAL_ACCOUNT_TTL_MS })
+    const exists = technical
+      ? await directory.isTechnicalAccount(organizationId, accountId)
+      : (await directory.organizationRole(organizationId, accountId)) !==
+        undefined
+    checked.set(key, { exists, until: now() + ACCOUNT_CHECK_TTL_MS })
     return exists
   }
 
@@ -69,9 +75,12 @@ export function apiTokenAuthenticator(
     if (!row) return null
     const { allSpaces, ...caller } = row
     if (
-      caller.technical &&
       caller.userId &&
-      !(await technicalAccountExists(caller.organizationId, caller.userId))
+      !(await stillInOrganization(
+        caller.organizationId,
+        caller.userId,
+        caller.technical
+      ))
     ) {
       return null
     }
