@@ -1,10 +1,26 @@
+import type { TwakeBarProps } from '@linagora/twake-bar'
 import { fireEvent, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import type { ReactElement, ReactNode } from 'react'
+import { describe, expect, it, vi } from 'vitest'
 
-import { fakeSession } from '@/testing/fakeSession'
-import { fakeSettings } from '@/testing/fakeSettings'
+import { fakeSession, fakeUser } from '@/testing/fakeSession'
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderRoute } from '@/testing/renderWithProviders'
+
+const createSdk = vi.hoisted(() => vi.fn(() => ({ status: 'ready' })))
+vi.mock('@linagora/twake-sdk', () => ({ createSdk }))
+
+// The bar is tested in its own package: only its wiring matters here
+vi.mock('@linagora/twake-bar', () => ({
+  TWAKE_BAR_HEIGHT: '3rem',
+  SdkProvider: ({ children }: { children: ReactNode }): ReactNode => children,
+  TwakeBar: ({ app, onLogOut }: TwakeBarProps): ReactElement => (
+    <header role="banner">
+      {app.name}
+      <button onClick={onLogOut}>Log out</button>
+    </header>
+  )
+}))
 
 const spaces = () =>
   fakeSpaces([
@@ -28,36 +44,29 @@ const spaces = () =>
 
 describe('AppShell', () => {
   it.each(['/', '/spaces/space-1'])(
-    'names the signed-in user and signs out from the account menu on %s',
+    'shows the platform bar and signs out from it on %s',
     async path => {
-      const session = fakeSession()
+      const session = fakeSession(() => Promise.resolve(fakeUser('id-token')))
       renderRoute(path, { session, spaces: spaces() })
 
-      const header = within(await screen.findByRole('banner'))
-      fireEvent.click(header.getByRole('button', { name: 'Alice Martin' }))
-      fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
+      const bar = within(await screen.findByRole('banner'))
+      expect(bar.getByText('Twake Space')).toBeInTheDocument()
+      expect(createSdk).toHaveBeenCalledWith({
+        platformURL: 'https://alice.twake.test',
+        idToken: 'id-token'
+      })
+      fireEvent.click(bar.getByRole('button', { name: 'Log out' }))
 
       expect(session.signOut).toHaveBeenCalled()
     }
   )
 
-  it('shows the name and picture set in Twake Workplace', async () => {
-    renderRoute('/', {
-      spaces: spaces(),
-      settings: fakeSettings({
-        displayName: 'Alice M.',
-        avatar: 'https://alice.example.com/public/avatar?v=2'
-      })
-    })
+  it('shows no platform bar when the SSO did not name the platform', async () => {
+    renderRoute('/', { spaces: spaces() })
 
-    const button = await within(await screen.findByRole('banner')).findByRole(
-      'button',
-      { name: 'Alice M.' }
-    )
-    expect(button.querySelector('img')).toHaveAttribute(
-      'src',
-      'https://alice.example.com/public/avatar?v=2'
-    )
+    await screen.findByRole('navigation')
+    expect(screen.queryByRole('banner')).toBe(null)
+    expect(createSdk).not.toHaveBeenCalled()
   })
 
   it('lists the spaces in the sidebar and marks the current one', async () => {
@@ -88,14 +97,6 @@ describe('AppShell', () => {
 
     expect(
       await screen.findByRole('list', { name: 'Vos espaces' })
-    ).toBeInTheDocument()
-    fireEvent.click(
-      within(screen.getByRole('banner')).getByRole('button', {
-        name: 'Alice Martin'
-      })
-    )
-    expect(
-      await screen.findByRole('menuitem', { name: 'Se déconnecter' })
     ).toBeInTheDocument()
   })
 })

@@ -29,6 +29,13 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+// Enough of a token set for the cast of the login result to type check
+const tokenSet = (idToken: string): Partial<LoginResult['tokenSet']> => ({
+  access_token: 'access-token',
+  token_type: 'bearer',
+  id_token: idToken
+})
+
 describe('readSsoConfig', () => {
   it('refuses missing settings', () => {
     expect(() =>
@@ -48,6 +55,7 @@ describe('oidcSession', () => {
     }
     vi.mocked(completeLogin).mockResolvedValue({
       userinfo,
+      tokenSet: tokenSet('id-token'),
       returnTo: '/spaces?tab=2'
     } as LoginResult)
 
@@ -57,7 +65,8 @@ describe('oidcSession', () => {
       id: 'uuid-alice',
       name: 'Alice Martin',
       email: null,
-      workplaceFqdn: 'alice.twake.test'
+      workplaceFqdn: 'alice.twake.test',
+      idToken: 'id-token'
     })
     expect(window.location.pathname + window.location.search).toBe(
       '/spaces?tab=2'

@@ -67,7 +67,8 @@ export function oidcSession(config: AuthConfig): SessionService {
             name: login.userinfo.name ?? null,
             email: login.userinfo.email ?? null,
             workplaceFqdn:
-              typeof workplaceFqdn === 'string' ? workplaceFqdn : null
+              typeof workplaceFqdn === 'string' ? workplaceFqdn : null,
+            idToken: login.tokenSet.id_token ?? null
           }
         }
       }
