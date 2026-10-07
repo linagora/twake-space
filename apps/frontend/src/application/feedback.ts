@@ -1,37 +1,14 @@
-export type FeedbackColorScheme = 'light' | 'dark' | 'system'
-
-// Every text of the feedback form, in the user's language.
-export interface FeedbackLabels {
-  triggerLabel: string
-  triggerAriaLabel: string
-  formTitle: string
-  messageLabel: string
-  messagePlaceholder: string
-  emailLabel: string
-  emailPlaceholder: string
-  submitButtonLabel: string
-  cancelButtonLabel: string
-  confirmButtonLabel: string
-  successMessageText: string
-  isRequiredLabel: string
-  addScreenshotButtonLabel: string
-  removeScreenshotButtonLabel: string
-  highlightToolText: string
-  hideToolText: string
-  removeHighlightText: string
-  errorEmptyMessageText: string
-  errorNoClientText: string
-  errorTimeoutText: string
-  errorForbiddenText: string
-  errorGenericText: string
-}
+// Texts of the feedback form, by Sentry's label name.
+export type FeedbackLabels = Readonly<Record<string, string>>
 
 export interface FeedbackService {
-  // Shows the floating feedback button. The returned function removes it.
-  mount: (
-    labels: FeedbackLabels,
-    colorScheme: FeedbackColorScheme
-  ) => () => void
+  // Whether the feedback form is on: without it the UI shows no button.
+  enabled: boolean
+  // Opens the feedback form when `el` is clicked. The returned function
+  // detaches it and removes the form.
+  attach: (el: HTMLElement, labels: FeedbackLabels) => () => void
+  // Follows the light or dark theme of the app in the form.
+  setColorScheme: (scheme: 'light' | 'dark' | 'system') => void
   // Tags what the user sends with the open space tab, or none.
   setSpaceTab: (tab: string | null) => void
 }

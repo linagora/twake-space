@@ -11,7 +11,7 @@ import {
   SidebarSection
 } from '@/ds/AppFrame'
 import { NavDestination } from '@/ds/NavDestination'
-import { useFeedbackButton } from '@/ui/feedback/useFeedbackButton'
+import { AppFeedback } from '@/ui/feedback/AppFeedback'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
 import { PlatformBar } from '@/ui/shell/PlatformBar'
@@ -23,7 +23,6 @@ export function AppShell(): ReactElement {
   const { t } = useI18n()
   const [creating, setCreating] = useState(false)
   const home = useMatch('/') !== null
-  useFeedbackButton()
 
   return (
     <AppFrame
@@ -51,6 +50,7 @@ export function AppShell(): ReactElement {
     >
       <Outlet />
       <EmbeddedApps />
+      <AppFeedback />
       {creating && (
         <CreateSpaceDialog
           onClose={() => {
