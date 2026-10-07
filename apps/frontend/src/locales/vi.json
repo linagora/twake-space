@@ -144,6 +144,9 @@
   "drive": {
     "notSetUp": "Drive chưa được thiết lập cho TwakeSpace."
   },
+  "calendar": {
+    "notSetUp": "Lịch chưa được thiết lập cho TwakeSpace."
+  },
   "feed": {
     "composer": "Tin nhắn",
     "send": "Gửi",

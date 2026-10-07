@@ -5,7 +5,7 @@ set -eu
 
 ME=$(basename "$0")
 OUT=/tmp/nginx
-RUNTIME_KEYS="API_URL TASKS_URL MAIL_URL DRIVE_URL CHAT_URL SSO_BASE_URL SSO_CLIENT_ID SSO_SCOPE SSO_REDIRECT_URI SSO_POST_LOGOUT_REDIRECT POSTHOG_KEY POSTHOG_HOST SENTRY_DSN SENTRY_ENVIRONMENT SENTRY_FEEDBACK_ENABLED"
+RUNTIME_KEYS="API_URL TASKS_URL MAIL_URL DRIVE_URL CHAT_URL CALENDAR_URL SSO_BASE_URL SSO_CLIENT_ID SSO_SCOPE SSO_REDIRECT_URI SSO_POST_LOGOUT_REDIRECT POSTHOG_KEY POSTHOG_HOST SENTRY_DSN SENTRY_ENVIRONMENT SENTRY_FEEDBACK_ENABLED"
 
 fail() {
   echo "$ME: error: $*" >&2
@@ -55,12 +55,18 @@ frame_src=${CSP_FRAME_SRC:-"'self'"}
 [ -n "${TASKS_URL:-}" ] && frame_src="$frame_src $(origin "$TASKS_URL")"
 # Chat signs in inside its own frame: only its origin here.
 [ -n "${CHAT_URL:-}" ] && frame_src="$frame_src $(origin "$CHAT_URL")"
-# The Mail embed signs in through a frame on the SSO.
-for url in "${MAIL_URL:-}" "${MAIL_URL:+${SSO_BASE_URL:-}}"; do
+# The Mail embed signs in through a frame on the SSO, and the Calendar embed
+# by moving its frame to the SSO and back: with either, the SSO origin too.
+for url in "${MAIL_URL:-}" "${CALENDAR_URL:-}"; do
   case "$url" in
     http://* | https://*) frame_src="$frame_src $(origin "$url")" ;;
   esac
 done
+if [ -n "${MAIL_URL:-}${CALENDAR_URL:-}" ]; then
+  case "${SSO_BASE_URL:-}" in
+    http://* | https://*) frame_src="$frame_src $(origin "$SSO_BASE_URL")" ;;
+  esac
+fi
 frame_ancestors=${CSP_FRAME_ANCESTORS:-"'self'"}
 img_src="'self' data: blob:"
 [ -n "${CSP_IMG_SRC:-}" ] && img_src="$img_src $CSP_IMG_SRC"

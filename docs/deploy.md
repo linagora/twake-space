@@ -20,6 +20,7 @@ flowchart LR
   cp[Chat control plane<br/>SaaS only]
   tasks[Tasks app]
   mail[Mail app]
+  calendar[Calendar app]
   drive[Each person's Twake Drive]
   sentry[Sentry]
   posthog[PostHog]
@@ -30,6 +31,7 @@ flowchart LR
   browser -->|SSO_BASE_URL| oidc
   browser -->|TASKS_URL, in a frame| tasks
   browser -->|MAIL_URL, in a frame| mail
+  browser -->|CALENDAR_URL, in a frame| calendar
   browser -->|DRIVE_URL, in a frame| drive
   browser -.-> sentry
   browser -.-> posthog
@@ -82,6 +84,7 @@ The entrypoint script `40-twake-space-runtime.sh` reads the environment at conta
 - `MAIL_URL`: the Mail app, whose team mailbox embed fills the Mail tab. Optional. Mail, like Tasks, also serves `/embed/overlay.html`, the overlay its composer and dialogs show on, over the whole page: it is on the origin of `MAIL_URL`, which `frame-src` already allows.
 - `DRIVE_URL`: a template for each person's Twake Drive, whose shared drive embed fills the Drive tab, such as `https://{slug}-drive.{domain}/`. Optional. The app fills `{slug}` and `{domain}` from the person's Twake Workplace address (the `workplaceFqdn` claim, such as `alice.twake.example.com`). Every person has their own Drive origin, so `CSP_FRAME_SRC` must allow them all, such as `https://*.twake.example.com`.
 - `CHAT_URL`: Twake Chat, whose `/embed/rooms/<Matrix space id>` fills the Chat tab of a space with the conversation of its Matrix space (ADR 010). Optional. Chat signs in inside its own frame and lists the origin of TwakeSpace in its own `frame-ancestors` (its `TWAKE_SPACE_URL`). Its frame alone gets the camera, the microphone and the screen for its calls, and covers the whole page while Chat asks for it (`twake-embed:fill-page`, during a call): `PERMISSIONS_POLICY` must not turn off `camera`, `microphone` or `display-capture`.
+- `CALENDAR_URL`: Twake Calendar, whose `/embed/calendars/<team calendar id>` fills the Calendar tab of a space with its team calendar (ADR 010). Optional. Calendar signs in silently by moving its frame to the SSO and back, and lists the origin of TwakeSpace in its own `frame-ancestors` (its `FRAME_ANCESTORS`) and `.env.js` (its `TWAKE_SPACE_ORIGIN`).
 - `SENTRY_DSN`, `SENTRY_ENVIRONMENT`: browser error reporting. Optional. Events carry the tag `app` (`twake-space`), the release (the frontend version) and, in a space, the tag `space_tab` (the open tab).
 - `SENTRY_FEEDBACK_ENABLED`: `true` shows the shared feedback button of `@linagora/twake-feedback`, which opens Sentry's form, with an optional email and a screenshot of the tab. The button is draggable and snaps to the left or right edge; its position is remembered per browser, and `Shift+F10` on it opens a menu to move it without dragging. Anything else, or no `SENTRY_DSN`, keeps it off. It needs a Sentry of 24.4.2 or later. The screenshot uses the browser's tab sharing prompt: it is not offered on mobile.
 - `POSTHOG_KEY`, `POSTHOG_HOST`: written to `/.env.js`. See the open questions.
@@ -94,7 +97,7 @@ The script also writes the security headers, sent on every path except `/healthz
 
 - `Content-Security-Policy` has a fixed part: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'`. `style-src` allows inline styles because MUI injects its styles at runtime.
 - `connect-src` is `'self'` plus the origin of each of `API_URL`, `SSO_BASE_URL`, `POSTHOG_HOST` and `SENTRY_DSN` that is an absolute `http` or `https` URL. The origin drops the user info, so the Sentry public key stays out of the header. `CSP_CONNECT_SRC` appends more sources.
-- `frame-src` is `CSP_FRAME_SRC` (default `'self'`) plus the origins of `TASKS_URL` and `CHAT_URL` when set. With `MAIL_URL`, it also gets the origins of `MAIL_URL` and `SSO_BASE_URL`, because the Mail embed signs in through a frame on the SSO.
+- `frame-src` is `CSP_FRAME_SRC` (default `'self'`) plus the origins of `TASKS_URL` and `CHAT_URL` when set. With `MAIL_URL` or `CALENDAR_URL`, it also gets their origins and the origin of `SSO_BASE_URL`, because the Mail embed signs in through a frame on the SSO and the Calendar embed moves its frame to the SSO.
 - `frame-ancestors` is `CSP_FRAME_ANCESTORS` (default `'self'`). Set it when another app embeds Twake Space.
 - `img-src` is `'self' data: blob:` plus `CSP_IMG_SRC`. Set it to the origins of the avatars in Twake Workplace common settings, which each person's Cozy instance serves, such as `https://*.twake.example.com`.
 - `Permissions-Policy` is `PERMISSIONS_POLICY`, by default `accelerometer=(), geolocation=(), gyroscope=(), magnetometer=(), payment=(), usb=()`.

@@ -305,3 +305,14 @@ describe('reconcileHidden', () => {
     expect(kinds).not.toContain('adopt')
   })
 })
+
+describe('the Calendar tab', () => {
+  it('frames the team calendar of the space', () => {
+    const calendar = EMBEDDED_APPS.calendar
+    expect(calendar.resource).toBe('calendar')
+    expect(
+      embedUrl('https://calendar.test/', calendar.embedPath('6ac4ce5f'), '')
+    ).toBe('https://calendar.test/embed/calendars/6ac4ce5f')
+    expect(calendar.overlayPath).toBeNull()
+  })
+})
