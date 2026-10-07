@@ -1,3 +1,4 @@
+import { createSdk, type Sdk } from '@linagora/twake-sdk'
 import {
   createContext,
   use,
@@ -16,6 +17,8 @@ const SPLASH_FADE_MS = 200
 
 export interface Session {
   user: User
+  /** Client of the user's platform, null when the SSO did not name it */
+  sdk: Sdk | null
   signIn: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -31,7 +34,7 @@ export function useSession(): Session {
 type GateState =
   | { status: 'pending' }
   | { status: 'failed' }
-  | { status: 'signedIn'; user: User }
+  | { status: 'signedIn'; user: User; sdk: Sdk | null }
 
 export interface SessionGateProps {
   session: SessionService
@@ -51,7 +54,13 @@ export function SessionGate({
     started.current = true
     session.start().then(
       user => {
-        if (user) setState({ status: 'signedIn', user })
+        if (!user) return
+        const { workplaceFqdn, idToken } = user
+        const sdk =
+          workplaceFqdn && idToken
+            ? createSdk({ platformURL: `https://${workplaceFqdn}`, idToken })
+            : null
+        setState({ status: 'signedIn', user, sdk })
       },
       (error: unknown) => {
         console.error('Sign-in failed:', error)
@@ -86,6 +95,7 @@ export function SessionGate({
         <SessionContext
           value={{
             user: state.user,
+            sdk: state.sdk,
             signIn: session.signIn,
             signOut: session.signOut
           }}

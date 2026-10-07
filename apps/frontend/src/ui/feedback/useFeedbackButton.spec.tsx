@@ -37,7 +37,7 @@ describe('feedback button', () => {
   it('is mounted by the shell with translated labels, and removed with it', async () => {
     const feedback = fakeFeedback()
     renderRoute('/', { feedback, lang: 'fr' })
-    await screen.findByRole('banner')
+    await screen.findByRole('navigation')
 
     // The button is mounted by an effect, which may run after the shell shows.
     await waitFor(() => {
@@ -58,7 +58,7 @@ describe('feedback button', () => {
   it('shows nothing without a feedback service', async () => {
     renderRoute('/')
 
-    expect(await screen.findByRole('banner')).toBeInTheDocument()
+    expect(await screen.findByRole('navigation')).toBeInTheDocument()
     expect(document.getElementById('sentry-feedback')).toBeNull()
   })
 

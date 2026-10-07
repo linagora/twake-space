@@ -29,7 +29,8 @@ export const seedUser: User = {
   id: 'uuid-alice',
   name: 'Alice Martin',
   email: `alice@${DOMAIN}`,
-  workplaceFqdn: null
+  workplaceFqdn: null,
+  idToken: null
 }
 
 const member = (username: string, role: SpaceRole): Member => ({

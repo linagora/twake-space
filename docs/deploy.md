@@ -77,7 +77,7 @@ The frontend image builds the app with Node 24 and serves it from `nginxinc/ngin
 The entrypoint script `40-twake-space-runtime.sh` reads the environment at container start. Each variable below that is set and non-empty becomes a `var NAME = "value"` line in `/.env.js`. A value must fit on one line, or the container refuses to start.
 
 - `API_URL`: the backend base URL, absolute or relative to the page origin. Required: the app throws at startup without it. With `API_UPSTREAM`, set it to `/api`.
-- `SSO_BASE_URL`, `SSO_CLIENT_ID`, `SSO_SCOPE`, `SSO_REDIRECT_URI`, `SSO_POST_LOGOUT_REDIRECT`: the OIDC login settings. All five are required: the app throws without any of them.
+- `SSO_BASE_URL`, `SSO_CLIENT_ID`, `SSO_SCOPE`, `SSO_REDIRECT_URI`, `SSO_POST_LOGOUT_REDIRECT`: the OIDC login settings. All five are required: the app throws without any of them. `SSO_SCOPE` must include `workplaceFqdn` for the platform top bar: it names the user's platform, which must accept the app's SSO client for token exchange.
 - `TASKS_URL`: the Tasks app, embedded in a frame. Optional.
 - `MAIL_URL`: the Mail app, whose team mailbox embed fills the Mail tab. Optional. Mail, like Tasks, also serves `/embed/overlay.html`, the overlay its composer and dialogs show on, over the whole page: it is on the origin of `MAIL_URL`, which `frame-src` already allows.
 - `DRIVE_URL`: a template for each person's Twake Drive, whose shared drive embed fills the Drive tab, such as `https://{slug}-drive.{domain}/`. Optional. The app fills `{slug}` and `{domain}` from the person's Twake Workplace address (the `workplaceFqdn` claim, such as `alice.twake.example.com`). Every person has their own Drive origin, so `CSP_FRAME_SRC` must allow them all, such as `https://*.twake.example.com`.

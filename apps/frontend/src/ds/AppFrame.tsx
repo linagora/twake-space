@@ -11,12 +11,13 @@ import {
   getInitials,
   styled
 } from '@linagora/twake-mui'
+import { TWAKE_BAR_HEIGHT } from '@linagora/twake-bar'
 import type { ReactElement, ReactNode } from 'react'
 
 // Layout hands `sx` to a plain div, so it is styled here instead. The page
 // behind the panels is the mockups' soft gradient, lit from each corner.
 const Frame = styled(Layout)(({ theme }) => ({
-  height: '100dvh',
+  height: 'calc(100dvh - var(--topBarHeight, 0px))',
   backgroundColor: '#e2eaf9',
   backgroundImage: [
     'radial-gradient(at 0% 0%, #faf5f7 0px, transparent 55%)',
@@ -33,7 +34,7 @@ const Frame = styled(Layout)(({ theme }) => ({
   }),
   [theme.breakpoints.down('lg')]: {
     height: 'auto',
-    minHeight: '100dvh',
+    minHeight: 'calc(100dvh - var(--topBarHeight, 0px))',
     flexDirection: 'column',
     paddingBottom: 'var(--sidebarHeight)'
   }
@@ -51,61 +52,53 @@ const GlassSidebar = styled(Sidebar)(({ theme }) => ({
   }
 }))
 
+// The platform bar sits above the frame, which gives it its height.
+const TopBar = styled('div')({
+  '--topBarHeight': TWAKE_BAR_HEIGHT,
+  position: 'sticky',
+  top: 0,
+  zIndex: 1100
+})
+
 // `bare` swaps the content's white panel for the dashboard's frosted one,
 // which continues the sidebar.
 export function AppFrame({
+  topBar,
   sidebar,
-  mobileBar,
   bare = false,
   children
 }: {
+  topBar?: ReactNode
   sidebar: ReactNode
-  mobileBar: ReactNode
   bare?: boolean
   children: ReactNode
 }): ReactElement {
   return (
-    <Frame withTopBar={false}>
-      <GlassSidebar>{sidebar}</GlassSidebar>
-      {mobileBar}
-      {/* Content's own 100% height ignores its margins and scrolls the page */}
-      <Content
-        role={undefined}
-        sx={theme => ({
-          height: 'auto',
-          [theme.breakpoints.up('lg')]: bare
-            ? {
-                m: '12px 12px 12px 0',
-                borderRadius: '0 16px 16px 0',
-                bgcolor: theme.alpha(theme.vars.palette.background.paper, 0.45)
-              }
-            : { m: '12px 12px 12px 0', borderRadius: '0 16px 16px 0' }
-        })}
-      >
-        {children}
-      </Content>
-    </Frame>
-  )
-}
-
-// Below lg the sidebar is a bottom bar, so the account moves up here.
-export function MobileBar({ children }: { children: ReactNode }): ReactElement {
-  return (
-    <Box
-      component="header"
-      sx={{
-        display: { xs: 'flex', lg: 'none' },
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: 56,
-        px: 2,
-        bgcolor: 'background.paper',
-        borderBottom: 1,
-        borderColor: 'divider'
-      }}
-    >
-      {children}
-    </Box>
+    <>
+      {topBar && <TopBar>{topBar}</TopBar>}
+      <Frame withTopBar={false}>
+        <GlassSidebar>{sidebar}</GlassSidebar>
+        {/* Content's own 100% height ignores its margins and scrolls the page */}
+        <Content
+          role={undefined}
+          sx={theme => ({
+            height: 'auto',
+            [theme.breakpoints.up('lg')]: bare
+              ? {
+                  m: '12px 12px 12px 0',
+                  borderRadius: '0 16px 16px 0',
+                  bgcolor: theme.alpha(
+                    theme.vars.palette.background.paper,
+                    0.45
+                  )
+                }
+              : { m: '12px 12px 12px 0', borderRadius: '0 16px 16px 0' }
+          })}
+        >
+          {children}
+        </Content>
+      </Frame>
+    </>
   )
 }
 
@@ -166,26 +159,6 @@ export function SidebarSection({
   )
 }
 
-export function SidebarFooter({
-  children
-}: {
-  children: ReactNode
-}): ReactElement {
-  return (
-    <Box
-      sx={{
-        display: { xs: 'none', lg: 'block' },
-        mt: 'auto',
-        p: 1,
-        borderTop: 1,
-        borderColor: 'divider'
-      }}
-    >
-      {children}
-    </Box>
-  )
-}
-
 // `label` names the person for assistive technology; without it the avatar
 // is decoration next to the name it stands for.
 export function NameAvatar({
@@ -223,39 +196,6 @@ export function NavAvatar({
   return (
     <Box component="span" sx={{ display: 'flex', mr: 1.5 }}>
       <NameAvatar name={name} size="xs" color={color} />
-    </Box>
-  )
-}
-
-export function AccountCard({
-  avatar,
-  name,
-  email
-}: {
-  avatar: ReactNode
-  name: string
-  email?: string | undefined
-}): ReactElement {
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1.5,
-        minWidth: 0
-      }}
-    >
-      {avatar}
-      <Box sx={{ minWidth: 0, textAlign: 'start' }}>
-        <Typography variant="body2" color="textPrimary" noWrap>
-          {name}
-        </Typography>
-        {email && (
-          <Typography variant="caption" component="p" noWrap>
-            {email}
-          </Typography>
-        )}
-      </Box>
     </Box>
   )
 }

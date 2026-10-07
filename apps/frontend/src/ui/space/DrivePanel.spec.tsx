@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react'
 import { Route, Routes } from 'react-router'
 import { describe, expect, it } from 'vitest'
 
-import { fakeSession } from '@/testing/fakeSession'
+import { fakeSession, fakeUser } from '@/testing/fakeSession'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { DrivePanel } from '@/ui/space/DrivePanel'
 
@@ -22,12 +22,7 @@ function renderAt(
       path,
       driveUrlTemplate,
       session: fakeSession(() =>
-        Promise.resolve({
-          id: 'u-me',
-          name: 'Alice Martin',
-          email: 'alice@example.com',
-          workplaceFqdn
-        })
+        Promise.resolve({ ...fakeUser(), workplaceFqdn })
       )
     }
   )
