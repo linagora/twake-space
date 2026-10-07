@@ -208,7 +208,7 @@ describe('space writes', () => {
       name: 'Launch',
       description: 'Ship it',
       color: '#46a2ff',
-      apps: ['feed', 'drive']
+      apps: ['drive']
     })
 
     expect(response.statusCode).toBe(201)
@@ -217,9 +217,22 @@ describe('space writes', () => {
         spaceId: CREATED,
         description: 'Ship it',
         color: '#46a2ff',
-        apps: ['feed', 'drive']
+        apps: ['drive']
       }
     ])
+  })
+
+  it('takes feed out of the apps picked, since every space has one', async () => {
+    const { directory } = ldapRest()
+
+    await setUp(directory)('POST', '/spaces', {
+      name: 'Launch',
+      apps: ['feed', 'drive']
+    })
+
+    expect(
+      await testDb.db.select({ apps: spaceSettings.apps }).from(spaceSettings)
+    ).toEqual([{ apps: ['drive'] }])
   })
 
   it.each([
@@ -407,7 +420,7 @@ describe('space writes', () => {
     const { directory } = ldapRest()
     await testDb.db
       .insert(spaceSettings)
-      .values({ spaceId: DESIGN, description: 'x', apps: ['feed'] })
+      .values({ spaceId: DESIGN, description: 'x', apps: ['drive'] })
 
     const response = await setUp(directory)('DELETE', `/spaces/${DESIGN}`)
 

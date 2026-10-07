@@ -89,10 +89,10 @@ The refusals look like this.
 ### GET /spaces/apps
 
 - Caller: session, or token with `space:read`.
-- Returns the tabs a new space can have: those whose app this deployment provides (`SPACE_APPS` in [Deploying](deploy.md#configuration)), less `feed` and `chat` while the organization's chat is off, and `mail` while its mail is off.
+- Returns the app tabs a new space can have: those whose app this deployment provides (`SPACE_APPS` in [Deploying](deploy.md#configuration)), less `chat` while the organization's chat is off, and `mail` while its mail is off. Every space has a feed, so `feed` is never listed.
 
 ```json
-{ "apps": ["feed", "chat", "tasks", "mail"] }
+{ "apps": ["chat", "tasks", "mail"] }
 ```
 
 ### GET /spaces/:id
@@ -113,7 +113,7 @@ The refusals look like this.
   "createdAt": "2026-10-01T08:00:00.000Z",
   "color": "#46a2ff",
   "description": "Brand and product design",
-  "apps": ["feed", "chat", "tasks", "drive"],
+  "apps": ["chat", "tasks", "drive"],
   "chat": true,
   "mail": false,
   "homeserverUrl": "https://matrix.example.com",
@@ -490,7 +490,7 @@ Shared rules:
 
 ### POST /spaces
 
-- Body: `{"name":"...","description":"...","color":"#46a2ff","apps":["feed","drive"]}`. Only `name` is required. `color` is a `#rrggbb` hex code. `apps` lists the tabs the space shows, among `feed`, `chat`, `tasks`, `drive`, `mail` and `calendar`; every one when left out.
+- Body: `{"name":"...","description":"...","color":"#46a2ff","apps":["chat","drive"]}`. Only `name` is required. `color` is a `#rrggbb` hex code. `apps` lists the app tabs the space shows, among `chat`, `tasks`, `drive`, `mail` and `calendar`; every one when left out. A `feed` in `apps` is accepted and left out, since every space has a feed.
 - The caller becomes the space's admin. It needs an account found in ldap-rest; otherwise, and for an organization token, it gets `403 {"error":"needs_an_account"}`.
 - Answers `201`.
 
