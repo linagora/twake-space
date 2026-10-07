@@ -251,5 +251,64 @@
   },
   "chat": {
     "notSetUp": "Trò chuyện chưa được thiết lập cho TwakeSpace."
+  },
+  "apiTokens": {
+    "title": "Token API",
+    "intro": "Token API cho phép bạn, các script, tích hợp và tác tử AI gọi API của Twake Space. Token cá nhân hành động thay bạn; token tổ chức hành động cho cả tổ chức.",
+    "tabs": {
+      "personal": "Cá nhân",
+      "organization": "Tổ chức"
+    },
+    "heading": {
+      "personal": "Token của bạn",
+      "organization": "Token của tổ chức"
+    },
+    "empty": {
+      "personal": "Bạn chưa có token nào.",
+      "organization": "Tổ chức chưa có token nào."
+    },
+    "loading": "Đang tải token",
+    "loadFailed": "Không thể tải token.",
+    "adminsOnly": "Chỉ chủ sở hữu và quản trị viên của tổ chức mới quản lý token của tổ chức.",
+    "create": "Tạo token",
+    "createTitle": {
+      "personal": "Token cá nhân mới",
+      "organization": "Token tổ chức mới"
+    },
+    "name": "Tên",
+    "nameHint": "Thứ sử dụng nó, ví dụ \"Script sao lưu\" hoặc \"Tác tử ghi biên bản\".",
+    "scopes": "Quyền hạn",
+    "scope": {
+      "space:read": "Đọc không gian",
+      "space:write": "Sửa không gian",
+      "members:write": "Quản lý thành viên",
+      "feed:read": "Đọc bảng tin",
+      "tokens:write": "Quản lý token"
+    },
+    "spaces": "Không gian truy cập được",
+    "allSpaces": "Tất cả không gian",
+    "pickSpaces": "Một số không gian",
+    "someSpaces": "%{smart_count} không gian",
+    "role": "Vai trò trong các không gian",
+    "lifetime": "Hết hạn sau",
+    "days": "%{smart_count} ngày",
+    "expires": "Hết hạn %{date}",
+    "neverExpires": "Không bao giờ hết hạn",
+    "lastUsed": "Dùng lần cuối %{date}",
+    "neverUsed": "Chưa từng dùng",
+    "rename": "Đổi tên %{name}",
+    "revoke": "Thu hồi %{name}",
+    "renameTitle": "Đổi tên token",
+    "revokeTitle": "Thu hồi %{name}?",
+    "revokeHint": "Mọi thứ dùng token này sẽ mất quyền truy cập ngay lập tức. Không thể hoàn tác.",
+    "revokeConfirm": "Thu hồi",
+    "secretTitle": "%{name} đã sẵn sàng",
+    "secretHint": "Hãy sao chép token ngay. Bạn sẽ không thể xem lại.",
+    "secret": "Token",
+    "copy": "Sao chép token",
+    "copied": "Đã sao chép token",
+    "done": "Xong",
+    "refused": "Bị từ chối: %{reason}",
+    "failed": "Không thể lưu thay đổi."
   }
 }

@@ -251,5 +251,64 @@
   },
   "chat": {
     "notSetUp": "La chat non è configurata per TwakeSpace."
+  },
+  "apiTokens": {
+    "title": "Token API",
+    "intro": "I token API permettono a te, ai tuoi script, alle integrazioni e agli agenti IA di chiamare l’API di Twake Space. Un token personale agisce a tuo nome; un token dell’organizzazione agisce per tutta l’organizzazione.",
+    "tabs": {
+      "personal": "Personale",
+      "organization": "Organizzazione"
+    },
+    "heading": {
+      "personal": "I tuoi token",
+      "organization": "Token dell’organizzazione"
+    },
+    "empty": {
+      "personal": "Non hai ancora token.",
+      "organization": "L’organizzazione non ha ancora token."
+    },
+    "loading": "Caricamento dei token",
+    "loadFailed": "Impossibile caricare i token.",
+    "adminsOnly": "Solo i proprietari e gli amministratori dell’organizzazione gestiscono i suoi token.",
+    "create": "Crea un token",
+    "createTitle": {
+      "personal": "Nuovo token personale",
+      "organization": "Nuovo token dell’organizzazione"
+    },
+    "name": "Nome",
+    "nameHint": "Cosa lo usa, per esempio «Script di backup» o «Agente verbali».",
+    "scopes": "Cosa può fare",
+    "scope": {
+      "space:read": "Leggere gli spazi",
+      "space:write": "Modificare gli spazi",
+      "members:write": "Gestire i membri",
+      "feed:read": "Leggere i feed",
+      "tokens:write": "Gestire i token"
+    },
+    "spaces": "Spazi raggiungibili",
+    "allSpaces": "Tutti gli spazi",
+    "pickSpaces": "Alcuni spazi",
+    "someSpaces": "%{smart_count} spazio |||| %{smart_count} spazi",
+    "role": "Ruolo nei suoi spazi",
+    "lifetime": "Scade tra",
+    "days": "%{smart_count} giorno |||| %{smart_count} giorni",
+    "expires": "Scade il %{date}",
+    "neverExpires": "Non scade mai",
+    "lastUsed": "Usato il %{date}",
+    "neverUsed": "Mai usato",
+    "rename": "Rinomina %{name}",
+    "revoke": "Revoca %{name}",
+    "renameTitle": "Rinomina il token",
+    "revokeTitle": "Revocare %{name}?",
+    "revokeHint": "Ciò che usa questo token perde subito l’accesso. Non si può annullare.",
+    "revokeConfirm": "Revoca",
+    "secretTitle": "%{name} è pronto",
+    "secretHint": "Copia il token ora. Non potrai più vederlo.",
+    "secret": "Token",
+    "copy": "Copia il token",
+    "copied": "Token copiato",
+    "done": "Fatto",
+    "refused": "Rifiutato: %{reason}",
+    "failed": "Impossibile salvare la modifica."
   }
 }
