@@ -243,6 +243,59 @@ describe('POST /tokens', () => {
     )
   })
 
+  it('revokes the tokens a token created, down the line, along with it', async () => {
+    const call = setUp()
+    const parent = await call(
+      'POST',
+      '/tokens',
+      create({
+        name: 'parent',
+        scopes: ['tokens:write', 'space:read'],
+        expiresInDays: 90
+      })
+    )
+    const parentCaller = await authenticate(
+      parent.json<{ token: string }>().token
+    )
+    if (!parentCaller) throw new Error('parent not authenticated')
+    const child = await setUp(parentCaller)(
+      'POST',
+      '/tokens',
+      create({
+        name: 'child',
+        scopes: ['tokens:write', 'space:read'],
+        expiresInDays: 30
+      }),
+      'tws_bot'
+    )
+    const childCaller = await authenticate(
+      child.json<{ token: string }>().token
+    )
+    if (!childCaller) throw new Error('child not authenticated')
+    const grandchild = await setUp(childCaller)(
+      'POST',
+      '/tokens',
+      create({ name: 'grandchild', expiresInDays: 7 }),
+      'tws_bot'
+    )
+
+    await call('DELETE', `/tokens/${parent.json<{ id: string }>().id}`)
+
+    expect(
+      await authenticate(grandchild.json<{ token: string }>().token)
+    ).toBeNull()
+    expect(
+      await testDb.db
+        .select({ name: apiTokens.name, reason: apiTokens.revokedReason })
+        .from(apiTokens)
+        .orderBy(apiTokens.createdAt)
+    ).toEqual([
+      { name: 'parent', reason: 'revoked by hand' },
+      { name: 'child', reason: 'the token that created it was revoked' },
+      { name: 'grandchild', reason: 'the token that created it was revoked' }
+    ])
+  })
+
   it('needs tokens:write on a token', async () => {
     const response = await setUp()('POST', '/tokens', create(), 'tws_bot')
 

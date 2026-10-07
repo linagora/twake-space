@@ -45,10 +45,13 @@ export const apiTokens = pgTable(
     revokedAt: timestamptz('revoked_at'),
     revokedReason: text('revoked_reason'),
     createdBy: text('created_by').notNull(),
+    // The token that created this one, revoked along with it.
+    parentTokenId: uuid('parent_token_id'),
     createdAt: timestamptz('created_at').notNull().defaultNow()
   },
   table => [
     index().on(table.organizationId, table.accountId),
+    index().on(table.parentTokenId),
     check(
       'api_tokens_owner',
       sql`(${table.ownerKind} = 'account') = (${table.accountId} is not null)`
