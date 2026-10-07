@@ -33,6 +33,7 @@ const services = {
   live: liveStream(api),
   feed: httpFeed(api),
   feedback,
+  apiUrl,
   tasksUrl: window.TASKS_URL ?? null,
   mailUrl: window.MAIL_URL ?? null,
   driveUrlTemplate: window.DRIVE_URL ?? null,

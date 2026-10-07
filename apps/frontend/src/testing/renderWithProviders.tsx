@@ -71,6 +71,7 @@ function withProviders(
         live,
         feed,
         feedback,
+        apiUrl: 'https://space.test/api/',
         tasksUrl,
         mailUrl,
         driveUrlTemplate,

@@ -32,7 +32,15 @@ const session = {
 }
 const services = {
   spaces: memorySpaces(seedSpaces, seedOrganization),
-  tokens: memoryTokens(seedTokens, { organizationAdmin: true }),
+  tokens: memoryTokens(seedTokens, {
+    organizationAdmin: true,
+    policy: { allowNoExpiry: true, maxLifetimeDays: 90 },
+    // Legal shows an organization token reaching a space Alice is not in.
+    spaces: [
+      ...seedSpaces.map(({ id, name }) => ({ id, name })),
+      { id: 'legal', name: 'Legal' }
+    ]
+  }),
   directory: memoryDirectory(seedOrganization),
   settings: { get: () => Promise.resolve(NO_SETTINGS) },
   live: { subscribe: () => () => undefined },
@@ -41,6 +49,7 @@ const services = {
     roles: Object.fromEntries(seedSpaces.map(space => [space.id, space.role]))
   }),
   feedback: null,
+  apiUrl: new URL('/api/', window.location.origin).href,
   tasksUrl: window.TASKS_URL ?? null,
   mailUrl: window.MAIL_URL ?? null,
   driveUrlTemplate: window.DRIVE_URL ?? null,
