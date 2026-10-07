@@ -248,5 +248,8 @@
     "errorTimeoutText": "Sending took too long. Try again.",
     "errorForbiddenText": "Feedback could not be sent: you are not allowed to send it.",
     "errorGenericText": "Feedback could not be sent. Try again."
+  },
+  "chat": {
+    "notSetUp": "Chat is not set up for TwakeSpace."
   }
 }

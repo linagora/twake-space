@@ -5,7 +5,7 @@ set -eu
 
 ME=$(basename "$0")
 OUT=/tmp/nginx
-RUNTIME_KEYS="API_URL TASKS_URL MAIL_URL DRIVE_URL SSO_BASE_URL SSO_CLIENT_ID SSO_SCOPE SSO_REDIRECT_URI SSO_POST_LOGOUT_REDIRECT POSTHOG_KEY POSTHOG_HOST SENTRY_DSN SENTRY_ENVIRONMENT SENTRY_FEEDBACK_ENABLED"
+RUNTIME_KEYS="API_URL TASKS_URL MAIL_URL DRIVE_URL CHAT_URL SSO_BASE_URL SSO_CLIENT_ID SSO_SCOPE SSO_REDIRECT_URI SSO_POST_LOGOUT_REDIRECT POSTHOG_KEY POSTHOG_HOST SENTRY_DSN SENTRY_ENVIRONMENT SENTRY_FEEDBACK_ENABLED"
 
 fail() {
   echo "$ME: error: $*" >&2
@@ -53,6 +53,8 @@ done
 [ -n "${CSP_CONNECT_SRC:-}" ] && connect_src="$connect_src $CSP_CONNECT_SRC"
 frame_src=${CSP_FRAME_SRC:-"'self'"}
 [ -n "${TASKS_URL:-}" ] && frame_src="$frame_src $(origin "$TASKS_URL")"
+# Chat signs in inside its own frame: only its origin here.
+[ -n "${CHAT_URL:-}" ] && frame_src="$frame_src $(origin "$CHAT_URL")"
 # The Mail embed signs in through a frame on the SSO.
 for url in "${MAIL_URL:-}" "${MAIL_URL:+${SSO_BASE_URL:-}}"; do
   case "$url" in

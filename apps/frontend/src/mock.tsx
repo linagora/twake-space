@@ -40,7 +40,8 @@ const services = {
   feedback: null,
   tasksUrl: window.TASKS_URL ?? null,
   mailUrl: window.MAIL_URL ?? null,
-  driveUrlTemplate: window.DRIVE_URL ?? null
+  driveUrlTemplate: window.DRIVE_URL ?? null,
+  chatUrl: window.CHAT_URL ?? null
 }
 
 createRoot(container).render(

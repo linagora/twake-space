@@ -14,6 +14,7 @@ import { KeptAlive, KeptAliveStack } from '@/ds/KeptAlive'
 import { LoadingRows, Page, SpaceHeader, TabPanel } from '@/ds/Page'
 import { useSpaceTabTag } from '@/ui/feedback/useSpaceTabTag'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { ChatPanel } from '@/ui/space/ChatPanel'
 import { DrivePanel } from '@/ui/space/DrivePanel'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 import { MailPanel } from '@/ui/space/MailPanel'
@@ -41,7 +42,7 @@ function useNowAfter(at: number): number {
 
 // The tabs that frame an app: once opened, their frame stays alive in the
 // space (ADR 010), hidden on the other tabs.
-const FRAMED_TABS = ['tasks', 'drive', 'mail'] as const
+const FRAMED_TABS = ['chat', 'tasks', 'drive', 'mail'] as const
 type FramedTab = (typeof FRAMED_TABS)[number]
 
 function isFramed(tab: string): tab is FramedTab {
@@ -124,6 +125,7 @@ export function SpaceScreen(): ReactElement {
   const project = resource('project')
   const sharing = resource('drive')
   const mailbox = resource('mailbox')
+  const chatRoom = resource('matrix_space')
   const framed = current.state === 'ready' && isFramed(current.tab)
 
   return (
@@ -196,6 +198,15 @@ export function SpaceScreen(): ReactElement {
         {current.tab === 'feed' && <FeedPanel space={space.data} />}
         {current.tab === 'members' && <MembersPanel space={space.data} />}
         <KeptAliveStack active={framed}>
+          {opened.has('chat') && chatRoom && (
+            <KeptAlive active={current.tab === 'chat'}>
+              <ChatPanel
+                spaceId={spaceId}
+                roomId={chatRoom}
+                active={current.tab === 'chat'}
+              />
+            </KeptAlive>
+          )}
           {opened.has('tasks') && project && (
             <KeptAlive active={current.tab === 'tasks'}>
               <TasksPanel

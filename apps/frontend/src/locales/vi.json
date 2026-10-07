@@ -248,5 +248,8 @@
     "errorTimeoutText": "Việc gửi mất quá nhiều thời gian. Hãy thử lại.",
     "errorForbiddenText": "Không thể gửi góp ý: bạn không có quyền gửi.",
     "errorGenericText": "Không thể gửi góp ý. Hãy thử lại."
+  },
+  "chat": {
+    "notSetUp": "Trò chuyện chưa được thiết lập cho TwakeSpace."
   }
 }
