@@ -198,6 +198,21 @@ describe('EmbeddedAppFrame', () => {
     expect(post.mock.calls[2]).toEqual([{ type: 'twake-embed:hello' }, MAIL])
   })
 
+  it('greets an app that says it listens, from its frame only', async () => {
+    await renderFrame()
+    const contentWindow = frame().contentWindow
+    if (!contentWindow) throw new Error('no frame window')
+    const post = vi.spyOn(contentWindow, 'postMessage')
+
+    postFromFrame({ type: 'twake-embed:ready' }, 'https://evil.test')
+    expect(post).not.toHaveBeenCalled()
+
+    await waitFor(() => {
+      postFromFrame({ type: 'twake-embed:ready' })
+      expect(post).toHaveBeenCalledWith({ type: 'twake-embed:hello' }, MAIL)
+    })
+  })
+
   it('takes the page out of reach while the app blocks it', async () => {
     const root = document.createElement('div')
     root.id = 'root'

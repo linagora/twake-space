@@ -40,8 +40,9 @@ const ALLOW = 'clipboard-read; clipboard-write'
 //   `twake-tasks:path` and cozy-external-bridge's `updateHistory`),
 // - a new sign in when its session expired (`twake-embed:login-required`,
 //   or the bridge's `notifyLoginRequired`),
-// - a greeting on each of its loads (`twake-embed:hello`), from which the
-//   app learns where TwakeSpace is, and the page's theme (`twake-space:theme`),
+// - a greeting on each of its loads and whenever the app says it listens
+//   (`twake-embed:hello` for `twake-embed:ready`), from which the app learns
+//   where TwakeSpace is, and the page's theme (`twake-space:theme`),
 // - an overlay over the whole page, on the app's origin, for its docked
 //   windows and dialogs: an empty page the app renders into, shown within
 //   the region the app reports (`twake-embed:overlay-region`),
@@ -101,7 +102,8 @@ export function EmbeddedAppFrame({
 
   // Until the app loads, the frame holds about:blank on this page's origin.
   // Each document the frame loads (the silent login makes several) is
-  // greeted: the app answers the origin that greets it.
+  // greeted, and so is an app that says it listens after its frame loaded:
+  // the app answers the origin that greets it.
   const [loads, setLoads] = useState(0)
   const { mode, systemMode } = useColorScheme()
   const theme = (mode === 'system' ? systemMode : mode) ?? 'light'
@@ -136,6 +138,10 @@ export function EmbeddedAppFrame({
           return
         }
         const message = parseAppMessage(event.data)
+        if (message?.type === 'twake-embed:ready') {
+          setLoads(n => n + 1)
+          return
+        }
         if (message?.type === 'twake-embed:fill-page') {
           setAsksPage(message.fill)
           return
