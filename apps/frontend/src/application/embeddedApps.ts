@@ -188,3 +188,26 @@ export function reconcile(
   if (frame.dialect === 'embed' && src !== null) return { kind: 'navigate' }
   return { kind: 'none' }
 }
+
+// What brings a frame the address does not show to its space's resource:
+// the other tabs' frames stay mounted so that every app can report its
+// counts, and follow the space shown. There is no address to follow: a
+// hidden frame is never navigated, never adopted, and never writes the
+// history. Its path starts at the app's embed route.
+export type HiddenReconciliation = Extract<
+  Reconciliation,
+  { kind: 'create' | 'replace' | 'load' | 'none' }
+>
+
+export function reconcileHidden(
+  frame: FrameState | null,
+  resourceId: string,
+  spec: EmbeddedAppSpec,
+  appUrl: string
+): HiddenReconciliation {
+  if (frame !== null && frame.resourceId === resourceId) return { kind: 'none' }
+  if (frame?.dialect === 'embed') return { kind: 'load' }
+  const src = embedUrl(appUrl, spec.embedPath(resourceId), '')
+  if (src === null) return { kind: 'none' }
+  return { kind: frame === null ? 'create' : 'replace', src }
+}
