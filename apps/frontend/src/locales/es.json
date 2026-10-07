@@ -82,7 +82,6 @@
     "appsHint": "Elija qué aplicaciones están disponibles en este espacio.",
     "appsFailed": "No se pudieron cargar las aplicaciones disponibles.",
     "app": {
-      "feed": "Novedades",
       "drive": "Archivos",
       "chat": "Chat",
       "tasks": "Tareas",

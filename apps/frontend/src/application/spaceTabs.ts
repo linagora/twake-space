@@ -39,10 +39,7 @@ export function spaceTabs(
   const waiting =
     now < Date.parse(space.createdAt) + PREPARING_MS ? 'preparing' : 'stalled'
   return TABS.flatMap((tab): { tab: Tab; state: TabState }[] => {
-    if (tab === 'members') return [{ tab, state: 'ready' }]
-    if (tab === 'feed') {
-      return space.apps.includes(tab) ? [{ tab, state: 'ready' }] : []
-    }
+    if (tab === 'feed' || tab === 'members') return [{ tab, state: 'ready' }]
     const resource = space.resources.find(r => r.kind === RESOURCE[tab])
     if (!resource || !space.apps.includes(tab)) return []
     if (!isOn(space, tab)) return [{ tab, state: 'off' }]

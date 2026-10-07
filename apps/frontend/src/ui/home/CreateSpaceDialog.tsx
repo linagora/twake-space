@@ -25,7 +25,6 @@ import {
 import { useId, useState, type ReactElement, type ReactNode } from 'react'
 
 import type { SpaceApp } from '@/application/spaces'
-import feedTile from '@/assets/feed.svg'
 import tasksTile from '@/assets/tasks.svg'
 import { AvatarPicker, ColorSwatches } from '@/ds/AvatarPicker'
 import { DialogHeader } from '@/ds/Dialog'
@@ -39,7 +38,6 @@ const tile = (src: string): ReactElement => (
 )
 
 const APP_ICONS: Record<SpaceApp, ReactElement> = {
-  feed: tile(feedTile),
   drive: <Icon icon={Drive} size={24} />,
   chat: <Icon icon={Chat} size={24} />,
   tasks: tile(tasksTile),
@@ -48,7 +46,7 @@ const APP_ICONS: Record<SpaceApp, ReactElement> = {
 }
 
 // The first column is on by default, the second one off.
-const DEFAULT_APPS: SpaceApp[] = ['feed', 'drive', 'chat', 'tasks']
+const DEFAULT_APPS: SpaceApp[] = ['drive', 'chat', 'tasks']
 const OTHER_APPS: SpaceApp[] = ['calendar', 'mail']
 
 const COLORS = [

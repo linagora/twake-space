@@ -13,7 +13,7 @@ const space: Space = {
   createdAt: new Date(CREATED).toISOString(),
   color: null,
   description: '',
-  apps: ['feed', 'chat', 'tasks', 'drive', 'mail', 'calendar'],
+  apps: ['chat', 'tasks', 'drive', 'mail', 'calendar'],
   chat: true,
   mail: true,
   homeserverUrl: 'https://matrix.acme.test',
@@ -59,10 +59,14 @@ describe('spaceTabs', () => {
     ])
   })
 
-  it('leaves out the tabs of the apps the space does not use', () => {
-    const tabs = spaceTabs({ ...space, apps: ['feed', 'drive'] }, SOON)
+  it('leaves out the apps the space does not use, never the feed', () => {
+    const tabs = spaceTabs({ ...space, apps: ['drive'] }, SOON)
 
-    expect(tabs.map(t => t.tab)).toEqual(['feed', 'drive', 'members'])
+    expect(tabs).toEqual([
+      { tab: 'feed', state: 'ready' },
+      { tab: 'drive', state: 'preparing' },
+      { tab: 'members', state: 'ready' }
+    ])
   })
 
   it('has no tab for an app this deployment does not provide', () => {
@@ -104,8 +108,6 @@ describe('containerTab', () => {
 
   it('opens no tab the space does not show', () => {
     expect(containerTab({ ...space, mail: false }, 'mailbox')).toBeNull()
-    expect(
-      containerTab({ ...space, apps: ['feed', 'chat'] }, 'project')
-    ).toBeNull()
+    expect(containerTab({ ...space, apps: ['chat'] }, 'project')).toBeNull()
   })
 })

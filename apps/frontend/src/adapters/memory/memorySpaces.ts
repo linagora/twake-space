@@ -56,7 +56,7 @@ export function memorySpaces(
         : refuse(404, 'not_found')
     },
     // The organization's mail is off, as on a new space below.
-    apps: () => Promise.resolve(['feed', 'chat', 'tasks', 'drive', 'calendar']),
+    apps: () => Promise.resolve(['chat', 'tasks', 'drive', 'calendar']),
     create: created => {
       const space: Space = {
         ...created,

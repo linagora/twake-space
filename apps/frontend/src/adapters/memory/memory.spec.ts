@@ -13,7 +13,7 @@ const roadmap: Space = {
   createdAt: '2026-10-01T08:00:00.000Z',
   color: null,
   description: '',
-  apps: ['feed', 'chat'],
+  apps: ['chat'],
   chat: true,
   mail: true,
   homeserverUrl: 'https://matrix.acme.test',
@@ -134,7 +134,7 @@ describe('memorySpaces', () => {
       name: 'Launch',
       description: 'Ship it',
       color: '#46a2ff',
-      apps: ['feed']
+      apps: ['tasks']
     })
 
     expect(await spaces.list()).toEqual([
@@ -153,7 +153,7 @@ describe('memorySpaces', () => {
       role: 'admin',
       description: 'Ship it',
       color: '#46a2ff',
-      apps: ['feed']
+      apps: ['tasks']
     })
     await expect(spaces.get('nowhere')).rejects.toMatchObject({ status: 404 })
   })

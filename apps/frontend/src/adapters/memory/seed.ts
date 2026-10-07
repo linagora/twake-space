@@ -49,14 +49,7 @@ const designers = (role: SpaceRole) => ({
 const ROADMAP_ROOM = `!roadmap:${DOMAIN}`
 const DESIGN_ROOM = `!design-sprint:${DOMAIN}`
 
-const ALL_APPS: SpaceApp[] = [
-  'feed',
-  'chat',
-  'tasks',
-  'drive',
-  'mail',
-  'calendar'
-]
+const ALL_APPS: SpaceApp[] = ['chat', 'tasks', 'drive', 'mail', 'calendar']
 
 export const seedSpaces: Space[] = [
   {
@@ -91,7 +84,7 @@ export const seedSpaces: Space[] = [
     createdAt: '2026-09-15T08:00:00.000Z',
     color: null,
     description: '',
-    apps: ['feed', 'chat', 'tasks', 'drive', 'calendar'],
+    apps: ['chat', 'tasks', 'drive', 'calendar'],
     chat: true,
     mail: false,
     homeserverUrl: HOMESERVER,

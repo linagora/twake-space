@@ -82,7 +82,6 @@
     "appsHint": "Choose which apps are available in this space.",
     "appsFailed": "The available apps could not be loaded.",
     "app": {
-      "feed": "Feed",
       "drive": "Files",
       "chat": "Chat",
       "tasks": "Tasks",

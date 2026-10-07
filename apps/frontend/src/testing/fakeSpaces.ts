@@ -15,7 +15,6 @@ export function fakeSpaces(initial: SpaceSummary[] = []): SpacesService {
     get: vi.fn(() => Promise.reject(new Error('no space here'))),
     apps: vi.fn(() =>
       Promise.resolve<SpaceApp[]>([
-        'feed',
         'chat',
         'tasks',
         'drive',

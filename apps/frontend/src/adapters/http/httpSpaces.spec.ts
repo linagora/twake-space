@@ -18,7 +18,7 @@ const launch: NewSpace = {
   name: 'Launch',
   description: 'Ship it',
   color: '#46a2ff',
-  apps: ['feed', 'drive']
+  apps: ['chat', 'drive']
 }
 
 function requested(): Request {
