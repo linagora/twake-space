@@ -251,5 +251,64 @@
   },
   "chat": {
     "notSetUp": "Chat is not set up for TwakeSpace."
+  },
+  "apiTokens": {
+    "title": "API tokens",
+    "intro": "API tokens let you, your scripts, integrations and AI agents call the Twake Space API. A personal token acts as you; an organization token acts for the whole organization.",
+    "tabs": {
+      "personal": "Personal",
+      "organization": "Organization"
+    },
+    "heading": {
+      "personal": "Your tokens",
+      "organization": "Organization tokens"
+    },
+    "empty": {
+      "personal": "You have no tokens yet.",
+      "organization": "The organization has no tokens yet."
+    },
+    "loading": "Loading the tokens",
+    "loadFailed": "The tokens could not be loaded.",
+    "adminsOnly": "Only the organization's owners and admins manage its tokens.",
+    "create": "Create a token",
+    "createTitle": {
+      "personal": "New personal token",
+      "organization": "New organization token"
+    },
+    "name": "Name",
+    "nameHint": "What uses it, for example \"Backup script\" or \"Meeting notes agent\".",
+    "scopes": "What it can do",
+    "scope": {
+      "space:read": "Read spaces",
+      "space:write": "Change spaces",
+      "members:write": "Manage members",
+      "feed:read": "Read feeds",
+      "tokens:write": "Manage tokens"
+    },
+    "spaces": "Spaces it reaches",
+    "allSpaces": "All spaces",
+    "pickSpaces": "Some spaces",
+    "someSpaces": "%{smart_count} space |||| %{smart_count} spaces",
+    "role": "Role in its spaces",
+    "lifetime": "Expires in",
+    "days": "%{smart_count} day |||| %{smart_count} days",
+    "expires": "Expires %{date}",
+    "neverExpires": "Never expires",
+    "lastUsed": "Last used %{date}",
+    "neverUsed": "Never used",
+    "rename": "Rename %{name}",
+    "revoke": "Revoke %{name}",
+    "renameTitle": "Rename the token",
+    "revokeTitle": "Revoke %{name}?",
+    "revokeHint": "Whatever uses this token loses access right away. This cannot be undone.",
+    "revokeConfirm": "Revoke",
+    "secretTitle": "%{name} is ready",
+    "secretHint": "Copy the token now. You won't be able to see it again.",
+    "secret": "Token",
+    "copy": "Copy the token",
+    "copied": "Token copied",
+    "done": "Done",
+    "refused": "Refused: %{reason}",
+    "failed": "The change could not be saved."
   }
 }

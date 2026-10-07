@@ -251,5 +251,64 @@
   },
   "chat": {
     "notSetUp": "Der Chat ist für TwakeSpace nicht eingerichtet."
+  },
+  "apiTokens": {
+    "title": "API-Tokens",
+    "intro": "Mit API-Tokens rufen Sie, Ihre Skripte, Integrationen und KI-Agenten die API von Twake Space auf. Ein persönliches Token handelt in Ihrem Namen, ein Organisations-Token für die ganze Organisation.",
+    "tabs": {
+      "personal": "Persönlich",
+      "organization": "Organisation"
+    },
+    "heading": {
+      "personal": "Ihre Tokens",
+      "organization": "Tokens der Organisation"
+    },
+    "empty": {
+      "personal": "Sie haben noch keine Tokens.",
+      "organization": "Die Organisation hat noch keine Tokens."
+    },
+    "loading": "Tokens werden geladen",
+    "loadFailed": "Die Tokens konnten nicht geladen werden.",
+    "adminsOnly": "Nur Eigentümer und Administratoren der Organisation verwalten ihre Tokens.",
+    "create": "Token erstellen",
+    "createTitle": {
+      "personal": "Neues persönliches Token",
+      "organization": "Neues Organisations-Token"
+    },
+    "name": "Name",
+    "nameHint": "Was es nutzt, zum Beispiel „Backup-Skript“ oder „Protokoll-Agent“.",
+    "scopes": "Was es darf",
+    "scope": {
+      "space:read": "Spaces lesen",
+      "space:write": "Spaces ändern",
+      "members:write": "Mitglieder verwalten",
+      "feed:read": "Feeds lesen",
+      "tokens:write": "Tokens verwalten"
+    },
+    "spaces": "Erreichbare Spaces",
+    "allSpaces": "Alle Spaces",
+    "pickSpaces": "Einige Spaces",
+    "someSpaces": "%{smart_count} Space |||| %{smart_count} Spaces",
+    "role": "Rolle in seinen Spaces",
+    "lifetime": "Läuft ab in",
+    "days": "%{smart_count} Tag |||| %{smart_count} Tagen",
+    "expires": "Läuft am %{date} ab",
+    "neverExpires": "Läuft nie ab",
+    "lastUsed": "Zuletzt genutzt am %{date}",
+    "neverUsed": "Nie genutzt",
+    "rename": "%{name} umbenennen",
+    "revoke": "%{name} widerrufen",
+    "renameTitle": "Token umbenennen",
+    "revokeTitle": "%{name} widerrufen?",
+    "revokeHint": "Was dieses Token nutzt, verliert sofort den Zugriff. Dies kann nicht rückgängig gemacht werden.",
+    "revokeConfirm": "Widerrufen",
+    "secretTitle": "%{name} ist bereit",
+    "secretHint": "Kopieren Sie das Token jetzt. Sie können es später nicht mehr sehen.",
+    "secret": "Token",
+    "copy": "Token kopieren",
+    "copied": "Token kopiert",
+    "done": "Fertig",
+    "refused": "Abgelehnt: %{reason}",
+    "failed": "Die Änderung konnte nicht gespeichert werden."
   }
 }

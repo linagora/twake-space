@@ -251,5 +251,64 @@
   },
   "chat": {
     "notSetUp": "Le chat n’est pas configuré pour TwakeSpace."
+  },
+  "apiTokens": {
+    "title": "Jetons d’API",
+    "intro": "Les jetons d’API vous permettent, ainsi qu’à vos scripts, intégrations et agents IA, d’appeler l’API de Twake Space. Un jeton personnel agit en votre nom ; un jeton d’organisation agit pour toute l’organisation.",
+    "tabs": {
+      "personal": "Personnel",
+      "organization": "Organisation"
+    },
+    "heading": {
+      "personal": "Vos jetons",
+      "organization": "Jetons de l’organisation"
+    },
+    "empty": {
+      "personal": "Vous n’avez encore aucun jeton.",
+      "organization": "L’organisation n’a encore aucun jeton."
+    },
+    "loading": "Chargement des jetons",
+    "loadFailed": "Les jetons n’ont pas pu être chargés.",
+    "adminsOnly": "Seuls les propriétaires et administrateurs de l’organisation gèrent ses jetons.",
+    "create": "Créer un jeton",
+    "createTitle": {
+      "personal": "Nouveau jeton personnel",
+      "organization": "Nouveau jeton d’organisation"
+    },
+    "name": "Nom",
+    "nameHint": "Ce qui l’utilise, par exemple « Script de sauvegarde » ou « Agent de comptes rendus ».",
+    "scopes": "Ce qu’il peut faire",
+    "scope": {
+      "space:read": "Lire les espaces",
+      "space:write": "Modifier les espaces",
+      "members:write": "Gérer les membres",
+      "feed:read": "Lire les fils",
+      "tokens:write": "Gérer les jetons"
+    },
+    "spaces": "Espaces accessibles",
+    "allSpaces": "Tous les espaces",
+    "pickSpaces": "Certains espaces",
+    "someSpaces": "%{smart_count} espace |||| %{smart_count} espaces",
+    "role": "Rôle dans ses espaces",
+    "lifetime": "Expire dans",
+    "days": "%{smart_count} jour |||| %{smart_count} jours",
+    "expires": "Expire le %{date}",
+    "neverExpires": "N’expire jamais",
+    "lastUsed": "Utilisé le %{date}",
+    "neverUsed": "Jamais utilisé",
+    "rename": "Renommer %{name}",
+    "revoke": "Révoquer %{name}",
+    "renameTitle": "Renommer le jeton",
+    "revokeTitle": "Révoquer %{name} ?",
+    "revokeHint": "Ce qui utilise ce jeton perd l’accès immédiatement. Cette action est irréversible.",
+    "revokeConfirm": "Révoquer",
+    "secretTitle": "%{name} est prêt",
+    "secretHint": "Copiez le jeton maintenant. Vous ne pourrez plus le revoir.",
+    "secret": "Jeton",
+    "copy": "Copier le jeton",
+    "copied": "Jeton copié",
+    "done": "Terminé",
+    "refused": "Refusé : %{reason}",
+    "failed": "La modification n’a pas pu être enregistrée."
   }
 }
