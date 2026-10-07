@@ -180,8 +180,12 @@ const organizationManager =
   (directory: Pick<Directory, 'organizationRole'>): Manage =>
   async (request, db) => {
     const caller = callerOf(request)
+    // A token would reach every space of the organization through the tokens
+    // it creates, far beyond its own account's spaces.
+    if (caller.kind === 'token') {
+      return 'the organization tokens are managed from a signed-in session'
+    }
     const { userId, organizationId } = caller
-    if (userId === null) return 'an organization token manages no tokens'
     if (!(await isOrganizationAdmin(db, directory, organizationId, userId))) {
       return 'not an admin of the organization'
     }

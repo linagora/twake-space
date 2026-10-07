@@ -402,6 +402,34 @@ describe('organization tokens', () => {
     expect(byOrgToken.statusCode).toBe(403)
   })
 
+  it("is never managed with an admin's own token", async () => {
+    const call = setUp(
+      aTokenCaller({
+        userId: ALICE,
+        scopes: ['tokens:write', 'space:read', 'members:write']
+      })
+    )
+
+    const created = await call(
+      'POST',
+      '/organization/tokens',
+      orgToken({ role: 'admin', scopes: ['members:write'] }),
+      'tws_bot'
+    )
+    const listed = await call(
+      'GET',
+      '/organization/tokens',
+      undefined,
+      'tws_bot'
+    )
+
+    expect(created.statusCode).toBe(403)
+    expect(created.json()).toMatchObject({
+      message: 'the organization tokens are managed from a signed-in session'
+    })
+    expect(listed.statusCode).toBe(403)
+  })
+
   it('is managed by an admin whose role predates any role change, and remembers it', async () => {
     const call = setUp()
 
