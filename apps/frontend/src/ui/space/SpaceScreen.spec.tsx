@@ -304,11 +304,16 @@ describe('SpaceScreen', () => {
     expect(isHidden(mail)).toBe(false)
   })
 
-  it('opens a frame only once its tab was opened', async () => {
+  it('mounts the frame of every ready tab up front, hidden', async () => {
     renderAt('/spaces/a1/members')
     await screen.findByRole('tab', { name: 'Members', selected: true })
 
-    expect(screen.queryByTitle('Mail')).not.toBeInTheDocument()
-    expect(screen.queryByTitle('Tasks')).not.toBeInTheDocument()
+    const mail = await screen.findByTitle('Mail')
+    const tasks = await screen.findByTitle('Tasks')
+    expect(isHidden(mail)).toBe(true)
+    expect(isHidden(tasks)).toBe(true)
+    // Chat is off and Drive still preparing: no frame for either
+    expect(screen.queryByTitle('Chat')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Drive')).not.toBeInTheDocument()
   })
 })
