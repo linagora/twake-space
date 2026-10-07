@@ -289,7 +289,7 @@
     "allSpaces": "Tất cả không gian",
     "pickSpaces": "Một số không gian",
     "someSpaces": "%{smart_count} không gian",
-    "role": "Vai trò trong các không gian",
+    "role": "Vai trò trong mỗi không gian",
     "lifetime": "Hết hạn sau",
     "days": "%{smart_count} ngày",
     "expires": "Hết hạn %{date}",
@@ -305,8 +305,63 @@
     "secretTitle": "%{name} đã sẵn sàng",
     "secretHint": "Hãy sao chép token ngay. Bạn sẽ không thể xem lại.",
     "secret": "Token",
-    "copy": "Sao chép token",
-    "copied": "Đã sao chép token",
+    "copyItem": "Sao chép: %{item}",
+    "copied": "Đã sao chép: %{item}",
+    "allSpacesOf": {
+      "personal": "Tất cả không gian của tôi, kể cả không gian tham gia sau này"
+    },
+    "adminWarning": "Token quản trị có thể xóa không gian và thay đổi thành viên. Chỉ cấp cho những gì thật sự cần.",
+    "futureSpaces": "Token cũng truy cập được các không gian tạo sau này.",
+    "reference": "Tài liệu tham khảo API",
+    "resource": {
+      "spaces": "Không gian",
+      "feed": "Luồng hoạt động",
+      "members": "Thành viên",
+      "tokens": "Token API"
+    },
+    "resourceHint": {
+      "spaces": "Quyền ghi cho phép tạo, đổi tên và xóa",
+      "feed": "Luồng hoạt động của từng không gian",
+      "members": "Thêm, thay đổi và gỡ thành viên và nhóm",
+      "tokens": "Tạo và thu hồi token cá nhân"
+    },
+    "access": {
+      "none": "Không có quyền",
+      "read": "Đọc",
+      "write": "Ghi"
+    },
+    "emptyText": "Tạo một token cho script, tích hợp hoặc tác tử AI. Bạn chọn token được làm gì và trong bao lâu.",
+    "expired": "Đã hết hạn",
+    "expiresWhen": "Hết hạn %{when}",
+    "createdOn": "Tạo ngày %{date}",
+    "actions": "Thao tác cho %{name}",
+    "renameAction": "Đổi tên",
+    "pickPlaceholder": "Chọn không gian",
+    "never": "Không bao giờ",
+    "noExpiryHint": "Token hoạt động cho đến khi bị thu hồi.",
+    "noLifetime": "Chính sách token của tổ chức không cho phép thời hạn nào trong số này. Hãy nhờ quản trị viên thay đổi.",
+    "expiresOn": "Hết hạn ngày %{date}",
+    "roleHelp": "Token tổ chức không là thành viên của không gian nào, nên dùng vai trò này trong mọi không gian nó truy cập.",
+    "roleHint": {
+      "viewer": "Đọc các không gian",
+      "editor": "Đăng bài trong các không gian",
+      "admin": "Sửa, xóa các không gian và quản lý thành viên"
+    },
+    "copyButton": "Sao chép",
+    "notAvailable": "Không khả dụng",
+    "noScopes": "Hãy chọn ít nhất một quyền.",
+    "noSpaces": "Hãy chọn ít nhất một không gian.",
+    "usage": {
+      "title": "Bắt đầu nhanh",
+      "step1": "Tạo token và sao chép. Token chỉ hiển thị một lần.",
+      "step2": "Gửi token trong header Authorization của mọi yêu cầu, dạng Bearer <token>.",
+      "step3": "Gọi các route mà quyền của token cho phép. Yêu cầu và phản hồi đều là JSON.",
+      "baseUrl": "URL gốc",
+      "example": "Yêu cầu mẫu",
+      "agents": "Bạn đang xây dựng tác tử AI? Mỗi token mới đi kèm hướng dẫn sẵn để dán: URL gốc, header và các route được phép gọi.",
+      "forPeople": "Thử trong terminal",
+      "forAgents": "Hướng dẫn cho tác tử AI"
+    },
     "done": "Xong",
     "refused": "Bị từ chối: %{reason}",
     "failed": "Không thể lưu thay đổi."

@@ -289,7 +289,7 @@
     "allSpaces": "Alle Spaces",
     "pickSpaces": "Einige Spaces",
     "someSpaces": "%{smart_count} Space |||| %{smart_count} Spaces",
-    "role": "Rolle in seinen Spaces",
+    "role": "Handelt in jedem Space als",
     "lifetime": "Läuft ab in",
     "days": "%{smart_count} Tag |||| %{smart_count} Tagen",
     "expires": "Läuft am %{date} ab",
@@ -305,8 +305,63 @@
     "secretTitle": "%{name} ist bereit",
     "secretHint": "Kopieren Sie das Token jetzt. Sie können es später nicht mehr sehen.",
     "secret": "Token",
-    "copy": "Token kopieren",
-    "copied": "Token kopiert",
+    "copyItem": "Kopieren: %{item}",
+    "copied": "Kopiert: %{item}",
+    "allSpacesOf": {
+      "personal": "Alle meine Spaces, auch spätere"
+    },
+    "adminWarning": "Ein Admin-Token kann Spaces löschen und ihre Mitglieder ändern. Geben Sie es nur dem, was es wirklich braucht.",
+    "futureSpaces": "Es erreicht auch die Spaces, die danach erstellt werden.",
+    "reference": "API-Referenz",
+    "resource": {
+      "spaces": "Spaces",
+      "feed": "Aktivitätsfeed",
+      "members": "Mitglieder",
+      "tokens": "API-Tokens"
+    },
+    "resourceHint": {
+      "spaces": "Schreiben erlaubt auch Erstellen, Umbenennen und Löschen",
+      "feed": "Der Aktivitätsfeed jedes Space",
+      "members": "Mitglieder und Gruppen hinzufügen, ändern und entfernen",
+      "tokens": "Persönliche Tokens erstellen und widerrufen"
+    },
+    "access": {
+      "none": "Kein Zugriff",
+      "read": "Lesen",
+      "write": "Schreiben"
+    },
+    "emptyText": "Erstellen Sie eins für ein Skript, eine Integration oder einen KI-Agenten. Sie legen fest, was es darf und wie lange.",
+    "expired": "Abgelaufen",
+    "expiresWhen": "Läuft %{when} ab",
+    "createdOn": "Erstellt am %{date}",
+    "actions": "Aktionen für %{name}",
+    "renameAction": "Umbenennen",
+    "pickPlaceholder": "Spaces wählen",
+    "never": "Nie",
+    "noExpiryHint": "Es gilt, bis jemand es widerruft.",
+    "noLifetime": "Die Token-Richtlinie der Organisation erlaubt keine dieser Laufzeiten. Bitten Sie einen Admin, sie zu ändern.",
+    "expiresOn": "Läuft am %{date} ab",
+    "roleHelp": "Ein Organisations-Token ist in keinem Space Mitglied und nutzt diese Rolle in jedem Space, den es erreicht.",
+    "roleHint": {
+      "viewer": "Liest die Spaces",
+      "editor": "Postet auch in den Spaces",
+      "admin": "Bearbeitet und löscht auch die Spaces und verwaltet ihre Mitglieder"
+    },
+    "copyButton": "Kopieren",
+    "notAvailable": "Nicht verfügbar",
+    "noScopes": "Wählen Sie mindestens eine Berechtigung.",
+    "noSpaces": "Wählen Sie mindestens einen Space.",
+    "usage": {
+      "title": "Schnellstart",
+      "step1": "Erstellen Sie ein Token und kopieren Sie es. Es wird nur einmal angezeigt.",
+      "step2": "Senden Sie es im Authorization-Header jeder Anfrage, als Bearer <token>.",
+      "step3": "Rufen Sie die Routen auf, die seine Berechtigungen öffnen. Anfragen und Antworten sind JSON.",
+      "baseUrl": "Basis-URL",
+      "example": "Beispielanfrage",
+      "agents": "Sie bauen einen KI-Agenten? Jedes neue Token kommt mit einer fertigen Anleitung: Basis-URL, Header und die Routen, die er aufrufen darf.",
+      "forPeople": "Im Terminal ausprobieren",
+      "forAgents": "Anleitung für einen KI-Agenten"
+    },
     "done": "Fertig",
     "refused": "Abgelehnt: %{reason}",
     "failed": "Die Änderung konnte nicht gespeichert werden."
