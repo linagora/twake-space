@@ -1,4 +1,4 @@
-import { Cube, Icon, Plus } from '@linagora/twake-icons'
+import { Cube, Icon, Key, Plus } from '@linagora/twake-icons'
 import { IconButton, Nav, NavIcon, NavItem, NavText } from '@linagora/twake-mui'
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { Outlet, NavLink as RouterNavLink, useMatch } from 'react-router'
@@ -91,6 +91,12 @@ function AppNav(): ReactElement {
         <RouteNavLink to="/" end>
           <NavIcon icon={Cube} />
           <NavText>{t('shell.allSpaces')}</NavText>
+        </RouteNavLink>
+      </NavItem>
+      <NavItem>
+        <RouteNavLink to="/settings/api-tokens">
+          <NavIcon icon={Key} />
+          <NavText>{t('apiTokens.title')}</NavText>
         </RouteNavLink>
       </NavItem>
     </Nav>
