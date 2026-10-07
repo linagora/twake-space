@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { memoryDirectory } from '@/adapters/memory/memoryDirectory'
 import { memoryFeed } from '@/adapters/memory/memoryFeed'
 import { memorySpaces } from '@/adapters/memory/memorySpaces'
+import { memoryTokens } from '@/adapters/memory/memoryTokens'
 import type { FeedItem } from '@/application/feed'
 import type { Space } from '@/application/spaces'
 
@@ -250,5 +251,40 @@ describe('memoryDirectory', () => {
       groups,
       hasNextPage: false
     })
+  })
+})
+
+describe('memoryTokens', () => {
+  const empty = { personal: [], organization: [] }
+
+  it('creates, renames and revokes a token', async () => {
+    const tokens = memoryTokens(empty, { organizationAdmin: true })
+
+    const { id, token } = await tokens.create('organization', {
+      name: 'Digest',
+      scopes: ['feed:read'],
+      spaces: 'all',
+      role: 'viewer',
+      expiresInDays: 7
+    })
+    expect(token).toMatch(/^tws_/)
+    await tokens.rename('organization', id, 'Weekly digest')
+    expect(await tokens.list('organization')).toMatchObject([
+      { id, name: 'Weekly digest', role: 'viewer' }
+    ])
+
+    await tokens.revoke('organization', id)
+    expect(await tokens.list('organization')).toEqual([])
+    expect(await tokens.list('personal')).toEqual([])
+  })
+
+  it('refuses the organization tokens to someone who is not an admin', async () => {
+    const tokens = memoryTokens(empty, { organizationAdmin: false })
+
+    await expect(tokens.list('organization')).rejects.toMatchObject({
+      status: 403,
+      reason: 'not an admin of the organization'
+    })
+    await expect(tokens.list('personal')).resolves.toEqual([])
   })
 })

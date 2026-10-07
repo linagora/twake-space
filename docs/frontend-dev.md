@@ -57,11 +57,12 @@ ESLint enforces these boundaries, and a few more rules: named exports only, UI f
 - `spaces`: list, read and create spaces. A space admin also renames or deletes a space, and adds, changes and removes its members and linked groups.
 - `directory`: search the organization's people and groups, 20 per page, to pick new members from.
 - `feed`: read a space's feed by filter and page, post, edit and delete your own posts, and react.
+- `tokens`: list, create, rename and revoke your personal API tokens, and the organization's when you are an owner or admin of it. The API tokens page (`/settings/api-tokens`) uses it.
 - `live`: the backend's live updates. `useLiveUpdates` refreshes the spaces queries when a space changes, and applies `feed` events to the feeds already loaded.
 - `tasksUrl`: where the Tasks tab embeds Twake Tasks, or null.
 - `mailUrl`: where the Mail tab embeds Twake Mail's team mailbox, or null.
 
-A refused request rejects with a `Refusal`: the HTTP `status`, and the backend's reason as `code` (for example `not_space_admin`). Check it with `isRefusal` from `application/spaces.ts` to explain the refusal to the user. The [HTTP API](api.md) lists every route and its refusals.
+A refused request rejects with a `Refusal`: the HTTP `status`, and the backend's reason as `code` (for example `not_space_admin`), and its English explanation as `reason` when it sends one. Check it with `isRefusal` from `application/spaces.ts` to explain the refusal to the user. The [HTTP API](api.md) lists every route and its refusals.
 
 ## Add a feature
 
