@@ -36,7 +36,8 @@ const services = {
   live: liveStream(api),
   feed: httpFeed(api),
   tasksUrl: window.TASKS_URL ?? null,
-  mailUrl: window.MAIL_URL ?? null
+  mailUrl: window.MAIL_URL ?? null,
+  chatUrl: window.CHAT_URL ?? null
 }
 
 const reportUncaughtError = Sentry.reactErrorHandler((error, info) => {

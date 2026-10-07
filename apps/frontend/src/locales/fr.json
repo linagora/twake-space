@@ -221,5 +221,8 @@
   },
   "embed": {
     "overlay": "Fenêtres de %{app}"
+  },
+  "chat": {
+    "notSetUp": "Le chat n’est pas configuré pour TwakeSpace."
   }
 }

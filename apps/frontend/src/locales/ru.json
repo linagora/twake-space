@@ -221,5 +221,8 @@
   },
   "embed": {
     "overlay": "Окна %{app}"
+  },
+  "chat": {
+    "notSetUp": "Чат не настроен для TwakeSpace."
   }
 }

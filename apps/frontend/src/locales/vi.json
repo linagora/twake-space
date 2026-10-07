@@ -221,5 +221,8 @@
   },
   "embed": {
     "overlay": "Cửa sổ của %{app}"
+  },
+  "chat": {
+    "notSetUp": "Trò chuyện chưa được thiết lập cho TwakeSpace."
   }
 }

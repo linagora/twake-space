@@ -32,6 +32,7 @@ interface Options {
   path?: string
   tasksUrl?: string | null
   mailUrl?: string | null
+  chatUrl?: string | null
 }
 
 function withProviders(
@@ -45,7 +46,8 @@ function withProviders(
     live = fakeLive(),
     feed = fakeFeed(),
     tasksUrl = 'https://tasks.test/',
-    mailUrl = 'https://mail.test/'
+    mailUrl = 'https://mail.test/',
+    chatUrl = 'https://chat.test/'
   }: Options
 ): ReactElement {
   return (
@@ -59,7 +61,8 @@ function withProviders(
         live,
         feed,
         tasksUrl,
-        mailUrl
+        mailUrl,
+        chatUrl
       }}
     >
       <SessionGate session={session}>

@@ -14,6 +14,7 @@ export interface Services {
   feed: FeedService
   tasksUrl: string | null
   mailUrl: string | null
+  chatUrl: string | null
 }
 
 export const ServicesContext = createContext<Services | null>(null)

@@ -38,7 +38,8 @@ const services = {
     roles: Object.fromEntries(seedSpaces.map(space => [space.id, space.role]))
   }),
   tasksUrl: window.TASKS_URL ?? null,
-  mailUrl: window.MAIL_URL ?? null
+  mailUrl: window.MAIL_URL ?? null,
+  chatUrl: window.CHAT_URL ?? null
 }
 
 createRoot(container).render(

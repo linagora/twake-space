@@ -78,6 +78,7 @@ The entrypoint script `40-twake-space-runtime.sh` reads the environment at conta
 - `SSO_BASE_URL`, `SSO_CLIENT_ID`, `SSO_SCOPE`, `SSO_REDIRECT_URI`, `SSO_POST_LOGOUT_REDIRECT`: the OIDC login settings. All five are required: the app throws without any of them.
 - `TASKS_URL`: the Tasks app, embedded in a frame. Optional.
 - `MAIL_URL`: the Mail app, whose team mailbox embed fills the Mail tab. Optional. Mail, like Tasks, also serves `/embed/overlay.html`, the overlay its composer and dialogs show on, over the whole page: it is on the origin of `MAIL_URL`, which `frame-src` already allows.
+- `CHAT_URL`: Twake Chat, whose `/embed/rooms/<Matrix space id>` fills the Chat tab of a space with the conversation of its Matrix space (ADR 010). Optional. Chat signs in inside its own frame and lists the origin of TwakeSpace in its own `frame-ancestors` (its `TWAKE_SPACE_URL`).
 - `SENTRY_DSN`, `SENTRY_ENVIRONMENT`: browser error reporting. Optional.
 - `POSTHOG_KEY`, `POSTHOG_HOST`: written to `/.env.js`. See the open questions.
 
@@ -89,7 +90,7 @@ The script also writes the security headers, sent on every path except `/healthz
 
 - `Content-Security-Policy` has a fixed part: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'`. `style-src` allows inline styles because MUI injects its styles at runtime.
 - `connect-src` is `'self'` plus the origin of each of `API_URL`, `SSO_BASE_URL`, `POSTHOG_HOST` and `SENTRY_DSN` that is an absolute `http` or `https` URL. The origin drops the user info, so the Sentry public key stays out of the header. `CSP_CONNECT_SRC` appends more sources.
-- `frame-src` is `CSP_FRAME_SRC` (default `'self'`) plus the origin of `TASKS_URL` when set. With `MAIL_URL`, it also gets the origins of `MAIL_URL` and `SSO_BASE_URL`, because the Mail embed signs in through a frame on the SSO.
+- `frame-src` is `CSP_FRAME_SRC` (default `'self'`) plus the origins of `TASKS_URL` and `CHAT_URL` when set. With `MAIL_URL`, it also gets the origins of `MAIL_URL` and `SSO_BASE_URL`, because the Mail embed signs in through a frame on the SSO.
 - `frame-ancestors` is `CSP_FRAME_ANCESTORS` (default `'self'`). Set it when another app embeds Twake Space.
 - `img-src` is `'self' data: blob:` plus `CSP_IMG_SRC`. Set it to the origins of the avatars in Twake Workplace common settings, which each person's Cozy instance serves, such as `https://*.twake.example.com`.
 - `Permissions-Policy` is `PERMISSIONS_POLICY`, by default `accelerometer=(), geolocation=(), gyroscope=(), magnetometer=(), payment=(), usb=()`.

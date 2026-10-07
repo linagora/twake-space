@@ -221,5 +221,8 @@
   },
   "embed": {
     "overlay": "%{app} windows"
+  },
+  "chat": {
+    "notSetUp": "Chat is not set up for TwakeSpace."
   }
 }
