@@ -16,14 +16,14 @@ export function backend(apiUrl: string): KyInstance {
             .clone()
             .json()
             .catch(() => null)
-          const code =
-            typeof body === 'object' &&
-            body !== null &&
-            'error' in body &&
-            typeof body.error === 'string'
-              ? body.error
-              : null
-          return Object.assign(error, { status: error.response.status, code })
+          const { error: code, message: reason } = (
+            typeof body === 'object' && body !== null ? body : {}
+          ) as { error?: unknown; message?: unknown }
+          return Object.assign(error, {
+            status: error.response.status,
+            code: typeof code === 'string' ? code : null,
+            ...(typeof reason === 'string' && { reason })
+          })
         }
       ]
     }

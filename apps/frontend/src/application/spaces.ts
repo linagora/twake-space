@@ -77,6 +77,8 @@ export interface Space extends SpaceSummary {
 export interface Refusal {
   status: number
   code: string | null
+  /** The backend's explanation, in English, when it gives one. */
+  reason?: string
 }
 
 export function isRefusal(error: unknown): error is Refusal {
