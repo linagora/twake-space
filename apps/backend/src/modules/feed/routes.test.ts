@@ -10,7 +10,8 @@ import {
 } from 'vitest'
 import { createServer } from '../../infra/http.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
-import { anIdentity, fakeAuth } from '../auth/testing.ts'
+import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
+import type { TokenCaller } from '../tokens/authenticator.ts'
 import { listenForLive } from '../live/notify.ts'
 import { spaceMembers, spaces } from '../spaces/schema.ts'
 import { registerFeedRoutes } from './routes.ts'
@@ -90,7 +91,7 @@ const USERS: Record<string, string> = {
   dan: DAN
 }
 
-function setUp() {
+function setUp(tokenCaller: TokenCaller | null = null) {
   const app = createServer({
     logger: pino({ level: 'silent' }),
     isReady: () => Promise.resolve(true)
@@ -101,7 +102,7 @@ function setUp() {
       const userId = USERS[token]
       return userId ? anIdentity({ userId, organizationId: 'org-1' }) : null
     },
-    () => null
+    token => (token === 'tws_bot' ? tokenCaller : null)
   )
   registerFeedRoutes(app, { db: testDb.db, authorize })
   return (
@@ -329,6 +330,61 @@ describe('GET /spaces/:spaceId/feed', () => {
     expect(response.json<Page>().items).toMatchObject([
       { author: { type: 'deleted_user' } }
     ])
+  })
+})
+
+describe('with an API token', () => {
+  const bot = (overrides: Partial<TokenCaller> = {}) =>
+    setUp(aTokenCaller({ userId: BOB, scopes: ['feed:read'], ...overrides }))
+
+  it('reads the feed of a space its account is in, given feed:read', async () => {
+    const post = await aPost('Hello team', '2026-10-05T10:00:00Z')
+
+    const feed = await bot()('GET', `/spaces/${DESIGN}/feed`, 'tws_bot')
+    const item = await bot()(
+      'GET',
+      `/spaces/${DESIGN}/feed/items/${post}`,
+      'tws_bot'
+    )
+
+    expect(feed.json<Page>().items.map(i => i.id)).toEqual([post])
+    expect(item.statusCode).toBe(200)
+  })
+
+  it('needs feed:read and a space the token covers', async () => {
+    const noScope = await bot({ scopes: ['space:read'] })(
+      'GET',
+      `/spaces/${DESIGN}/feed`,
+      'tws_bot'
+    )
+    const elsewhere = await bot({ spaceIds: [OTHER] })(
+      'GET',
+      `/spaces/${DESIGN}/feed`,
+      'tws_bot'
+    )
+
+    expect(noScope.statusCode).toBe(403)
+    expect(elsewhere.statusCode).toBe(404)
+  })
+
+  it('never posts or reacts', async () => {
+    const post = await aPost('Hello team', '2026-10-05T10:00:00Z')
+    const call = bot({ userId: ALICE })
+
+    const posted = await call(
+      'POST',
+      `/spaces/${DESIGN}/feed/posts`,
+      'tws_bot',
+      { body: 'from a bot' }
+    )
+    const reacted = await call(
+      'PUT',
+      `/spaces/${DESIGN}/feed/items/${post}/reactions/👍`,
+      'tws_bot'
+    )
+
+    expect(posted.statusCode).toBe(403)
+    expect(reacted.statusCode).toBe(403)
   })
 })
 
