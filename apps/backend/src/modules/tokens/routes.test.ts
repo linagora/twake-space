@@ -575,6 +575,7 @@ describe('technical account tokens', () => {
     const { token } = created.json<{ token: string }>()
 
     const gone = await apiTokenAuthenticator(testDb.db, {
+      ...directory,
       isTechnicalAccount: () => Promise.resolve(false)
     })(token)
 

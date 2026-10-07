@@ -8,6 +8,7 @@ import {
   it,
   vi
 } from 'vitest'
+import type { Directory } from '../../infra/ldap-rest.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { sha256 } from '../auth/authenticator.ts'
 import { apiTokenAuthenticator } from './authenticator.ts'
@@ -49,10 +50,45 @@ async function aToken(
   }
 }
 
+const member = () =>
+  Promise.resolve({ email: 'alice@example.com', role: 'member' as const })
+
 const authenticate = (token: string) =>
   apiTokenAuthenticator(testDb.db, {
-    isTechnicalAccount: () => Promise.reject(new Error('not technical'))
+    isTechnicalAccount: () => Promise.reject(new Error('not technical')),
+    organizationRole: member
   })(token)
+
+describe('accounts', () => {
+  it('refuses the token once the account leaves the organization, checking every 5 minutes', async () => {
+    await aToken('tws_alice')
+    const organizationRole = vi
+      .fn<Directory['organizationRole']>()
+      .mockImplementationOnce(member)
+      .mockResolvedValue(undefined)
+    let now = 0
+    const check = apiTokenAuthenticator(
+      testDb.db,
+      {
+        isTechnicalAccount: () => Promise.reject(new Error('not technical')),
+        organizationRole
+      },
+      () => now
+    )
+
+    const first = await check('tws_alice')
+    now += 4 * 60_000
+    const cached = await check('tws_alice')
+    now += 2 * 60_000
+    const gone = await check('tws_alice')
+
+    expect(first).toMatchObject({ userId: ALICE })
+    expect(cached).toMatchObject({ userId: ALICE })
+    expect(gone).toBeNull()
+    expect(organizationRole).toHaveBeenCalledTimes(2)
+    expect(organizationRole).toHaveBeenCalledWith('org-1', ALICE)
+  })
+})
 
 describe('technical accounts', () => {
   it('refuses the token once the account is gone, checking every 5 minutes', async () => {
@@ -64,7 +100,7 @@ describe('technical accounts', () => {
     let now = 0
     const check = apiTokenAuthenticator(
       testDb.db,
-      { isTechnicalAccount },
+      { isTechnicalAccount, organizationRole: member },
       () => now
     )
 
