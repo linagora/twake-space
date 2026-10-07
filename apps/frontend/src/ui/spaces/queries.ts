@@ -24,7 +24,11 @@ export function useSpaceList(): UseQueryResult<SpaceSummary[]> {
 
 export function useSpace(id: string): UseQueryResult<Space> {
   const { spaces } = useServices()
-  return useQuery({ queryKey: [...SPACES, id], queryFn: () => spaces.get(id) })
+  return useQuery({
+    queryKey: [...SPACES, id],
+    queryFn: () => spaces.get(id),
+    enabled: id !== ''
+  })
 }
 
 export function useSpaceApps(): UseQueryResult<SpaceApp[]> {

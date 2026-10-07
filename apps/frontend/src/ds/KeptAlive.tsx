@@ -1,5 +1,5 @@
 import { Box } from '@linagora/twake-mui'
-import type { ReactElement, ReactNode } from 'react'
+import type { HTMLAttributes, ReactElement, ReactNode } from 'react'
 
 // Holds what must survive while hidden (an app's frame): hidden, it keeps its
 // size and its state, out of the layout and out of reach (`inert`). Not
@@ -32,23 +32,36 @@ export function KeptAlive({
   )
 }
 
-// The place of the tab panels: kept frames sit over it, hidden. With none of
-// them shown, it leaves the panel's height to the other tabs.
+// The place of the frames, under the shell's content: in the flow, with the
+// page's padding, while a framed tab shows; hidden over the content
+// otherwise, so the frames keep a real size.
 export function KeptAliveStack({
   active,
-  children
+  children,
+  ...rest
 }: {
   active: boolean
   children: ReactNode
-}): ReactElement {
+} & Pick<
+  HTMLAttributes<HTMLDivElement>,
+  'role' | 'id' | 'aria-labelledby'
+>): ReactElement {
   return (
     <Box
+      {...rest}
       className="u-flex u-flex-column u-flex-auto"
-      sx={{
-        position: active ? 'relative' : 'absolute',
-        inset: active ? undefined : 0,
-        pointerEvents: active ? undefined : 'none'
-      }}
+      aria-hidden={active ? undefined : true}
+      inert={!active}
+      sx={
+        active
+          ? { position: 'relative', minHeight: 0, px: { xs: 2, lg: 3 }, pb: 2 }
+          : {
+              position: 'absolute',
+              inset: 0,
+              visibility: 'hidden',
+              pointerEvents: 'none'
+            }
+      }
     >
       {children}
     </Box>

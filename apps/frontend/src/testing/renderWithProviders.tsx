@@ -94,7 +94,10 @@ export function renderWithProviders(
 export function renderRoute(
   path: string,
   options: Omit<Options, 'path'> = {}
-): RenderResult {
+): RenderResult & { router: ReturnType<typeof createMemoryRouter> } {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
-  return render(withProviders(<RouterProvider router={router} />, options))
+  return {
+    ...render(withProviders(<RouterProvider router={router} />, options)),
+    router
+  }
 }

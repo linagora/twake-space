@@ -11,17 +11,26 @@ import type { ReactElement, ReactNode } from 'react'
 
 import cover from '@/assets/space-cover.png'
 
-export function Page({ children }: { children: ReactNode }): ReactElement {
+// `fill` off leaves the rest of the content to what follows the page: the
+// frame of an embedded app, under the tabs.
+export function Page({
+  fill = true,
+  children
+}: {
+  fill?: boolean
+  children: ReactNode
+}): ReactElement {
   return (
     <Box
       component="main"
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        flex: '1 1 auto',
+        flex: fill ? '1 1 auto' : '0 0 auto',
         minHeight: 0,
         px: { xs: 2, lg: 3 },
-        py: 2
+        pt: 2,
+        pb: fill ? 2 : 0
       }}
     >
       {children}

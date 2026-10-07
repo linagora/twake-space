@@ -7,20 +7,17 @@ import {
   useParams
 } from 'react-router'
 
+import { embeddedApp } from '@/application/embeddedApps'
 import { isRefusal } from '@/application/spaces'
 import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
-import { KeptAlive, KeptAliveStack } from '@/ds/KeptAlive'
 import { LoadingRows, Page, SpaceHeader, TabPanel } from '@/ds/Page'
 import { useSpaceTabTag } from '@/ui/feedback/useSpaceTabTag'
 import { useI18n } from '@/ui/i18n/useI18n'
-import { ChatPanel } from '@/ui/space/ChatPanel'
-import { DrivePanel } from '@/ui/space/DrivePanel'
+import { useAppUrls } from '@/ui/space/useAppUrls'
 import { FeedPanel } from '@/ui/space/FeedPanel'
-import { MailPanel } from '@/ui/space/MailPanel'
 import { MembersPanel } from '@/ui/space/MembersPanel'
 import { SpaceActions } from '@/ui/space/SpaceActions'
-import { TasksPanel } from '@/ui/space/TasksPanel'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
@@ -40,39 +37,11 @@ function useNowAfter(at: number): number {
   return now
 }
 
-// The tabs that frame an app: once opened, their frame stays alive in the
-// space (ADR 010), hidden on the other tabs.
-const FRAMED_TABS = ['chat', 'tasks', 'drive', 'mail'] as const
-type FramedTab = (typeof FRAMED_TABS)[number]
-
-function isFramed(tab: string): tab is FramedTab {
-  return (FRAMED_TABS as readonly string[]).includes(tab)
-}
-
-// The framed tabs opened in this space. Another space starts empty: its
-// frames show other resources, and the old ones go with their history.
-function useOpenedFrames(
-  spaceId: string,
-  tab: string | null
-): ReadonlySet<FramedTab> {
-  const [opened, setOpened] = useState<{
-    spaceId: string
-    tabs: ReadonlySet<FramedTab>
-  }>({ spaceId, tabs: new Set() })
-  const current =
-    opened.spaceId === spaceId ? opened.tabs : new Set<FramedTab>()
-  if (tab !== null && isFramed(tab) && !current.has(tab)) {
-    setOpened({ spaceId, tabs: new Set([...current, tab]) })
-  } else if (opened.spaceId !== spaceId) {
-    setOpened({ spaceId, tabs: current })
-  }
-  return current
-}
-
 export function SpaceScreen(): ReactElement {
   const { t } = useI18n()
   const navigate = useNavigate()
   const { spaceId = '', tab } = useParams()
+  const appUrls = useAppUrls()
   const space = useSpace(spaceId)
   useDocumentTitle(space.data?.name ?? null)
   const now = useNowAfter(
@@ -86,7 +55,6 @@ export function SpaceScreen(): ReactElement {
     )
       ? tab
       : null
-  const opened = useOpenedFrames(spaceId, readyTab)
   useSpaceTabTag(readyTab)
 
   if (space.isPending) {
@@ -120,16 +88,13 @@ export function SpaceScreen(): ReactElement {
     return <Navigate to={`/spaces/${spaceId}/${first?.tab ?? ''}`} replace />
   }
   const label = t(`tabs.${current.tab}`)
-  const resource = (kind: string) =>
-    space.data.resources.find(r => r.kind === kind)?.id
-  const project = resource('project')
-  const sharing = resource('drive')
-  const mailbox = resource('mailbox')
-  const chatRoom = resource('matrix_space')
-  const framed = current.state === 'ready' && isFramed(current.tab)
+  // The frame of an embedded app follows the page, under the shell
+  const embedded = current.state === 'ready' ? embeddedApp(current.tab) : null
+  const embeddedUrl = embedded ? appUrls[embedded.app] : null
+  const framed = embedded !== null && embeddedUrl !== null
 
   return (
-    <Page>
+    <Page fill={!framed}>
       <SpaceHeader
         avatar={
           <NameAvatar
@@ -173,69 +138,37 @@ export function SpaceScreen(): ReactElement {
           {t('space.mailOff')}
         </Alert>
       )}
-      <TabPanel tab={current.tab}>
-        {current.state === 'preparing' && (
-          <Typography>{t('space.preparing', { app: label })}</Typography>
-        )}
-        {current.state === 'stalled' && (
-          <Alert
-            severity="warning"
-            action={
-              <Button
-                size="small"
-                disabled={space.isFetching}
-                onClick={() => {
-                  void space.refetch()
-                }}
-              >
-                {t('space.checkAgain')}
-              </Button>
-            }
-          >
-            {t('space.stalled', { app: label })}
-          </Alert>
-        )}
-        {current.tab === 'feed' && <FeedPanel space={space.data} />}
-        {current.tab === 'members' && <MembersPanel space={space.data} />}
-        <KeptAliveStack active={framed}>
-          {opened.has('chat') && chatRoom && (
-            <KeptAlive active={current.tab === 'chat'}>
-              <ChatPanel
-                spaceId={spaceId}
-                roomId={chatRoom}
-                active={current.tab === 'chat'}
-              />
-            </KeptAlive>
+      {/* A framed tab's panel is the frame itself, under the shell */}
+      {!framed && (
+        <TabPanel tab={current.tab}>
+          {current.state === 'preparing' && (
+            <Typography>{t('space.preparing', { app: label })}</Typography>
           )}
-          {opened.has('tasks') && project && (
-            <KeptAlive active={current.tab === 'tasks'}>
-              <TasksPanel
-                spaceId={spaceId}
-                projectId={project}
-                active={current.tab === 'tasks'}
-              />
-            </KeptAlive>
+          {current.state === 'stalled' && (
+            <Alert
+              severity="warning"
+              action={
+                <Button
+                  size="small"
+                  disabled={space.isFetching}
+                  onClick={() => {
+                    void space.refetch()
+                  }}
+                >
+                  {t('space.checkAgain')}
+                </Button>
+              }
+            >
+              {t('space.stalled', { app: label })}
+            </Alert>
           )}
-          {opened.has('drive') && sharing && (
-            <KeptAlive active={current.tab === 'drive'}>
-              <DrivePanel
-                spaceId={spaceId}
-                sharingId={sharing}
-                active={current.tab === 'drive'}
-              />
-            </KeptAlive>
+          {current.tab === 'feed' && <FeedPanel space={space.data} />}
+          {current.tab === 'members' && <MembersPanel space={space.data} />}
+          {embedded && embeddedUrl === null && (
+            <Typography>{t(`${embedded.app}.notSetUp`)}</Typography>
           )}
-          {opened.has('mail') && mailbox && (
-            <KeptAlive active={current.tab === 'mail'}>
-              <MailPanel
-                spaceId={spaceId}
-                mailboxId={mailbox}
-                active={current.tab === 'mail'}
-              />
-            </KeptAlive>
-          )}
-        </KeptAliveStack>
-      </TabPanel>
+        </TabPanel>
+      )}
     </Page>
   )
 }

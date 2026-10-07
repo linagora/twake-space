@@ -1,0 +1,266 @@
+import {
+  createRef,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type RefObject
+} from 'react'
+import {
+  matchPath,
+  NavigationType,
+  useLocation,
+  useNavigate,
+  useNavigationType
+} from 'react-router'
+
+import {
+  EMBEDDED_APPS,
+  embeddedApp,
+  loadMessage,
+  navigateMessage,
+  reconcile,
+  tabPath,
+  type EmbedPath,
+  type EmbeddedApp,
+  type FrameState,
+  type ShownApp
+} from '@/application/embeddedApps'
+import { spaceTabs } from '@/application/spaceTabs'
+import { KeptAlive, KeptAliveStack } from '@/ds/KeptAlive'
+import { useI18n } from '@/ui/i18n/useI18n'
+import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
+import { useAppUrls } from '@/ui/space/useAppUrls'
+import { useSpace } from '@/ui/spaces/queries'
+
+const SPACE_ROUTE = '/spaces/:spaceId/:tab?/*'
+
+type Frames = Partial<Record<EmbeddedApp, FrameState>>
+
+// The frames of the embedded apps, kept alive for the whole session under
+// the shell (ADR 010): a space change shows another resource in the same
+// frame, with a `load`, and the frames never write the browser history.
+// The address is the source of truth: on every change, the frame shown is
+// brought to what the address says.
+export function EmbeddedApps(): ReactElement | null {
+  const { t } = useI18n()
+  const appUrls = useAppUrls()
+  const location = useLocation()
+  const popped = useNavigationType() === NavigationType.Pop
+  const navigate = useNavigate()
+  const match = matchPath(SPACE_ROUTE, location.pathname)
+  const spaceId = match?.params.spaceId ?? ''
+  const space = useSpace(spaceId)
+
+  const spec = embeddedApp(match?.params.tab)
+  const appUrl = spec ? appUrls[spec.app] : null
+  // Whether a tab is ready does not depend on the time, only preparing and
+  // stalled do
+  const ready =
+    spec !== null &&
+    space.data !== undefined &&
+    spaceTabs(space.data, 0).some(
+      item => item.tab === spec.app && item.state === 'ready'
+    )
+  const resourceId = ready
+    ? (space.data.resources.find(r => r.kind === spec.resource)?.id ?? null)
+    : null
+  const rest = match?.params['*'] ?? ''
+  const shown: ShownApp | null =
+    spec && appUrl !== null && resourceId !== null
+      ? {
+          app: spec.app,
+          spaceId,
+          resourceId,
+          path: `${rest ? `/${rest}` : ''}${location.search}${location.hash}`
+        }
+      : null
+  const here = location.pathname + location.search + location.hash
+
+  const [frames, setFrames] = useState<Frames>({})
+  const [elements] = useState<
+    Record<EmbeddedApp, RefObject<HTMLIFrameElement | null>>
+  >(() => ({
+    chat: createRef(),
+    tasks: createRef(),
+    drive: createRef(),
+    mail: createRef()
+  }))
+
+  // The frames follow the address: a state adjusted while rendering, as
+  // React derives state from props. Each step settles on the next render.
+  let adopt: string | null = null
+  const written = (Object.keys(frames) as EmbeddedApp[]).find(app => {
+    const from = frames[app]?.writtenFrom
+    return from !== undefined && from !== null && from !== here
+  })
+  if (written !== undefined) {
+    // The address TwakeSpace wrote shows: the frame follows it again
+    setFrames(withFrame(frames, written, { writtenFrom: null }))
+  } else if (shown !== null && appUrl !== null && spec !== null) {
+    const frame = frames[shown.app] ?? null
+    const next = reconcile(frame, shown, spec, appUrl, popped, here)
+    switch (next.kind) {
+      case 'create':
+      case 'replace':
+        setFrames({
+          ...frames,
+          [shown.app]: {
+            key: (frame?.key ?? 0) + 1,
+            src: next.src,
+            resourceId: shown.resourceId,
+            path: shown.path,
+            dialect: null,
+            pending: null,
+            writtenFrom: null
+          }
+        })
+        break
+      case 'load':
+        if (frame) {
+          setFrames({
+            ...frames,
+            [shown.app]: {
+              ...frame,
+              resourceId: shown.resourceId,
+              path: shown.path,
+              pending: loadMessage(shown.resourceId, shown.path)
+            }
+          })
+        }
+        break
+      case 'navigate':
+        if (frame) {
+          setFrames({
+            ...frames,
+            [shown.app]: {
+              ...frame,
+              path: shown.path,
+              pending: navigateMessage(shown.resourceId, shown.path)
+            }
+          })
+        }
+        break
+      case 'adopt':
+        adopt = next.to
+        break
+      case 'none':
+        break
+    }
+  }
+
+  useEffect(() => {
+    if (adopt !== null) void navigate(adopt, { replace: true })
+  }, [adopt, navigate])
+
+  // Each message goes once, after the render that decided it
+  const sent = useRef(new WeakSet<object>())
+  useEffect(() => {
+    for (const app of Object.keys(frames) as EmbeddedApp[]) {
+      const message = frames[app]?.pending
+      const url = appUrls[app]
+      if (!message || url === null || sent.current.has(message)) continue
+      sent.current.add(message)
+      elements[app].current?.contentWindow?.postMessage(
+        message,
+        new URL(url).origin
+      )
+    }
+  })
+
+  // What the message handlers read: the frames and the address as committed
+  const committed = useRef({ frames, shown, here })
+  useEffect(() => {
+    committed.current = { frames, shown, here }
+  })
+
+  // The frame's URL: written in the address when its tab shows, kept for
+  // when it shows again otherwise. A path for another resource is a late
+  // message of the previous one, or a frame that booted before its `load`
+  // reached it: the frame is told again.
+  const onPath = (app: EmbeddedApp, report: EmbedPath): void => {
+    const frame = committed.current.frames[app]
+    if (!frame) return
+    const dialect = frame.dialect === 'embed' ? 'embed' : report.dialect
+    if (report.resourceId !== null && report.resourceId !== frame.resourceId) {
+      setFrames(prev =>
+        withFrame(prev, app, {
+          dialect,
+          pending:
+            dialect === 'embed'
+              ? loadMessage(frame.resourceId, frame.path)
+              : frame.pending
+        })
+      )
+      return
+    }
+    const current = committed.current.shown
+    const { here: from } = committed.current
+    const to =
+      current?.app === app ? tabPath(current.spaceId, app) + report.path : null
+    const writes = to !== null && to !== from
+    setFrames(prev =>
+      withFrame(prev, app, {
+        dialect,
+        path: report.path,
+        writtenFrom: writes ? from : null
+      })
+    )
+    if (writes) void navigate(to, { replace: report.replace })
+  }
+
+  const mounted = (Object.keys(frames) as EmbeddedApp[]).filter(
+    app => appUrls[app] !== null
+  )
+  if (mounted.length === 0) return null
+
+  return (
+    <KeptAliveStack
+      active={shown !== null}
+      role="tabpanel"
+      id={shown ? `panel-${shown.app}` : undefined}
+      aria-labelledby={shown ? `tab-${shown.app}` : undefined}
+    >
+      {mounted.map(app => {
+        const frame = frames[app]
+        const url = appUrls[app]
+        if (!frame || url === null) return null
+        return (
+          <KeptAlive key={app} active={shown?.app === app}>
+            <EmbeddedAppFrame
+              key={frame.key}
+              app={app}
+              appUrl={url}
+              embedPath={EMBEDDED_APPS[app].embedPath(frame.resourceId)}
+              src={frame.src}
+              title={t(`tabs.${app}`)}
+              overlayPath={EMBEDDED_APPS[app].overlayPath}
+              allow={EMBEDDED_APPS[app].allow}
+              canFillPage={EMBEDDED_APPS[app].canFillPage}
+              active={shown?.app === app}
+              frameRef={elements[app]}
+              onPath={report => {
+                onPath(app, report)
+              }}
+            />
+          </KeptAlive>
+        )
+      })}
+    </KeptAliveStack>
+  )
+}
+
+function withFrame(
+  frames: Frames,
+  app: EmbeddedApp,
+  patch: Partial<FrameState>
+): Frames {
+  const frame = frames[app]
+  if (!frame) return frames
+  const next = { ...frame, ...patch }
+  return (Object.keys(patch) as (keyof FrameState)[]).every(
+    key => frame[key] === next[key]
+  )
+    ? frames
+    : { ...frames, [app]: next }
+}

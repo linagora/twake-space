@@ -48,7 +48,12 @@ const FRAMEWORKS = [
 
 const BOUNDARIES = {
   domain: [...layers(...LAYERS.filter(l => l !== 'domain')), ...FRAMEWORKS],
-  application: [...layers('adapters', 'ui', 'ds', 'app'), ...FRAMEWORKS],
+  // The embed contract with the framed apps is pure: no framework in it
+  application: [
+    ...layers('adapters', 'ui', 'ds', 'app'),
+    ...FRAMEWORKS,
+    '!@linagora/twake-embed'
+  ],
   adapters: layers('ui', 'ds', 'app'),
   ui: layers('adapters', 'app'),
   ds: [

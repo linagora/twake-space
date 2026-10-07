@@ -14,6 +14,7 @@ import { useFeedbackButton } from '@/ui/feedback/useFeedbackButton'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
 import { PlatformBar } from '@/ui/shell/PlatformBar'
+import { EmbeddedApps } from '@/ui/space/EmbeddedApps'
 import { useSpaceList } from '@/ui/spaces/queries'
 
 export function AppShell(): ReactElement {
@@ -47,6 +48,7 @@ export function AppShell(): ReactElement {
       }
     >
       <Outlet />
+      <EmbeddedApps />
       {creating && (
         <CreateSpaceDialog
           onClose={() => {
