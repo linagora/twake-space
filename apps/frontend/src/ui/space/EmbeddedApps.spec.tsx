@@ -408,7 +408,7 @@ describe('EmbeddedApps', () => {
     )
     expect(frame).toHaveAttribute(
       'allow',
-      'clipboard-read; clipboard-write; camera; microphone; display-capture'
+      'clipboard-read; clipboard-write; fullscreen; camera; microphone; display-capture'
     )
     expect(screen.getByTitle('Chat windows')).toHaveAttribute(
       'src',
