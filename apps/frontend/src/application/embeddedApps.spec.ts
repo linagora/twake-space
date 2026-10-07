@@ -313,6 +313,6 @@ describe('the Calendar tab', () => {
     expect(
       embedUrl('https://calendar.test/', calendar.embedPath('6ac4ce5f'), '')
     ).toBe('https://calendar.test/embed/calendars/6ac4ce5f')
-    expect(calendar.overlayPath).toBeNull()
+    expect(calendar.overlayPath).toBe('/embed/overlay.html')
   })
 })
