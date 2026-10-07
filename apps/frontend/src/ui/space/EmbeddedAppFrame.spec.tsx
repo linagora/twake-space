@@ -95,7 +95,10 @@ describe('EmbeddedAppFrame', () => {
       'sandbox',
       'allow-scripts allow-same-origin allow-popups allow-forms allow-downloads'
     )
-    expect(frame()).toHaveAttribute('allow', 'clipboard-read; clipboard-write')
+    expect(frame()).toHaveAttribute(
+      'allow',
+      'clipboard-read; clipboard-write; fullscreen'
+    )
     expect(overlay()).toHaveAttribute('name', 'twake-embed-mail:overlay')
     expect(overlay()).toHaveAttribute('src', `${MAIL}/embed/overlay.html`)
     expect(overlay()).toHaveAttribute(
@@ -104,7 +107,7 @@ describe('EmbeddedAppFrame', () => {
     )
     expect(overlay()).toHaveAttribute(
       'allow',
-      'clipboard-read; clipboard-write'
+      'clipboard-read; clipboard-write; fullscreen'
     )
   })
 

@@ -34,7 +34,9 @@ import { useSession } from '@/ui/session/SessionGate'
 // Downloads too: a sandboxed frame without it cannot save a file
 const SANDBOX =
   'allow-scripts allow-same-origin allow-popups allow-forms allow-downloads'
-const ALLOW = 'clipboard-read; clipboard-write'
+// The browser's full screen too: a video or a document of the app over the
+// whole screen (the page of TwakeSpace is another thing, `fill-page`)
+const ALLOW = 'clipboard-read; clipboard-write; fullscreen'
 
 // The frame of an app, and what every embedded app gets from TwakeSpace:
 // - its path reported to the host (`twake-embed:path`, or the legacy
