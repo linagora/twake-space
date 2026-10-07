@@ -30,6 +30,7 @@ import {
 import { spaceTabs } from '@/application/spaceTabs'
 import { KeptAlive, KeptAliveStack } from '@/ds/KeptAlive'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { useBadgeActions } from '@/ui/space/Badges'
 import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
 import { useAppUrls } from '@/ui/space/useAppUrls'
 import { useSpace } from '@/ui/spaces/queries'
@@ -51,6 +52,7 @@ export function EmbeddedApps(): ReactElement | null {
   const location = useLocation()
   const popped = useNavigationType() === NavigationType.Pop
   const navigate = useNavigate()
+  const badges = useBadgeActions()
   const match = matchPath(SPACE_ROUTE, location.pathname)
   const spaceId = match?.params.spaceId ?? ''
   const space = useSpace(spaceId)
@@ -301,6 +303,10 @@ export function EmbeddedApps(): ReactElement | null {
               frameRef={elements[app]}
               onPath={report => {
                 onPath(app, report)
+              }}
+              onBadges={reported => {
+                if (reported === null) badges.reset(app)
+                else badges.replace(app, reported)
               }}
             />
           </KeptAlive>

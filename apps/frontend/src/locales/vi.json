@@ -10,7 +10,8 @@
   "shell": {
     "yourSpaces": "Không gian của bạn",
     "title": "Không gian",
-    "allSpaces": "Tất cả không gian được chia sẻ"
+    "allSpaces": "Tất cả không gian được chia sẻ",
+    "spaceWithCount": "%{name}, %{smart_count} mới"
   },
   "errors": {
     "notFound": "Không tìm thấy trang",
@@ -96,7 +97,8 @@
     "drive": "Drive",
     "mail": "Thư",
     "calendar": "Lịch",
-    "members": "Thành viên"
+    "members": "Thành viên",
+    "withCount": "%{app}, %{smart_count} mới"
   },
   "members": {
     "members": "Thành viên",
