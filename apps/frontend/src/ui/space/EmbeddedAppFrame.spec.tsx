@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { Badge } from '@linagora/twake-embed'
 import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -11,9 +12,13 @@ import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
 const MAIL = 'https://mail.test'
 const EMBED = '/embed/team-mailboxes/m%2F1'
 
+let onBadges = vi.fn<(badges: readonly Badge[] | null) => void>()
+let unmountFrame: () => void = () => undefined
+
 async function renderFrame(session: SessionService = fakeSession()) {
   const onPath = vi.fn<(report: EmbedPath) => void>()
-  renderWithProviders(
+  onBadges = vi.fn<(badges: readonly Badge[] | null) => void>()
+  const { unmount } = renderWithProviders(
     <EmbeddedAppFrame
       app="mail"
       appUrl={`${MAIL}/`}
@@ -24,9 +29,11 @@ async function renderFrame(session: SessionService = fakeSession()) {
       active
       frameRef={createRef()}
       onPath={onPath}
+      onBadges={onBadges}
     />,
     { session }
   )
+  unmountFrame = unmount
   await screen.findByTitle('Mail')
   return onPath
 }
@@ -37,15 +44,13 @@ function frame(): HTMLIFrameElement {
   return element
 }
 
-function postFromFrame(data: unknown, origin = MAIL) {
+function postFromFrame(
+  data: unknown,
+  origin = MAIL,
+  source: MessageEventSource | null = frame().contentWindow
+) {
   act(() => {
-    window.dispatchEvent(
-      new MessageEvent('message', {
-        data,
-        origin,
-        source: frame().contentWindow
-      })
-    )
+    window.dispatchEvent(new MessageEvent('message', { data, origin, source }))
   })
 }
 
@@ -73,6 +78,11 @@ function bridgeCall(method: string, arg?: string, origin = MAIL) {
     },
     origin
   )
+}
+
+// What the app reported, apart from the forgetting a document load brings
+function reportedBadges(): (readonly Badge[])[] {
+  return onBadges.mock.calls.flatMap(([badges]) => (badges ? [badges] : []))
 }
 
 describe('EmbeddedAppFrame', () => {
@@ -283,5 +293,69 @@ describe('EmbeddedAppFrame', () => {
     fireEvent.load(frame())
 
     expect(overlay().style.clipPath).toBe('inset(0 0 100% 0)')
+  })
+
+  describe('counts for the tabs', () => {
+    const snapshot = {
+      type: 'twake-embed:badges',
+      badges: [
+        { resourceId: 'm/1', count: 3 },
+        { resourceId: 'm/2', count: 0 }
+      ]
+    }
+
+    it("reports the app's whole snapshot, as it says it", async () => {
+      await renderFrame()
+
+      postFromFrame(snapshot)
+      expect(reportedBadges()).toEqual([snapshot.badges])
+
+      postFromFrame({ type: 'twake-embed:badges', badges: [] })
+      expect(reportedBadges()).toEqual([snapshot.badges, []])
+    })
+
+    it('ignores counts from another origin or another window', async () => {
+      await renderFrame()
+
+      postFromFrame(snapshot, 'https://evil.test')
+      postFromFrame(snapshot, MAIL, window)
+      postFromFrame(snapshot, MAIL, null)
+      expect(reportedBadges()).toEqual([])
+    })
+
+    it('ignores counts that are not valid', async () => {
+      await renderFrame()
+
+      postFromFrame({
+        type: 'twake-embed:badges',
+        badges: [{ resourceId: 'm/1', count: -1 }]
+      })
+      postFromFrame({
+        type: 'twake-embed:badges',
+        badges: [{ resourceId: 'm/1', count: 1.5 }]
+      })
+      postFromFrame({ type: 'twake-embed:badges', badges: 'many' })
+      expect(reportedBadges()).toEqual([])
+    })
+
+    it("forgets the counts when the frame's document reloads", async () => {
+      await renderFrame()
+      postFromFrame(snapshot)
+      onBadges.mockClear()
+
+      fireEvent.load(frame())
+
+      expect(onBadges).toHaveBeenCalledExactlyOnceWith(null)
+    })
+
+    it('forgets the counts when the frame goes', async () => {
+      await renderFrame()
+      postFromFrame(snapshot)
+      onBadges.mockClear()
+
+      unmountFrame()
+
+      expect(onBadges).toHaveBeenCalledWith(null)
+    })
   })
 })

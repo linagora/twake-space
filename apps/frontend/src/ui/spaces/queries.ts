@@ -1,5 +1,6 @@
 import {
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
   type UseMutationResult,
@@ -28,6 +29,22 @@ export function useSpace(id: string): UseQueryResult<Space> {
     queryKey: [...SPACES, id],
     queryFn: () => spaces.get(id),
     enabled: id !== ''
+  })
+}
+
+// The spaces of the list in full, from the cache `useSpace` shares. Read
+// only when `enabled`.
+export function useSpaces(
+  ids: string[],
+  enabled: boolean
+): UseQueryResult<Space>[] {
+  const { spaces } = useServices()
+  return useQueries({
+    queries: ids.map(id => ({
+      queryKey: [...SPACES, id],
+      queryFn: () => spaces.get(id),
+      enabled
+    }))
   })
 }
 

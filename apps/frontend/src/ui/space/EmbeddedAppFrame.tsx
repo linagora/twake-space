@@ -11,7 +11,8 @@ import {
 import {
   helloMessage,
   parseAppMessage,
-  themeMessage
+  themeMessage,
+  type Badge
 } from '@linagora/twake-embed'
 import {
   OverlayFrame,
@@ -43,6 +44,8 @@ const ALLOW = 'clipboard-read; clipboard-write'
 // - a greeting on each of its loads and whenever the app says it listens
 //   (`twake-embed:hello` for `twake-embed:ready`), from which the app learns
 //   where TwakeSpace is, and the page's theme (`twake-space:theme`),
+// - its counts for the tabs (`twake-embed:badges`), the whole snapshot each
+//   time, forgotten when the frame's document reloads or the frame goes,
 // - an overlay over the whole page, on the app's origin, for its docked
 //   windows and dialogs: an empty page the app renders into, shown within
 //   the region the app reports (`twake-embed:overlay-region`),
@@ -60,7 +63,8 @@ export function EmbeddedAppFrame({
   canFillPage = false,
   active,
   frameRef,
-  onPath
+  onPath,
+  onBadges
 }: {
   // Names the frame `twake-embed-<app>`, and its overlay `<that>:overlay`
   app: string
@@ -78,6 +82,9 @@ export function EmbeddedAppFrame({
   frameRef: RefObject<HTMLIFrameElement | null>
   // The frame's URL, already checked to come from it
   onPath: (report: EmbedPath) => void
+  // The app's counts, already checked to come from the frame: its whole
+  // snapshot, or null when the frame's document is gone
+  onBadges: (badges: readonly Badge[] | null) => void
 }): ReactElement {
   const { t } = useI18n()
   const { signIn } = useSession()
@@ -85,9 +92,18 @@ export function EmbeddedAppFrame({
   const name = `twake-embed-${app}`
 
   const report = useRef(onPath)
+  const reportBadges = useRef(onBadges)
   useEffect(() => {
     report.current = onPath
+    reportBadges.current = onBadges
   })
+  // A frame replaced or removed takes its counts with it
+  useEffect(
+    () => () => {
+      reportBadges.current(null)
+    },
+    []
+  )
 
   const [region, setRegion] = useState<OverlayRegion | null>(null)
 
@@ -146,6 +162,10 @@ export function EmbeddedAppFrame({
           setAsksPage(message.fill)
           return
         }
+        if (message?.type === 'twake-embed:badges') {
+          reportBadges.current(message.badges)
+          return
+        }
         const path = parseEmbedPath(event.data, embedPath)
         if (path !== null) report.current(path)
       },
@@ -201,6 +221,8 @@ export function EmbeddedAppFrame({
           // covers nothing
           setRegion(null)
           setAsksPage(false)
+          // The new document reports its counts again, on its greeting
+          reportBadges.current(null)
           setLoads(n => n + 1)
         }}
       />

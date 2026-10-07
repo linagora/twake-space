@@ -10,7 +10,8 @@
   "shell": {
     "yourSpaces": "Tus espacios",
     "title": "Espacio",
-    "allSpaces": "Todos los espacios compartidos"
+    "allSpaces": "Todos los espacios compartidos",
+    "spaceWithCount": "%{name}, %{smart_count} nuevo |||| %{name}, %{smart_count} nuevos"
   },
   "errors": {
     "notFound": "Página no encontrada",
@@ -96,7 +97,8 @@
     "drive": "Drive",
     "mail": "Correo",
     "calendar": "Calendario",
-    "members": "Miembros"
+    "members": "Miembros",
+    "withCount": "%{app}, %{smart_count} nuevo |||| %{app}, %{smart_count} nuevos"
   },
   "members": {
     "members": "Miembros",
