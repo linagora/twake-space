@@ -2,7 +2,7 @@
   "name": "Space",
   "name_prefix": "Twake",
   "slug": "space",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "type": "webapp",
   "licence": "AGPL-3.0",
   "icon": "src/assets/space.svg",
