@@ -289,7 +289,7 @@
     "allSpaces": "All spaces",
     "pickSpaces": "Some spaces",
     "someSpaces": "%{smart_count} space |||| %{smart_count} spaces",
-    "role": "Role in its spaces",
+    "role": "Acts in each space as",
     "lifetime": "Expires in",
     "days": "%{smart_count} day |||| %{smart_count} days",
     "expires": "Expires %{date}",
@@ -305,8 +305,63 @@
     "secretTitle": "%{name} is ready",
     "secretHint": "Copy the token now. You won't be able to see it again.",
     "secret": "Token",
-    "copy": "Copy the token",
-    "copied": "Token copied",
+    "copyItem": "Copy: %{item}",
+    "copied": "Copied: %{item}",
+    "allSpacesOf": {
+      "personal": "All my spaces, including the ones I join later"
+    },
+    "adminWarning": "An admin token can delete spaces and change their members. Give it only to what really needs it.",
+    "futureSpaces": "It also reaches the spaces created after it.",
+    "reference": "API reference",
+    "resource": {
+      "spaces": "Spaces",
+      "feed": "Activity feed",
+      "members": "Members",
+      "tokens": "API tokens"
+    },
+    "resourceHint": {
+      "spaces": "Write also creates, renames and deletes",
+      "feed": "The activity feed of each space",
+      "members": "Add, change and remove members and groups",
+      "tokens": "Create and revoke personal tokens"
+    },
+    "access": {
+      "none": "No access",
+      "read": "Read",
+      "write": "Write"
+    },
+    "emptyText": "Create one for a script, an integration or an AI agent. You choose what it can do and for how long.",
+    "expired": "Expired",
+    "expiresWhen": "Expires %{when}",
+    "createdOn": "Created %{date}",
+    "actions": "Actions for %{name}",
+    "renameAction": "Rename",
+    "pickPlaceholder": "Choose spaces",
+    "never": "Never",
+    "noExpiryHint": "It works until someone revokes it.",
+    "noLifetime": "The organization's token policy allows none of these lifetimes. Ask an admin to change it.",
+    "expiresOn": "Expires on %{date}",
+    "roleHelp": "An organization token isn't a member of any space, so it uses this role in every space it reaches.",
+    "roleHint": {
+      "viewer": "Reads the spaces",
+      "editor": "Also posts in the spaces",
+      "admin": "Also edits and deletes the spaces and manages their members"
+    },
+    "copyButton": "Copy",
+    "notAvailable": "Not available",
+    "noScopes": "Choose at least one permission.",
+    "noSpaces": "Choose at least one space.",
+    "usage": {
+      "title": "Quick start",
+      "step1": "Create a token and copy it. It is shown only once.",
+      "step2": "Send it in the Authorization header of every request, as Bearer <token>.",
+      "step3": "Call the routes its permissions open. Requests and answers are JSON.",
+      "baseUrl": "Base URL",
+      "example": "Example request",
+      "agents": "Building an AI agent? Each new token comes with a ready-to-paste brief: the base URL, the header and the routes it may call.",
+      "forPeople": "Try it in a terminal",
+      "forAgents": "Brief for an AI agent"
+    },
     "done": "Done",
     "refused": "Refused: %{reason}",
     "failed": "The change could not be saved."

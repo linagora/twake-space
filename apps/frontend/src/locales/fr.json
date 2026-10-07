@@ -289,7 +289,7 @@
     "allSpaces": "Tous les espaces",
     "pickSpaces": "Certains espaces",
     "someSpaces": "%{smart_count} espace |||| %{smart_count} espaces",
-    "role": "Rôle dans ses espaces",
+    "role": "Agit dans chaque espace en tant que",
     "lifetime": "Expire dans",
     "days": "%{smart_count} jour |||| %{smart_count} jours",
     "expires": "Expire le %{date}",
@@ -305,8 +305,63 @@
     "secretTitle": "%{name} est prêt",
     "secretHint": "Copiez le jeton maintenant. Vous ne pourrez plus le revoir.",
     "secret": "Jeton",
-    "copy": "Copier le jeton",
-    "copied": "Jeton copié",
+    "copyItem": "Copier : %{item}",
+    "copied": "Copié : %{item}",
+    "allSpacesOf": {
+      "personal": "Tous mes espaces, y compris ceux que je rejoindrai"
+    },
+    "adminWarning": "Un jeton administrateur peut supprimer des espaces et modifier leurs membres. Ne le donnez qu’à ce qui en a vraiment besoin.",
+    "futureSpaces": "Il atteint aussi les espaces créés après lui.",
+    "reference": "Référence de l’API",
+    "resource": {
+      "spaces": "Espaces",
+      "feed": "Fil d’activité",
+      "members": "Membres",
+      "tokens": "Jetons d’API"
+    },
+    "resourceHint": {
+      "spaces": "L’écriture permet aussi de créer, renommer et supprimer",
+      "feed": "Le fil d’activité de chaque espace",
+      "members": "Ajouter, modifier et retirer membres et groupes",
+      "tokens": "Créer et révoquer des jetons personnels"
+    },
+    "access": {
+      "none": "Aucun accès",
+      "read": "Lecture",
+      "write": "Écriture"
+    },
+    "emptyText": "Créez-en un pour un script, une intégration ou un agent IA. Vous choisissez ce qu’il peut faire et pour combien de temps.",
+    "expired": "Expiré",
+    "expiresWhen": "Expire %{when}",
+    "createdOn": "Créé le %{date}",
+    "actions": "Actions pour %{name}",
+    "renameAction": "Renommer",
+    "pickPlaceholder": "Choisir des espaces",
+    "never": "Jamais",
+    "noExpiryHint": "Il fonctionne jusqu’à ce que quelqu’un le révoque.",
+    "noLifetime": "La politique de jetons de l’organisation n’autorise aucune de ces durées. Demandez à un admin de la modifier.",
+    "expiresOn": "Expire le %{date}",
+    "roleHelp": "Un jeton d’organisation n’est membre d’aucun espace : il utilise ce rôle dans chaque espace qu’il atteint.",
+    "roleHint": {
+      "viewer": "Lit les espaces",
+      "editor": "Publie aussi dans les espaces",
+      "admin": "Modifie et supprime aussi les espaces et gère leurs membres"
+    },
+    "copyButton": "Copier",
+    "notAvailable": "Non disponible",
+    "noScopes": "Choisissez au moins une permission.",
+    "noSpaces": "Choisissez au moins un espace.",
+    "usage": {
+      "title": "Démarrage rapide",
+      "step1": "Créez un jeton et copiez-le. Il n’est affiché qu’une fois.",
+      "step2": "Envoyez-le dans l’en-tête Authorization de chaque requête, sous la forme Bearer <jeton>.",
+      "step3": "Appelez les routes que ses permissions ouvrent. Requêtes et réponses sont en JSON.",
+      "baseUrl": "URL de base",
+      "example": "Exemple de requête",
+      "agents": "Vous créez un agent IA ? Chaque nouveau jeton est livré avec une consigne prête à coller : l’URL de base, l’en-tête et les routes qu’il peut appeler.",
+      "forPeople": "Essayer dans un terminal",
+      "forAgents": "Consigne pour un agent IA"
+    },
     "done": "Terminé",
     "refused": "Refusé : %{reason}",
     "failed": "La modification n’a pas pu être enregistrée."

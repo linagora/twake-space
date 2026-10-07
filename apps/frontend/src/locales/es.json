@@ -289,7 +289,7 @@
     "allSpaces": "Todos los espacios",
     "pickSpaces": "Algunos espacios",
     "someSpaces": "%{smart_count} espacio |||| %{smart_count} espacios",
-    "role": "Rol en sus espacios",
+    "role": "Actúa en cada espacio como",
     "lifetime": "Caduca en",
     "days": "%{smart_count} día |||| %{smart_count} días",
     "expires": "Caduca el %{date}",
@@ -305,8 +305,63 @@
     "secretTitle": "%{name} está listo",
     "secretHint": "Copie el token ahora. No podrá volver a verlo.",
     "secret": "Token",
-    "copy": "Copiar el token",
-    "copied": "Token copiado",
+    "copyItem": "Copiar: %{item}",
+    "copied": "Copiado: %{item}",
+    "allSpacesOf": {
+      "personal": "Todos mis espacios, incluidos aquellos a los que me una después"
+    },
+    "adminWarning": "Un token de administrador puede eliminar espacios y cambiar sus miembros. Déselo solo a lo que de verdad lo necesite.",
+    "futureSpaces": "También accede a los espacios creados después.",
+    "reference": "Referencia de la API",
+    "resource": {
+      "spaces": "Espacios",
+      "feed": "Feed de actividad",
+      "members": "Miembros",
+      "tokens": "Tokens de API"
+    },
+    "resourceHint": {
+      "spaces": "La escritura también crea, renombra y elimina",
+      "feed": "El feed de actividad de cada espacio",
+      "members": "Añadir, cambiar y quitar miembros y grupos",
+      "tokens": "Crear y revocar tokens personales"
+    },
+    "access": {
+      "none": "Sin acceso",
+      "read": "Lectura",
+      "write": "Escritura"
+    },
+    "emptyText": "Cree uno para un script, una integración o un agente de IA. Usted elige qué puede hacer y durante cuánto tiempo.",
+    "expired": "Caducado",
+    "expiresWhen": "Caduca %{when}",
+    "createdOn": "Creado el %{date}",
+    "actions": "Acciones para %{name}",
+    "renameAction": "Renombrar",
+    "pickPlaceholder": "Elegir espacios",
+    "never": "Nunca",
+    "noExpiryHint": "Funciona hasta que alguien lo revoque.",
+    "noLifetime": "La política de tokens de la organización no permite ninguna de estas duraciones. Pide a un admin que la cambie.",
+    "expiresOn": "Caduca el %{date}",
+    "roleHelp": "Un token de organización no es miembro de ningún espacio, así que usa este rol en cada espacio al que llega.",
+    "roleHint": {
+      "viewer": "Lee los espacios",
+      "editor": "También publica en los espacios",
+      "admin": "También edita y elimina los espacios y gestiona sus miembros"
+    },
+    "copyButton": "Copiar",
+    "notAvailable": "No disponible",
+    "noScopes": "Elija al menos un permiso.",
+    "noSpaces": "Elija al menos un espacio.",
+    "usage": {
+      "title": "Inicio rápido",
+      "step1": "Cree un token y cópielo. Solo se muestra una vez.",
+      "step2": "Envíelo en la cabecera Authorization de cada petición, como Bearer <token>.",
+      "step3": "Llame a las rutas que abren sus permisos. Peticiones y respuestas son JSON.",
+      "baseUrl": "URL base",
+      "example": "Petición de ejemplo",
+      "agents": "¿Crea un agente de IA? Cada token nuevo incluye instrucciones listas para pegar: la URL base, la cabecera y las rutas que puede llamar.",
+      "forPeople": "Probar en un terminal",
+      "forAgents": "Instrucciones para un agente de IA"
+    },
     "done": "Listo",
     "refused": "Rechazado: %{reason}",
     "failed": "No se pudo guardar el cambio."
