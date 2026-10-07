@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { and, asc, desc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, type SQL } from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db } from '../../infra/db.ts'
@@ -14,6 +14,7 @@ import {
   spaces
 } from '../spaces/schema.ts'
 import { API_TOKEN_PREFIX, type Scope } from './authenticator.ts'
+import { revokeTokens } from './revocation.ts'
 import {
   apiTokens,
   apiTokenSpaces,
@@ -319,7 +320,8 @@ function registerManagedTokens(
           scopes,
           allSpaces: spaceIds === null,
           expiresAt,
-          createdBy: actor
+          createdBy: actor,
+          parentTokenId: caller.kind === 'token' ? caller.tokenId : null
         })
         .returning({ id: apiTokens.id })
       if (!row) throw new Error('insert returned no row')
@@ -420,24 +422,14 @@ function registerManagedTokens(
   app.delete(`${prefix}/:id`, { preHandler }, async (request, reply) => {
     const target = await managedToken(request)
     if (!target) return reply.code(404).send({ error: 'not_found' })
-    const reason = 'revoked by hand'
-    const revoked = await db.transaction(async tx => {
-      const [row] = await tx
-        .update(apiTokens)
-        .set({ revokedAt: sql`now()`, revokedReason: reason })
-        .where(target.where)
-        .returning({ id: apiTokens.id })
-      if (row) {
-        await tx.insert(tokenAudit).values({
-          tokenId: row.id,
-          action: 'revoked',
-          actor: target.actor,
-          reason
-        })
-      }
-      return row
-    })
-    if (!revoked) return reply.code(404).send({ error: 'not_found' })
+    const revoked = await db.transaction(tx =>
+      revokeTokens(tx, target.where, {
+        actor: target.actor,
+        reason: 'revoked by hand'
+      })
+    )
+    if (revoked.length === 0)
+      return reply.code(404).send({ error: 'not_found' })
     return reply.code(204).send()
   })
 }
