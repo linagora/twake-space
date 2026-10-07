@@ -1,38 +1,51 @@
-import { Copy, Icon } from '@linagora/twake-icons'
 import {
   Alert,
+  Autocomplete,
   Button,
-  Checkbox,
-  FormControlLabel,
-  FormGroup,
-  IconButton,
-  InputAdornment,
-  Radio,
-  RadioGroup,
-  Snackbar,
-  TextField,
-  Typography
+  Chip,
+  ListItemText,
+  MenuItem,
+  Stack,
+  TextField
 } from '@linagora/twake-mui'
 import { useId, useState, type ReactElement } from 'react'
 
-import type { SpaceRole } from '@/application/spaces'
+import { SPACE_ROLES, type SpaceRole } from '@/application/spaces'
 import {
-  TOKEN_LIFETIMES,
-  TOKEN_SCOPES,
+  agentBrief,
+  allowedLifetimes,
+  accessLevels,
+  curlExample,
+  scopesOf,
+  TOKEN_RESOURCES,
+  type AccessLevel,
   type CreatedToken,
+  type TokenAccess,
   type TokenLifetime,
-  type TokenOwner,
-  type TokenScope
+  type TokenOwner
 } from '@/application/tokens'
+import {
+  AccessRow,
+  AccessTable,
+  ChoiceCard,
+  FieldGroup,
+  FormColumns,
+  Labelled
+} from '@/ds/Panel'
 import { useI18n } from '@/ui/i18n/useI18n'
-import { RoleSelect } from '@/ui/space/RoleSelect'
+import { useServices } from '@/ui/services/Services'
 import { useSpaceList } from '@/ui/spaces/queries'
-import { useCreateToken } from '@/ui/tokens/queries'
+import { ReferenceLink, Snippet } from '@/ui/tokens/ApiUsage'
+import {
+  useCreateToken,
+  useOrganizationSpaces,
+  useTokenPolicy
+} from '@/ui/tokens/queries'
 import { TokenDialog, TokenError } from '@/ui/tokens/TokenDialogs'
 
-function toggled<T>(values: T[], value: T, on: boolean): T[] {
-  return on ? [...values, value] : values.filter(v => v !== value)
-}
+const LEVELS: AccessLevel[] = ['none', 'read', 'write']
+const NEVER = 'never'
+const DAY_MS = 24 * 60 * 60 * 1000
 
 export function CreateTokenDialog({
   owner,
@@ -43,20 +56,39 @@ export function CreateTokenDialog({
   onClose: () => void
   onCreated: (created: CreatedToken) => void
 }): ReactElement {
-  const { t } = useI18n()
-  const scopesId = useId()
+  const { t, lang } = useI18n()
+  const accessId = useId()
   const spacesId = useId()
   const create = useCreateToken(owner)
-  const spaces = useSpaceList().data ?? []
+  const organization = owner === 'organization'
+  // An organization token may cover spaces its admin is not a member of.
+  const mySpaces = useSpaceList()
+  const organizationSpaces = useOrganizationSpaces(organization)
+  const spaceQuery = organization ? organizationSpaces : mySpaces
+  const spaces = spaceQuery.data ?? []
+  const policy = useTokenPolicy()
+  const lifetimes = policy.data ? allowedLifetimes(policy.data) : []
+  const [now] = useState(Date.now)
   const [name, setName] = useState('')
-  const [scopes, setScopes] = useState<TokenScope[]>(['space:read'])
+  const [access, setAccess] = useState<TokenAccess>({
+    spaces: 'read',
+    feed: 'none',
+    members: 'none',
+    tokens: 'none'
+  })
+  const scopes = scopesOf(access)
   const [allSpaces, setAllSpaces] = useState(true)
   const [picked, setPicked] = useState<string[]>([])
   const [role, setRole] = useState<SpaceRole>('viewer')
-  const [lifetime, setLifetime] = useState<TokenLifetime>(30)
+  const [chosen, setChosen] = useState<TokenLifetime | null>(30)
+  // The policy loads after the first render and may refuse the default.
+  const lifetime = lifetimes.includes(chosen) ? chosen : lifetimes.at(0)
   const trimmed = name.trim()
   const ready =
-    trimmed !== '' && scopes.length > 0 && (allSpaces || picked.length > 0)
+    trimmed !== '' &&
+    scopes.length > 0 &&
+    lifetime !== undefined &&
+    (allSpaces || picked.length > 0)
   // Unmounting mid-request drops mutate's onSuccess, and with it the only
   // chance to show the secret.
   const close = () => {
@@ -65,15 +97,17 @@ export function CreateTokenDialog({
 
   return (
     <TokenDialog
+      size="large"
       title={t(`apiTokens.createTitle.${owner}`)}
       onClose={close}
       onSubmit={() => {
+        if (lifetime === undefined) return
         create.mutate(
           {
             name: trimmed,
             scopes,
             spaces: allSpaces ? 'all' : picked,
-            ...(owner === 'organization' && { role }),
+            ...(organization && { role }),
             expiresInDays: lifetime
           },
           { onSuccess: onCreated }
@@ -94,102 +128,179 @@ export function CreateTokenDialog({
         </>
       }
     >
-      <TokenError error={create.error} />
-      <TextField
-        label={t('apiTokens.name')}
-        helperText={t('apiTokens.nameHint')}
-        value={name}
-        onChange={event => {
-          setName(event.target.value)
-        }}
-        slotProps={{ htmlInput: { maxLength: 100 } }}
-      />
-      <div>
-        <Typography id={scopesId} variant="subtitle2" component="h3">
-          {t('apiTokens.scopes')}
-        </Typography>
-        <FormGroup aria-labelledby={scopesId}>
-          {TOKEN_SCOPES.map(scope => (
-            <FormControlLabel
-              key={scope}
-              label={t(`apiTokens.scope.${scope}`)}
-              control={
-                <Checkbox
-                  checked={scopes.includes(scope)}
-                  onChange={(_event, on) => {
-                    setScopes(toggled(scopes, scope, on))
+      <TokenError error={create.error ?? policy.error ?? spaceQuery.error} />
+      <FormColumns
+        start={
+          <>
+            <TextField
+              // A dialog moves focus to its first field (WAI-ARIA dialog pattern).
+              // eslint-disable-next-line jsx-a11y-x/no-autofocus
+              autoFocus
+              required
+              label={t('apiTokens.name')}
+              helperText={t('apiTokens.nameHint')}
+              value={name}
+              onChange={event => {
+                setName(event.target.value)
+              }}
+              slotProps={{ htmlInput: { maxLength: 100 } }}
+            />
+            <FieldGroup
+              id={accessId}
+              label={t('apiTokens.scopes')}
+              hint={scopes.length === 0 && t('apiTokens.noScopes')}
+            >
+              <AccessTable
+                labelledBy={accessId}
+                levels={LEVELS.map(level => t(`apiTokens.access.${level}`))}
+              >
+                {TOKEN_RESOURCES.map(resource => (
+                  <AccessRow
+                    key={resource}
+                    id={`${accessId}-${resource}`}
+                    title={t(`apiTokens.resource.${resource}`)}
+                    text={t(`apiTokens.resourceHint.${resource}`)}
+                    options={LEVELS.map(level => ({
+                      value: level,
+                      label: t(`apiTokens.access.${level}`),
+                      available: accessLevels(resource).includes(level)
+                    }))}
+                    value={access[resource]}
+                    onChange={level => {
+                      setAccess({ ...access, [resource]: level as AccessLevel })
+                    }}
+                    unavailableLabel={t('apiTokens.notAvailable')}
+                  />
+                ))}
+              </AccessTable>
+            </FieldGroup>
+          </>
+        }
+        end={
+          <>
+            <FieldGroup id={spacesId} label={t('apiTokens.spaces')}>
+              <Stack role="radiogroup" aria-labelledby={spacesId} spacing={1}>
+                <ChoiceCard
+                  title={t('apiTokens.allSpaces')}
+                  text={t(
+                    organization
+                      ? 'apiTokens.futureSpaces'
+                      : 'apiTokens.allSpacesOf.personal'
+                  )}
+                  checked={allSpaces}
+                  onSelect={() => {
+                    setAllSpaces(true)
                   }}
                 />
+                <ChoiceCard
+                  title={t('apiTokens.pickSpaces')}
+                  checked={!allSpaces}
+                  onSelect={() => {
+                    setAllSpaces(false)
+                  }}
+                >
+                  {!allSpaces && (
+                    <Autocomplete
+                      multiple
+                      disableCloseOnSelect
+                      size="small"
+                      loading={spaceQuery.isPending}
+                      options={spaces}
+                      getOptionLabel={space => space.name}
+                      value={spaces.filter(space => picked.includes(space.id))}
+                      onChange={(_event, value) => {
+                        setPicked(value.map(space => space.id))
+                      }}
+                      renderValue={(value, getItemProps) =>
+                        value.map((space, index) => (
+                          <Chip
+                            {...getItemProps({ index })}
+                            key={space.id}
+                            size="small"
+                            label={space.name}
+                          />
+                        ))
+                      }
+                      renderInput={params => (
+                        <TextField
+                          {...params}
+                          label={t('apiTokens.pickPlaceholder')}
+                          helperText={
+                            picked.length === 0 && t('apiTokens.noSpaces')
+                          }
+                        />
+                      )}
+                    />
+                  )}
+                </ChoiceCard>
+              </Stack>
+            </FieldGroup>
+            {organization && (
+              <Stack spacing={1}>
+                <TextField
+                  select
+                  label={t('apiTokens.role')}
+                  value={role}
+                  onChange={event => {
+                    setRole(event.target.value as SpaceRole)
+                  }}
+                  helperText={t('apiTokens.roleHelp')}
+                  slotProps={{
+                    select: {
+                      renderValue: value => t(`roles.${value as SpaceRole}`)
+                    }
+                  }}
+                >
+                  {SPACE_ROLES.map(item => (
+                    <MenuItem key={item} value={item}>
+                      <ListItemText
+                        primary={t(`roles.${item}`)}
+                        secondary={t(`apiTokens.roleHint.${item}`)}
+                        slotProps={{ secondary: { noWrap: false } }}
+                      />
+                    </MenuItem>
+                  ))}
+                </TextField>
+                {role === 'admin' && (
+                  <Alert severity="warning">
+                    {t('apiTokens.adminWarning')}
+                  </Alert>
+                )}
+              </Stack>
+            )}
+            <TextField
+              select
+              label={t('apiTokens.lifetime')}
+              value={lifetime === undefined ? '' : String(lifetime ?? NEVER)}
+              onChange={event => {
+                const { value } = event.target
+                setChosen(
+                  value === NEVER ? null : (Number(value) as TokenLifetime)
+                )
+              }}
+              helperText={
+                lifetime === undefined
+                  ? policy.data && t('apiTokens.noLifetime')
+                  : lifetime === null
+                    ? t('apiTokens.noExpiryHint')
+                    : t('apiTokens.expiresOn', {
+                        date: new Intl.DateTimeFormat(lang, {
+                          dateStyle: 'long'
+                        }).format(new Date(now + lifetime * DAY_MS))
+                      })
               }
-            />
-          ))}
-        </FormGroup>
-      </div>
-      <div>
-        <Typography id={spacesId} variant="subtitle2" component="h3">
-          {t('apiTokens.spaces')}
-        </Typography>
-        <RadioGroup
-          aria-labelledby={spacesId}
-          value={allSpaces ? 'all' : 'some'}
-          onChange={(_event, value) => {
-            setAllSpaces(value === 'all')
-          }}
-        >
-          <FormControlLabel
-            value="all"
-            control={<Radio />}
-            label={t('apiTokens.allSpaces')}
-          />
-          <FormControlLabel
-            value="some"
-            control={<Radio />}
-            label={t('apiTokens.pickSpaces')}
-          />
-        </RadioGroup>
-        {!allSpaces && (
-          <FormGroup className="u-ml-2">
-            {spaces.map(space => (
-              <FormControlLabel
-                key={space.id}
-                label={space.name}
-                control={
-                  <Checkbox
-                    checked={picked.includes(space.id)}
-                    onChange={(_event, on) => {
-                      setPicked(toggled(picked, space.id, on))
-                    }}
-                  />
-                }
-              />
-            ))}
-          </FormGroup>
-        )}
-      </div>
-      {owner === 'organization' && (
-        <RoleSelect
-          label={t('apiTokens.role')}
-          value={role}
-          onChange={setRole}
-          hiddenLabel={false}
-        />
-      )}
-      <TextField
-        select
-        size="small"
-        label={t('apiTokens.lifetime')}
-        value={lifetime}
-        onChange={event => {
-          setLifetime(Number(event.target.value) as TokenLifetime)
-        }}
-        slotProps={{ select: { native: true } }}
-      >
-        {TOKEN_LIFETIMES.map(days => (
-          <option key={days} value={days}>
-            {t('apiTokens.days', { smart_count: days })}
-          </option>
-        ))}
-      </TextField>
+            >
+              {lifetimes.map(days => (
+                <MenuItem key={days ?? NEVER} value={String(days ?? NEVER)}>
+                  {days === null
+                    ? t('apiTokens.never')
+                    : t('apiTokens.days', { smart_count: days })}
+                </MenuItem>
+              ))}
+            </TextField>
+          </>
+        }
+      />
     </TokenDialog>
   )
 }
@@ -202,12 +313,13 @@ export function TokenSecretDialog({
   onClose: () => void
 }): ReactElement {
   const { t } = useI18n()
-  const [copied, setCopied] = useState(false)
+  const { apiUrl } = useServices()
   return (
     <TokenDialog
+      size="medium"
       title={t('apiTokens.secretTitle', { name: created.name })}
       onClose={onClose}
-      closeOnBackdrop={false}
+      persistent
       onSubmit={onClose}
       actions={
         <Button type="submit" variant="contained">
@@ -216,39 +328,25 @@ export function TokenSecretDialog({
       }
     >
       <Alert severity="warning">{t('apiTokens.secretHint')}</Alert>
-      <TextField
+      <Snippet
         label={t('apiTokens.secret')}
         value={created.token}
-        slotProps={{
-          htmlInput: { readOnly: true },
-          input: {
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  aria-label={t('apiTokens.copy')}
-                  onClick={() => {
-                    void navigator.clipboard
-                      .writeText(created.token)
-                      .then(() => {
-                        setCopied(true)
-                      })
-                  }}
-                >
-                  <Icon icon={Copy} />
-                </IconButton>
-              </InputAdornment>
-            )
-          }
-        }}
+        copyText={t('apiTokens.copyButton')}
       />
-      <Snackbar
-        open={copied}
-        autoHideDuration={3000}
-        onClose={() => {
-          setCopied(false)
-        }}
-        message={t('apiTokens.copied')}
-      />
+      <Labelled label={t('apiTokens.usage.forPeople')}>
+        <Snippet
+          label={t('apiTokens.usage.forPeople')}
+          value={curlExample(apiUrl, created.token)}
+        />
+      </Labelled>
+      <Labelled label={t('apiTokens.usage.forAgents')}>
+        <Snippet
+          label={t('apiTokens.usage.forAgents')}
+          value={agentBrief(apiUrl, created)}
+          maxHeight={200}
+        />
+      </Labelled>
+      <ReferenceLink />
     </TokenDialog>
   )
 }

@@ -1,4 +1,6 @@
-export type SpaceRole = 'viewer' | 'editor' | 'admin'
+export const SPACE_ROLES = ['viewer', 'editor', 'admin'] as const
+
+export type SpaceRole = (typeof SPACE_ROLES)[number]
 
 /** A member as the space list shows it: enough for an avatar. */
 export interface MemberSummary {

@@ -2,7 +2,6 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { ApiToken } from '@/application/tokens'
-import { fakeSpaces } from '@/testing/fakeSpaces'
 import { fakeTokens } from '@/testing/fakeTokens'
 import { renderRoute } from '@/testing/renderWithProviders'
 
@@ -26,6 +25,11 @@ const digest: ApiToken = {
   expiresAt: null
 }
 
+function choose(label: string, option: string | RegExp) {
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: label }))
+  fireEvent.click(screen.getByRole('option', { name: option }))
+}
+
 const refusal = (status: number, reason: string) =>
   Object.assign(new Error('refused'), { status, code: 'forbidden', reason })
 
@@ -38,9 +42,12 @@ describe('ApiTokensScreen', () => {
     const list = await screen.findByRole('list', { name: 'Your tokens' })
     const item = within(list).getByRole('listitem')
     expect(item).toHaveTextContent('My assistant')
-    expect(item).toHaveTextContent('Read spaces, Read feeds')
+    expect(item).toHaveTextContent('Read spaces')
+    expect(item).toHaveTextContent('Read feeds')
     expect(item).toHaveTextContent('All spaces')
-    expect(item).toHaveTextContent('Expires Dec 31, 2026')
+    expect(within(item).getByTitle('December 31, 2026')).toHaveTextContent(
+      /^Expires /
+    )
     expect(item).toHaveTextContent('Never used')
     expect(document.title).toBe('API tokens - Twake Space')
   })
@@ -86,20 +93,37 @@ describe('ApiTokensScreen', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'New personal token'
     })
-    fireEvent.change(within(dialog).getByLabelText('Name'), {
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Name' }), {
       target: { value: '  Backup script ' }
     })
-    fireEvent.click(within(dialog).getByLabelText('Read feeds'))
-    fireEvent.change(within(dialog).getByLabelText('Expires in'), {
-      target: { value: '90' }
-    })
-    expect(within(dialog).queryByLabelText('Role in its spaces')).toBeNull()
+    fireEvent.click(
+      within(
+        within(dialog).getByRole('radiogroup', { name: 'Activity feed' })
+      ).getByRole('radio', { name: 'Read' })
+    )
+    choose('Expires in', '90 days')
+    expect(
+      within(dialog).queryByRole('combobox', { name: 'Acts in each space as' })
+    ).toBeNull()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
 
     const secret = await screen.findByRole('dialog', {
       name: 'Backup script is ready'
     })
-    expect(within(secret).getByLabelText('Token')).toHaveValue('tws_token-1')
+    expect(within(secret).getByLabelText('Token')).toHaveTextContent(
+      'tws_token-1'
+    )
+    expect(
+      within(secret).getByLabelText('Try it in a terminal').textContent
+    ).toBe(
+      'curl -H "Authorization: Bearer tws_token-1" https://space.test/api/spaces'
+    )
+    const brief = within(secret).getByLabelText(
+      'Brief for an AI agent'
+    ).textContent
+    expect(brief).toContain('Authorization: Bearer tws_token-1')
+    expect(brief).toContain('- GET /spaces/:spaceId/feed\n')
+    expect(brief).not.toContain('POST /spaces')
     expect(tokens.create).toHaveBeenCalledWith('personal', {
       name: 'Backup script',
       scopes: ['space:read', 'feed:read'],
@@ -116,21 +140,52 @@ describe('ApiTokensScreen', () => {
     ).toHaveTextContent('Backup script')
   })
 
-  it('creates an organization token for some spaces with a role', async () => {
-    const tokens = fakeTokens()
-    renderRoute('/settings/api-tokens/organization', {
-      tokens,
-      spaces: fakeSpaces([
-        {
-          id: 'roadmap',
-          name: 'Roadmap',
-          role: 'admin',
-          color: null,
-          description: '',
-          members: []
-        }
-      ])
+  it('shows how to call the API', async () => {
+    renderRoute('/settings/api-tokens')
+
+    const usage = await screen.findByRole('region', { name: 'Quick start' })
+    expect(within(usage).getByLabelText('Base URL')).toHaveTextContent(
+      'https://space.test/api/'
+    )
+    expect(
+      within(usage).getByRole('link', { name: 'API reference' })
+    ).toHaveAttribute('href', expect.stringContaining('docs/api.md'))
+  })
+
+  it('offers only the lifetimes the policy allows', async () => {
+    const tokens = fakeTokens(
+      {},
+      { policy: { allowNoExpiry: true, maxLifetimeDays: 30 } }
+    )
+    renderRoute('/settings/api-tokens', { tokens })
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create a token' })
+    )
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'CI' }
     })
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Expires in' }))
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole('option').map(option => option.textContent)
+      ).toEqual(['7 days', '30 days', 'Never'])
+    })
+    fireEvent.click(screen.getByRole('option', { name: 'Never' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => {
+      expect(tokens.create).toHaveBeenCalledWith(
+        'personal',
+        expect.objectContaining({ expiresInDays: null })
+      )
+    })
+  })
+
+  it('creates an organization token for some spaces with a role', async () => {
+    const tokens = fakeTokens({}, { spaces: [{ id: 'legal', name: 'Legal' }] })
+    renderRoute('/settings/api-tokens/organization', { tokens })
 
     fireEvent.click(
       await screen.findByRole('button', { name: 'Create a token' })
@@ -138,23 +193,28 @@ describe('ApiTokensScreen', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'New organization token'
     })
-    fireEvent.change(within(dialog).getByLabelText('Name'), {
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Name' }), {
       target: { value: 'Digest' }
     })
     fireEvent.click(within(dialog).getByLabelText('Some spaces'))
     const create = within(dialog).getByRole('button', { name: 'Create' })
     expect(create).toBeDisabled()
-    fireEvent.click(await within(dialog).findByLabelText('Roadmap'))
-    fireEvent.change(within(dialog).getByLabelText('Role in its spaces'), {
-      target: { value: 'editor' }
-    })
+    const picker = within(dialog).getByLabelText('Choose spaces')
+    picker.focus()
+    fireEvent.keyDown(picker, { key: 'ArrowDown' })
+    fireEvent.click(await screen.findByRole('option', { name: 'Legal' }))
+    choose('Acts in each space as', /^Admin/)
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'An admin token can delete spaces'
+    )
+    choose('Acts in each space as', /^Editor/)
     fireEvent.click(create)
 
     await screen.findByRole('dialog', { name: 'Digest is ready' })
     expect(tokens.create).toHaveBeenCalledWith('organization', {
       name: 'Digest',
       scopes: ['space:read'],
-      spaces: ['roadmap'],
+      spaces: ['legal'],
       role: 'editor',
       expiresInDays: 30
     })
@@ -171,7 +231,7 @@ describe('ApiTokensScreen', () => {
       await screen.findByRole('button', { name: 'Create a token' })
     )
     const dialog = await screen.findByRole('dialog')
-    fireEvent.change(within(dialog).getByLabelText('Name'), {
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Name' }), {
       target: { value: 'CI' }
     })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
@@ -188,12 +248,13 @@ describe('ApiTokensScreen', () => {
     renderRoute('/settings/api-tokens', { tokens })
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Rename My assistant' })
+      await screen.findByRole('button', { name: 'Actions for My assistant' })
     )
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename' }))
     const dialog = await screen.findByRole('dialog', {
       name: 'Rename the token'
     })
-    fireEvent.change(within(dialog).getByLabelText('Name'), {
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Name' }), {
       target: { value: 'Assistant' }
     })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
@@ -208,8 +269,9 @@ describe('ApiTokensScreen', () => {
     renderRoute('/settings/api-tokens/organization', { tokens })
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Revoke Weekly digest' })
+      await screen.findByRole('button', { name: 'Actions for Weekly digest' })
     )
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Revoke' }))
     const dialog = await screen.findByRole('dialog', {
       name: 'Revoke Weekly digest?'
     })
