@@ -178,7 +178,7 @@ describe('EmbeddedAppFrame', () => {
     })
   })
 
-  it('sends the theme to the frame once loaded, not before', async () => {
+  it('greets the frame on each of its loads, with the theme, not before', async () => {
     await renderFrame()
     const contentWindow = frame().contentWindow
     if (!contentWindow) throw new Error('no frame window')
@@ -187,10 +187,15 @@ describe('EmbeddedAppFrame', () => {
     expect(post).not.toHaveBeenCalled()
     fireEvent.load(frame())
 
-    expect(post).toHaveBeenCalledWith(
-      { type: 'twake-space:theme', theme: 'light' },
-      MAIL
-    )
+    expect(post.mock.calls).toEqual([
+      [{ type: 'twake-embed:hello' }, MAIL],
+      [{ type: 'twake-space:theme', theme: 'light' }, MAIL]
+    ])
+
+    // The silent login loaded another document in the frame
+    fireEvent.load(frame())
+    expect(post).toHaveBeenCalledTimes(4)
+    expect(post.mock.calls[2]).toEqual([{ type: 'twake-embed:hello' }, MAIL])
   })
 
   it('takes the page out of reach while the app blocks it', async () => {

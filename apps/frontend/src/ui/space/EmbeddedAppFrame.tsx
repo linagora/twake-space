@@ -8,7 +8,11 @@ import {
   type RefObject
 } from 'react'
 
-import { parseAppMessage } from '@linagora/twake-embed'
+import {
+  helloMessage,
+  parseAppMessage,
+  themeMessage
+} from '@linagora/twake-embed'
 import {
   OverlayFrame,
   overlayClipPath,
@@ -36,7 +40,8 @@ const ALLOW = 'clipboard-read; clipboard-write'
 //   `twake-tasks:path` and cozy-external-bridge's `updateHistory`),
 // - a new sign in when its session expired (`twake-embed:login-required`,
 //   or the bridge's `notifyLoginRequired`),
-// - the page's theme (`twake-space:theme`) once it has loaded,
+// - a greeting on each of its loads (`twake-embed:hello`), from which the
+//   app learns where TwakeSpace is, and the page's theme (`twake-space:theme`),
 // - an overlay over the whole page, on the app's origin, for its docked
 //   windows and dialogs: an empty page the app renders into, shown within
 //   the region the app reports (`twake-embed:overlay-region`),
@@ -94,17 +99,19 @@ export function EmbeddedAppFrame({
     return inertAround(element)
   }, [fillsPage, frameRef])
 
-  // Until the app loads, the frame holds about:blank on this page's origin
-  const [loaded, setLoaded] = useState(false)
+  // Until the app loads, the frame holds about:blank on this page's origin.
+  // Each document the frame loads (the silent login makes several) is
+  // greeted: the app answers the origin that greets it.
+  const [loads, setLoads] = useState(0)
   const { mode, systemMode } = useColorScheme()
   const theme = (mode === 'system' ? systemMode : mode) ?? 'light'
   useEffect(() => {
-    if (!loaded) return
-    frameRef.current?.contentWindow?.postMessage(
-      { type: 'twake-space:theme', theme },
-      origin
-    )
-  }, [frameRef, loaded, origin, theme])
+    if (loads === 0) return
+    const target = frameRef.current?.contentWindow
+    if (!target) return
+    target.postMessage(helloMessage(), origin)
+    target.postMessage(themeMessage(theme), origin)
+  }, [frameRef, loads, origin, theme])
 
   useEffect(() => {
     const target = frameRef.current?.contentWindow
@@ -188,7 +195,7 @@ export function EmbeddedAppFrame({
           // covers nothing
           setRegion(null)
           setAsksPage(false)
-          setLoaded(true)
+          setLoads(n => n + 1)
         }}
       />
       {overlayPath !== null && (
