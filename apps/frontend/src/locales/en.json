@@ -227,30 +227,6 @@
   "embed": {
     "overlay": "%{app} windows"
   },
-  "feedback": {
-    "triggerLabel": "Feedback",
-    "triggerAriaLabel": "Send feedback",
-    "formTitle": "Send feedback",
-    "messageLabel": "What happened?",
-    "messagePlaceholder": "Tell us what you were doing, what you expected, or what you would change.",
-    "emailLabel": "Email (optional)",
-    "emailPlaceholder": "your.email@example.com",
-    "submitButtonLabel": "Send",
-    "cancelButtonLabel": "Cancel",
-    "confirmButtonLabel": "OK",
-    "successMessageText": "Thank you, your feedback has been sent.",
-    "isRequiredLabel": "(required)",
-    "addScreenshotButtonLabel": "Add a screenshot",
-    "removeScreenshotButtonLabel": "Remove the screenshot",
-    "highlightToolText": "Highlight",
-    "hideToolText": "Hide",
-    "removeHighlightText": "Remove",
-    "errorEmptyMessageText": "Enter a message before sending.",
-    "errorNoClientText": "Feedback could not be sent: the reporting service is not available.",
-    "errorTimeoutText": "Sending took too long. Try again.",
-    "errorForbiddenText": "Feedback could not be sent: you are not allowed to send it.",
-    "errorGenericText": "Feedback could not be sent. Try again."
-  },
   "chat": {
     "notSetUp": "Chat is not set up for TwakeSpace."
   },
