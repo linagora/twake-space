@@ -210,20 +210,17 @@ describe('SpaceScreen', () => {
     )
   })
 
-  it.each(['tasks', 'mail'])(
-    'leaves the %s frame the page under the tabs',
-    async tab => {
-      renderAt(`/spaces/a1/${tab}`)
+  it.each(['tasks', 'mail'])('keeps the cover over the %s frame', async tab => {
+    renderAt(`/spaces/a1/${tab}`)
 
-      expect(await screen.findByRole('tabpanel')).toContainElement(
-        document.querySelector('iframe')
-      )
-      expect(document.querySelector('main img')).toBeNull()
-      expect(
-        screen.queryByText('Where the year is planned')
-      ).not.toBeInTheDocument()
-    }
-  )
+    expect(await screen.findByRole('tabpanel')).toContainElement(
+      document.querySelector('iframe')
+    )
+    expect(document.querySelector('main img')).not.toBeNull()
+    expect(
+      screen.queryByText('Where the year is planned')
+    ).not.toBeInTheDocument()
+  })
 
   it("shows the space's feed on the Feed tab, chat or not", async () => {
     renderAt('/spaces/a1/feed')
@@ -236,7 +233,7 @@ describe('SpaceScreen', () => {
     ).toBeInTheDocument()
   })
 
-  it('keeps the cover over an empty feed, and drops it once the feed has items', async () => {
+  it('keeps the cover over the feed, empty or not', async () => {
     renderAt('/spaces/a1/feed')
     await screen.findByRole('heading', { name: 'Set up Roadmap' })
     expect(document.querySelector('main img')).not.toBeNull()
@@ -256,7 +253,7 @@ describe('SpaceScreen', () => {
       }
     ])
     await screen.findByText('Hello')
-    expect(document.querySelector('main img')).toBeNull()
+    expect(document.querySelector('main img')).not.toBeNull()
   })
 
   it("lists the space's people on the Members tab", async () => {

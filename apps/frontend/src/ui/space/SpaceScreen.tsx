@@ -16,7 +16,6 @@ import { useI18n } from '@/ui/i18n/useI18n'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 import { MailPanel } from '@/ui/space/MailPanel'
 import { MembersPanel } from '@/ui/space/MembersPanel'
-import { useFeed } from '@/ui/space/feedQueries'
 import { SpaceActions } from '@/ui/space/SpaceActions'
 import { TasksPanel } from '@/ui/space/TasksPanel'
 import { useSpace } from '@/ui/spaces/queries'
@@ -85,8 +84,6 @@ export function SpaceScreen(): ReactElement {
       ? tab
       : null
   const opened = useOpenedFrames(spaceId, readyTab)
-  const feed = useFeed(spaceId, 'all', readyTab === 'feed')
-  const emptyFeed = feed.data?.pages[0]?.items.length === 0
 
   if (space.isPending) {
     return (
@@ -130,7 +127,6 @@ export function SpaceScreen(): ReactElement {
   return (
     <Page>
       <SpaceHeader
-        compact={framed || (current.tab === 'feed' && !emptyFeed)}
         avatar={
           <NameAvatar
             name={space.data.name}
