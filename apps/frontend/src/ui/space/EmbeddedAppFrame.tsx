@@ -1,4 +1,3 @@
-import { useColorScheme } from '@linagora/twake-mui'
 import { expose } from 'comlink'
 import {
   useEffect,
@@ -11,7 +10,6 @@ import {
 import {
   helloMessage,
   parseAppMessage,
-  themeMessage,
   type Badge
 } from '@linagora/twake-embed'
 import {
@@ -45,7 +43,7 @@ const ALLOW = 'clipboard-read; clipboard-write; fullscreen'
 //   or the bridge's `notifyLoginRequired`),
 // - a greeting on each of its loads and whenever the app says it listens
 //   (`twake-embed:hello` for `twake-embed:ready`), from which the app learns
-//   where TwakeSpace is, and the page's theme (`twake-space:theme`),
+//   where TwakeSpace is,
 // - its counts for the tabs (`twake-embed:badges`), the whole snapshot each
 //   time, forgotten when the frame's document reloads or the frame goes,
 // - an overlay over the whole page, on the app's origin, for its docked
@@ -122,16 +120,13 @@ export function EmbeddedAppFrame({
   // Each document the frame loads (the silent login makes several) is
   // greeted, and so is an app that says it listens after its frame loaded:
   // the app answers the origin that greets it.
+  // No theme goes with the greeting: each app follows its own setting or
+  // the system, through the common settings (ADR 010).
   const [loads, setLoads] = useState(0)
-  const { mode, systemMode } = useColorScheme()
-  const theme = (mode === 'system' ? systemMode : mode) ?? 'light'
   useEffect(() => {
     if (loads === 0) return
-    const target = frameRef.current?.contentWindow
-    if (!target) return
-    target.postMessage(helloMessage(), origin)
-    target.postMessage(themeMessage(theme), origin)
-  }, [frameRef, loads, origin, theme])
+    frameRef.current?.contentWindow?.postMessage(helloMessage(), origin)
+  }, [frameRef, loads, origin])
 
   useEffect(() => {
     const target = frameRef.current?.contentWindow
