@@ -6,14 +6,16 @@ import type { Space } from '@/application/spaces'
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderRoute } from '@/testing/renderWithProviders'
 
-function fakeFeedback(): FeedbackService & {
-  unmount: ReturnType<typeof vi.fn>
+function fakeFeedback(enabled = true): FeedbackService & {
+  detach: ReturnType<typeof vi.fn>
 } {
-  const unmount = vi.fn()
+  const detach = vi.fn()
   return {
-    mount: vi.fn(() => unmount),
+    enabled,
+    attach: vi.fn(() => detach),
+    setColorScheme: vi.fn(),
     setSpaceTab: vi.fn(),
-    unmount
+    detach
   }
 }
 
@@ -34,32 +36,42 @@ const space: Space = {
 }
 
 describe('feedback button', () => {
-  it('is mounted by the shell with translated labels, and removed with it', async () => {
+  it('is shown by the shell, attached with translated labels, and detached with it', async () => {
     const feedback = fakeFeedback()
     renderRoute('/', { feedback, lang: 'fr' })
     await screen.findByRole('navigation')
 
-    // The button is mounted by an effect, which may run after the shell shows.
+    expect(
+      await screen.findByTestId('twake-feedback-button')
+    ).toBeInTheDocument()
+    expect(feedback.setColorScheme).toHaveBeenCalled()
     await waitFor(() => {
-      expect(feedback.mount).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          triggerLabel: 'Avis',
-          formTitle: 'Donner un avis',
-          submitButtonLabel: 'Envoyer'
-        }),
-        expect.any(String)
+      expect(feedback.attach).toHaveBeenLastCalledWith(
+        expect.any(HTMLElement),
+        expect.objectContaining<Record<string, string>>({
+          formTitle: 'Donner un avis'
+        })
       )
     })
 
     cleanup()
-    expect(feedback.unmount).toHaveBeenCalled()
+    expect(feedback.detach).toHaveBeenCalled()
   })
 
   it('shows nothing without a feedback service', async () => {
     renderRoute('/')
+    await screen.findByRole('navigation')
 
-    expect(await screen.findByRole('navigation')).toBeInTheDocument()
-    expect(document.getElementById('sentry-feedback')).toBeNull()
+    expect(screen.queryByTestId('twake-feedback-button')).toBeNull()
+  })
+
+  it('shows nothing when feedback is off', async () => {
+    const feedback = fakeFeedback(false)
+    renderRoute('/', { feedback })
+    await screen.findByRole('navigation')
+
+    expect(screen.queryByTestId('twake-feedback-button')).toBeNull()
+    expect(feedback.attach).not.toHaveBeenCalled()
   })
 
   it('tags the open space tab and clears it on leaving', async () => {

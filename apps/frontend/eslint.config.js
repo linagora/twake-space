@@ -24,6 +24,13 @@ const EVERYWHERE = [
   }
 ]
 
+const NO_SENTRY = [
+  {
+    group: ['@linagora/twake-feedback/sentry'],
+    message: 'Only adapters/sentry/ imports @linagora/twake-feedback/sentry.'
+  }
+]
+
 const RAW_UI = [
   {
     group: ['@mui/*', '@mui/*/**', '@emotion/*', '@emotion/*/**'],
@@ -66,7 +73,7 @@ const BOUNDARIES = {
 }
 
 const restrictImports = layer => {
-  const patterns = [...EVERYWHERE]
+  const patterns = [...EVERYWHERE, ...NO_SENTRY]
   if (layer !== 'ds') patterns.push(...RAW_UI)
   if (BOUNDARIES[layer].length > 0) {
     patterns.push({
@@ -151,6 +158,25 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         { patterns: EVERYWHERE.filter(p => !p.group.includes('posthog-js')) }
+      ]
+    }
+  },
+  {
+    files: ['src/adapters/sentry/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [NO_STYLED],
+          patterns: [
+            ...EVERYWHERE,
+            ...RAW_UI,
+            {
+              group: layers('ui', 'ds', 'app'),
+              message: 'Not allowed from adapters/ (hexagonal boundaries).'
+            }
+          ]
+        }
       ]
     }
   },
