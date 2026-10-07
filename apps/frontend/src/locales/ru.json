@@ -10,7 +10,8 @@
   "shell": {
     "yourSpaces": "Ваши пространства",
     "title": "Пространство",
-    "allSpaces": "Все общие пространства"
+    "allSpaces": "Все общие пространства",
+    "spaceWithCount": "%{name}, новых: %{smart_count}"
   },
   "errors": {
     "notFound": "Страница не найдена",
@@ -96,7 +97,8 @@
     "drive": "Диск",
     "mail": "Почта",
     "calendar": "Календарь",
-    "members": "Участники"
+    "members": "Участники",
+    "withCount": "%{app}, новых: %{smart_count}"
   },
   "members": {
     "members": "Участники",

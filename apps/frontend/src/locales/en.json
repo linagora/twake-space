@@ -10,7 +10,8 @@
   "shell": {
     "yourSpaces": "Your spaces",
     "title": "Space",
-    "allSpaces": "All shared spaces"
+    "allSpaces": "All shared spaces",
+    "spaceWithCount": "%{name}, %{smart_count} new"
   },
   "errors": {
     "notFound": "Page not found",
@@ -96,7 +97,8 @@
     "drive": "Drive",
     "mail": "Mail",
     "calendar": "Calendar",
-    "members": "Members"
+    "members": "Members",
+    "withCount": "%{app}, %{smart_count} new"
   },
   "members": {
     "members": "Members",

@@ -7,13 +7,16 @@ import {
   useParams
 } from 'react-router'
 
+import { badgeLabel, tabCount } from '@/application/badges'
 import { embeddedApp } from '@/application/embeddedApps'
 import { isRefusal } from '@/application/spaces'
 import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
+import { CountedLabel } from '@/ds/CountedLabel'
 import { LoadingRows, Page, SpaceHeader, TabPanel } from '@/ds/Page'
 import { useSpaceTabTag } from '@/ui/feedback/useSpaceTabTag'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { useBadges } from '@/ui/space/Badges'
 import { useAppUrls } from '@/ui/space/useAppUrls'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 import { MembersPanel } from '@/ui/space/MembersPanel'
@@ -42,6 +45,7 @@ export function SpaceScreen(): ReactElement {
   const navigate = useNavigate()
   const { spaceId = '', tab } = useParams()
   const appUrls = useAppUrls()
+  const badges = useBadges()
   const space = useSpace(spaceId)
   useDocumentTitle(space.data?.name ?? null)
   const now = useNowAfter(
@@ -115,16 +119,28 @@ export function SpaceScreen(): ReactElement {
               void navigate(`/spaces/${spaceId}/${value}`)
             }}
           >
-            {tabs.map(item => (
-              <Tab
-                key={item.tab}
-                value={item.tab}
-                label={t(`tabs.${item.tab}`)}
-                disabled={item.state === 'off'}
-                id={`tab-${item.tab}`}
-                aria-controls={`panel-${item.tab}`}
-              />
-            ))}
+            {tabs.map(item => {
+              const app = embeddedApp(item.tab)
+              const count = app ? tabCount(badges, space.data, app.app) : 0
+              const name = t(`tabs.${item.tab}`)
+              return (
+                <Tab
+                  key={item.tab}
+                  value={item.tab}
+                  label={
+                    <CountedLabel label={name} count={badgeLabel(count)} />
+                  }
+                  aria-label={
+                    count > 0
+                      ? t('tabs.withCount', { app: name, smart_count: count })
+                      : undefined
+                  }
+                  disabled={item.state === 'off'}
+                  id={`tab-${item.tab}`}
+                  aria-controls={`panel-${item.tab}`}
+                />
+              )
+            })}
           </Tabs>
         }
       />

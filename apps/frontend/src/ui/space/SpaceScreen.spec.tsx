@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor
+} from '@testing-library/react'
 import { Route, Routes, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -315,5 +321,127 @@ describe('SpaceScreen', () => {
     // Chat is off and Drive still preparing: no frame for either
     expect(screen.queryByTitle('Chat')).not.toBeInTheDocument()
     expect(screen.queryByTitle('Drive')).not.toBeInTheDocument()
+  })
+
+  describe('counts on the tabs', () => {
+    function postBadges(
+      title: string,
+      origin: string,
+      badges: { resourceId: string; count: number }[]
+    ) {
+      const element = screen.getByTitle(title)
+      if (!(element instanceof HTMLIFrameElement)) throw new Error('no frame')
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            data: { type: 'twake-embed:badges', badges },
+            origin,
+            source: element.contentWindow
+          })
+        )
+      })
+    }
+
+    async function reportMail(count: number) {
+      await screen.findByTitle('Mail')
+      await waitFor(() => {
+        postBadges('Mail', 'https://mail.test', [
+          { resourceId: 'roadmap@acme', count },
+          { resourceId: 'other@acme', count: 7 }
+        ])
+        expect(screen.getByRole('tab', { name: /^Mail/ })).toHaveAccessibleName(
+          count > 0 ? `Mail, ${String(count)} new` : 'Mail'
+        )
+      })
+    }
+
+    it("shows the app's count for the space's resource, in the tab's name", async () => {
+      renderAt('/spaces/a1/feed')
+      await reportMail(3)
+
+      const tab = screen.getByRole('tab', { name: 'Mail, 3 new' })
+      expect(tab).toHaveTextContent('Mail3')
+      expect(screen.getByRole('tab', { name: 'Tasks' })).toHaveTextContent(
+        /^Tasks$/
+      )
+    })
+
+    it('shows 99+ above 99, and says the count in full', async () => {
+      renderAt('/spaces/a1/feed')
+      await reportMail(100)
+
+      expect(
+        screen.getByRole('tab', { name: 'Mail, 100 new' })
+      ).toHaveTextContent('Mail99+')
+    })
+
+    it('shows 99 as it is', async () => {
+      renderAt('/spaces/a1/feed')
+      await reportMail(99)
+
+      expect(
+        screen.getByRole('tab', { name: 'Mail, 99 new' })
+      ).toHaveTextContent('Mail99')
+    })
+
+    it('shows nothing at 0, or without a count for the resource', async () => {
+      renderAt('/spaces/a1/feed')
+      await reportMail(0)
+
+      expect(screen.getByRole('tab', { name: 'Mail' })).toHaveTextContent(
+        /^Mail$/
+      )
+      expect(screen.getByRole('tab', { name: 'Feed' })).toHaveTextContent(
+        /^Feed$/
+      )
+    })
+
+    it('replaces the previous snapshot, and forgets it when the frame reloads', async () => {
+      renderAt('/spaces/a1/feed')
+      await reportMail(3)
+
+      postBadges('Mail', 'https://mail.test', [])
+      expect(
+        await screen.findByRole('tab', { name: 'Mail' })
+      ).toBeInTheDocument()
+
+      postBadges('Mail', 'https://mail.test', [
+        { resourceId: 'roadmap@acme', count: 4 }
+      ])
+      expect(
+        await screen.findByRole('tab', { name: 'Mail, 4 new' })
+      ).toBeInTheDocument()
+
+      fireEvent.load(screen.getByTitle('Mail'))
+      expect(
+        await screen.findByRole('tab', { name: 'Mail' })
+      ).toBeInTheDocument()
+    })
+
+    it('ignores counts that do not come from the app', async () => {
+      renderAt('/spaces/a1/feed')
+      await screen.findByTitle('Mail')
+
+      postBadges('Mail', 'https://evil.test', [
+        { resourceId: 'roadmap@acme', count: 3 }
+      ])
+      // Tasks' frame is not Mail's
+      postBadges('Tasks', 'https://mail.test', [
+        { resourceId: 'roadmap@acme', count: 3 }
+      ])
+      await act(() => Promise.resolve())
+
+      expect(screen.getByRole('tab', { name: 'Mail' })).toHaveTextContent(
+        /^Mail$/
+      )
+    })
+
+    it('has no frame, so no count, for a tab that is off', async () => {
+      renderAt('/spaces/a1/feed', { ...roadmap, mail: false })
+      await screen.findByRole('tab', { name: 'Mail' })
+
+      expect(screen.queryByTitle('Mail')).not.toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'Mail' })).toBeDisabled()
+    })
   })
 })

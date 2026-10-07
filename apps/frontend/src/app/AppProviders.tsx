@@ -5,6 +5,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { I18nProvider } from '@/ui/i18n/I18nProvider'
 import type { SupportedLanguage } from '@/ui/i18n/languages'
 import { ServicesContext, type Services } from '@/ui/services/Services'
+import { BadgesProvider } from '@/ui/space/Badges'
 
 export interface AppProvidersProps {
   lang: SupportedLanguage
@@ -23,7 +24,9 @@ export function AppProviders({
     <TwakeMuiThemeProvider>
       <I18nProvider lang={lang}>
         <QueryClientProvider client={queryClient}>
-          <ServicesContext value={services}>{children}</ServicesContext>
+          <ServicesContext value={services}>
+            <BadgesProvider>{children}</BadgesProvider>
+          </ServicesContext>
         </QueryClientProvider>
       </I18nProvider>
     </TwakeMuiThemeProvider>
