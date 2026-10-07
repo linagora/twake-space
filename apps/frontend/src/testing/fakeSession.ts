@@ -7,7 +7,8 @@ export function fakeSession(
     Promise.resolve({
       id: 'u-me',
       name: 'Alice Martin',
-      email: 'alice@example.com'
+      email: 'alice@example.com',
+      workplaceFqdn: 'alice.twake.test'
     })
 ): SessionService & { endElsewhere: () => void } {
   let onEnded: (() => void) | null = null

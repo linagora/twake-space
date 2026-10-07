@@ -210,6 +210,25 @@ describe('SpaceScreen', () => {
     )
   })
 
+  it("frames the space's shared drive on the Drive tab, kept alive", async () => {
+    renderAt('/spaces/a1/drive', {
+      ...roadmap,
+      resources: roadmap.resources.map(r =>
+        r.kind === 'drive' ? { ...r, id: 'sharing-1' } : r
+      )
+    })
+    const frame = await screen.findByTitle('Drive')
+    expect(frame).toHaveAttribute(
+      'src',
+      'https://alice-drive.twake.test/embed/sharings/sharing-1'
+    )
+
+    openTab('Members')
+    await screen.findByRole('tab', { name: 'Members', selected: true })
+    expect(screen.getByTitle('Drive')).toBe(frame)
+    expect(isHidden(frame)).toBe(true)
+  })
+
   it.each(['tasks', 'mail'])('keeps the cover over the %s frame', async tab => {
     renderAt(`/spaces/a1/${tab}`)
 

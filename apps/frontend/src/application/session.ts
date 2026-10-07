@@ -3,6 +3,8 @@ export interface User {
   id: string | null
   name: string | null
   email: string | null
+  /** The address of the person's Twake Workplace instance, like `alice.twake.app`. */
+  workplaceFqdn: string | null
 }
 
 export interface SessionService {

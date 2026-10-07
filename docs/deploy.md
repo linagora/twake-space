@@ -20,6 +20,7 @@ flowchart LR
   cp[Chat control plane<br/>SaaS only]
   tasks[Tasks app]
   mail[Mail app]
+  drive[Each person's Twake Drive]
   sentry[Sentry]
   posthog[PostHog]
 
@@ -29,6 +30,7 @@ flowchart LR
   browser -->|SSO_BASE_URL| oidc
   browser -->|TASKS_URL, in a frame| tasks
   browser -->|MAIL_URL, in a frame| mail
+  browser -->|DRIVE_URL, in a frame| drive
   browser -.-> sentry
   browser -.-> posthog
   be --> pg
@@ -78,6 +80,7 @@ The entrypoint script `40-twake-space-runtime.sh` reads the environment at conta
 - `SSO_BASE_URL`, `SSO_CLIENT_ID`, `SSO_SCOPE`, `SSO_REDIRECT_URI`, `SSO_POST_LOGOUT_REDIRECT`: the OIDC login settings. All five are required: the app throws without any of them.
 - `TASKS_URL`: the Tasks app, embedded in a frame. Optional.
 - `MAIL_URL`: the Mail app, whose team mailbox embed fills the Mail tab. Optional. Mail, like Tasks, also serves `/embed/overlay.html`, the overlay its composer and dialogs show on, over the whole page: it is on the origin of `MAIL_URL`, which `frame-src` already allows.
+- `DRIVE_URL`: a template for each person's Twake Drive, whose shared drive embed fills the Drive tab, such as `https://{slug}-drive.{domain}/`. Optional. The app fills `{slug}` and `{domain}` from the person's Twake Workplace address (the `workplaceFqdn` claim, such as `alice.twake.example.com`). Every person has their own Drive origin, so `CSP_FRAME_SRC` must allow them all, such as `https://*.twake.example.com`.
 - `SENTRY_DSN`, `SENTRY_ENVIRONMENT`: browser error reporting. Optional. Events carry the tag `app` (`twake-space`), the release (the frontend version) and, in a space, the tag `space_tab` (the open tab).
 - `SENTRY_FEEDBACK_ENABLED`: `true` shows Sentry's floating feedback button, with a form, an optional email and a screenshot of the tab. Anything else, or no `SENTRY_DSN`, keeps it off. It needs a Sentry of 24.4.2 or later. The screenshot uses the browser's tab sharing prompt: it is not offered on mobile.
 - `POSTHOG_KEY`, `POSTHOG_HOST`: written to `/.env.js`. See the open questions.

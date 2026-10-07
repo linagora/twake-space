@@ -5,6 +5,7 @@ declare global {
     API_URL?: string
     TASKS_URL?: string
     MAIL_URL?: string
+    DRIVE_URL?: string
     SSO_BASE_URL?: string
     SSO_CLIENT_ID?: string
     SSO_SCOPE?: string

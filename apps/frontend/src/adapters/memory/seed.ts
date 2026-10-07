@@ -28,7 +28,8 @@ export const seedOrganization: MemoryOrganization = {
 export const seedUser: User = {
   id: 'uuid-alice',
   name: 'Alice Martin',
-  email: `alice@${DOMAIN}`
+  email: `alice@${DOMAIN}`,
+  workplaceFqdn: null
 }
 
 const member = (username: string, role: SpaceRole): Member => ({

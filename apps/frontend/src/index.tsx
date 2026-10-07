@@ -32,7 +32,8 @@ const services = {
   feed: httpFeed(api),
   feedback,
   tasksUrl: window.TASKS_URL ?? null,
-  mailUrl: window.MAIL_URL ?? null
+  mailUrl: window.MAIL_URL ?? null,
+  driveUrlTemplate: window.DRIVE_URL ?? null
 }
 
 const reportUncaughtError = Sentry.reactErrorHandler((error, info) => {
