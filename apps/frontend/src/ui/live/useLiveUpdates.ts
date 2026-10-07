@@ -2,7 +2,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 
 import { useServices } from '@/ui/services/Services'
-import { SETTINGS } from '@/ui/settings/useCommonSettings'
 import { followFeedChange } from '@/ui/space/feedQueries'
 import { SPACES } from '@/ui/spaces/queries'
 
@@ -16,9 +15,6 @@ export function useLiveUpdates(): void {
         onEvent: (event, data) => {
           if (event === 'spaces') {
             void queryClient.invalidateQueries({ queryKey: SPACES })
-          }
-          if (event === 'settings') {
-            void queryClient.invalidateQueries({ queryKey: SETTINGS })
           }
           if (event === 'feed') followFeedChange(queryClient, feed, data)
         },

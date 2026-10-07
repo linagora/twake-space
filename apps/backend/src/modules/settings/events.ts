@@ -2,7 +2,6 @@ import { lt, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { PlatformEvent } from '../../events/envelope.ts'
 import { parseOrDrop, type Handler } from '../../events/router.ts'
-import { tellEmail } from '../live/notify.ts'
 import { userSettings, type UserSettings } from './schema.ts'
 
 // A field TwakeSpace cannot use is left out rather than refusing the rest.
@@ -37,7 +36,7 @@ const onUpdated: Handler<PlatformEvent> = async (event, tx) => {
     avatar: payload.avatar,
     displayName: payload.display_name
   }
-  const stored = await tx
+  await tx
     .insert(userSettings)
     .values({ email: payload.email, nickname, version, settings })
     .onConflictDoUpdate({
@@ -45,8 +44,6 @@ const onUpdated: Handler<PlatformEvent> = async (event, tx) => {
       set: { nickname, version, settings, updatedAt: sql`now()` },
       setWhere: sql`${lt(userSettings.version, version)} or ${ne(userSettings.nickname, nickname)}`
     })
-    .returning({ email: userSettings.email })
-  if (stored.length > 0) await tellEmail(tx, 'settings', payload.email)
 }
 
 export const settingsPlatformRoutes: ReadonlyMap<
