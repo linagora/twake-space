@@ -4,7 +4,9 @@ import { Navigate, useNavigate, useParams } from 'react-router'
 
 import type { TokenOwner } from '@/application/tokens'
 import { Page, TabPanel } from '@/ds/Page'
+import { SplitLayout } from '@/ds/Panel'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { QuickStart } from '@/ui/tokens/ApiUsage'
 import { TokensPanel } from '@/ui/tokens/TokensPanel'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
@@ -26,7 +28,7 @@ export function ApiTokensScreen(): ReactElement {
       <Typography variant="h3" component="h1">
         {t('apiTokens.title')}
       </Typography>
-      <Typography color="textSecondary" className="u-mt-half u-mb-1">
+      <Typography color="textSecondary" className="u-mt-half u-mb-1 u-maw-7">
         {t('apiTokens.intro')}
       </Typography>
       <Tabs
@@ -47,9 +49,14 @@ export function ApiTokensScreen(): ReactElement {
           />
         ))}
       </Tabs>
-      <TabPanel tab={owner}>
-        <TokensPanel key={owner} owner={owner} />
-      </TabPanel>
+      <SplitLayout
+        main={
+          <TabPanel tab={owner}>
+            <TokensPanel key={owner} owner={owner} />
+          </TabPanel>
+        }
+        aside={<QuickStart />}
+      />
     </Page>
   )
 }

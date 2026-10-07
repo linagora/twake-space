@@ -6,9 +6,16 @@ import {
   DialogContent,
   Stack,
   TextField,
-  Typography
+  Typography,
+  type DialogSize
 } from '@linagora/twake-mui'
-import { useId, useState, type ReactElement, type ReactNode } from 'react'
+import {
+  useId,
+  useState,
+  type ReactElement,
+  type ReactNode,
+  type SubmitEvent
+} from 'react'
 
 import { isRefusal } from '@/application/spaces'
 import type { ApiToken, TokenOwner } from '@/application/tokens'
@@ -40,42 +47,49 @@ export function TokenDialog({
   onSubmit,
   actions,
   children,
-  closeOnBackdrop = true
+  persistent = false,
+  size = 'small'
 }: {
   title: string
   onClose: () => void
   onSubmit: () => void
   actions: ReactNode
   children: ReactNode
-  closeOnBackdrop?: boolean
+  /** Only the dialog's own buttons close it, not a backdrop click or Escape. */
+  persistent?: boolean
+  size?: DialogSize
 }): ReactElement {
   const { t } = useI18n()
   const titleId = useId()
   return (
     <Dialog
       open
-      onClose={(_event: unknown, reason?: string) => {
-        if (closeOnBackdrop || reason !== 'backdropClick') onClose()
+      onClose={() => {
+        if (!persistent) onClose()
       }}
       aria-labelledby={titleId}
-      size="small"
+      size={size}
+      // The paper is the form, so only the content scrolls and the actions
+      // stay in view on a full-screen phone dialog.
+      slotProps={{
+        paper: {
+          component: 'form',
+          onSubmit: (event: SubmitEvent) => {
+            event.preventDefault()
+            onSubmit()
+          }
+        }
+      }}
     >
-      <form
-        onSubmit={event => {
-          event.preventDefault()
-          onSubmit()
-        }}
-      >
-        <DialogHeader
-          id={titleId}
-          title={title}
-          close={{ label: t('common.close'), onClick: onClose }}
-        />
-        <DialogContent>
-          <Stack spacing={2}>{children}</Stack>
-        </DialogContent>
-        <DialogActions>{actions}</DialogActions>
-      </form>
+      <DialogHeader
+        id={titleId}
+        title={title}
+        close={{ label: t('common.close'), onClick: onClose }}
+      />
+      <DialogContent>
+        <Stack spacing={2}>{children}</Stack>
+      </DialogContent>
+      <DialogActions>{actions}</DialogActions>
     </Dialog>
   )
 }
@@ -119,10 +133,17 @@ export function RenameTokenDialog({
     >
       <TokenError error={write.error} />
       <TextField
+        // A dialog moves focus to its first field (WAI-ARIA dialog pattern).
+        // eslint-disable-next-line jsx-a11y-x/no-autofocus
+        autoFocus
+        required
         label={t('apiTokens.name')}
         value={name}
         onChange={event => {
           setName(event.target.value)
+        }}
+        onFocus={event => {
+          event.target.select()
         }}
         slotProps={{ htmlInput: { maxLength: 100 } }}
       />

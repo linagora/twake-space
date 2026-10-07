@@ -11,7 +11,9 @@ import type {
   CreatedToken,
   NewToken,
   TokenOwner,
-  TokensService
+  TokenPolicy,
+  TokensService,
+  TokenSpace
 } from '@/application/tokens'
 import { useServices } from '@/ui/services/Services'
 
@@ -22,6 +24,25 @@ export function useTokens(owner: TokenOwner): UseQueryResult<ApiToken[]> {
   return useQuery({
     queryKey: tokensKey(owner),
     queryFn: () => tokens.list(owner)
+  })
+}
+
+export function useTokenPolicy(): UseQueryResult<TokenPolicy> {
+  const { tokens } = useServices()
+  return useQuery({
+    queryKey: ['tokens', 'policy'],
+    queryFn: () => tokens.policy()
+  })
+}
+
+export function useOrganizationSpaces(
+  enabled: boolean
+): UseQueryResult<TokenSpace[]> {
+  const { tokens } = useServices()
+  return useQuery({
+    queryKey: ['tokens', 'spaces'],
+    queryFn: () => tokens.organizationSpaces(),
+    enabled
   })
 }
 
