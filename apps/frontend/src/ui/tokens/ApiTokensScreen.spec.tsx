@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { ApiToken } from '@/application/tokens'
@@ -73,6 +73,43 @@ describe('ApiTokensScreen', () => {
     expect(
       screen.queryByRole('button', { name: 'Create a token' })
     ).not.toBeInTheDocument()
+  })
+
+  it('renames a token', async () => {
+    const tokens = fakeTokens({ personal: [assistant] })
+    renderRoute('/settings/api-tokens', { tokens })
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Rename My assistant' })
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Rename the token'
+    })
+    fireEvent.change(within(dialog).getByLabelText('Name'), {
+      target: { value: 'Assistant' }
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(tokens.rename).toHaveBeenCalledWith('personal', 't-1', 'Assistant')
+    })
+  })
+
+  it('revokes a token after confirming', async () => {
+    const tokens = fakeTokens({ organization: [digest] })
+    renderRoute('/settings/api-tokens/organization', { tokens })
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Revoke Weekly digest' })
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Revoke Weekly digest?'
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Revoke' }))
+
+    await waitFor(() => {
+      expect(tokens.revoke).toHaveBeenCalledWith('organization', 't-2')
+    })
   })
 
   it('sends an unknown tab back to the personal tokens', async () => {
