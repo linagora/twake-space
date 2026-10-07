@@ -13,6 +13,7 @@ import {
   parseOverlayRegionMessage,
   type OverlayRegion
 } from '@/application/embedOverlay'
+import { EmbedFrame } from '@/ds/EmbedFrame'
 import { OverlayFrame } from '@/ds/OverlayFrame'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
@@ -31,6 +32,41 @@ function isLoginRequired(data: unknown): boolean {
   )
 }
 
+// What `{ type: 'twake-embed:fullscreen', fullscreen }` asks, else null
+function fullscreenAsked(data: unknown): boolean | null {
+  if (typeof data !== 'object' || data === null) return null
+  const { type, fullscreen } = data as Record<string, unknown>
+  return type === 'twake-embed:fullscreen' && typeof fullscreen === 'boolean'
+    ? fullscreen
+    : null
+}
+
+// Everything on the page but `element` made inert, until the returned
+// function gives it back: the keyboard and screen readers stay in the frame
+// while it covers the page
+function inertAround(element: HTMLElement): () => void {
+  const made: HTMLElement[] = []
+  for (
+    let node: HTMLElement = element;
+    node !== document.body && node.parentElement;
+    node = node.parentElement
+  ) {
+    for (const sibling of Array.from(node.parentElement.children)) {
+      if (
+        sibling !== node &&
+        sibling instanceof HTMLElement &&
+        !sibling.inert
+      ) {
+        sibling.inert = true
+        made.push(sibling)
+      }
+    }
+  }
+  return () => {
+    for (const sibling of made) sibling.inert = false
+  }
+}
+
 // The frame of an app in a tab of a space, and what every embedded app gets
 // from TwakeSpace:
 // - its path below `embed` written in the address (`updateHistory`),
@@ -38,7 +74,9 @@ function isLoginRequired(data: unknown): boolean {
 //   cozy-external-bridge (comlink),
 // - with `overlayPath`, an overlay over the whole page, on the app's origin,
 //   for its docked windows and dialogs: an empty page the app renders into,
-//   shown within the region the app reports (`twake-embed:overlay-region`).
+//   shown within the region the app reports (`twake-embed:overlay-region`),
+// - with `canFillPage`, the whole page while the app asks for it
+//   (`twake-embed:fullscreen`): Chat during a call.
 export function EmbeddedAppFrame({
   app,
   appUrl,
@@ -46,6 +84,8 @@ export function EmbeddedAppFrame({
   tabPath,
   title,
   overlayPath,
+  allow,
+  canFillPage = false,
   active = true,
   frameRef,
   onFrameLoad,
@@ -58,6 +98,9 @@ export function EmbeddedAppFrame({
   tabPath: string
   title: string
   overlayPath?: string
+  // Permissions of this app alone, beyond the clipboard (Chat's calls)
+  allow?: string
+  canFillPage?: boolean
   // False while another tab of the space shows: the frame stays alive, its
   // overlay too (a composer stays on the page), but it no longer writes the
   // address
@@ -92,6 +135,14 @@ export function EmbeddedAppFrame({
   }, [active, followAlways])
 
   const [region, setRegion] = useState<OverlayRegion | null>(null)
+  // Never on a hidden tab: the page would stay inert under nothing
+  const [asksFullPage, setAsksFullPage] = useState(false)
+  const fillsPage = canFillPage && asksFullPage && active
+  useEffect(() => {
+    const element = frame.current
+    if (!fillsPage || !element) return
+    return inertAround(element)
+  }, [fillsPage, frame])
 
   const messageHandler = useRef(onFrameMessage)
   useEffect(() => {
@@ -113,6 +164,11 @@ export function EmbeddedAppFrame({
         if (!fromFrame(event)) return
         if (isLoginRequired(event.data)) {
           void signIn()
+          return
+        }
+        const fullscreen = fullscreenAsked(event.data)
+        if (fullscreen !== null) {
+          setAsksFullPage(fullscreen)
           return
         }
         const reported = parseOverlayRegionMessage(event.data)
@@ -155,17 +211,19 @@ export function EmbeddedAppFrame({
 
   return (
     <>
-      <iframe
-        ref={frame}
+      <EmbedFrame
+        frameRef={frame}
         name={name}
         title={title}
         src={src}
         sandbox={SANDBOX}
-        allow={ALLOW}
-        className="u-w-100 u-flex-auto u-bdw-0"
+        allow={allow === undefined ? ALLOW : `${ALLOW}; ${allow}`}
+        fillsPage={fillsPage}
         onLoad={() => {
-          // A frame loaded again draws nothing on the overlay yet
+          // A frame loaded again draws nothing on the overlay yet, and
+          // covers nothing
           setRegion(null)
+          setAsksFullPage(false)
           onFrameLoad?.()
         }}
       />

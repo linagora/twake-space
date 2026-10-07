@@ -6,7 +6,9 @@ import { useServices } from '@/ui/services/Services'
 import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
 
 // Twake Chat shows the conversation of the space's Matrix space (ADR 010):
-// its own `/embed/rooms/` route, keyed by the room id, no message exchanged.
+// its own `/embed/rooms/` route, keyed by the room id. Its calls take the
+// camera, the microphone and the screen, and the whole page while they last
+// (`twake-embed:fullscreen`).
 export function ChatPanel({
   spaceId,
   roomId,
@@ -27,6 +29,8 @@ export function ChatPanel({
       embedPath={`/embed/rooms/${encodeURIComponent(roomId)}`}
       tabPath={`/spaces/${spaceId}/chat`}
       title={t('tabs.chat')}
+      allow="camera; microphone; display-capture"
+      canFillPage
       active={active}
     />
   )

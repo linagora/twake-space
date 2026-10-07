@@ -78,7 +78,7 @@ The entrypoint script `40-twake-space-runtime.sh` reads the environment at conta
 - `SSO_BASE_URL`, `SSO_CLIENT_ID`, `SSO_SCOPE`, `SSO_REDIRECT_URI`, `SSO_POST_LOGOUT_REDIRECT`: the OIDC login settings. All five are required: the app throws without any of them.
 - `TASKS_URL`: the Tasks app, embedded in a frame. Optional.
 - `MAIL_URL`: the Mail app, whose team mailbox embed fills the Mail tab. Optional. Mail, like Tasks, also serves `/embed/overlay.html`, the overlay its composer and dialogs show on, over the whole page: it is on the origin of `MAIL_URL`, which `frame-src` already allows.
-- `CHAT_URL`: Twake Chat, whose `/embed/rooms/<Matrix space id>` fills the Chat tab of a space with the conversation of its Matrix space (ADR 010). Optional. Chat signs in inside its own frame and lists the origin of TwakeSpace in its own `frame-ancestors` (its `TWAKE_SPACE_URL`).
+- `CHAT_URL`: Twake Chat, whose `/embed/rooms/<Matrix space id>` fills the Chat tab of a space with the conversation of its Matrix space (ADR 010). Optional. Chat signs in inside its own frame and lists the origin of TwakeSpace in its own `frame-ancestors` (its `TWAKE_SPACE_URL`). Its frame alone gets the camera, the microphone and the screen for its calls, and covers the whole page while Chat asks for it (`twake-embed:fullscreen`, during a call): `PERMISSIONS_POLICY` must not turn off `camera`, `microphone` or `display-capture`.
 - `SENTRY_DSN`, `SENTRY_ENVIRONMENT`: browser error reporting. Optional.
 - `POSTHOG_KEY`, `POSTHOG_HOST`: written to `/.env.js`. See the open questions.
 
