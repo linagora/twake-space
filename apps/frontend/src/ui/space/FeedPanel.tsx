@@ -556,9 +556,8 @@ function Card({
       {app === 'calendar' ? (
         <EventDetails card={card} />
       ) : (
-        <FeedTitle>{card.object.title}</FeedTitle>
+        <Summary card={card} />
       )}
-      {card.preview && <FeedDetail>{card.preview}</FeedDetail>}
       <FeedFooter time={time(card.time)}>
         <Reactions item={card} spaceId={space.id} myId={myId} />
         {tab && open && (
@@ -575,10 +574,19 @@ function Card({
   )
 }
 
+function Summary({ card }: { card: FeedCard }): ReactElement {
+  return (
+    <>
+      <FeedTitle>{card.object.title}</FeedTitle>
+      {card.preview && <FeedDetail>{card.preview}</FeedDetail>}
+    </>
+  )
+}
+
 function EventDetails({ card }: { card: FeedCard }): ReactElement {
   const { t, lang } = useI18n()
   const event = toEventState(card.state)
-  if (!event) return <FeedTitle>{card.object.title}</FeedTitle>
+  if (!event) return <Summary card={card} />
 
   // All-day times are plain dates: read them as such, not as UTC midnight.
   const date = (value: string) =>
@@ -629,7 +637,7 @@ function EventDetails({ card }: { card: FeedCard }): ReactElement {
           })}
         </FeedDetail>
       )}
-      {event.rsvp && (
+      {event.rsvp && Object.values(event.rsvp).some(count => count > 0) && (
         <FeedDetail>
           {t('feed.event.rsvp', {
             accepted: event.rsvp.accepted,

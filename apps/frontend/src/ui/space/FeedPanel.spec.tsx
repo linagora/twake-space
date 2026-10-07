@@ -176,6 +176,25 @@ describe('FeedPanel', () => {
     expect(within(eventCard).getByText(/Room 4/)).toBeInTheDocument()
   })
 
+  it('names an event place once, and leaves out replies nobody gave', async () => {
+    renderFeed([
+      {
+        ...event,
+        preview: 'Room 4',
+        state: {
+          ...event.state,
+          rsvp: { accepted: 0, tentative: 0, declined: 0, pending: 0 }
+        }
+      }
+    ])
+
+    const card = await screen.findByRole('article', {
+      name: 'Someone: Roadmap review'
+    })
+    expect(within(card).getByText(/Room 4/)).toBeInTheDocument()
+    expect(within(card).queryByText(/waiting/)).not.toBeInTheDocument()
+  })
+
   it('shows one category at a time', async () => {
     const { feed } = renderFeed([post(5), task, event])
     await screen.findByText('Message 5')
