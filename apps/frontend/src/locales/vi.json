@@ -227,30 +227,6 @@
   "embed": {
     "overlay": "Cửa sổ của %{app}"
   },
-  "feedback": {
-    "triggerLabel": "Góp ý",
-    "triggerAriaLabel": "Gửi góp ý",
-    "formTitle": "Gửi góp ý",
-    "messageLabel": "Đã xảy ra chuyện gì?",
-    "messagePlaceholder": "Hãy cho chúng tôi biết bạn đang làm gì, bạn mong đợi điều gì hoặc bạn muốn thay đổi điều gì.",
-    "emailLabel": "Email (không bắt buộc)",
-    "emailPlaceholder": "email.cua.ban@example.vn",
-    "submitButtonLabel": "Gửi",
-    "cancelButtonLabel": "Hủy",
-    "confirmButtonLabel": "OK",
-    "successMessageText": "Cảm ơn bạn, góp ý của bạn đã được gửi.",
-    "isRequiredLabel": "(bắt buộc)",
-    "addScreenshotButtonLabel": "Thêm ảnh chụp màn hình",
-    "removeScreenshotButtonLabel": "Xóa ảnh chụp màn hình",
-    "highlightToolText": "Đánh dấu",
-    "hideToolText": "Ẩn",
-    "removeHighlightText": "Xóa bỏ",
-    "errorEmptyMessageText": "Hãy nhập tin nhắn trước khi gửi.",
-    "errorNoClientText": "Không thể gửi góp ý: dịch vụ báo cáo không khả dụng.",
-    "errorTimeoutText": "Việc gửi mất quá nhiều thời gian. Hãy thử lại.",
-    "errorForbiddenText": "Không thể gửi góp ý: bạn không có quyền gửi.",
-    "errorGenericText": "Không thể gửi góp ý. Hãy thử lại."
-  },
   "chat": {
     "notSetUp": "Trò chuyện chưa được thiết lập cho TwakeSpace."
   },

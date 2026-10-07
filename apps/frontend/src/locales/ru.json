@@ -227,30 +227,6 @@
   "embed": {
     "overlay": "Окна %{app}"
   },
-  "feedback": {
-    "triggerLabel": "Отзыв",
-    "triggerAriaLabel": "Отправить отзыв",
-    "formTitle": "Отправить отзыв",
-    "messageLabel": "Что произошло?",
-    "messagePlaceholder": "Расскажите, что вы делали, чего ожидали или что бы изменили.",
-    "emailLabel": "Эл. почта (необязательно)",
-    "emailPlaceholder": "vasha.pochta@example.ru",
-    "submitButtonLabel": "Отправить",
-    "cancelButtonLabel": "Отмена",
-    "confirmButtonLabel": "OK",
-    "successMessageText": "Спасибо, ваш отзыв отправлен.",
-    "isRequiredLabel": "(обязательно)",
-    "addScreenshotButtonLabel": "Добавить снимок экрана",
-    "removeScreenshotButtonLabel": "Удалить снимок экрана",
-    "highlightToolText": "Выделить",
-    "hideToolText": "Скрыть",
-    "removeHighlightText": "Убрать",
-    "errorEmptyMessageText": "Введите сообщение перед отправкой.",
-    "errorNoClientText": "Не удалось отправить отзыв: служба сбора отчётов недоступна.",
-    "errorTimeoutText": "Отправка заняла слишком много времени. Повторите попытку.",
-    "errorForbiddenText": "Не удалось отправить отзыв: у вас нет разрешения на отправку.",
-    "errorGenericText": "Не удалось отправить отзыв. Повторите попытку."
-  },
   "chat": {
     "notSetUp": "Чат не настроен для TwakeSpace."
   },

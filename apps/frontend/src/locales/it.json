@@ -227,30 +227,6 @@
   "embed": {
     "overlay": "Finestre di %{app}"
   },
-  "feedback": {
-    "triggerLabel": "Feedback",
-    "triggerAriaLabel": "Invia feedback",
-    "formTitle": "Invia feedback",
-    "messageLabel": "Che cosa è successo?",
-    "messagePlaceholder": "Raccontaci cosa stavi facendo, cosa ti aspettavi o cosa cambieresti.",
-    "emailLabel": "Email (facoltativa)",
-    "emailPlaceholder": "tua.email@esempio.it",
-    "submitButtonLabel": "Invia",
-    "cancelButtonLabel": "Annulla",
-    "confirmButtonLabel": "OK",
-    "successMessageText": "Grazie, il tuo feedback è stato inviato.",
-    "isRequiredLabel": "(obbligatorio)",
-    "addScreenshotButtonLabel": "Aggiungi uno screenshot",
-    "removeScreenshotButtonLabel": "Rimuovi lo screenshot",
-    "highlightToolText": "Evidenzia",
-    "hideToolText": "Nascondi",
-    "removeHighlightText": "Rimuovi",
-    "errorEmptyMessageText": "Inserisci un messaggio prima di inviare.",
-    "errorNoClientText": "Impossibile inviare il feedback: il servizio di segnalazione non è disponibile.",
-    "errorTimeoutText": "L'invio ha richiesto troppo tempo. Riprova.",
-    "errorForbiddenText": "Impossibile inviare il feedback: non hai l'autorizzazione per farlo.",
-    "errorGenericText": "Impossibile inviare il feedback. Riprova."
-  },
   "chat": {
     "notSetUp": "La chat non è configurata per TwakeSpace."
   },

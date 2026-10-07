@@ -227,30 +227,6 @@
   "embed": {
     "overlay": "Fenêtres de %{app}"
   },
-  "feedback": {
-    "triggerLabel": "Avis",
-    "triggerAriaLabel": "Donner un avis",
-    "formTitle": "Donner un avis",
-    "messageLabel": "Que s'est-il passé ?",
-    "messagePlaceholder": "Dites-nous ce que vous faisiez, ce que vous attendiez ou ce que vous changeriez.",
-    "emailLabel": "E-mail (facultatif)",
-    "emailPlaceholder": "votre.email@exemple.fr",
-    "submitButtonLabel": "Envoyer",
-    "cancelButtonLabel": "Annuler",
-    "confirmButtonLabel": "OK",
-    "successMessageText": "Merci, votre avis a bien été envoyé.",
-    "isRequiredLabel": "(obligatoire)",
-    "addScreenshotButtonLabel": "Ajouter une capture d'écran",
-    "removeScreenshotButtonLabel": "Supprimer la capture d'écran",
-    "highlightToolText": "Surligner",
-    "hideToolText": "Masquer",
-    "removeHighlightText": "Retirer",
-    "errorEmptyMessageText": "Saisissez un message avant d'envoyer.",
-    "errorNoClientText": "L'avis n'a pas pu être envoyé : le service de signalement n'est pas disponible.",
-    "errorTimeoutText": "L'envoi a pris trop de temps. Réessayez.",
-    "errorForbiddenText": "L'avis n'a pas pu être envoyé : vous n'y êtes pas autorisé.",
-    "errorGenericText": "L'avis n'a pas pu être envoyé. Réessayez."
-  },
   "chat": {
     "notSetUp": "Le chat n’est pas configuré pour TwakeSpace."
   },
