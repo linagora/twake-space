@@ -39,6 +39,7 @@ interface Options {
   mailUrl?: string | null
   driveUrlTemplate?: string | null
   chatUrl?: string | null
+  calendarUrl?: string | null
 }
 
 function withProviders(
@@ -56,7 +57,8 @@ function withProviders(
     tasksUrl = 'https://tasks.test/',
     mailUrl = 'https://mail.test/',
     driveUrlTemplate = 'https://{slug}-drive.{domain}/',
-    chatUrl = 'https://chat.test/'
+    chatUrl = 'https://chat.test/',
+    calendarUrl = 'https://calendar.test/'
   }: Options
 ): ReactElement {
   return (
@@ -75,7 +77,8 @@ function withProviders(
         tasksUrl,
         mailUrl,
         driveUrlTemplate,
-        chatUrl
+        chatUrl,
+        calendarUrl
       }}
     >
       <SessionGate session={session}>

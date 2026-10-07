@@ -16,7 +16,7 @@ export { embedUrl, loadMessage, navigateMessage, pathBelow }
 // app for the whole session: another space's resource is shown in the same
 // frame with a `load` message, and TwakeSpace alone writes the browser
 // history.
-export type EmbeddedApp = 'chat' | 'tasks' | 'drive' | 'mail'
+export type EmbeddedApp = 'chat' | 'tasks' | 'drive' | 'mail' | 'calendar'
 
 export interface EmbeddedAppSpec {
   app: EmbeddedApp
@@ -62,6 +62,14 @@ export const EMBEDDED_APPS: Record<EmbeddedApp, EmbeddedAppSpec> = {
     resource: 'mailbox',
     embedPath: id => `/embed/team-mailboxes/${encodeURIComponent(id)}`,
     overlayPath: '/embed/overlay.html'
+  },
+  // Twake Calendar shows the team calendar of the space. It serves an
+  // overlay page but draws nothing on it yet.
+  calendar: {
+    app: 'calendar',
+    resource: 'calendar',
+    embedPath: id => `/embed/calendars/${encodeURIComponent(id)}`,
+    overlayPath: null
   }
 }
 

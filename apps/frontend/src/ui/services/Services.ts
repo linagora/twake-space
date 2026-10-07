@@ -23,6 +23,7 @@ export interface Services {
   mailUrl: string | null
   driveUrlTemplate: string | null
   chatUrl: string | null
+  calendarUrl: string | null
 }
 
 export const ServicesContext = createContext<Services | null>(null)

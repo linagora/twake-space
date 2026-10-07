@@ -107,7 +107,8 @@ export function EmbeddedApps(): ReactElement | null {
     chat: createRef(),
     tasks: createRef(),
     drive: createRef(),
-    mail: createRef()
+    mail: createRef(),
+    calendar: createRef()
   }))
 
   // The frames follow the address: a state adjusted while rendering, as

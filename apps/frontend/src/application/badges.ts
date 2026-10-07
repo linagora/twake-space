@@ -15,7 +15,8 @@ export function emptySnapshots(): BadgeSnapshots {
     chat: new Map(),
     tasks: new Map(),
     drive: new Map(),
-    mail: new Map()
+    mail: new Map(),
+    calendar: new Map()
   }
 }
 

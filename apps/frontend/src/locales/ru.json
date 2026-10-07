@@ -144,6 +144,9 @@
   "drive": {
     "notSetUp": "Диск не настроен для TwakeSpace."
   },
+  "calendar": {
+    "notSetUp": "Календарь не настроен для TwakeSpace."
+  },
   "feed": {
     "composer": "Сообщение",
     "send": "Отправить",
