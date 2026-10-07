@@ -1,6 +1,7 @@
 import { Icon, Rename, Trash } from '@linagora/twake-icons'
 import {
   Alert,
+  Button,
   Chip,
   IconButton,
   List,
@@ -12,16 +13,20 @@ import {
 import { useId, useState, type ReactElement } from 'react'
 
 import { isRefusal } from '@/application/spaces'
-import type { ApiToken, TokenOwner } from '@/application/tokens'
+import type { ApiToken, CreatedToken, TokenOwner } from '@/application/tokens'
 import { LoadingRows } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
+import {
+  CreateTokenDialog,
+  TokenSecretDialog
+} from '@/ui/tokens/CreateTokenDialog'
 import { useTokens } from '@/ui/tokens/queries'
 import { RenameTokenDialog, RevokeTokenDialog } from '@/ui/tokens/TokenDialogs'
 
-interface Opened {
-  kind: 'rename' | 'revoke'
-  token: ApiToken
-}
+type Opened =
+  | { kind: 'create' }
+  | { kind: 'secret'; created: CreatedToken }
+  | { kind: 'rename' | 'revoke'; token: ApiToken }
 
 export function TokensPanel({ owner }: { owner: TokenOwner }): ReactElement {
   const { t } = useI18n()
@@ -46,9 +51,23 @@ export function TokensPanel({ owner }: { owner: TokenOwner }): ReactElement {
 
   return (
     <section>
-      <Typography variant="h6" component="h2" id={listId}>
-        {t(`apiTokens.heading.${owner}`)}
-      </Typography>
+      <Stack
+        direction="row"
+        spacing={2}
+        className="u-flex-items-center u-flex-justify-between u-mb-half"
+      >
+        <Typography variant="h6" component="h2" id={listId}>
+          {t(`apiTokens.heading.${owner}`)}
+        </Typography>
+        <Button
+          variant="contained"
+          onClick={() => {
+            setOpened({ kind: 'create' })
+          }}
+        >
+          {t('apiTokens.create')}
+        </Button>
+      </Stack>
       {tokens.data.length === 0 ? (
         <Typography color="textSecondary">
           {t(`apiTokens.empty.${owner}`)}
@@ -68,6 +87,18 @@ export function TokensPanel({ owner }: { owner: TokenOwner }): ReactElement {
             />
           ))}
         </List>
+      )}
+      {opened?.kind === 'create' && (
+        <CreateTokenDialog
+          owner={owner}
+          onClose={close}
+          onCreated={created => {
+            setOpened({ kind: 'secret', created })
+          }}
+        />
+      )}
+      {opened?.kind === 'secret' && (
+        <TokenSecretDialog created={opened.created} onClose={close} />
       )}
       {opened?.kind === 'rename' && (
         <RenameTokenDialog owner={owner} token={opened.token} onClose={close} />
