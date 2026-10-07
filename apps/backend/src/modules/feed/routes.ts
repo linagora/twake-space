@@ -74,18 +74,26 @@ export function registerFeedRoutes(
   deps: { db: Db; authorize: Authorize }
 ) {
   const { db } = deps
+  // Tokens only read: posts and reactions are a person's own.
+  const read = deps.authorize('feed:read')
   const preHandler = deps.authorize()
 
   // Unknown ids answer 404 like spaces the caller is not in.
-  async function memberOf(request: FastifyRequest) {
+  async function reach(request: FastifyRequest) {
     const caller = request.caller
-    if (caller?.kind !== 'session') {
-      throw new Error('authorize let a request through')
-    }
+    if (!caller) throw new Error('authorize let a request through')
     const params = spaceParams.safeParse(request.params)
     if (!params.success) throw new Refusal(404, 'not_found')
     const [space] = await reachableSpaces(db, caller, params.data.spaceId)
     if (!space) throw new Refusal(404, 'not_found')
+    return { caller, space }
+  }
+
+  async function memberOf(request: FastifyRequest) {
+    const { caller, space } = await reach(request)
+    if (caller.kind !== 'session') {
+      throw new Error('authorize let a request through')
+    }
     return { spaceId: space.id, role: space.role, userId: caller.userId }
   }
 
@@ -126,27 +134,31 @@ export function registerFeedRoutes(
     return reply.code(error.status).send({ error: error.message })
   }
 
-  app.get('/spaces/:spaceId/feed', { preHandler }, async (request, reply) => {
-    try {
-      const { spaceId } = await memberOf(request)
-      const { category, before, limit } = parse(feedQuery, request.query)
-      const page = await listItems(db, spaceId, {
-        limit,
-        ...(category && { category }),
-        ...(before && { before })
-      })
-      return { items: page.items.map(serialize), next: page.next }
-    } catch (error) {
-      return refused(error, reply)
+  app.get(
+    '/spaces/:spaceId/feed',
+    { preHandler: read },
+    async (request, reply) => {
+      try {
+        const spaceId = (await reach(request)).space.id
+        const { category, before, limit } = parse(feedQuery, request.query)
+        const page = await listItems(db, spaceId, {
+          limit,
+          ...(category && { category }),
+          ...(before && { before })
+        })
+        return { items: page.items.map(serialize), next: page.next }
+      } catch (error) {
+        return refused(error, reply)
+      }
     }
-  })
+  )
 
   app.get(
     '/spaces/:spaceId/feed/items/:itemId',
-    { preHandler },
+    { preHandler: read },
     async (request, reply) => {
       try {
-        const { spaceId } = await memberOf(request)
+        const spaceId = (await reach(request)).space.id
         const item = await findItem(db, spaceId, itemOf(request))
         if (!item) throw new Refusal(404, 'not_found')
         return serialize(item)

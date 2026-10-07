@@ -237,7 +237,7 @@ Returns whether each notification type is on. A type the user never chose is on,
 
 A space's feed holds cards and posts. A card shows the activity on one object (a file, a calendar event, a task): the apps' later events about the object change the card instead of adding one. Members post and react.
 
-All feed routes are for session callers only, and the caller must be a member of the space. Otherwise, or when the space or item does not exist: `404 {"error":"not_found"}`. A failed query, path or body: `400 {"error":"invalid_request"}`.
+The two GET routes also take an API token holding `feed:read`, on a space the token reaches. The other feed routes are for session callers only, and the caller must be a member of the space. Otherwise, or when the space or item does not exist: `404 {"error":"not_found"}`. A failed query, path or body: `400 {"error":"invalid_request"}`.
 
 A feed item:
 
