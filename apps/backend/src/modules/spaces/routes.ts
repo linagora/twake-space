@@ -136,9 +136,7 @@ export function registerSpaceRoutes(
         )
       )
       return {
-        apps: spaceTab.enumValues.filter(tab =>
-          on.has(tab === 'feed' ? 'chat' : tab)
-        )
+        apps: spaceTab.enumValues.filter(tab => on.has(tab))
       }
     }
   )

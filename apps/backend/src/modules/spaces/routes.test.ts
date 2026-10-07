@@ -207,7 +207,7 @@ describe('GET /spaces/apps', () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toEqual({
-      apps: ['feed', 'chat', 'tasks', 'drive', 'mail', 'calendar']
+      apps: ['chat', 'tasks', 'drive', 'mail', 'calendar']
     })
   })
 
@@ -226,7 +226,7 @@ describe('GET /spaces/apps', () => {
     expect(response.json()).toEqual({ apps: ['tasks', 'mail'] })
   })
 
-  it("leaves out feed, chat and mail while the organization's chat and mail are off", async () => {
+  it("leaves out chat and mail while the organization's chat and mail are off", async () => {
     const response = await setUp()('/spaces/apps')
 
     expect(response.json()).toEqual({ apps: ['tasks', 'drive', 'calendar'] })
@@ -295,7 +295,7 @@ describe('GET /spaces/:id', () => {
       spaceId: DESIGN,
       description: 'Ship it',
       color: '#46a2ff',
-      apps: ['feed', 'drive']
+      apps: ['drive']
     })
 
     const response = await setUp()(`/spaces/${DESIGN}`)
@@ -303,7 +303,7 @@ describe('GET /spaces/:id', () => {
     expect(response.json()).toMatchObject({
       description: 'Ship it',
       color: '#46a2ff',
-      apps: ['feed', 'drive']
+      apps: ['drive']
     })
   })
 
@@ -313,7 +313,7 @@ describe('GET /spaces/:id', () => {
     expect(response.json()).toMatchObject({
       description: '',
       color: null,
-      apps: ['feed', 'chat', 'tasks', 'drive', 'mail', 'calendar']
+      apps: ['chat', 'tasks', 'drive', 'mail', 'calendar']
     })
   })
 

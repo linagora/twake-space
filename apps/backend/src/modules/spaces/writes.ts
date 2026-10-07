@@ -160,9 +160,11 @@ export function registerSpaceWriteRoutes(
             .regex(/^#[0-9a-f]{6}$/i)
             .nullable()
             .default(null),
+          // Frontends up to 0.1.12 still send feed.
           apps: z
-            .array(z.enum(spaceTab.enumValues))
+            .array(z.enum([...spaceTab.enumValues, 'feed']))
             .default(spaceTab.enumValues)
+            .transform(apps => apps.filter(app => app !== 'feed'))
         }),
         request.body
       )

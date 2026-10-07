@@ -22,8 +22,8 @@ export const spaces = pgTable(
   table => [index().on(table.organizationId)]
 )
 
+// Every space has a feed, so it is no tab to pick.
 export const spaceTab = pgEnum('space_tab', [
-  'feed',
   'chat',
   'tasks',
   'drive',
