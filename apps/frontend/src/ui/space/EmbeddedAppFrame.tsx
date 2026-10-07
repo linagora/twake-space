@@ -9,11 +9,12 @@ import {
 } from 'react'
 
 import {
+  OverlayFrame,
   overlayClipPath,
   parseOverlayRegionMessage,
   type OverlayRegion
-} from '@/application/embedOverlay'
-import { OverlayFrame } from '@/ds/OverlayFrame'
+} from '@linagora/twake-mui'
+
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
 import { useEmbedPath } from '@/ui/space/useEmbedPath'
