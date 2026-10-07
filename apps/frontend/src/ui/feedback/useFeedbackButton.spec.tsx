@@ -1,4 +1,4 @@
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { FeedbackService } from '@/application/feedback'
@@ -39,14 +39,17 @@ describe('feedback button', () => {
     renderRoute('/', { feedback, lang: 'fr' })
     await screen.findByRole('banner')
 
-    expect(feedback.mount).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        triggerLabel: 'Avis',
-        formTitle: 'Donner un avis',
-        submitButtonLabel: 'Envoyer'
-      }),
-      expect.any(String)
-    )
+    // The button is mounted by an effect, which may run after the shell shows.
+    await waitFor(() => {
+      expect(feedback.mount).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          triggerLabel: 'Avis',
+          formTitle: 'Donner un avis',
+          submitButtonLabel: 'Envoyer'
+        }),
+        expect.any(String)
+      )
+    })
 
     cleanup()
     expect(feedback.unmount).toHaveBeenCalled()
@@ -66,7 +69,9 @@ describe('feedback button', () => {
     const { unmount } = renderRoute('/spaces/a1/members', { feedback, spaces })
     await screen.findByRole('tab', { name: 'Members' })
 
-    expect(feedback.setSpaceTab).toHaveBeenCalledWith('members')
+    await waitFor(() => {
+      expect(feedback.setSpaceTab).toHaveBeenCalledWith('members')
+    })
 
     unmount()
     expect(feedback.setSpaceTab).toHaveBeenLastCalledWith(null)
