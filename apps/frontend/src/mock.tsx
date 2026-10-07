@@ -6,10 +6,12 @@ import { createRoot } from 'react-dom/client'
 import { memoryDirectory } from '@/adapters/memory/memoryDirectory'
 import { memoryFeed } from '@/adapters/memory/memoryFeed'
 import { memorySpaces } from '@/adapters/memory/memorySpaces'
+import { memoryTokens } from '@/adapters/memory/memoryTokens'
 import {
   seedFeed,
   seedOrganization,
   seedSpaces,
+  seedTokens,
   seedUser
 } from '@/adapters/memory/seed'
 import { App } from '@/app/App'
@@ -30,6 +32,7 @@ const session = {
 }
 const services = {
   spaces: memorySpaces(seedSpaces, seedOrganization),
+  tokens: memoryTokens(seedTokens, { organizationAdmin: true }),
   directory: memoryDirectory(seedOrganization),
   settings: { get: () => Promise.resolve(NO_SETTINGS) },
   live: { subscribe: () => () => undefined },

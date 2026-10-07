@@ -9,6 +9,7 @@ import type { LiveService } from '@/application/live'
 import type { SessionService } from '@/application/session'
 import type { SettingsService } from '@/application/settings'
 import type { SpacesService } from '@/application/spaces'
+import type { TokensService } from '@/application/tokens'
 import { AppProviders } from '@/app/AppProviders'
 import { makeQueryClient } from '@/app/queryClient'
 import { routes } from '@/app/routes'
@@ -18,6 +19,7 @@ import { fakeLive } from '@/testing/fakeLive'
 import { fakeSession } from '@/testing/fakeSession'
 import { fakeSettings } from '@/testing/fakeSettings'
 import { fakeSpaces } from '@/testing/fakeSpaces'
+import { fakeTokens } from '@/testing/fakeTokens'
 import type { SupportedLanguage } from '@/ui/i18n/languages'
 import { SessionGate } from '@/ui/session/SessionGate'
 import { FollowCommonSettings } from '@/ui/settings/FollowCommonSettings'
@@ -26,6 +28,7 @@ interface Options {
   lang?: SupportedLanguage
   session?: SessionService
   spaces?: SpacesService
+  tokens?: TokensService
   settings?: SettingsService
   directory?: DirectoryService
   live?: LiveService
@@ -44,6 +47,7 @@ function withProviders(
     lang = 'en',
     session = fakeSession(),
     spaces = fakeSpaces(),
+    tokens = fakeTokens(),
     settings = fakeSettings(),
     directory = fakeDirectory(),
     live = fakeLive(),
@@ -61,6 +65,7 @@ function withProviders(
       queryClient={makeQueryClient()}
       services={{
         spaces,
+        tokens,
         settings,
         directory,
         live,

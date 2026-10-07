@@ -9,6 +9,7 @@ import { httpDirectory } from '@/adapters/http/httpDirectory'
 import { httpFeed } from '@/adapters/http/httpFeed'
 import { httpSettings } from '@/adapters/http/httpSettings'
 import { httpSpaces } from '@/adapters/http/httpSpaces'
+import { httpTokens } from '@/adapters/http/httpTokens'
 import { liveStream } from '@/adapters/http/liveStream'
 import { oidcSession, readSsoConfig } from '@/adapters/oidc/oidcSession'
 import { readSentryConfig } from '@/adapters/sentry/sentryConfig'
@@ -26,6 +27,7 @@ const session = oidcSession(readSsoConfig(window, apiUrl))
 const api = backend(apiUrl)
 const services = {
   spaces: httpSpaces(api),
+  tokens: httpTokens(api),
   settings: httpSettings(api),
   directory: httpDirectory(api),
   live: liveStream(api),

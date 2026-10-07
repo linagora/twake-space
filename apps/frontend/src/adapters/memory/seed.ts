@@ -2,6 +2,7 @@ import type { MemoryOrganization } from '@/adapters/memory/memoryDirectory'
 import type { FeedItem } from '@/application/feed'
 import type { User } from '@/application/session'
 import type { Member, Space, SpaceApp, SpaceRole } from '@/application/spaces'
+import type { ApiToken, TokenOwner } from '@/application/tokens'
 
 // The same organization, people and roles as the local SSO stack, so moving
 // from the mock to the real backend changes nothing on screen.
@@ -228,4 +229,31 @@ function roadmapFeed(): FeedItem[] {
 export const seedFeed: Record<string, FeedItem[]> = {
   roadmap: roadmapFeed(),
   'design-sprint': []
+}
+
+export const seedTokens: Record<TokenOwner, ApiToken[]> = {
+  personal: [
+    {
+      id: 'token-alice-assistant',
+      name: 'My assistant',
+      scopes: ['space:read', 'feed:read'],
+      spaces: 'all',
+      role: null,
+      expiresAt: '2026-12-31T00:00:00.000Z',
+      lastUsedAt: '2026-10-06T16:20:00.000Z',
+      createdAt: '2026-10-01T09:00:00.000Z'
+    }
+  ],
+  organization: [
+    {
+      id: 'token-org-digest',
+      name: 'Weekly digest agent',
+      scopes: ['space:read', 'feed:read'],
+      spaces: ['roadmap', 'design-sprint'],
+      role: 'viewer',
+      expiresAt: null,
+      lastUsedAt: null,
+      createdAt: '2026-09-15T09:00:00.000Z'
+    }
+  ]
 }

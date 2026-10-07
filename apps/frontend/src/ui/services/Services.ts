@@ -6,9 +6,11 @@ import type { FeedService } from '@/application/feed'
 import type { LiveService } from '@/application/live'
 import type { SettingsService } from '@/application/settings'
 import type { SpacesService } from '@/application/spaces'
+import type { TokensService } from '@/application/tokens'
 
 export interface Services {
   spaces: SpacesService
+  tokens: TokensService
   settings: SettingsService
   directory: DirectoryService
   live: LiveService
