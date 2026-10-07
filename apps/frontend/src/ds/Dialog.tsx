@@ -50,6 +50,7 @@ export function DialogHeader({
         size="medium"
         aria-label={close.label}
         onClick={close.onClick}
+        sx={{ color: 'text.secondary' }}
       >
         <Icon icon={CrossMedium} />
       </IconButton>
