@@ -1,10 +1,8 @@
 import { TextField } from '@linagora/twake-mui'
 import type { ReactElement } from 'react'
 
-import type { SpaceRole } from '@/application/spaces'
+import { SPACE_ROLES, type SpaceRole } from '@/application/spaces'
 import { useI18n } from '@/ui/i18n/useI18n'
-
-const ROLES: SpaceRole[] = ['viewer', 'editor', 'admin']
 
 export function RoleSelect({
   label,
@@ -32,7 +30,7 @@ export function RoleSelect({
       }}
       {...(hiddenLabel ? {} : { label })}
     >
-      {ROLES.map(role => (
+      {SPACE_ROLES.map(role => (
         <option key={role} value={role}>
           {t(`roles.${role}`)}
         </option>
