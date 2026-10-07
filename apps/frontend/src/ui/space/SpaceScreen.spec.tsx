@@ -22,7 +22,7 @@ const roadmap: Space = {
   createdAt: new Date().toISOString(),
   color: null,
   description: 'Where the year is planned',
-  apps: ['feed', 'chat', 'tasks', 'drive', 'mail', 'calendar'],
+  apps: ['chat', 'tasks', 'drive', 'mail', 'calendar'],
   chat: false,
   mail: true,
   homeserverUrl: null,
@@ -139,13 +139,13 @@ describe('SpaceScreen', () => {
     ).toBeInTheDocument()
   })
 
-  it('opens on the first tab that is on', async () => {
+  it('opens on the feed, which every space has', async () => {
     renderAt('/spaces/a1', { ...roadmap, apps: ['chat', 'tasks'] })
 
     expect(
-      await screen.findByRole('tab', { name: 'Tasks', selected: true })
+      await screen.findByRole('tab', { name: 'Feed', selected: true })
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/tasks')
+    expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/feed')
   })
 
   it('turns Chat off without chat and says why', async () => {

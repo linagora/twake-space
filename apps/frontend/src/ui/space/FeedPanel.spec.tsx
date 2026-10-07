@@ -16,7 +16,7 @@ const roadmap: Space = {
   createdAt: '2026-10-01T08:00:00.000Z',
   color: null,
   description: '',
-  apps: ['feed', 'chat', 'tasks', 'mail', 'calendar'],
+  apps: ['chat', 'tasks', 'mail', 'calendar'],
   chat: true,
   mail: true,
   homeserverUrl: null,

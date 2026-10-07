@@ -82,7 +82,6 @@
     "appsHint": "Chọn các ứng dụng có trong không gian này.",
     "appsFailed": "Không thể tải các ứng dụng hiện có.",
     "app": {
-      "feed": "Bảng tin",
       "drive": "Tệp",
       "chat": "Trò chuyện",
       "tasks": "Công việc",

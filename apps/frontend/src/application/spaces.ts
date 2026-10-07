@@ -17,7 +17,7 @@ export interface SpaceSummary {
   members: MemberSummary[]
 }
 
-export type SpaceApp = 'feed' | 'chat' | 'tasks' | 'drive' | 'mail' | 'calendar'
+export type SpaceApp = 'chat' | 'tasks' | 'drive' | 'mail' | 'calendar'
 
 export interface NewSpace {
   name: string

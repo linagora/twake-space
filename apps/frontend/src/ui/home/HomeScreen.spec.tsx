@@ -141,7 +141,9 @@ describe('HomeScreen', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Apply' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Next' }))
 
-    expect(within(dialog).getByRole('checkbox', { name: 'Feed' })).toBeChecked()
+    expect(
+      within(dialog).getByRole('checkbox', { name: 'Files' })
+    ).toBeChecked()
     expect(
       within(dialog).getByRole('checkbox', { name: 'Calendar' })
     ).not.toBeChecked()
@@ -154,7 +156,7 @@ describe('HomeScreen', () => {
       name: 'Launch',
       description: 'Ship it',
       color: '#46a2ff',
-      apps: ['feed', 'drive', 'tasks', 'calendar']
+      apps: ['drive', 'tasks', 'calendar']
     })
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -177,7 +179,7 @@ describe('HomeScreen', () => {
       (await within(dialog).findAllByRole('checkbox')).map(
         box => box.closest('label')?.textContent
       )
-    ).toEqual(['Feed', 'Files', 'Chat', 'Tasks', 'Calendar', 'Mail'])
+    ).toEqual(['Files', 'Chat', 'Tasks', 'Calendar', 'Mail'])
     expect(
       within(dialog).queryByRole('button', { name: 'Add shortcut' })
     ).not.toBeInTheDocument()
