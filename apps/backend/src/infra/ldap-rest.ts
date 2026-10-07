@@ -36,6 +36,7 @@ export interface Directory {
   organizationOf(email: string): Promise<string | undefined>
   organization(orgId: string): Promise<Organization | undefined>
   isTechnicalAccount(orgId: string, accountId: string): Promise<boolean>
+  isMember(orgId: string, accountId: string): Promise<boolean>
   organizationRole(
     orgId: string,
     accountId: string
@@ -208,6 +209,12 @@ export function ldapRestDirectory(
         client.organizations.getUser(orgId, { by: 'id', value: accountId })
       )
       return user?.isTechnical === true && user.isDeleted !== true
+    },
+    async isMember(orgId, accountId) {
+      const user = await notFoundAsUndefined(
+        client.organizations.getUser(orgId, { by: 'id', value: accountId })
+      )
+      return user !== undefined && user.isDeleted !== true
     },
     async organizationRole(orgId, accountId) {
       const user = await notFoundAsUndefined(

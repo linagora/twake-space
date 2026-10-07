@@ -50,28 +50,27 @@ async function aToken(
   }
 }
 
-const member = () =>
-  Promise.resolve({ email: 'alice@example.com', role: 'member' as const })
+const member = () => Promise.resolve(true)
 
 const authenticate = (token: string) =>
   apiTokenAuthenticator(testDb.db, {
     isTechnicalAccount: () => Promise.reject(new Error('not technical')),
-    organizationRole: member
+    isMember: member
   })(token)
 
 describe('accounts', () => {
   it('refuses the token once the account leaves the organization, checking every 5 minutes', async () => {
     await aToken('tws_alice')
-    const organizationRole = vi
-      .fn<Directory['organizationRole']>()
-      .mockImplementationOnce(member)
-      .mockResolvedValue(undefined)
+    const isMember = vi
+      .fn<Directory['isMember']>()
+      .mockResolvedValueOnce(true)
+      .mockResolvedValue(false)
     let now = 0
     const check = apiTokenAuthenticator(
       testDb.db,
       {
         isTechnicalAccount: () => Promise.reject(new Error('not technical')),
-        organizationRole
+        isMember
       },
       () => now
     )
@@ -85,8 +84,8 @@ describe('accounts', () => {
     expect(first).toMatchObject({ userId: ALICE })
     expect(cached).toMatchObject({ userId: ALICE })
     expect(gone).toBeNull()
-    expect(organizationRole).toHaveBeenCalledTimes(2)
-    expect(organizationRole).toHaveBeenCalledWith('org-1', ALICE)
+    expect(isMember).toHaveBeenCalledTimes(2)
+    expect(isMember).toHaveBeenCalledWith('org-1', ALICE)
   })
 })
 
@@ -100,7 +99,7 @@ describe('technical accounts', () => {
     let now = 0
     const check = apiTokenAuthenticator(
       testDb.db,
-      { isTechnicalAccount, organizationRole: member },
+      { isTechnicalAccount, isMember: member },
       () => now
     )
 

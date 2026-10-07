@@ -171,6 +171,22 @@ describe('ldapRestDirectory', () => {
     })
   })
 
+  it('knows a live member of the organization, with or without a role', async () => {
+    const { directory, organizations } = setup()
+    organizations.getUser
+      .mockResolvedValueOnce(user)
+      .mockResolvedValueOnce({ ...user, isDeleted: true })
+      .mockRejectedValueOnce(new NotFoundError('user not found'))
+
+    const answers = [
+      await directory.isMember('org_acme', '3f2a'),
+      await directory.isMember('org_acme', '3f2a'),
+      await directory.isMember('org_acme', '3f2a')
+    ]
+
+    expect(answers).toEqual([true, false, false])
+  })
+
   it("reads a live member's role in the organization", async () => {
     const { directory, organizations } = setup()
     organizations.getUser

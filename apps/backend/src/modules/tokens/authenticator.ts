@@ -28,13 +28,14 @@ export interface TokenCaller {
 
 export function apiTokenAuthenticator(
   db: Db,
-  directory: Pick<Directory, 'isTechnicalAccount' | 'organizationRole'>,
+  directory: Pick<Directory, 'isTechnicalAccount' | 'isMember'>,
   now: () => number = Date.now
 ) {
-  const checked = new Map<string, { exists: boolean; until: number }>()
+  // Promises, so concurrent requests of one account share one ldap-rest call.
+  const checked = new Map<string, { exists: Promise<boolean>; until: number }>()
   // No event covers every way out of an organization (a technical account
   // sends none at all), so an account token re-checks its account.
-  async function stillInOrganization(
+  function stillInOrganization(
     organizationId: string,
     accountId: string,
     technical: boolean
@@ -43,10 +44,13 @@ export function apiTokenAuthenticator(
     const cached = checked.get(key)
     if (cached && cached.until > now()) return cached.exists
     const exists = technical
-      ? await directory.isTechnicalAccount(organizationId, accountId)
-      : (await directory.organizationRole(organizationId, accountId)) !==
-        undefined
-    checked.set(key, { exists, until: now() + ACCOUNT_CHECK_TTL_MS })
+      ? directory.isTechnicalAccount(organizationId, accountId)
+      : directory.isMember(organizationId, accountId)
+    const entry = { exists, until: now() + ACCOUNT_CHECK_TTL_MS }
+    checked.set(key, entry)
+    exists.catch(() => {
+      if (checked.get(key) === entry) checked.delete(key)
+    })
     return exists
   }
 
@@ -72,6 +76,17 @@ export function apiTokenAuthenticator(
         )
       )
     if (!row) return null
+    const { allSpaces, ...caller } = row
+    if (
+      caller.userId &&
+      !(await stillInOrganization(
+        caller.organizationId,
+        caller.userId,
+        caller.technical
+      ))
+    ) {
+      return null
+    }
     // A busy token would otherwise rewrite its row on every request.
     await db
       .update(apiTokens)
@@ -85,17 +100,6 @@ export function apiTokenAuthenticator(
           )
         )
       )
-    const { allSpaces, ...caller } = row
-    if (
-      caller.userId &&
-      !(await stillInOrganization(
-        caller.organizationId,
-        caller.userId,
-        caller.technical
-      ))
-    ) {
-      return null
-    }
     const spaceIds = allSpaces
       ? null
       : (
