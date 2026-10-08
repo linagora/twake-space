@@ -212,7 +212,7 @@ export function SpaceHeader({
   actions?: ReactNode
 }): ReactElement {
   return (
-    <Box sx={{ mb: 2 }}>
+    <Box>
       <Box
         sx={{
           display: 'flex',

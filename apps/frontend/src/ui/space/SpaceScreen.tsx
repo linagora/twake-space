@@ -260,12 +260,12 @@ export function SpaceScreen(): ReactElement {
         />
       )}
       {!filled && !space.data.chat && (
-        <Alert severity="info" className="u-mb-1">
+        <Alert severity="info" className="u-mt-1 u-mb-1">
           {t('space.chatOff')}
         </Alert>
       )}
       {!filled && !space.data.mail && (
-        <Alert severity="info" className="u-mb-1">
+        <Alert severity="info" className="u-mt-1 u-mb-1">
           {t('space.mailOff')}
         </Alert>
       )}
@@ -273,11 +273,14 @@ export function SpaceScreen(): ReactElement {
       {!framed && (
         <TabPanel tab={current.tab} label={filled ? label : undefined}>
           {current.state === 'preparing' && (
-            <Typography>{t('space.preparing', { app: label })}</Typography>
+            <Typography className="u-mt-1">
+              {t('space.preparing', { app: label })}
+            </Typography>
           )}
           {current.state === 'stalled' && (
             <Alert
               severity="warning"
+              className="u-mt-1"
               action={
                 <Button
                   size="small"
@@ -300,7 +303,9 @@ export function SpaceScreen(): ReactElement {
             <FeedPanel key={spaceId} space={space.data} />
           )}
           {embedded && embeddedUrl === null && (
-            <Typography>{t(`${embedded.app}.notSetUp`)}</Typography>
+            <Typography className="u-mt-1">
+              {t(`${embedded.app}.notSetUp`)}
+            </Typography>
           )}
         </TabPanel>
       )}
