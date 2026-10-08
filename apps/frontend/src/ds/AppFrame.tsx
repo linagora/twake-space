@@ -55,6 +55,27 @@ const GlassSidebar = styled(Sidebar)(({ theme }) => ({
   }
 }))
 
+// A panel beside the content, on wide screens; below lg it takes the screen.
+const Aside = styled('aside')(({ theme }) => ({
+  flex: 'none',
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: 0,
+  width: 365,
+  margin: '12px 12px 12px 0',
+  borderRadius: '16px',
+  overflow: 'hidden',
+  backgroundColor: theme.vars.palette.background.paper,
+  [theme.breakpoints.down('lg')]: {
+    position: 'fixed',
+    inset: 0,
+    width: 'auto',
+    margin: 0,
+    borderRadius: 0,
+    zIndex: theme.zIndex.modal
+  }
+}))
+
 const TopBar = styled('div')({
   position: 'sticky',
   top: 0,
@@ -62,18 +83,21 @@ const TopBar = styled('div')({
 })
 
 // `bare` swaps the content's white panel for the dashboard's frosted one,
-// which continues the sidebar.
+// which continues the sidebar. `aside` is a panel beside the content.
 export function AppFrame({
   topBar,
   sidebar,
   bare = false,
+  aside,
   children
 }: {
   topBar?: ReactNode
   sidebar: ReactNode
   bare?: boolean
+  aside?: ReactNode
   children: ReactNode
 }): ReactElement {
+  const margin = aside ? '12px 8px 12px 0' : '12px 12px 12px 0'
   return (
     <>
       {topBar && <TopBar>{topBar}</TopBar>}
@@ -87,18 +111,19 @@ export function AppFrame({
             position: 'relative',
             [theme.breakpoints.up('lg')]: bare
               ? {
-                  m: '12px 12px 12px 0',
+                  m: margin,
                   borderRadius: '0 16px 16px 0',
                   bgcolor: theme.alpha(
                     theme.vars.palette.background.paper,
                     0.45
                   )
                 }
-              : { m: '12px 12px 12px 0', borderRadius: '0 16px 16px 0' }
+              : { m: margin, borderRadius: '0 16px 16px 0' }
           })}
         >
           {children}
         </Content>
+        {aside && <Aside>{aside}</Aside>}
       </Frame>
     </>
   )

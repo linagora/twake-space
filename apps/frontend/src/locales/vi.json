@@ -394,5 +394,16 @@
     "maximize": "Phóng to",
     "restore": "Khôi phục",
     "leave": "Rời cuộc họp"
+  },
+  "assistant": {
+    "title": "Hỏi Twake AI",
+    "open": "Trợ lý Twake AI",
+    "close": "Đóng trợ lý",
+    "newConversation": "Cuộc trò chuyện mới",
+    "loading": "Đang mở trợ lý…",
+    "notSetUp": "Trợ lý chưa được thiết lập cho TwakeSpace.",
+    "failed": "Không thể mở trợ lý.",
+    "post": "Đăng lên bảng tin",
+    "postFailed": "Không thể đăng câu trả lời."
   }
 }

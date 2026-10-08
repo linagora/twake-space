@@ -57,6 +57,9 @@ describe('SpaceActions', () => {
       await screen.findByRole('button', { name: 'Share link' })
     ).toBeInTheDocument()
     expect(
+      screen.getByRole('button', { name: 'Twake AI assistant' })
+    ).toHaveAttribute('aria-pressed', 'false')
+    expect(
       screen.queryByRole('button', { name: 'Invite people' })
     ).not.toBeInTheDocument()
     const menu = await openMenu()

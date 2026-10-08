@@ -394,5 +394,16 @@
     "maximize": "Maximieren",
     "restore": "Wiederherstellen",
     "leave": "Besprechung verlassen"
+  },
+  "assistant": {
+    "title": "Twake AI fragen",
+    "open": "Twake AI Assistent",
+    "close": "Assistenten schließen",
+    "newConversation": "Neue Unterhaltung",
+    "loading": "Assistent wird geöffnet…",
+    "notSetUp": "Der Assistent ist für TwakeSpace nicht eingerichtet.",
+    "failed": "Der Assistent konnte nicht geöffnet werden.",
+    "post": "Im Feed veröffentlichen",
+    "postFailed": "Die Antwort konnte nicht veröffentlicht werden."
   }
 }
