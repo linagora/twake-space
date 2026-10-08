@@ -1,4 +1,12 @@
-import { Dots, Icon, Link, People, Pen, Trash } from '@linagora/twake-icons'
+import {
+  Dots,
+  Icon,
+  Link,
+  People,
+  Pen,
+  Settings,
+  Trash
+} from '@linagora/twake-icons'
 import {
   Alert,
   Button,
@@ -88,6 +96,7 @@ export function SpaceMenu({
   space: Pick<SpaceSummary, 'id' | 'name' | 'role'>
 }): ReactElement {
   const { t } = useI18n()
+  const navigate = useNavigate()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [dialog, setDialog] = useState<'people' | 'edit' | 'delete' | null>(
     null
@@ -146,6 +155,11 @@ export function SpaceMenu({
           open('people')
         )}
         {isAdmin && item('edit', Pen, t('spaceActions.edit'), open('edit'))}
+        {isAdmin &&
+          item('manage', Settings, t('spaceMenu.manage'), () => {
+            close()
+            void navigate(`/spaces/${encodeURIComponent(space.id)}/settings`)
+          })}
         {isAdmin && <Divider />}
         {isAdmin &&
           item('delete', Trash, t('spaceActions.delete'), open('delete'), true)}
@@ -187,7 +201,7 @@ function WithSpace({
   return children(space.data)
 }
 
-function EditDialog({
+export function EditDialog({
   space,
   onClose
 }: {

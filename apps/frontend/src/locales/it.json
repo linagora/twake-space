@@ -53,7 +53,8 @@
     "linkCopied": "Link copiato",
     "invite": "Invita persone",
     "managePeople": "Gestisci le persone",
-    "members": "Membri"
+    "members": "Membri",
+    "manage": "Gestisci lo spazio"
   },
   "roles": {
     "viewer": "Lettore",
@@ -133,6 +134,31 @@
     "preparing": "%{app} è in preparazione per questo spazio.",
     "stalled": "%{app} non è ancora pronto. Riprova più tardi e avvisa l'amministratore se resta così.",
     "checkAgain": "Controlla di nuovo"
+  },
+  "settings": {
+    "adminsOnly": "Solo gli amministratori di uno spazio lo gestiscono.",
+    "edit": "Modifica",
+    "personalization": "Personalizzazione",
+    "description": "Descrizione",
+    "descriptionHint": "Descrivi a cosa serve questo spazio",
+    "members": "Membri",
+    "membersHint": "Gestisci chi ha accesso a questo spazio",
+    "addMembers": "Aggiungi membri",
+    "all": "Tutti",
+    "you": "Tu",
+    "noOne": "Nessuno ha questo ruolo.",
+    "apps": "App dello spazio",
+    "appsCount": "%{on} su %{total} attive",
+    "appHint": {
+      "feed": "Annunci e novità",
+      "chat": "Conversazioni in tempo reale",
+      "tasks": "Bacheche e attività",
+      "drive": "Unità condivisa dello spazio",
+      "mail": "Casella di posta dello spazio",
+      "calendar": "Calendario ed eventi condivisi"
+    },
+    "dangerZone": "Zona pericolosa",
+    "deleteHint": "Elimina definitivamente tutte le chat, i file e le attività"
   },
   "tasks": {
     "notSetUp": "Attività non è configurato per TwakeSpace."

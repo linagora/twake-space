@@ -53,7 +53,8 @@
     "linkCopied": "Đã sao chép liên kết",
     "invite": "Mời mọi người",
     "managePeople": "Quản lý thành viên",
-    "members": "Thành viên"
+    "members": "Thành viên",
+    "manage": "Quản lý không gian"
   },
   "roles": {
     "viewer": "Người xem",
@@ -133,6 +134,31 @@
     "preparing": "%{app} đang được chuẩn bị cho không gian này.",
     "stalled": "%{app} chưa sẵn sàng. Hãy thử lại sau và báo cho quản trị viên nếu tình trạng này vẫn tiếp diễn.",
     "checkAgain": "Kiểm tra lại"
+  },
+  "settings": {
+    "adminsOnly": "Chỉ quản trị viên của không gian mới quản lý được nó.",
+    "edit": "Chỉnh sửa",
+    "personalization": "Cá nhân hóa",
+    "description": "Mô tả",
+    "descriptionHint": "Mô tả mục đích của không gian này",
+    "members": "Thành viên",
+    "membersHint": "Quản lý ai có quyền truy cập không gian này",
+    "addMembers": "Thêm thành viên",
+    "all": "Tất cả",
+    "you": "Bạn",
+    "noOne": "Không ai có vai trò này.",
+    "apps": "Ứng dụng của không gian",
+    "appsCount": "Đã bật %{on} trên %{total}",
+    "appHint": {
+      "feed": "Thông báo và cập nhật",
+      "chat": "Trò chuyện theo thời gian thực",
+      "tasks": "Bảng và việc cần làm",
+      "drive": "Ổ đĩa dùng chung của không gian",
+      "mail": "Hộp thư của không gian",
+      "calendar": "Lịch và sự kiện dùng chung"
+    },
+    "dangerZone": "Vùng nguy hiểm",
+    "deleteHint": "Xóa vĩnh viễn mọi cuộc trò chuyện, tệp và công việc"
   },
   "tasks": {
     "notSetUp": "Công việc chưa được thiết lập cho TwakeSpace."

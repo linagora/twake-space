@@ -6,7 +6,7 @@ import type { SpaceApp } from '@/application/spaces'
 import tasksTile from '@/assets/tasks.svg'
 import { useI18n } from '@/ui/i18n/useI18n'
 
-const APP_ICONS: Record<SpaceApp, ReactElement> = {
+export const APP_ICONS: Record<SpaceApp, ReactElement> = {
   drive: <Icon icon={Drive} size={24} />,
   chat: <Icon icon={Chat} size={24} />,
   tasks: <img src={tasksTile} alt="" width={24} height={24} />,

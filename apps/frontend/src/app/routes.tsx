@@ -4,6 +4,7 @@ import { HomeScreen } from '@/ui/home/HomeScreen'
 import { AppShell } from '@/ui/shell/AppShell'
 import { ErrorScreen } from '@/ui/shell/ErrorScreen'
 import { SpaceScreen } from '@/ui/space/SpaceScreen'
+import { SpaceSettingsScreen } from '@/ui/space/SpaceSettingsScreen'
 import { ApiTokensScreen } from '@/ui/tokens/ApiTokensScreen'
 
 export const routes: RouteObject[] = [
@@ -16,6 +17,10 @@ export const routes: RouteObject[] = [
         errorElement: <ErrorScreen />,
         children: [
           { path: '/', element: <HomeScreen /> },
+          {
+            path: '/spaces/:spaceId/settings',
+            element: <SpaceSettingsScreen />
+          },
           { path: '/spaces/:spaceId/:tab?/*', element: <SpaceScreen /> },
           {
             path: '/settings/api-tokens/:owner?',

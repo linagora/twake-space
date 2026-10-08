@@ -105,7 +105,13 @@ describe('SpaceActions', () => {
 
     const menu = await openMenu()
     expect(menu.getAllByRole('menuitem').map(item => item.textContent)).toEqual(
-      ['Share link', 'Manage people', 'Edit space', 'Delete space']
+      [
+        'Share link',
+        'Manage people',
+        'Edit space',
+        'Manage space',
+        'Delete space'
+      ]
     )
     fireEvent.click(menu.getByRole('menuitem', { name: 'Edit space' }))
     const dialog = await screen.findByRole('dialog', { name: 'Edit space' })
