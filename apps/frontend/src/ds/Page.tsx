@@ -1,5 +1,6 @@
 import {
   Box,
+  Collapse,
   Divider,
   Empty,
   ListSkeleton,
@@ -8,6 +9,8 @@ import {
   type EmptyProps
 } from '@linagora/twake-mui'
 import type { ReactElement, ReactNode } from 'react'
+
+import coverArt from '@/assets/space-cover.png'
 
 // `fill` off leaves the rest of the content to what follows the page: the
 // frame of an embedded app, under the tabs.
@@ -65,15 +68,52 @@ export function SpaceHeader({
   avatar,
   title,
   tabs,
-  actions
+  actions,
+  cover
 }: {
   avatar: ReactNode
   title: ReactNode
   tabs: ReactNode
   actions?: ReactNode
+  cover: boolean
 }): ReactElement {
   return (
     <Box sx={{ mb: 2 }}>
+      <Collapse
+        in={cover}
+        unmountOnExit
+        sx={{
+          '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+          // A short screen needs all its height for the feed itself.
+          '@media (max-height: 500px)': { display: 'none' }
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            overflow: 'hidden',
+            height: { xs: 120, md: 211 },
+            borderRadius: '8px',
+            bgcolor: 'primary.dark',
+            containerType: 'size'
+          }}
+        >
+          {/* The artwork is portrait; turned, it spans the banner's width. */}
+          <Box
+            component="img"
+            src={coverArt}
+            alt=""
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              height: '100cqw',
+              maxWidth: 'none',
+              transform: 'translate(-50%, -50%) rotate(-90deg)'
+            }}
+          />
+        </Box>
+      </Collapse>
       <Box
         sx={{
           display: 'flex',

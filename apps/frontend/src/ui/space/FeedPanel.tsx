@@ -72,7 +72,13 @@ const FILTERS: FeedFilter[] = ['all', ...FEED_CATEGORIES]
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '👀', '🙏']
 
-export function FeedPanel({ space }: { space: Space }): ReactElement {
+export function FeedPanel({
+  space,
+  onScrolledAway
+}: {
+  space: Space
+  onScrolledAway?: () => void
+}): ReactElement {
   const { t } = useI18n()
   const [filter, setFilter] = useState<FeedFilter>('all')
   const feed = useFeed(space.id, filter)
@@ -86,6 +92,7 @@ export function FeedPanel({ space }: { space: Space }): ReactElement {
     <FeedLayout
       toolbar={<FilterMenu filter={filter} onChange={setFilter} />}
       composer={space.role !== 'viewer' && <Composer space={space} />}
+      onScrolledAway={onScrolledAway}
     >
       {feed.isPending && <LoadingRows count={3} label={t('feed.loading')} />}
       {feed.isError && !feed.isFetchNextPageError && (

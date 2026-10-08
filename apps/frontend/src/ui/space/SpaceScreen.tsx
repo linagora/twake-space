@@ -59,6 +59,8 @@ export function SpaceScreen(): ReactElement {
       ? tab
       : null
   useSpaceTabTag(readyTab)
+  // Once the feed scrolls, the cover stays folded until another space opens.
+  const [foldedIn, setFoldedIn] = useState<string | null>(null)
 
   if (space.isPending) {
     return (
@@ -108,6 +110,7 @@ export function SpaceScreen(): ReactElement {
         }
         title={space.data.name}
         actions={<SpaceActions space={space.data} />}
+        cover={current.tab === 'feed' && foldedIn !== spaceId}
         tabs={
           <Tabs
             narrowed
@@ -177,7 +180,14 @@ export function SpaceScreen(): ReactElement {
               {t('space.stalled', { app: label })}
             </Alert>
           )}
-          {current.tab === 'feed' && <FeedPanel space={space.data} />}
+          {current.tab === 'feed' && (
+            <FeedPanel
+              space={space.data}
+              onScrolledAway={() => {
+                setFoldedIn(spaceId)
+              }}
+            />
+          )}
           {embedded && embeddedUrl === null && (
             <Typography>{t(`${embedded.app}.notSetUp`)}</Typography>
           )}
