@@ -50,18 +50,22 @@ export function PageSearch({
   return <Box sx={{ maxWidth: 834, mb: 2 }}>{children}</Box>
 }
 
+// `label` names the panel when its tab is not shown, on a page given to it
 export function TabPanel({
   tab,
+  label,
   children
 }: {
   tab: string
+  label?: string | undefined
   children: ReactNode
 }): ReactElement {
   return (
     <Box
       role="tabpanel"
       id={`panel-${tab}`}
-      aria-labelledby={`tab-${tab}`}
+      aria-label={label}
+      aria-labelledby={label === undefined ? `tab-${tab}` : undefined}
       sx={{
         position: 'relative',
         display: 'flex',

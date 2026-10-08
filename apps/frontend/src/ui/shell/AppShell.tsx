@@ -32,6 +32,7 @@ import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
 import { PlatformBar } from '@/ui/shell/PlatformBar'
 import { useBadges } from '@/ui/space/Badges'
 import { EmbeddedApps } from '@/ui/space/EmbeddedApps'
+import { useFillPage } from '@/ui/space/FillPage'
 import { useSpaceList, useSpaces } from '@/ui/spaces/queries'
 
 export function AppShell(): ReactElement {
@@ -44,12 +45,15 @@ export function AppShell(): ReactElement {
   // from one space to the next.
   const [assistantOpen, setAssistantOpen] = useState(false)
   const spaceId = useMatch('/spaces/:spaceId/*')?.params.spaceId
+  // A space's content may take the whole page, the platform bar's too
+  const alone = useFillPage().space !== null
 
   return (
     <CallProvider>
       <AppFrame
         topBar={<PlatformBar />}
         bare={home}
+        alone={alone}
         aside={
           assistantOpen &&
           spaceId !== undefined && (

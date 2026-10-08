@@ -141,7 +141,9 @@
     "mailOff": "Thư đang tắt: tên miền thư của tổ chức bạn chưa được xác thực.",
     "preparing": "%{app} đang được chuẩn bị cho không gian này.",
     "stalled": "%{app} chưa sẵn sàng. Hãy thử lại sau và báo cho quản trị viên nếu tình trạng này vẫn tiếp diễn.",
-    "checkAgain": "Kiểm tra lại"
+    "checkAgain": "Kiểm tra lại",
+    "fullPage": "Toàn trang",
+    "leaveFullPage": "Thoát chế độ toàn trang"
   },
   "settings": {
     "adminsOnly": "Chỉ quản trị viên của không gian mới quản lý được nó.",

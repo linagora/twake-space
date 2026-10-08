@@ -141,7 +141,9 @@
     "mailOff": "Correo está desactivado: el dominio de correo de tu organización aún no está validado.",
     "preparing": "%{app} se está preparando para este espacio.",
     "stalled": "%{app} aún no está listo. Vuelve a intentarlo más tarde y avisa a tu administrador si sigue así.",
-    "checkAgain": "Comprobar de nuevo"
+    "checkAgain": "Comprobar de nuevo",
+    "fullPage": "Página completa",
+    "leaveFullPage": "Salir de la página completa"
   },
   "settings": {
     "adminsOnly": "Solo los administradores de un espacio lo gestionan.",

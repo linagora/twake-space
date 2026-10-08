@@ -1,0 +1,219 @@
+import type { TwakeBarProps } from '@linagora/twake-bar'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { describe, expect, it, vi } from 'vitest'
+
+import type { Space } from '@/application/spaces'
+import { fakeSession, fakeUser } from '@/testing/fakeSession'
+import { fakeSpaces } from '@/testing/fakeSpaces'
+import { renderRoute } from '@/testing/renderWithProviders'
+
+vi.mock('@linagora/twake-sdk', () => ({
+  createSdk: () => ({ status: 'ready' })
+}))
+
+// The bar is tested in its own package: only whether it shows matters here
+vi.mock('@linagora/twake-bar', () => ({
+  TWAKE_BAR_HEIGHT: '3rem',
+  SdkProvider: ({ children }: { children: ReactNode }): ReactNode => children,
+  TwakeBar: ({ app }: TwakeBarProps): ReactElement => (
+    <header role="banner">{app.name}</header>
+  )
+}))
+
+const detail = (id: string, name: string): Space => ({
+  id,
+  name,
+  role: 'admin',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  color: null,
+  description: '',
+  apps: ['chat', 'tasks', 'mail'],
+  chat: true,
+  mail: true,
+  homeserverUrl: 'https://matrix.acme.test',
+  members: [],
+  groups: [],
+  resources: [
+    { kind: 'matrix_space', id: `!${id}:acme` },
+    { kind: 'project', id: `project-${id}` },
+    { kind: 'mailbox', id: `${id}@acme` }
+  ]
+})
+
+function renderAt(path: string) {
+  const spaces = fakeSpaces([
+    {
+      id: 'space-1',
+      name: 'Design',
+      role: 'admin',
+      color: null,
+      description: '',
+      members: []
+    },
+    {
+      id: 'space-2',
+      name: 'Launch',
+      role: 'admin',
+      color: null,
+      description: '',
+      members: []
+    }
+  ])
+  vi.mocked(spaces.get).mockImplementation(id =>
+    Promise.resolve(
+      id === 'space-1' ? detail('space-1', 'Design') : detail(id, 'Launch')
+    )
+  )
+  const session = fakeSession(() => Promise.resolve(fakeUser('id-token')))
+  return renderRoute(path, { session, spaces })
+}
+
+function frame(title: string): HTMLIFrameElement {
+  const element = screen.getByTitle(title)
+  if (!(element instanceof HTMLIFrameElement)) throw new Error('no frame')
+  return element
+}
+
+const fillButton = () => screen.getByRole('button', { name: 'Full page' })
+const leaveButton = () =>
+  screen.getByRole('button', { name: 'Leave full page' })
+
+// Inert itself or under an inert element
+function isInert(element: HTMLElement): boolean {
+  for (let node: HTMLElement | null = element; node; node = node.parentElement)
+    if (node.inert) return true
+  return false
+}
+
+function expectChrome(shown: boolean) {
+  const chrome = [
+    screen.queryByRole('banner'),
+    screen.queryByRole('list', { name: 'Your spaces' }),
+    screen.queryByRole('tablist')
+  ]
+  for (const element of chrome) {
+    if (shown) expect(element).toBeInTheDocument()
+    else expect(element).toBe(null)
+  }
+}
+
+describe('full page', () => {
+  it("gives the whole page to the tab's app, without loading its frame again", async () => {
+    renderAt('/spaces/space-1/tasks')
+    await screen.findByTitle('Tasks')
+    const tasks = frame('Tasks')
+    const loads = vi.fn()
+    tasks.addEventListener('load', loads)
+
+    fireEvent.click(fillButton())
+
+    expectChrome(false)
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Design' })
+    ).toBeInTheDocument()
+    expect(screen.getByText('Tasks')).toBeInTheDocument()
+    expect(frame('Tasks')).toBe(tasks)
+    // The frames take the page to its edges, their panel named without its tab
+    expect(
+      getComputedStyle(screen.getByRole('tabpanel', { name: 'Tasks' }))
+        .paddingLeft
+    ).toBe('0px')
+
+    fireEvent.click(leaveButton())
+
+    expectChrome(true)
+    expect(frame('Tasks')).toBe(tasks)
+    expect(loads).not.toHaveBeenCalled()
+  })
+
+  it('moves the focus onto the way back, and back onto the button', async () => {
+    renderAt('/spaces/space-1/tasks')
+    await screen.findByTitle('Tasks')
+
+    fireEvent.click(fillButton())
+    await waitFor(() => {
+      expect(leaveButton()).toHaveFocus()
+    })
+
+    fireEvent.click(leaveButton())
+    await waitFor(() => {
+      expect(fillButton()).toHaveFocus()
+    })
+  })
+
+  it('gives the page back on Escape from TwakeSpace', async () => {
+    renderAt('/spaces/space-1/tasks')
+    await screen.findByTitle('Tasks')
+    fireEvent.click(fillButton())
+
+    fireEvent.keyDown(leaveButton(), { key: 'Escape' })
+
+    expectChrome(true)
+    await waitFor(() => {
+      expect(fillButton()).toHaveFocus()
+    })
+  })
+
+  it('gives the page to a tab of TwakeSpace too, keeping its panel', async () => {
+    renderAt('/spaces/space-1/feed')
+    const panel = await screen.findByRole('tabpanel')
+
+    fireEvent.click(fillButton())
+
+    expectChrome(false)
+    expect(screen.getByRole('tabpanel', { name: 'Feed' })).toBe(panel)
+  })
+
+  it('lets an app cover the page over it, and keeps it once the app is done', async () => {
+    renderAt('/spaces/space-1/chat')
+    await screen.findByTitle('Chat')
+    const chat = frame('Chat')
+    fireEvent.click(fillButton())
+    const post = (fill: boolean) => {
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            data: { type: 'twake-embed:fill-page', fill },
+            origin: 'https://chat.test',
+            source: chat.contentWindow
+          })
+        )
+      })
+    }
+
+    await waitFor(() => {
+      post(true)
+      expect(getComputedStyle(chat).position).toBe('fixed')
+    })
+    // The app's own way back is the only one while it covers the page
+    expect(isInert(leaveButton())).toBe(true)
+
+    post(false)
+
+    expect(getComputedStyle(chat).position).not.toBe('fixed')
+    expect(isInert(leaveButton())).toBe(false)
+    expectChrome(false)
+  })
+
+  it('gives the page back when another space opens, or the space settings', async () => {
+    const { router } = renderAt('/spaces/space-1/tasks')
+    await screen.findByTitle('Tasks')
+    fireEvent.click(fillButton())
+
+    await act(() => router.navigate('/spaces/space-2/tasks'))
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Launch' })
+    ).toBeInTheDocument()
+    expectChrome(true)
+
+    fireEvent.click(fillButton())
+    await act(() => router.navigate('/spaces/space-2/settings'))
+
+    expect(screen.queryByRole('button', { name: 'Leave full page' })).toBe(null)
+    expect(
+      screen.getByRole('list', { name: 'Your spaces' })
+    ).toBeInTheDocument()
+  })
+})

@@ -32,6 +32,7 @@ import { KeptAlive, KeptAliveStack } from '@/ds/KeptAlive'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useBadgeActions } from '@/ui/space/Badges'
 import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
+import { useFillPage } from '@/ui/space/FillPage'
 import { useAppUrls } from '@/ui/space/useAppUrls'
 import { useSpace } from '@/ui/spaces/queries'
 
@@ -53,6 +54,7 @@ export function EmbeddedApps(): ReactElement | null {
   const popped = useNavigationType() === NavigationType.Pop
   const navigate = useNavigate()
   const badges = useBadgeActions()
+  const filled = useFillPage().space !== null
   const match = matchPath(SPACE_ROUTE, location.pathname)
   const spaceId = match?.params.spaceId ?? ''
   const space = useSpace(spaceId)
@@ -280,9 +282,12 @@ export function EmbeddedApps(): ReactElement | null {
   return (
     <KeptAliveStack
       active={shown !== null}
+      flush={filled}
       role="tabpanel"
       id={shown ? `panel-${shown.app}` : undefined}
-      aria-labelledby={shown ? `tab-${shown.app}` : undefined}
+      // Without its tab, on a page given to it, the panel names itself
+      aria-label={shown && filled ? t(`tabs.${shown.app}`) : undefined}
+      aria-labelledby={shown && !filled ? `tab-${shown.app}` : undefined}
     >
       {mounted.map(app => {
         const frame = frames[app]
