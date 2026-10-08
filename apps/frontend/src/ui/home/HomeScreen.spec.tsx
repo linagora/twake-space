@@ -29,6 +29,19 @@ describe('HomeScreen', () => {
     })
   })
 
+  it('keeps saying good evening past midnight', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 8, 30, 0, 49))
+    renderWithProviders(<HomeScreen />)
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Good evening, Alice'
+      })
+    ).toBeInTheDocument()
+  })
+
   it('greets and dates in the timezone set in Twake Workplace', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-09-29T23:30:00Z'))

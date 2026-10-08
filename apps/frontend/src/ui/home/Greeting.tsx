@@ -8,9 +8,9 @@ import { useCommonSettings } from '@/ui/settings/useCommonSettings'
 import { CalendarIcon } from '@/ds/icons'
 
 function greetingKey(hour: number): 'morning' | 'afternoon' | 'evening' {
+  if (hour < 5 || hour >= 18) return 'evening'
   if (hour < 12) return 'morning'
-  if (hour < 18) return 'afternoon'
-  return 'evening'
+  return 'afternoon'
 }
 
 export function useGreeting(): { date: string; greeting: string } {
