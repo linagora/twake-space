@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db, Tx } from '../../infra/db.ts'
@@ -17,7 +17,8 @@ import {
   feedCards,
   feedCategory,
   feedItemReactions,
-  feedPosts
+  feedPosts,
+  feedReads
 } from './schema.ts'
 
 const feedQuery = z.object({
@@ -45,6 +46,7 @@ const reactionParams = itemParams.extend({
 })
 
 const postBody = z.object({ body: z.string().trim().min(1).max(4000) })
+const readBody = z.object({ readAt: z.iso.datetime({ offset: true }) })
 
 class Refusal extends Error {
   readonly status: number
@@ -164,6 +166,51 @@ export function registerFeedRoutes(
         const item = await findItem(db, spaceId, itemOf(request))
         if (!item) throw new Refusal(404, 'not_found')
         return serialize(item)
+      } catch (error) {
+        return refused(error, reply)
+      }
+    }
+  )
+
+  app.get(
+    '/spaces/:spaceId/feed/read',
+    { preHandler },
+    async (request, reply) => {
+      try {
+        const { spaceId, userId } = await memberOf(request)
+        const [read] = await db
+          .select({ readAt: feedReads.readAt })
+          .from(feedReads)
+          .where(
+            and(eq(feedReads.spaceId, spaceId), eq(feedReads.userId, userId))
+          )
+        return { readAt: read?.readAt.toISOString() ?? null }
+      } catch (error) {
+        return refused(error, reply)
+      }
+    }
+  )
+
+  // Only moves forward: another tab still on older items leaves it alone. A
+  // time to come would hide every new item until then: it counts as now.
+  app.put(
+    '/spaces/:spaceId/feed/read',
+    { preHandler },
+    async (request, reply) => {
+      try {
+        const { spaceId, userId } = await memberOf(request)
+        const sent = Date.parse(parse(readBody, request.body).readAt)
+        const readAt = new Date(Math.min(sent, Date.now()))
+        await db
+          .insert(feedReads)
+          .values({ spaceId, userId, readAt })
+          .onConflictDoUpdate({
+            target: [feedReads.spaceId, feedReads.userId],
+            set: {
+              readAt: sql`greatest(${feedReads.readAt}, excluded.read_at)`
+            }
+          })
+        return await reply.code(204).send()
       } catch (error) {
         return refused(error, reply)
       }

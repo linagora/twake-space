@@ -146,6 +146,17 @@ export const feedItemReactions = pgTable(
   ]
 )
 
+// The time of the newest item a member has seen in a space's feed.
+export const feedReads = pgTable(
+  'feed_reads',
+  {
+    spaceId: uuid('space_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    readAt: timestamptz('read_at').notNull()
+  },
+  table => [primaryKey({ columns: [table.spaceId, table.userId] })]
+)
+
 // Synapse resends a transaction until it gets a 200.
 export const appServiceTransactions = pgTable(
   'app_service_transactions',

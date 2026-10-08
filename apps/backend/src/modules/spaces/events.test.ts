@@ -13,7 +13,12 @@ import type { PlatformEvent } from '../../events/envelope.ts'
 import { lastChanges } from '../../events/schema.ts'
 import { MalformedEventError, NotYetKnownError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
-import { activityEvents, feedItemReactions, feedPosts } from '../feed/schema.ts'
+import {
+  activityEvents,
+  feedItemReactions,
+  feedPosts,
+  feedReads
+} from '../feed/schema.ts'
 import { notifications } from '../notifications/schema.ts'
 import { spacePlatformRoutes } from './events.ts'
 import {
@@ -281,6 +286,9 @@ describe('space events', () => {
         userId: JDOE_ID,
         key: '👍'
       })
+      await testDb.db
+        .insert(feedReads)
+        .values({ spaceId: SPACE_ID, userId: JDOE_ID, readAt: new Date() })
     }
 
     beforeEach(async () => {
@@ -288,6 +296,7 @@ describe('space events', () => {
       await testDb.db.delete(activityEvents)
       await testDb.db.delete(feedPosts)
       await testDb.db.delete(feedItemReactions)
+      await testDb.db.delete(feedReads)
     })
 
     it.each([
@@ -315,6 +324,7 @@ describe('space events', () => {
             .from(feedPosts)
         ).toEqual([{ authorId: null }])
         expect(await testDb.db.select().from(feedItemReactions)).toEqual([])
+        expect(await testDb.db.select().from(feedReads)).toEqual([])
       }
     )
   })
