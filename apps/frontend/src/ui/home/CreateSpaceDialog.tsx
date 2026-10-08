@@ -13,6 +13,7 @@ import {
   getInitials
 } from '@linagora/twake-mui'
 import { useId, useState, type ReactElement, type ReactNode } from 'react'
+import { useNavigate } from 'react-router'
 
 import type { SpaceApp } from '@/application/spaces'
 import { AvatarPicker, ColorSwatches } from '@/ds/AvatarPicker'
@@ -82,6 +83,7 @@ export function CreateSpaceDialog({
   const titleId = useId()
   const nameId = useId()
   const appsHintId = useId()
+  const navigate = useNavigate()
   const create = useCreateSpace()
   const offered = useSpaceApps()
   const provided = offered.data ?? []
@@ -209,7 +211,12 @@ export function CreateSpaceDialog({
                 color,
                 apps: [...apps].filter(app => provided.includes(app))
               },
-              { onSuccess: onClose }
+              {
+                onSuccess: space => {
+                  onClose()
+                  void navigate(`/spaces/${space.id}`)
+                }
+              }
             )
           }}
         >
