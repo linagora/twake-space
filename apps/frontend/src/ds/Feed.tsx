@@ -26,6 +26,7 @@ import {
 } from 'react'
 
 import { ChevronDownIcon } from '@/ds/icons'
+import type { SpaceTokens } from '@/ds/theme'
 
 // How close to the newest item still counts as being there, and how close to
 // the oldest one asks for older items.
@@ -334,18 +335,21 @@ export function FeedRow({
 export function AppAvatar({
   icon,
   label,
-  color
+  app
 }: {
   icon: IconProps['icon']
   label: string
-  color: string
+  app: keyof SpaceTokens['appColors']
 }): ReactElement {
   return (
     <Avatar
       size="m"
       aria-label={label}
       title={label}
-      sx={{ bgcolor: color, color: 'common.white' }}
+      sx={theme => ({
+        bgcolor: theme.space.appColors[app],
+        color: 'common.white'
+      })}
     >
       <Icon icon={icon} size={18} />
     </Avatar>
@@ -668,13 +672,13 @@ export function DateTile({
       }}
     >
       <Box
-        sx={{
-          bgcolor: '#f67e35',
+        sx={theme => ({
+          bgcolor: theme.space.appColors.calendar,
           color: 'common.white',
           fontSize: 7,
           lineHeight: '10px',
           textTransform: 'uppercase'
-        }}
+        })}
       >
         {month}
       </Box>

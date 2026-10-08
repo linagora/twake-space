@@ -191,6 +191,34 @@ describe('FeedPanel', () => {
     expect(within(eventCard).getByText(/Room 4/)).toBeInTheDocument()
   })
 
+  it('shows who acted on a card, and the app when no person did', async () => {
+    renderFeed([
+      task,
+      mail,
+      {
+        ...task,
+        id: 'token-card',
+        actor: { type: 'token', id: 't', name: 'Zap' }
+      }
+    ])
+
+    const taskCard = await screen.findByRole('article', {
+      name: 'Bob Durand: Write the brief'
+    })
+    expect(within(taskCard).getByText('BD')).toBeInTheDocument()
+    expect(within(taskCard).queryByLabelText('Tasks')).toBe(null)
+
+    const mailCard = screen.getByRole('article', {
+      name: 'Mail: Partner feedback'
+    })
+    expect(within(mailCard).getByLabelText('Mail')).toBeInTheDocument()
+
+    const tokenCard = screen.getByRole('article', {
+      name: 'Zap: Write the brief'
+    })
+    expect(within(tokenCard).getByLabelText('Tasks')).toBeInTheDocument()
+  })
+
   it('names an event place once, and leaves out replies nobody gave', async () => {
     renderFeed([
       {

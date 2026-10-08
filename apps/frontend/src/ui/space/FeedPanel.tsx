@@ -575,11 +575,11 @@ function Reactions({
 }
 
 export const APPS = {
-  tasks: { icon: Task, color: '#4caf50' },
-  mail: { icon: Mail, color: '#0a84ff' },
-  calendar: { icon: Calendar, color: '#f67e35' },
-  drive: { icon: Drive, color: '#5c9ce6' }
-} satisfies Record<string, { icon: IconProps['icon']; color: string }>
+  tasks: { icon: Task },
+  mail: { icon: Mail },
+  calendar: { icon: Calendar },
+  drive: { icon: Drive }
+} satisfies Record<string, { icon: IconProps['icon'] }>
 
 type App = keyof typeof APPS
 
@@ -644,12 +644,11 @@ function Card({
       label={label}
       focused={focused}
       avatar={
-        isApp(app) ? (
-          <AppAvatar
-            icon={APPS[app].icon}
-            color={APPS[app].color}
-            label={appName ?? ''}
-          />
+        // The person who acted; an app or an integration has its own.
+        card.actor?.type === 'user' && card.actor.name ? (
+          <NameAvatar name={card.actor.name} size="m" />
+        ) : isApp(app) ? (
+          <AppAvatar icon={APPS[app].icon} app={app} label={appName ?? ''} />
         ) : (
           <NameAvatar name={actor ?? '?'} size="m" />
         )
