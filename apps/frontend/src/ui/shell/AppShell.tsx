@@ -10,7 +10,7 @@ import {
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { Outlet, NavLink as RouterNavLink, useMatch } from 'react-router'
 
-import { badgeLabel, hasCounts, spaceTotal } from '@/application/badges'
+import { badgeLabel } from '@/application/badges'
 import {
   nameMatches,
   pinnedAndRecent,
@@ -36,11 +36,12 @@ import { AppFeedback } from '@/ui/feedback/AppFeedback'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
 import { PlatformBar } from '@/ui/shell/PlatformBar'
-import { useBadges } from '@/ui/space/Badges'
+import { SpotSpace } from '@/ui/shell/SpotSpace'
+import { useSpaceTotals } from '@/ui/space/Badges'
 import { EmbeddedApps } from '@/ui/space/EmbeddedApps'
 import { useFillPage } from '@/ui/space/FillPage'
 import { useSession } from '@/ui/session/SessionGate'
-import { useSpaceList, useSpaces } from '@/ui/spaces/queries'
+import { useSpaceList } from '@/ui/spaces/queries'
 
 export function AppShell(): ReactElement {
   const { t } = useI18n()
@@ -137,6 +138,7 @@ export function AppShell(): ReactElement {
           <Outlet />
         </AssistantContext>
         <EmbeddedApps />
+        <SpotSpace />
         <CallWindow />
         <AppFeedback />
         {creating && (
@@ -196,20 +198,7 @@ function AppNav(): ReactElement {
 function SpaceList({ query }: { query: string }): ReactElement | null {
   const { t } = useI18n()
   const spaces = useSpaceList().data ?? []
-  const badges = useBadges()
-  // The list holds no resources: an app's counts are by resource, so the
-  // spaces are read once an app has reported any. They are the spaces the
-  // screen reads, already in the cache once visited.
-  const details = useSpaces(
-    spaces.map(space => space.id),
-    hasCounts(badges)
-  )
-  const totals = new Map(
-    spaces.map((space, index) => {
-      const detail = details[index]?.data
-      return [space.id, detail ? spaceTotal(badges, detail) : 0]
-    })
-  )
+  const totals = useSpaceTotals(spaces)
   if (spaces.length === 0) return null
 
   if (query.trim() !== '') {

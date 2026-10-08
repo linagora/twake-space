@@ -10,8 +10,10 @@ import {
 
 import {
   emptySnapshots,
+  hasCounts,
   replaceSnapshot,
   resetSnapshot,
+  spaceTotal,
   type BadgeSnapshots
 } from '@/application/badges'
 import type { EmbeddedApp } from '@/application/embeddedApps'
@@ -21,6 +23,8 @@ import {
   resetMetadata,
   type MetadataSnapshots
 } from '@/application/metadata'
+import type { SpaceSummary } from '@/application/spaces'
+import { useSpaces } from '@/ui/spaces/queries'
 
 interface Snapshots {
   badges: BadgeSnapshots
@@ -107,6 +111,23 @@ export function BadgesProvider({
 
 export function useBadges(): BadgeSnapshots {
   return use(SnapshotsContext).badges
+}
+
+// Each space's count of news. The list holds no resources: an app's counts
+// are by resource, so the spaces are read once an app has reported any. They
+// are the spaces the screen reads, already in the cache once visited.
+export function useSpaceTotals(spaces: SpaceSummary[]): Map<string, number> {
+  const badges = useBadges()
+  const details = useSpaces(
+    spaces.map(space => space.id),
+    hasCounts(badges)
+  )
+  return new Map(
+    spaces.map((space, index) => {
+      const detail = details[index]?.data
+      return [space.id, detail ? spaceTotal(badges, detail) : 0]
+    })
+  )
 }
 
 export function useMetadata(): MetadataSnapshots {
