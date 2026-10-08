@@ -1,12 +1,12 @@
 import {
-  AvatarGroup,
+  Avatar,
   Box,
   Card,
   CardActionArea,
   Skeleton,
   Typography
 } from '@linagora/twake-mui'
-import type { ReactElement, ReactNode } from 'react'
+import { Children, type ReactElement, type ReactNode } from 'react'
 
 const RADIUS = '20px'
 
@@ -68,7 +68,7 @@ export function SpaceCard({
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
         {avatar}
         <Typography
-          variant="h5"
+          variant="h6"
           component="p"
           noWrap
           sx={{ flex: '1 1 auto', minWidth: 0 }}
@@ -78,7 +78,17 @@ export function SpaceCard({
         {/* The menu button keeps its 48px target but takes the row's 24px,
             its icon near the corner as in the mockup */}
         {menu && (
-          <Box sx={{ position: 'relative', zIndex: 1, m: -1.5 }}>{menu}</Box>
+          <Box
+            sx={{
+              position: 'relative',
+              zIndex: 1,
+              m: -1.5,
+              // The mockup's more_horiz: dots of 1.33px in a 16px box
+              '& svg': { width: 10.667, height: 'auto' }
+            }}
+          >
+            {menu}
+          </Box>
         )}
       </Box>
       {description && (
@@ -101,7 +111,8 @@ export function SpaceCard({
   )
 }
 
-// The first members of a space side by side, the rest counted.
+// The first members of a space side by side, the rest counted. Each avatar
+// is 24px, with a ring of the card's color that cuts into the one before it.
 export function MemberAvatars({
   children,
   max = 5
@@ -109,23 +120,36 @@ export function MemberAvatars({
   children: ReactNode
   max?: number
 }): ReactElement {
+  const members = Children.toArray(children)
+  const shown = members.length > max ? members.slice(0, max - 1) : members
+  const hidden = members.length - shown.length
+
   return (
-    <AvatarGroup
-      max={max}
-      spacing={0}
+    <Box
       sx={{
-        justifyContent: 'flex-end',
-        // The white ring is drawn inside the 24px, as in the mockup
+        display: 'flex',
         '& .MuiAvatar-root': {
           width: 24,
           height: 24,
-          boxSizing: 'border-box',
-          fontSize: 11
+          typography: 'overline',
+          boxShadow: theme => `0 0 0 2px ${theme.vars.palette.background.paper}`
         }
       }}
     >
-      {children}
-    </AvatarGroup>
+      {shown}
+      {hidden > 0 && (
+        <Avatar
+          sx={{
+            bgcolor: 'background.paper',
+            color: 'text.secondary',
+            border: 1,
+            borderColor: 'divider'
+          }}
+        >
+          +{hidden}
+        </Avatar>
+      )}
+    </Box>
   )
 }
 
