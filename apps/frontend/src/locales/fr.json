@@ -404,6 +404,10 @@
     "duration": "Dure %{minutes} minutes",
     "description": "Description",
     "scheduleAction": "Planifier",
+    "details": "Informations de connexion",
+    "copyLink": "Copier le lien",
+    "linkCopied": "Lien copié",
+    "share": "Partagez ce lien avec vos invités.",
     "scheduled": "Réunion planifiée. Elle apparaît dans le fil dès que l'agenda l'a créée.",
     "refusal": {
       "cannotSchedule": "Seuls les éditeurs et les administrateurs peuvent planifier une réunion.",

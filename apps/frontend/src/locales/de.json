@@ -404,6 +404,10 @@
     "duration": "Dauert %{minutes} Minuten",
     "description": "Beschreibung",
     "scheduleAction": "Planen",
+    "details": "Verbindungsdaten",
+    "copyLink": "Link kopieren",
+    "linkCopied": "Link kopiert",
+    "share": "Teilen Sie diesen Link mit Ihren Gästen.",
     "scheduled": "Besprechung geplant. Sie erscheint im Feed, sobald der Kalender sie erstellt hat.",
     "refusal": {
       "cannotSchedule": "Nur Bearbeiter und Administratoren können eine Besprechung planen.",

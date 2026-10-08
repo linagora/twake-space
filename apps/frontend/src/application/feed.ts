@@ -166,6 +166,8 @@ export interface EventState extends TimeRange {
   previous: TimeRange | null
   proposed: (TimeRange & { by: string }) | null
   rsvp: Record<'accepted' | 'declined' | 'tentative' | 'pending', number> | null
+  /** The Meet room's slug, not its URL. */
+  room: string | null
 }
 
 function toRsvp(value: unknown): EventState['rsvp'] {
@@ -201,6 +203,10 @@ export function toEventState(
     location: typeof state.location === 'string' ? state.location : null,
     previous: toRange(state.previous),
     proposed: proposed && typeof by === 'string' ? { ...proposed, by } : null,
-    rsvp: toRsvp(state.rsvp)
+    rsvp: toRsvp(state.rsvp),
+    room:
+      isRecord(state.meeting) && typeof state.meeting.room === 'string'
+        ? state.meeting.room
+        : null
   }
 }

@@ -5,6 +5,7 @@ import {
   Dots,
   DropdownOpen,
   Icon,
+  Link,
   Mail,
   Openwith,
   Pen,
@@ -39,6 +40,7 @@ import {
   type FeedPost,
   withReaction
 } from '@/application/feed'
+import { meetRoomUrl } from '@/application/meet'
 import type { Space } from '@/application/spaces'
 import { containerTab } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
@@ -60,8 +62,11 @@ import {
   ReactionChip,
   ReactionPicker
 } from '@/ds/Feed'
+import { Videocam } from '@/ds/icons'
 import { MenuEntry } from '@/ds/Menu'
 import { LoadingRows, SetupPrompt } from '@/ds/Page'
+import { useCall } from '@/ui/call/CallContext'
+import { ConnectionDetailsDialog } from '@/ui/call/ConnectionDetailsDialog'
 import { useI18n, type TranslationKey } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
@@ -635,6 +640,7 @@ function Card({
       )}
       <FeedFooter time={time(card.time)}>
         <Reactions item={card} spaceId={space.id} myId={myId} />
+        {app === 'calendar' && <MeetingActions card={card} />}
         {tab && open && (
           <FeedAction
             icon={Openwith}
@@ -646,6 +652,44 @@ function Card({
         )}
       </FeedFooter>
     </FeedRow>
+  )
+}
+
+function MeetingActions({ card }: { card: FeedCard }): ReactElement | null {
+  const { t } = useI18n()
+  const { meetUrl } = useServices()
+  const { join } = useCall()
+  const [sharing, setSharing] = useState(false)
+  const room = toEventState(card.state)?.room
+  const link = room && meetUrl ? meetRoomUrl(room, meetUrl) : null
+  if (!link) return null
+  return (
+    <>
+      <FeedAction
+        icon={Videocam}
+        onClick={() => {
+          join({ url: link })
+        }}
+      >
+        {t('call.joinAction')}
+      </FeedAction>
+      <FeedAction
+        icon={Link}
+        onClick={() => {
+          setSharing(true)
+        }}
+      >
+        {t('call.details')}
+      </FeedAction>
+      {sharing && (
+        <ConnectionDetailsDialog
+          link={link}
+          onClose={() => {
+            setSharing(false)
+          }}
+        />
+      )}
+    </>
   )
 }
 

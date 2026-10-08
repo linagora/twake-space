@@ -404,6 +404,10 @@
     "duration": "Kéo dài %{minutes} phút",
     "description": "Mô tả",
     "scheduleAction": "Lên lịch",
+    "details": "Thông tin kết nối",
+    "copyLink": "Sao chép liên kết",
+    "linkCopied": "Đã sao chép liên kết",
+    "share": "Chia sẻ liên kết này với khách mời của bạn.",
     "scheduled": "Đã lên lịch cuộc họp. Cuộc họp sẽ hiện trong bảng tin khi lịch đã tạo xong.",
     "refusal": {
       "cannotSchedule": "Chỉ người chỉnh sửa và quản trị viên mới có thể lên lịch cuộc họp.",

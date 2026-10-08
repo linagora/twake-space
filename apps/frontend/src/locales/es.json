@@ -404,6 +404,10 @@
     "duration": "Dura %{minutes} minutos",
     "description": "Descripción",
     "scheduleAction": "Programar",
+    "details": "Datos de conexión",
+    "copyLink": "Copiar el enlace",
+    "linkCopied": "Enlace copiado",
+    "share": "Comparte este enlace con tus invitados.",
     "scheduled": "Reunión programada. Aparecerá en el feed cuando el calendario la haya creado.",
     "refusal": {
       "cannotSchedule": "Solo los editores y administradores pueden programar una reunión.",

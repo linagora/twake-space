@@ -249,13 +249,13 @@ export function FeedFooter({
 export function FeedAction({
   icon,
   children,
-  ...link
+  ...action
 }: {
   icon: IconProps['icon']
   children: ReactNode
-  component: React.ElementType
-  to: string
-}): ReactElement {
+} & (
+  { component: React.ElementType; to: string } | { onClick: () => void }
+)): ReactElement {
   return (
     <Button
       size="small"
@@ -269,7 +269,7 @@ export function FeedAction({
         fontSize: 11,
         fontWeight: 500
       }}
-      {...link}
+      {...action}
     >
       {children}
     </Button>
