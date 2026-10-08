@@ -508,5 +508,12 @@
     "failed": "Der Assistent konnte nicht geöffnet werden.",
     "post": "Im Feed veröffentlichen",
     "postFailed": "Die Antwort konnte nicht veröffentlicht werden."
+  },
+  "suggestions": {
+    "title": "Vorschläge des Assistenten",
+    "create": "Besprechung erstellen",
+    "anotherTime": "Anderer Zeitpunkt",
+    "notUseful": "Nicht hilfreich",
+    "failed": "Der Assistent ist nicht erreichbar. Versuchen Sie es erneut."
   }
 }

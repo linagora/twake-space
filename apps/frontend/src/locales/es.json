@@ -508,5 +508,12 @@
     "failed": "No se pudo abrir el asistente.",
     "post": "Publicar en el feed",
     "postFailed": "No se pudo publicar la respuesta."
+  },
+  "suggestions": {
+    "title": "Sugerencias del asistente",
+    "create": "Crear la reunión",
+    "anotherTime": "Otro horario",
+    "notUseful": "No es útil",
+    "failed": "No se pudo contactar con el asistente. Inténtelo de nuevo."
   }
 }

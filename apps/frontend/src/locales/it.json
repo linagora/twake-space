@@ -508,5 +508,12 @@
     "failed": "Impossibile aprire l’assistente.",
     "post": "Pubblica nel feed",
     "postFailed": "Impossibile pubblicare la risposta."
+  },
+  "suggestions": {
+    "title": "Suggerimenti dell'assistente",
+    "create": "Crea la riunione",
+    "anotherTime": "Altro orario",
+    "notUseful": "Non utile",
+    "failed": "Impossibile contattare l'assistente. Riprova."
   }
 }

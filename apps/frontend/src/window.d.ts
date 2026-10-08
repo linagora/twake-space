@@ -9,6 +9,7 @@ declare global {
     CHAT_URL?: string
     CALENDAR_URL?: string
     MEET_URL?: string
+    HARNESS_URL?: string
     SSO_BASE_URL?: string
     SSO_CLIENT_ID?: string
     SSO_SCOPE?: string

@@ -1,9 +1,13 @@
+import { randomBytes } from 'node:crypto'
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createServer } from '../../infra/http.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
 import { activityEvents } from '../feed/schema.ts'
+import { configureHomeserver } from '../organizations/homeservers.ts'
+import { homeservers, organizations } from '../organizations/schema.ts'
+import { spaceMembers, spaces } from '../spaces/schema.ts'
 import { registerNotificationRoutes } from './routes.ts'
 import { notifications, notificationSettings } from './schema.ts'
 
@@ -75,9 +79,23 @@ function setUp() {
     token =>
       token === 'tws_bot'
         ? aTokenCaller({ userId: ALICE, scopes: ['feed:read'] })
-        : null
+        : token === 'tws_harness'
+          ? aTokenCaller({
+              organizationId: 'acme',
+              scopes: ['notifications:write']
+            })
+          : token === 'tws_elsewhere'
+            ? aTokenCaller({
+                organizationId: 'other',
+                scopes: ['notifications:write']
+              })
+            : null
   )
-  registerNotificationRoutes(app, { db: testDb.db, authorize })
+  registerNotificationRoutes(app, {
+    db: testDb.db,
+    authorize,
+    localpart: 'uid'
+  })
   return (
     method: 'GET' | 'POST' | 'PUT',
     url: string,
@@ -228,7 +246,8 @@ describe('settings', () => {
         assignment: true,
         invitation: true,
         attended_event_change: true,
-        space_change: false
+        space_change: false,
+        assistant_suggestion: true
       }
     })
     expect(put.statusCode).toBe(204)
@@ -243,5 +262,151 @@ describe('settings', () => {
     })
 
     expect(response.statusCode).toBe(400)
+  })
+})
+
+describe('POST /notifications/suggestions', () => {
+  const suggestion = {
+    matrixUserId: '@alice:example.com',
+    externalId: 'call-1',
+    text: 'Free on Monday, plan the meeting?',
+    pendingCallId: 'pc-1',
+    matrixRoomId: '!room:example.com'
+  }
+
+  beforeEach(async () => {
+    const { db } = testDb
+    for (const table of [spaceMembers, spaces, organizations, homeservers]) {
+      await db.delete(table)
+    }
+    await db
+      .insert(organizations)
+      .values({ organizationId: 'acme', domain: 'acme.example.com' })
+    await configureHomeserver(db, randomBytes(32), {
+      url: 'https://matrix.example.com',
+      serverName: 'example.com',
+      asToken: 'as',
+      hsToken: 'hs'
+    })
+    const [hs] = await db.select({ id: homeservers.id }).from(homeservers)
+    await db.update(organizations).set({ homeserverId: hs?.id ?? null })
+    await db
+      .insert(spaces)
+      .values({ spaceId: DESIGN, organizationId: 'acme', name: 'Design' })
+    await db.insert(spaceMembers).values({
+      spaceId: DESIGN,
+      userId: ALICE,
+      username: 'alice',
+      email: 'alice@acme.example.com',
+      role: 'editor'
+    })
+  })
+
+  it('creates a notification for the user and shows it in the list', async () => {
+    const send = setUp()
+
+    const created = await send(
+      'POST',
+      '/notifications/suggestions',
+      suggestion,
+      'tws_harness'
+    )
+
+    expect(created.statusCode).toBe(201)
+    const listed = (await send('GET', '/notifications')).json<{
+      notifications: { id: string; type: string; payload: unknown }[]
+    }>()
+    expect(listed.notifications).toMatchObject([
+      {
+        id: created.json<{ id: string }>().id,
+        type: 'assistant_suggestion',
+        payload: {
+          text: suggestion.text,
+          pendingCallId: 'pc-1',
+          matrixRoomId: '!room:example.com'
+        }
+      }
+    ])
+  })
+
+  it('answers the existing id for the same externalId', async () => {
+    const send = setUp()
+    const first = await send(
+      'POST',
+      '/notifications/suggestions',
+      suggestion,
+      'tws_harness'
+    )
+    const again = await send(
+      'POST',
+      '/notifications/suggestions',
+      suggestion,
+      'tws_harness'
+    )
+
+    expect(again.statusCode).toBe(200)
+    expect(again.json()).toEqual(first.json())
+    expect(await testDb.db.select().from(notifications)).toHaveLength(1)
+  })
+
+  it('needs the notifications:write scope', async () => {
+    const send = setUp()
+    for (const token of ['tws_bot', 'alice']) {
+      const response = await send(
+        'POST',
+        '/notifications/suggestions',
+        suggestion,
+        token
+      )
+      expect(response.statusCode).toBe(403)
+    }
+  })
+
+  it('refuses an unknown user, another homeserver and another organization with 404', async () => {
+    const send = setUp()
+    const bodies = [
+      [{ ...suggestion, matrixUserId: '@nobody:example.com' }, 'tws_harness'],
+      [{ ...suggestion, matrixUserId: '@alice:elsewhere.org' }, 'tws_harness'],
+      [suggestion, 'tws_elsewhere']
+    ] as const
+    for (const [body, token] of bodies) {
+      const response = await send(
+        'POST',
+        '/notifications/suggestions',
+        body,
+        token
+      )
+      expect(response.statusCode).toBe(404)
+      expect(response.json()).toEqual({ error: 'unknown_user' })
+    }
+  })
+
+  it('refuses a bad body with 400', async () => {
+    const response = await setUp()(
+      'POST',
+      '/notifications/suggestions',
+      { ...suggestion, text: '' },
+      'tws_harness'
+    )
+    expect(response.statusCode).toBe(400)
+  })
+
+  it('creates nothing when the user turned suggestions off', async () => {
+    await testDb.db.insert(notificationSettings).values({
+      userId: ALICE,
+      type: 'assistant_suggestion',
+      enabled: false
+    })
+
+    const response = await setUp()(
+      'POST',
+      '/notifications/suggestions',
+      suggestion,
+      'tws_harness'
+    )
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual({ id: null })
+    expect(await testDb.db.select().from(notifications)).toHaveLength(0)
   })
 })

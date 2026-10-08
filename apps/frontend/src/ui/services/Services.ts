@@ -1,5 +1,9 @@
 import { createContext, use } from 'react'
 
+import type {
+  HarnessService,
+  SuggestionsService
+} from '@/application/suggestions'
 import type { DirectoryService } from '@/application/directory'
 import type { FeedbackService } from '@/application/feedback'
 import type { FeedService } from '@/application/feed'
@@ -19,6 +23,9 @@ export interface Services {
   feed: FeedService
   meetings: MeetingsService
   notifications: SystemNotifications
+  suggestions: SuggestionsService
+  // Null without HARNESS_URL: a suggestion then only closes
+  harness: HarnessService | null
   // Null without a Sentry DSN
   feedback: FeedbackService | null
   // The backend's base URL, shown to API token users

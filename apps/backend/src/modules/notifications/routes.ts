@@ -5,7 +5,10 @@ import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import type { Authorize } from '../auth/index.ts'
 import { activityEvents } from '../feed/schema.ts'
-import { enabledByDefault } from './recipients.ts'
+import type { Localpart } from '../feed/transactions.ts'
+import { homeservers, organizations } from '../organizations/schema.ts'
+import { spaceMembers, spaces } from '../spaces/schema.ts'
+import { enabledByDefault, notifyUsers } from './recipients.ts'
 import {
   notifications,
   notificationSettings,
@@ -22,6 +25,14 @@ const listQuery = z.object({
 
 const notificationParams = z.object({ id: z.uuid() })
 
+const suggestionBody = z.object({
+  matrixUserId: z.string().regex(/^@[^:]+:.+$/),
+  externalId: z.string().min(1).max(128),
+  text: z.string().min(1).max(500),
+  pendingCallId: z.string().min(1).max(64),
+  matrixRoomId: z.string().optional()
+})
+
 const settingsBody = z.partialRecord(
   z.enum(notificationType.enumValues),
   z.boolean()
@@ -37,10 +48,84 @@ function userOf(request: FastifyRequest): string {
 
 export function registerNotificationRoutes(
   app: HttpServer,
-  deps: { db: Db; authorize: Authorize }
+  deps: { db: Db; authorize: Authorize; localpart: Localpart }
 ) {
-  const { db } = deps
+  const { db, localpart } = deps
   const preHandler = deps.authorize()
+
+  // The member of the caller's organization behind a Matrix id, found as Matrix
+  // mentions are (a space member's username or e-mail), on the organization's homeserver.
+  async function userOfMatrixId(organizationId: string, matrixUserId: string) {
+    const at = matrixUserId.indexOf(':')
+    const name = matrixUserId.slice(1, at).toLowerCase()
+    const [member] = await db
+      .select({ userId: spaceMembers.userId })
+      .from(spaceMembers)
+      .innerJoin(spaces, eq(spaces.spaceId, spaceMembers.spaceId))
+      .innerJoin(
+        organizations,
+        eq(organizations.organizationId, spaces.organizationId)
+      )
+      .innerJoin(homeservers, eq(homeservers.id, organizations.homeserverId))
+      .where(
+        and(
+          eq(spaces.organizationId, organizationId),
+          eq(homeservers.serverName, matrixUserId.slice(at + 1)),
+          localpart === 'uid'
+            ? sql`lower(${spaceMembers.username}) = ${name}`
+            : sql`lower(split_part(${spaceMembers.email}, '@', 1)) = ${name}`
+        )
+      )
+      .limit(1)
+    return member?.userId
+  }
+
+  app.post(
+    '/notifications/suggestions',
+    { preHandler: deps.authorize('notifications:write') },
+    async (request, reply) => {
+      const caller = request.caller
+      // authorize lets sessions in; only an API token may push suggestions.
+      if (caller?.kind !== 'token') {
+        return reply.code(403).send({ error: 'insufficient_scope' })
+      }
+      const body = suggestionBody.safeParse(request.body)
+      if (!body.success) {
+        return reply.code(400).send({
+          error: 'invalid_request',
+          message: z.prettifyError(body.error)
+        })
+      }
+      const { matrixUserId, externalId, ...payload } = body.data
+      const userId = await userOfMatrixId(caller.organizationId, matrixUserId)
+      if (!userId) return reply.code(404).send({ error: 'unknown_user' })
+      const created = await db.transaction(async tx => {
+        const [row] = await notifyUsers(
+          tx,
+          [{ userId, type: 'assistant_suggestion' }],
+          { organizationId: caller.organizationId, spaceId: null, externalId },
+          {
+            text: payload.text,
+            pendingCallId: payload.pendingCallId,
+            matrixRoomId: payload.matrixRoomId ?? null
+          }
+        )
+        return row
+      })
+      if (created) return reply.code(201).send({ id: created.id })
+      // Already pushed, or the user turned these off (then there is no id).
+      const [existing] = await db
+        .select({ id: notifications.id })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, userId),
+            eq(notifications.externalId, externalId)
+          )
+        )
+      return reply.send({ id: existing?.id ?? null })
+    }
+  )
 
   app.get('/notifications', { preHandler }, async (request, reply) => {
     const userId = userOf(request)
@@ -54,6 +139,7 @@ export function registerNotificationRoutes(
         id: notifications.id,
         type: notifications.type,
         spaceId: notifications.spaceId,
+        payload: notifications.payload,
         readAt: notifications.readAt,
         createdAt: notifications.createdAt,
         activity: {

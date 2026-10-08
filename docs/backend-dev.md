@@ -112,7 +112,7 @@ Every API route takes `Authorization: Bearer <token>`. There are no cookies. The
 
 API tokens:
 
-- Scopes: `space:read`, `space:write`, `members:write`, `feed:read`, `tokens:write`.
+- Scopes: `space:read`, `space:write`, `members:write`, `feed:read`, `tokens:write`, `notifications:write`.
 - A token covers every space or a list of spaces (`spaceIds`).
 - An account token acts for one account. An organization token acts for the organization and carries a space role (`viewer`, `editor` or `admin`) on every space it covers. A technical account token acts for an LDAP technical account, and the backend checks that account still exists (cached for 5 minutes).
 - Tokens are managed under `/tokens` (own account), `/organization/tokens` and `/organization/technical-accounts/:accountId/tokens` (organization owners and admins), all behind `tokens:write`. A token cannot create a token with more scopes, spaces or lifetime than itself.

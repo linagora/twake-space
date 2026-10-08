@@ -6,11 +6,13 @@ import { createRoot } from 'react-dom/client'
 
 import { browserNotifications } from '@/adapters/browser/browserNotifications'
 import { backend } from '@/adapters/http/backend'
+import { httpHarness } from '@/adapters/http/httpHarness'
 import { httpDirectory } from '@/adapters/http/httpDirectory'
 import { httpFeed } from '@/adapters/http/httpFeed'
 import { httpMeetings } from '@/adapters/http/httpMeetings'
 import { httpSettings } from '@/adapters/http/httpSettings'
 import { httpSpaces } from '@/adapters/http/httpSpaces'
+import { httpSuggestions } from '@/adapters/http/httpSuggestions'
 import { httpTokens } from '@/adapters/http/httpTokens'
 import { liveStream } from '@/adapters/http/liveStream'
 import { oidcSession, readSsoConfig } from '@/adapters/oidc/oidcSession'
@@ -36,6 +38,8 @@ const services = {
   feed: httpFeed(api),
   meetings: httpMeetings(api),
   notifications: browserNotifications(),
+  suggestions: httpSuggestions(api),
+  harness: window.HARNESS_URL ? httpHarness(window.HARNESS_URL) : null,
   feedback,
   apiUrl,
   tasksUrl: window.TASKS_URL ?? null,

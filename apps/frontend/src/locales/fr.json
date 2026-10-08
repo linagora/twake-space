@@ -508,5 +508,12 @@
     "failed": "L’assistant n’a pas pu être ouvert.",
     "post": "Publier dans le fil",
     "postFailed": "La réponse n’a pas pu être publiée."
+  },
+  "suggestions": {
+    "title": "Suggestions de l'assistant",
+    "create": "Créer la réunion",
+    "anotherTime": "Autre horaire",
+    "notUseful": "Pas utile",
+    "failed": "L'assistant est injoignable. Réessayez."
   }
 }

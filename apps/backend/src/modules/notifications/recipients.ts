@@ -125,9 +125,14 @@ export async function notifyUsers(
   source: {
     organizationId: string | null
     spaceId: string | null
-  } & ({ activityEventId: string } | { matrixEventId: string })
+  } & (
+    | { activityEventId: string }
+    | { matrixEventId: string }
+    | { externalId: string }
+  ),
+  payload: object = {}
 ) {
-  if (wanted.length === 0) return
+  if (wanted.length === 0) return []
 
   const choices = await tx
     .select()
@@ -145,19 +150,20 @@ export async function notifyUsers(
     .filter(
       w => enabled.get(`${w.userId}|${w.type}`) ?? enabledByDefault(w.type)
     )
-    .map(w => ({ ...w, ...source, payload: {} }))
-  if (rows.length === 0) return
+    .map(w => ({ ...w, ...source, payload }))
+  if (rows.length === 0) return []
   const inserted = await tx
     .insert(notifications)
     .values(rows)
     .onConflictDoNothing()
-    .returning({ userId: notifications.userId })
+    .returning({ id: notifications.id, userId: notifications.userId })
   tell(
     tx,
     'notification',
     inserted.map(n => n.userId),
     {}
   )
+  return inserted
 }
 
 export async function deleteNotificationsOf(tx: Tx, userId: string) {

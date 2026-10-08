@@ -31,6 +31,7 @@ import { NavDestination } from '@/ds/NavDestination'
 import { AssistantContext, AssistantPanel } from '@/ui/assistant/AssistantPanel'
 import { CallProvider } from '@/ui/call/CallContext'
 import { CallWindow } from '@/ui/call/CallWindow'
+import { Suggestions } from '@/ui/assistant/Suggestions'
 import { AppFeedback } from '@/ui/feedback/AppFeedback'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
@@ -142,6 +143,7 @@ export function AppShell(): ReactElement {
         <NotificationPermissionPrompt />
         <CallWindow />
         <AppFeedback />
+        <Suggestions />
         {creating && (
           <CreateSpaceDialog
             onClose={() => {

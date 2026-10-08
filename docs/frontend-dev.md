@@ -59,6 +59,7 @@ ESLint enforces these boundaries, and a few more rules: named exports only, UI f
 - `feed`: read a space's feed by filter and page, post, edit and delete your own posts, and react. It also reads and moves the time of the newest item you have seen, where the feed opens next time.
 - `tokens`: list, create, rename and revoke your personal API tokens, and the organization's when you are an owner or admin of it. The API tokens page (`/settings/api-tokens`) uses it.
 - `live`: the backend's live updates. `useLiveUpdates` refreshes the spaces queries when a space changes, and applies `feed` events to the feeds already loaded.
+- `suggestions` and `assistant`: the assistant's proposals (unread `assistant_suggestion` notifications), shown top right in the shell until answered or closed, and Twake Harness (`HARNESS_URL`, null without it: then a suggestion only closes) that the buttons call with the OIDC access token.
 - `tasksUrl`: where the Tasks tab embeds Twake Tasks, or null.
 - `mailUrl`: where the Mail tab embeds Twake Mail's team mailbox, or null.
 

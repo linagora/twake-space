@@ -120,7 +120,11 @@ registerSpaceWriteRoutes(server, {
 })
 registerTokenRoutes(server, { db, authorize, directory })
 registerDirectoryRoutes(server, { authorize, directory })
-registerNotificationRoutes(server, { db, authorize })
+registerNotificationRoutes(server, {
+  db,
+  authorize,
+  localpart: config.MATRIX_LOCALPART
+})
 registerFeedRoutes(server, { db, authorize })
 // Publishing reuses the consumer's client, which starts after the server listens.
 let publish: Publish = () => Promise.reject(new Error('not connected yet'))

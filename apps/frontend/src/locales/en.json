@@ -508,5 +508,12 @@
     "failed": "The assistant could not be opened.",
     "post": "Post in the feed",
     "postFailed": "The answer could not be posted."
+  },
+  "suggestions": {
+    "title": "Assistant suggestions",
+    "create": "Create the meeting",
+    "anotherTime": "Another time",
+    "notUseful": "Not useful",
+    "failed": "The assistant could not be reached. Try again."
   }
 }

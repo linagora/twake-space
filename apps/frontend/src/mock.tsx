@@ -7,12 +7,14 @@ import { memoryDirectory } from '@/adapters/memory/memoryDirectory'
 import { memoryFeed } from '@/adapters/memory/memoryFeed'
 import { memoryNotifications } from '@/adapters/memory/memoryNotifications'
 import { memorySpaces } from '@/adapters/memory/memorySpaces'
+import { memorySuggestions } from '@/adapters/memory/memorySuggestions'
 import { memoryTokens } from '@/adapters/memory/memoryTokens'
 import {
   seedFeed,
   seedFeedReads,
   seedOrganization,
   seedSpaces,
+  seedSuggestions,
   seedTokens,
   seedUser
 } from '@/adapters/memory/seed'
@@ -53,6 +55,11 @@ const services = {
   }),
   meetings: { schedule: () => Promise.resolve() },
   notifications: memoryNotifications(),
+  suggestions: memorySuggestions(seedSuggestions),
+  harness: {
+    approve: () => Promise.resolve(),
+    refuse: () => Promise.resolve()
+  },
   feedback: null,
   apiUrl: new URL('/api/', window.location.origin).href,
   tasksUrl: window.TASKS_URL ?? null,

@@ -23,7 +23,7 @@ This gives two kinds of caller.
 - A session caller holds an OIDC access token. Its user id is the `uuid` claim and its organization is the `org_id` claim.
 - A token caller holds an API token. An account token acts for one account (a person or a technical account). An organization token acts for no account and carries its own space role (`viewer`, `editor` or `admin`). Either one covers every space of the organization or a list of spaces.
 
-API token scopes are `space:read`, `space:write`, `members:write`, `feed:read` and `tokens:write`.
+API token scopes are `space:read`, `space:write`, `members:write`, `feed:read`, `tokens:write` and `notifications:write`.
 
 `authorize(scope)` decides who gets in.
 
@@ -182,13 +182,14 @@ A group's `name` is its display name, or its `cn` when it has none.
 
 ## Notifications
 
-All notification routes are for session callers only and act on the caller's own notifications.
+All notification routes are for session callers only and act on the caller's own notifications, except `POST /notifications/suggestions`, which takes an API token.
 
 ### GET /notifications
 
 - Query: `before` (optional UUID, the last notification of the previous page), `limit` (1 to 100, default 50).
 - Newest first. `unread` counts every unread notification of the user, not only this page.
-- `type` is one of `card_mention`, `message_mention`, `assignment`, `invitation`, `attended_event_change`, `space_change`.
+- `type` is one of `card_mention`, `message_mention`, `assignment`, `invitation`, `attended_event_change`, `space_change`, `assistant_suggestion`.
+- `payload` is `{}` except for an `assistant_suggestion`: `{ text, pendingCallId, matrixRoomId }`.
 - `activity` comes from the activity event behind the notification. `category` is one of `messages`, `files`, `activities`, `events`.
 - `400 {"error":"invalid_request"}` when the query fails.
 
@@ -199,6 +200,7 @@ All notification routes are for session callers only and act on the caller's own
       "id": "<uuid>",
       "type": "assignment",
       "spaceId": "<uuid>",
+      "payload": {},
       "createdAt": "2026-10-06T09:00:00.000Z",
       "activity": {
         "type": "...",
@@ -236,7 +238,8 @@ Returns whether each notification type is on. A type the user never chose is on,
     "assignment": true,
     "invitation": true,
     "attended_event_change": true,
-    "space_change": false
+    "space_change": false,
+    "assistant_suggestion": true
   }
 }
 ```
@@ -245,6 +248,16 @@ Returns whether each notification type is on. A type the user never chose is on,
 
 - Body: an object of notification type to boolean. Only the types sent change.
 - Answers `204`.
+- `400 {"error":"invalid_request","message":"..."}` when the body fails.
+
+### POST /notifications/suggestions
+
+For the user's assistant (Twake Harness), through an API token of a technical account with the `notifications:write` scope. A session gets `403 insufficient_scope`.
+
+- Body: `matrixUserId` (`@localpart:server`), `externalId` (1 to 128 characters, one suggestion per user and `externalId`), `text` (1 to 500), `pendingCallId` (1 to 64), `matrixRoomId` (optional).
+- The user is the member of the token's organization whose username (or e-mail, per `MATRIX_LOCALPART`) is the localpart, on the organization's homeserver. `404 {"error":"unknown_user"}` when there is none, or when the user is in another organization.
+- Creates an `assistant_suggestion` notification and sends a `notification` live event. Answers `201 {"id":"<uuid>"}`.
+- The same `externalId` again answers `200` with the existing `id`. When the user turned `assistant_suggestion` off, nothing is created and it answers `200 {"id":null}`.
 - `400 {"error":"invalid_request","message":"..."}` when the body fails.
 
 ## Feed
