@@ -34,10 +34,10 @@ const refusal = (status: number, reason: string) =>
   Object.assign(new Error('refused'), { status, code: 'forbidden', reason })
 
 describe('ApiTokensScreen', () => {
-  it('is reached from the sidebar and lists the personal tokens', async () => {
-    renderRoute('/', { tokens: fakeTokens({ personal: [assistant] }) })
-
-    fireEvent.click(await screen.findByRole('link', { name: 'API tokens' }))
+  it('lists the personal tokens', async () => {
+    renderRoute('/settings/api-tokens', {
+      tokens: fakeTokens({ personal: [assistant] })
+    })
 
     const list = await screen.findByRole('list', { name: 'Your tokens' })
     const item = within(list).getByRole('listitem')

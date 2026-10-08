@@ -129,6 +129,16 @@ describe('SpaceSettingsScreen', () => {
     ).toBeInTheDocument()
   })
 
+  it('links to the API tokens from the danger zone', async () => {
+    renderSettings(space)
+
+    const zone = await screen.findByRole('region', { name: 'Danger zone' })
+    expect(within(zone).getByRole('link', { name: 'Manage' })).toHaveAttribute(
+      'href',
+      '/settings/api-tokens'
+    )
+  })
+
   it('deletes the space from the danger zone and goes home', async () => {
     const spaces = renderSettings(space)
 
