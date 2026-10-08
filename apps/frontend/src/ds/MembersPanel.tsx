@@ -14,6 +14,7 @@ import { SidePanelIcon } from '@/ds/icons'
 export interface PanelMember {
   id: string
   name: string
+  avatar?: string | null
 }
 
 /** The side panel of a space's people: search, add button, avatars in rows of four. */
@@ -169,7 +170,11 @@ export function MembersPanel({
               minWidth: 0
             }}
           >
-            <NameAvatar name={member.name} size={48} />
+            <NameAvatar
+              name={member.name}
+              size={48}
+              src={member.avatar ?? null}
+            />
             <Typography
               variant="caption"
               noWrap

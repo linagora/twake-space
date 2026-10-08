@@ -234,22 +234,27 @@ export function SidebarSection({
 }
 
 // `label` names the person for assistive technology; without it the avatar
-// is decoration next to the name it stands for.
+// is decoration next to the name it stands for. The initials show when there
+// is no picture or it fails to load.
 export function NameAvatar({
   name,
   size,
   color,
-  label
+  label,
+  src
 }: {
   name: string
   size: 'xs' | 's' | 'm' | 'l' | number
   color?: string | null
   label?: string
+  src?: string | null
 }): ReactElement {
   return (
     <Avatar
       size={size}
       color={color ?? nameToColor(name) ?? 'sunrise'}
+      src={src ?? undefined}
+      alt=""
       aria-hidden={label === undefined}
       aria-label={label}
       title={label}

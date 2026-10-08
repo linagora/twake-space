@@ -45,6 +45,7 @@ import { registerSettingsRoutes } from './modules/settings/routes.ts'
 import { spacePlatformRoutes } from './modules/spaces/events.ts'
 import { resourceActivityRoutes } from './modules/spaces/resources.ts'
 import { registerSpaceRoutes } from './modules/spaces/routes.ts'
+import { cachedWorkplaces } from './modules/spaces/workplaces.ts'
 import { registerSpaceWriteRoutes } from './modules/spaces/writes.ts'
 import { registerTokenRoutes } from './modules/tokens/routes.ts'
 
@@ -112,7 +113,12 @@ const authorize = await setUpAuth(server, {
   },
   directory
 })
-registerSpaceRoutes(server, { db, authorize, apps: config.spaceApps })
+registerSpaceRoutes(server, {
+  db,
+  authorize,
+  apps: config.spaceApps,
+  workplaces: cachedWorkplaces(directory)
+})
 registerSpaceWriteRoutes(server, {
   db,
   authorize,

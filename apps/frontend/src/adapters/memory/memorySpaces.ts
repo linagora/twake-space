@@ -23,10 +23,11 @@ const summary = ({
   description,
   pinnedAt,
   openedAt,
-  members: members.map(({ id, username, displayName }) => ({
+  members: members.map(({ id, username, displayName, workplaceFqdn }) => ({
     id,
     username,
-    displayName
+    displayName,
+    workplaceFqdn
   }))
 })
 
@@ -126,6 +127,7 @@ export function memorySpaces(
             username,
             email,
             displayName,
+            workplaceFqdn: null,
             role
           }))
         space.members = [

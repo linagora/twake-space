@@ -3,6 +3,7 @@ import { Alert, Button, Chip, Typography } from '@linagora/twake-mui'
 import { useId, useState, type ReactElement } from 'react'
 import { Link as RouterLink } from 'react-router'
 
+import { avatarUrl } from '@/application/avatar'
 import { pinnedAndRecent, type SpaceSummary } from '@/application/spaces'
 import spaceTile from '@/assets/space.svg'
 import { NameAvatar } from '@/ds/AppFrame'
@@ -133,7 +134,13 @@ function SpaceItem({
             {space.members.map(member => {
               const name = member.displayName ?? member.username
               return (
-                <NameAvatar key={member.id} name={name} label={name} size="s" />
+                <NameAvatar
+                  key={member.id}
+                  name={name}
+                  label={name}
+                  size="s"
+                  src={avatarUrl(member.workplaceFqdn)}
+                />
               )
             })}
           </MemberAvatars>

@@ -41,6 +41,7 @@ export interface Directory {
     orgId: string,
     accountId: string
   ): Promise<{ email: string; role: OrganizationRole } | undefined>
+  workplaceFqdn(orgId: string, accountId: string): Promise<string | null>
 }
 
 const organizationRoles = ['owner', 'admin', 'moderator', 'member'] as const
@@ -225,6 +226,14 @@ export function ldapRestDirectory(
         return undefined
       }
       return { email: user.mail, role }
+    },
+    async workplaceFqdn(orgId, accountId) {
+      const user = await notFoundAsUndefined(
+        client.organizations.getUser(orgId, { by: 'id', value: accountId })
+      )
+      if (!user || user.isDeleted === true) return null
+      // Despite its name, ldap-rest writes the bare address, like `alice.twake.app`.
+      return user.workspaceUrl || null
     },
     async organization(orgId) {
       const organization = await notFoundAsUndefined(

@@ -47,6 +47,7 @@ const member = (username: string, role: SpaceRole): Member => ({
   displayName:
     seedOrganization.people.find(p => p.username === username)?.displayName ??
     null,
+  workplaceFqdn: null,
   role
 })
 const designers = (role: SpaceRole) => ({

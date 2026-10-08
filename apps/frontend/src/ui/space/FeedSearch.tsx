@@ -16,7 +16,7 @@ import { AppAvatar } from '@/ds/Feed'
 import { PageSearch } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useFeedSearch } from '@/ui/space/feedQueries'
-import { APPS, isApp, useActorName } from '@/ui/space/FeedPanel'
+import { actorAvatar, APPS, isApp, useActorName } from '@/ui/space/FeedPanel'
 
 const MIN_LENGTH = 2
 const RESULTS = 8
@@ -87,7 +87,7 @@ export function FeedSearch({ space }: { space: Space }): ReactElement {
         getOptionKey={item => item.id}
         renderOption={({ key, ...props }, item) => (
           <Box component="li" key={key} {...props}>
-            <Result item={item} />
+            <Result space={space} item={item} />
           </Box>
         )}
         renderInput={params => (
@@ -109,9 +109,17 @@ export function FeedSearch({ space }: { space: Space }): ReactElement {
   )
 }
 
-function Result({ item }: { item: FeedItem }): ReactElement {
+function Result({
+  space,
+  item
+}: {
+  space: Space
+  item: FeedItem
+}): ReactElement {
   const { t } = useI18n()
-  const actor = useActorName(item.kind === 'post' ? item.author : item.actor)
+  const who = item.kind === 'post' ? item.author : item.actor
+  const actor = useActorName(who)
+  const avatar = actorAvatar(space, who)
   const app = item.kind === 'card' ? cardApp(item) : null
   const appName = isApp(app) ? t(`feed.apps.${app}`) : null
   const preview = item.kind === 'card' ? item.preview : null
@@ -122,11 +130,11 @@ function Result({ item }: { item: FeedItem }): ReactElement {
         {item.kind === 'card' &&
         item.actor?.type === 'user' &&
         item.actor.name ? (
-          <NameAvatar name={item.actor.name} size="m" />
+          <NameAvatar name={item.actor.name} size="m" src={avatar} />
         ) : isApp(app) ? (
           <AppAvatar icon={APPS[app].icon} app={app} label={appName ?? ''} />
         ) : (
-          <NameAvatar name={actor ?? '?'} size="m" />
+          <NameAvatar name={actor ?? '?'} size="m" src={avatar} />
         )}
       </ListItemAvatar>
       <ListItemText

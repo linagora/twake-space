@@ -32,6 +32,7 @@ import {
 import { useId, useState, type ReactElement, type ReactNode } from 'react'
 import { Link as RouterLink, useParams } from 'react-router'
 
+import { avatarUrl } from '@/application/avatar'
 import {
   isRefusal,
   SPACE_ROLES,
@@ -71,6 +72,7 @@ interface Row {
   name: string
   detail: string
   role: SpaceRole
+  avatar: string | null
 }
 
 // The management page of a space, for its admins. The mockup's archive,
@@ -305,14 +307,16 @@ function Members({ space }: { space: Space }): ReactElement {
       id: m.id,
       name: m.displayName ?? m.username,
       detail: m.email,
-      role: m.role
+      role: m.role,
+      avatar: avatarUrl(m.workplaceFqdn)
     })),
     ...space.groups.map(g => ({
       kind: 'group' as const,
       id: g.id,
       name: g.name,
       detail: t('members.group'),
-      role: g.role
+      role: g.role,
+      avatar: null
     }))
   ]
   const shown = filter === 'all' ? rows : rows.filter(r => r.role === filter)
@@ -360,7 +364,7 @@ function Members({ space }: { space: Space }): ReactElement {
               <ListItem key={`${row.kind}:${row.id}`} size="small">
                 <ListItemIcon>
                   {row.kind === 'member' ? (
-                    <NameAvatar name={row.name} size="m" />
+                    <NameAvatar name={row.name} size="m" src={row.avatar} />
                   ) : (
                     <Avatar size="m" border aria-hidden>
                       <Icon icon={Team} />

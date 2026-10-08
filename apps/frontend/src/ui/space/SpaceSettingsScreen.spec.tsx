@@ -27,6 +27,7 @@ const space: Space = {
       username: 'alice',
       email: 'alice@acme.test',
       displayName: 'Alice Martin',
+      workplaceFqdn: null,
       role: 'admin'
     },
     {
@@ -34,6 +35,7 @@ const space: Space = {
       username: 'bob',
       email: 'bob@acme.test',
       displayName: 'Bob Dupont',
+      workplaceFqdn: null,
       role: 'editor'
     }
   ],

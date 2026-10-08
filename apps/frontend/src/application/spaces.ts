@@ -7,6 +7,8 @@ export interface MemberSummary {
   id: string
   username: string
   displayName: string | null
+  /** The address of the person's Twake Workplace instance, null while it has none. */
+  workplaceFqdn: string | null
 }
 
 export interface SpaceSummary {
@@ -69,6 +71,7 @@ export interface Member {
   username: string
   email: string
   displayName: string | null
+  workplaceFqdn: string | null
   role: SpaceRole
 }
 

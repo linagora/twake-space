@@ -17,6 +17,7 @@ import {
   spaceTab,
   spaces
 } from './schema.ts'
+import type { Workplaces } from './workplaces.ts'
 
 const spaceParams = z.object({ id: z.uuid() })
 
@@ -84,13 +85,19 @@ function callerOf(request: FastifyRequest) {
 
 export function registerSpaceRoutes(
   app: HttpServer,
-  deps: { db: Db; authorize: Authorize; apps: readonly SpaceApp[] }
+  deps: {
+    db: Db
+    authorize: Authorize
+    apps: readonly SpaceApp[]
+    workplaces: Workplaces
+  }
 ) {
-  const { db, authorize } = deps
+  const { db, authorize, workplaces } = deps
   const provided = new Set(deps.apps.map(app => APP_KINDS[app]))
 
   app.get('/spaces', { preHandler: authorize('space:read') }, async request => {
-    const reached = await reachableSpaces(db, callerOf(request))
+    const caller = callerOf(request)
+    const reached = await reachableSpaces(db, caller)
     // The home cards show who is in each space.
     const members =
       reached.length === 0
@@ -110,6 +117,10 @@ export function registerSpaceRoutes(
               )
             )
             .orderBy(asc(spaceMembers.username))
+    const fqdns = await workplaces(
+      caller.organizationId,
+      members.map(member => member.id)
+    )
     return {
       spaces: reached.map(
         ({ id, name, role, color, description, pinnedAt, openedAt }) => ({
@@ -125,7 +136,8 @@ export function registerSpaceRoutes(
             .map(({ id, username, displayName }) => ({
               id,
               username,
-              displayName
+              displayName,
+              workplaceFqdn: fqdns.get(id) ?? null
             }))
         })
       )
@@ -220,6 +232,10 @@ export function registerSpaceRoutes(
             .where(eq(spaceBanners.spaceId, spaceId))
         ])
       const resourceIds = new Map(resources.map(r => [r.kind, r.id]))
+      const fqdns = await workplaces(
+        callerOf(request).organizationId,
+        members.map(member => member.id)
+      )
 
       return {
         ...space,
@@ -230,7 +246,10 @@ export function registerSpaceRoutes(
         homeserverUrl: organization?.homeserverUrl ?? null,
         // Changes with the image, so that a client can tell it needs the new one.
         banner: banner?.updatedAt.toISOString() ?? null,
-        members,
+        members: members.map(member => ({
+          ...member,
+          workplaceFqdn: fqdns.get(member.id) ?? null
+        })),
         groups,
         // A kind without an id is still being prepared by its app.
         resources: spaceResourceKind.enumValues
