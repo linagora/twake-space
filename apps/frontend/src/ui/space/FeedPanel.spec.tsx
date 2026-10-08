@@ -6,6 +6,7 @@ import type { Space } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeLive } from '@/testing/fakeLive'
 import { renderWithProviders } from '@/testing/renderWithProviders'
+import { CallWindow } from '@/ui/call/CallWindow'
 import { useLiveUpdates } from '@/ui/live/useLiveUpdates'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 
@@ -124,7 +125,12 @@ function renderFeed(
 
 function LiveFeed({ space }: { space: Space }) {
   useLiveUpdates()
-  return <FeedPanel space={space} />
+  return (
+    <>
+      <FeedPanel space={space} />
+      <CallWindow />
+    </>
+  )
 }
 
 const articles = () =>
@@ -193,6 +199,53 @@ describe('FeedPanel', () => {
     })
     expect(within(card).getByText(/Room 4/)).toBeInTheDocument()
     expect(within(card).queryByText(/waiting/)).not.toBeInTheDocument()
+  })
+
+  it("joins an event's Meet room, and shares its link", async () => {
+    const writeText = vi.fn<(text: string) => Promise<void>>(() =>
+      Promise.resolve()
+    )
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true
+    })
+    renderFeed([
+      { ...event, state: { ...event.state, meeting: { room: 'abc-defg-hij' } } }
+    ])
+    const card = await screen.findByRole('article', {
+      name: 'Someone: Roadmap review'
+    })
+
+    fireEvent.click(within(card).getByRole('button', { name: 'Join meeting' }))
+    expect(
+      within(screen.getByRole('region', { name: 'Video meeting' })).getByTitle(
+        'Video meeting'
+      )
+    ).toHaveAttribute('src', 'https://meet.test/abc-defg-hij')
+
+    fireEvent.click(
+      within(card).getByRole('button', { name: 'Connection details' })
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Connection details' })
+    expect(within(dialog).getByLabelText('Meeting link')).toHaveValue(
+      'https://meet.test/abc-defg-hij'
+    )
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Copy the link' })
+    )
+    expect(await screen.findByText('Link copied')).toBeInTheDocument()
+    expect(writeText).toHaveBeenCalledWith('https://meet.test/abc-defg-hij')
+  })
+
+  it('offers no meeting on an event without a room', async () => {
+    renderFeed([event])
+
+    const card = await screen.findByRole('article', {
+      name: 'Someone: Roadmap review'
+    })
+    expect(
+      within(card).queryByRole('button', { name: 'Join meeting' })
+    ).not.toBeInTheDocument()
   })
 
   it('shows one category at a time', async () => {

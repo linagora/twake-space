@@ -404,6 +404,10 @@
     "duration": "Dura %{minutes} minuti",
     "description": "Descrizione",
     "scheduleAction": "Pianifica",
+    "details": "Dati di connessione",
+    "copyLink": "Copia il link",
+    "linkCopied": "Link copiato",
+    "share": "Condividi questo link con i tuoi ospiti.",
     "scheduled": "Riunione pianificata. Apparirà nel feed quando il calendario l'avrà creata.",
     "refusal": {
       "cannotSchedule": "Solo editor e amministratori possono pianificare una riunione.",

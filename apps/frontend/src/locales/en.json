@@ -404,6 +404,10 @@
     "duration": "Lasts %{minutes} minutes",
     "description": "Description",
     "scheduleAction": "Schedule",
+    "details": "Connection details",
+    "copyLink": "Copy the link",
+    "linkCopied": "Link copied",
+    "share": "Share this link with your guests.",
     "scheduled": "Meeting scheduled. It shows in the feed once the calendar has created it.",
     "refusal": {
       "cannotSchedule": "Only editors and admins can schedule a meeting.",

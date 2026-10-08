@@ -91,7 +91,7 @@ describe('cards', () => {
 })
 
 describe('toEventState', () => {
-  it("reads a calendar card's times, place and answers", () => {
+  it("reads a calendar card's times, place, answers and Meet room", () => {
     expect(
       toEventState({
         start: '2026-10-08T09:00:00Z',
@@ -102,7 +102,8 @@ describe('toEventState', () => {
           start: '2026-10-08T08:00:00Z',
           end: '2026-10-08T09:00:00Z'
         },
-        rsvp: { accepted: 2, declined: 1 }
+        rsvp: { accepted: 2, declined: 1 },
+        meeting: { room: 'abc-defg-hij' }
       })
     ).toEqual({
       start: '2026-10-08T09:00:00Z',
@@ -111,7 +112,8 @@ describe('toEventState', () => {
       location: 'Room 4',
       previous: { start: '2026-10-08T08:00:00Z', end: '2026-10-08T09:00:00Z' },
       proposed: null,
-      rsvp: { accepted: 2, declined: 1, tentative: 0, pending: 0 }
+      rsvp: { accepted: 2, declined: 1, tentative: 0, pending: 0 },
+      room: 'abc-defg-hij'
     })
   })
 
