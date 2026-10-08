@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import {
   createRef,
   useEffect,
@@ -21,6 +22,7 @@ import {
   navigateMessage,
   reconcile,
   reconcileHidden,
+  spaceOfResource,
   tabPath,
   type EmbedPath,
   type EmbeddedApp,
@@ -30,11 +32,12 @@ import {
 import { isTabReady, spaceTabs } from '@/application/spaceTabs'
 import { KeptAlive, KeptAliveStack } from '@/ds/KeptAlive'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { useServices } from '@/ui/services/Services'
 import { useBadgeActions } from '@/ui/space/Badges'
 import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
 import { useFillPage } from '@/ui/space/FillPage'
 import { useAppUrls } from '@/ui/space/useAppUrls'
-import { useSpace } from '@/ui/spaces/queries'
+import { SPACES, useSpace } from '@/ui/spaces/queries'
 
 const SPACE_ROUTE = '/spaces/:spaceId/:tab?/*'
 
@@ -53,6 +56,34 @@ export function EmbeddedApps(): ReactElement | null {
   const location = useLocation()
   const popped = useNavigationType() === NavigationType.Pop
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { spaces } = useServices()
+  // The space whose resource a notification is about: the spaces are read
+  // in full on the click only, from the cache the list of spaces shares
+  const spaceOfNotification = async (
+    app: EmbeddedApp,
+    resourceId: string
+  ): Promise<string | null> => {
+    const list = await queryClient.query({
+      queryKey: SPACES,
+      queryFn: () => spaces.list()
+    })
+    const details = await Promise.all(
+      list.map(space =>
+        queryClient
+          .query({
+            queryKey: [...SPACES, space.id],
+            queryFn: () => spaces.get(space.id)
+          })
+          .catch(() => null)
+      )
+    )
+    return spaceOfResource(
+      details.filter(detail => detail !== null),
+      app,
+      resourceId
+    )
+  }
   const badges = useBadgeActions()
   const filled = useFillPage().space !== null
   const match = matchPath(SPACE_ROUTE, location.pathname)
@@ -351,11 +382,25 @@ export function EmbeddedApps(): ReactElement | null {
               onPath={report => {
                 onPath(app, report)
               }}
-              onOpen={() => {
-                const current = committed.current.frames[app]
-                if (current) {
-                  void navigate(tabPath(current.spaceId, app) + current.path)
-                }
+              onOpen={resourceId => {
+                void (async () => {
+                  // The space of the resource it is about, else the one the
+                  // frame shows
+                  const spaceId =
+                    resourceId === null
+                      ? null
+                      : await spaceOfNotification(app, resourceId).catch(
+                          () => null
+                        )
+                  if (spaceId !== null) {
+                    void navigate(tabPath(spaceId, app))
+                    return
+                  }
+                  const current = committed.current.frames[app]
+                  if (current) {
+                    void navigate(tabPath(current.spaceId, app) + current.path)
+                  }
+                })()
               }}
               onBadges={reported => {
                 if (reported === null) badges.reset(app)

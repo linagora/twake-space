@@ -80,7 +80,7 @@ function renderAt(
     fqdn: 'alice.twake.test'
   }
 ) {
-  const spaces = fakeSpaces()
+  const spaces = fakeSpaces([roadmap, other])
   vi.mocked(spaces.get).mockImplementation(id => {
     const space = [roadmap, other].find(item => item.id === id)
     return space
@@ -737,6 +737,37 @@ describe('EmbeddedApps', () => {
       })
       await waitFor(() => {
         expect(path()).toHaveTextContent('/spaces/a1/mail/inbox')
+      })
+    })
+
+    it('opens the space of the resource a notification is about, on a click', async () => {
+      renderAt('/spaces/a1/tasks')
+      await screen.findByTitle('Mail')
+      postFromFrame(embedPath('roadmap@acme', '/inbox', false), MAIL, 'Mail')
+      notifications.show.mockClear()
+      await waitFor(() => {
+        postFromFrame(
+          {
+            type: 'twake-embed:notification',
+            tag: 't',
+            title: 'Alice',
+            body: '',
+            resourceId: 'other@acme'
+          },
+          MAIL,
+          'Mail'
+        )
+        expect(notifications.show).toHaveBeenCalled()
+      })
+      const onClick = notifications.show.mock.lastCall?.[2] as () => void
+
+      go('/')
+      await screen.findByText('Home')
+      act(() => {
+        onClick()
+      })
+      await waitFor(() => {
+        expect(path()).toHaveTextContent('/spaces/b2/mail')
       })
     })
   })

@@ -1,5 +1,12 @@
 export type AppNotification =
-  | { kind: 'show'; tag: string; title: string; body: string }
+  | {
+      kind: 'show'
+      tag: string
+      title: string
+      body: string
+      // The resource it is about, whose space a click opens
+      resourceId: string | null
+    }
   | { kind: 'close'; tag: string }
 
 // Mirrors the `twake-embed:notification` messages of @linagora/twake-embed
@@ -26,7 +33,10 @@ export function parseAppNotification(data: unknown): AppNotification | null {
   if (m.type !== 'twake-embed:notification') return null
   const title = text(m.title, 1, MAX_TITLE)
   const body = text(m.body, 0, MAX_BODY)
+  const resourceId =
+    m.resourceId === undefined ? null : text(m.resourceId, 1, MAX_TAG)
+  if (m.resourceId !== undefined && resourceId === null) return null
   return title === null || body === null
     ? null
-    : { kind: 'show', tag, title, body }
+    : { kind: 'show', tag, title, body, resourceId }
 }

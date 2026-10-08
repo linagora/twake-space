@@ -93,7 +93,8 @@ export function EmbeddedAppFrame({
   onBadges: (badges: readonly Badge[] | null) => void
   onFloat?: (floats: boolean) => void
   // A click on one of its system notifications: show the app
-  onOpen?: () => void
+  // with the resource it is about, when the app said it
+  onOpen?: (resourceId: string | null) => void
 }): ReactElement {
   const { t } = useI18n()
   const { signIn } = useSession()
@@ -171,9 +172,9 @@ export function EmbeddedAppFrame({
         }
         const notification = parseAppNotification(event.data)
         if (notification?.kind === 'show') {
-          const { tag, title, body } = notification
+          const { tag, title, body, resourceId } = notification
           notifications.show(app, { tag, title, body }, () => {
-            open.current?.()
+            open.current?.(resourceId)
           })
           return
         }

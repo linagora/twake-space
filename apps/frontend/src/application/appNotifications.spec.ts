@@ -15,8 +15,15 @@ describe('parseAppNotification', () => {
       kind: 'show',
       tag: 't',
       title: 'T',
-      body: 'B'
+      body: 'B',
+      resourceId: null
     })
+    // The resource it is about, whose space a click opens
+    expect(parseAppNotification({ ...show, resourceId: 'r1' })).toMatchObject({
+      resourceId: 'r1'
+    })
+    expect(parseAppNotification({ ...show, resourceId: '' })).toBeNull()
+    expect(parseAppNotification({ ...show, resourceId: 3 })).toBeNull()
     expect(
       parseAppNotification({ type: 'twake-embed:notification-close', tag: 't' })
     ).toEqual({ kind: 'close', tag: 't' })

@@ -8,7 +8,7 @@ import {
   type NavigateMessage
 } from '@linagora/twake-embed'
 
-import type { ResourceKind } from '@/application/spaces'
+import type { ResourceKind, Space } from '@/application/spaces'
 
 export { embedUrl, loadMessage, navigateMessage, pathBelow }
 
@@ -81,6 +81,25 @@ export function embeddedApp(tab: string | undefined): EmbeddedAppSpec | null {
 
 export function tabPath(spaceId: string, app: EmbeddedApp): string {
   return `/spaces/${spaceId}/${app}`
+}
+
+// The space whose resource for the app is this one (the resource of a
+// notification): one frame of the app serves every space. Null when none
+// of the spaces known has it.
+export function spaceOfResource(
+  spaces: readonly Pick<Space, 'id' | 'resources'>[],
+  app: EmbeddedApp,
+  resourceId: string
+): string | null {
+  return (
+    spaces.find(space =>
+      space.resources.some(
+        resource =>
+          resource.kind === EMBEDDED_APPS[app].resource &&
+          resource.id === resourceId
+      )
+    )?.id ?? null
+  )
 }
 
 // What a frame tells TwakeSpace about its URL. In the embed dialect the app
