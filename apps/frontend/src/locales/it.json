@@ -50,6 +50,10 @@
   },
   "shell": {
     "yourSpaces": "I tuoi spazi",
+    "pinned": "Fissati",
+    "recent": "Recenti",
+    "noPinned": "Fissa uno spazio dal suo menu",
+    "noRecent": "Qui compaiono gli spazi che apri",
     "title": "Spazio",
     "allSpaces": "Tutti gli spazi condivisi",
     "spaceWithCount": "%{name}, %{smart_count} nuovo |||| %{name}, %{smart_count} nuovi",
@@ -99,6 +103,8 @@
   "spaceMenu": {
     "open": "Altre azioni per %{name}",
     "shareLink": "Condividi il link",
+    "pin": "Fissa",
+    "unpin": "Rimuovi dai fissati",
     "linkCopied": "Link copiato",
     "invite": "Invita persone",
     "managePeople": "Gestisci le persone",
@@ -119,6 +125,7 @@
     "createFailed": "Non è stato possibile creare lo spazio.",
     "channelsHint": "Uno spazio può contenere più canali per argomenti o team diversi",
     "all": "Tutti gli spazi",
+    "pinned": "Fissati",
     "createHint": "Progetto, reparto, gruppo tematico…",
     "createCard": "Crea un nuovo spazio"
   },

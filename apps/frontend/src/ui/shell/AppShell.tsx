@@ -12,7 +12,11 @@ import { useState, type ReactElement, type ReactNode } from 'react'
 import { Outlet, NavLink as RouterNavLink, useMatch } from 'react-router'
 
 import { badgeLabel, hasCounts, spaceTotal } from '@/application/badges'
-import { nameMatches } from '@/application/spaces'
+import {
+  nameMatches,
+  pinnedAndRecent,
+  type SpaceSummary
+} from '@/application/spaces'
 import {
   AppFrame,
   NavAvatar,
@@ -182,6 +186,8 @@ function AppNav(): ReactElement {
   )
 }
 
+// Pinned and Recent, or every space whose name holds the filter while one is
+// typed.
 function SpaceList({ query }: { query: string }): ReactElement | null {
   const { t } = useI18n()
   const spaces = useSpaceList().data ?? []
@@ -193,19 +199,60 @@ function SpaceList({ query }: { query: string }): ReactElement | null {
     spaces.map(space => space.id),
     hasCounts(badges)
   )
+  const totals = new Map(
+    spaces.map((space, index) => {
+      const detail = details[index]?.data
+      return [space.id, detail ? spaceTotal(badges, detail) : 0]
+    })
+  )
   if (spaces.length === 0) return null
 
+  if (query.trim() !== '') {
+    const found = spaces.filter(space => nameMatches(space.name, query))
+    return (
+      <SidebarSection label={t('shell.yourSpaces')}>
+        {found.length === 0 && <Hint text={t('shell.noSpaceFound')} />}
+        <SpaceLinks spaces={found} totals={totals} />
+      </SidebarSection>
+    )
+  }
+
+  // Shown even empty, with a hint, so people learn both exist.
+  const { pinned, recent } = pinnedAndRecent(spaces)
   return (
-    <SidebarSection label={t('shell.yourSpaces')}>
-      {!spaces.some(space => nameMatches(space.name, query)) && (
-        <ListItem>
-          <ListItemText secondary={t('shell.noSpaceFound')} />
-        </ListItem>
-      )}
-      {spaces.map((space, index) => {
-        if (!nameMatches(space.name, query)) return null
-        const detail = details[index]?.data
-        const total = detail ? spaceTotal(badges, detail) : 0
+    <>
+      <SidebarSection label={t('shell.pinned')}>
+        {pinned.length === 0 && <Hint text={t('shell.noPinned')} />}
+        <SpaceLinks spaces={pinned} totals={totals} />
+      </SidebarSection>
+      <SidebarSection label={t('shell.recent')}>
+        {recent.length === 0 && <Hint text={t('shell.noRecent')} />}
+        <SpaceLinks spaces={recent} totals={totals} />
+      </SidebarSection>
+    </>
+  )
+}
+
+function Hint({ text }: { text: string }): ReactElement {
+  return (
+    <ListItem>
+      <ListItemText secondary={text} />
+    </ListItem>
+  )
+}
+
+function SpaceLinks({
+  spaces,
+  totals
+}: {
+  spaces: SpaceSummary[]
+  totals: Map<string, number>
+}): ReactElement {
+  const { t } = useI18n()
+  return (
+    <>
+      {spaces.map(space => {
+        const total = totals.get(space.id) ?? 0
         return (
           <NavItem key={space.id} badge={badgeLabel(total)}>
             <RouteNavLink
@@ -225,6 +272,6 @@ function SpaceList({ query }: { query: string }): ReactElement | null {
           </NavItem>
         )
       })}
-    </SidebarSection>
+    </>
   )
 }

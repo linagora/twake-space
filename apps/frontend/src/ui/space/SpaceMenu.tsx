@@ -4,6 +4,7 @@ import {
   Link,
   People,
   Pen,
+  Pin,
   Settings,
   Trash
 } from '@linagora/twake-icons'
@@ -39,6 +40,7 @@ import { AppPicker } from '@/ui/spaces/AppPicker'
 import {
   useDeleteSpace,
   useEditSpace,
+  useSetPinned,
   useSpace,
   useSpaceApps
 } from '@/ui/spaces/queries'
@@ -88,15 +90,17 @@ export function ShareLinkButton({ id }: { id: string }): ReactElement {
 }
 
 // The "more" menu of a space, on its card and in its header. Every entry
-// does something today: the mockup's pin, notification and archive wait for
+// does something today: the mockup's notification and archive wait for
 // their backend.
 export function SpaceMenu({
   space
 }: {
-  space: Pick<SpaceSummary, 'id' | 'name' | 'role'>
+  space: Pick<SpaceSummary, 'id' | 'name' | 'role' | 'pinnedAt'>
 }): ReactElement {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const setPinned = useSetPinned(space.id)
+  const pinned = space.pinnedAt !== null
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [dialog, setDialog] = useState<'people' | 'edit' | 'delete' | null>(
     null
@@ -147,6 +151,15 @@ export function SpaceMenu({
           close()
           share()
         })}
+        {item(
+          'pin',
+          Pin,
+          t(pinned ? 'spaceMenu.unpin' : 'spaceMenu.pin'),
+          () => {
+            close()
+            setPinned.mutate(!pinned)
+          }
+        )}
         <Divider />
         {item(
           'people',

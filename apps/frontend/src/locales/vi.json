@@ -50,6 +50,10 @@
   },
   "shell": {
     "yourSpaces": "Không gian của bạn",
+    "pinned": "Đã ghim",
+    "recent": "Gần đây",
+    "noPinned": "Ghim một không gian từ menu của nó",
+    "noRecent": "Các không gian bạn mở sẽ hiện ở đây",
     "title": "Không gian",
     "allSpaces": "Tất cả không gian được chia sẻ",
     "spaceWithCount": "%{name}, %{smart_count} mới",
@@ -99,6 +103,8 @@
   "spaceMenu": {
     "open": "Thao tác khác cho %{name}",
     "shareLink": "Chia sẻ liên kết",
+    "pin": "Ghim",
+    "unpin": "Bỏ ghim",
     "linkCopied": "Đã sao chép liên kết",
     "invite": "Mời mọi người",
     "managePeople": "Quản lý thành viên",
@@ -119,6 +125,7 @@
     "createFailed": "Không thể tạo không gian.",
     "channelsHint": "Một không gian có thể chứa nhiều kênh cho các chủ đề hoặc nhóm khác nhau",
     "all": "Tất cả không gian",
+    "pinned": "Đã ghim",
     "createHint": "Dự án, phòng ban, nhóm chủ đề…",
     "createCard": "Tạo không gian mới"
   },

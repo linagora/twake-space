@@ -45,7 +45,7 @@ import { FeedSearch } from '@/ui/space/FeedSearch'
 import { useFillPage } from '@/ui/space/FillPage'
 import { SpaceActions } from '@/ui/space/SpaceActions'
 import { SpaceHome } from '@/ui/space/SpaceHome'
-import { useSpace } from '@/ui/spaces/queries'
+import { useMarkOpened, useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
 function useNowAfter(at: number): number {
@@ -71,6 +71,7 @@ export function SpaceScreen(): ReactElement {
   const appUrls = useAppUrls()
   const badges = useBadges()
   const space = useSpace(spaceId)
+  useMarkOpened(spaceId, space.isSuccess)
   useDocumentTitle(space.data?.name ?? null)
   const now = useNowAfter(
     space.data ? Date.parse(space.data.createdAt) + PREPARING_MS : 0

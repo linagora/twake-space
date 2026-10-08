@@ -3,6 +3,7 @@ import { Alert, Button, Chip, Typography } from '@linagora/twake-mui'
 import { useId, useState, type ReactElement } from 'react'
 import { Link as RouterLink } from 'react-router'
 
+import { pinnedAndRecent, type SpaceSummary } from '@/application/spaces'
 import spaceTile from '@/assets/space.svg'
 import { NameAvatar } from '@/ds/AppFrame'
 import { CardGrid, CreateCard, MemberAvatars, SpaceCard } from '@/ds/Card'
@@ -18,6 +19,8 @@ export function HomeScreen(): ReactElement {
   const { t } = useI18n()
   const spaces = useSpaceList()
   const [creating, setCreating] = useState(false)
+  const { pinned } = pinnedAndRecent(spaces.data ?? [])
+  const pinnedId = useId()
   const allId = useId()
   useDocumentTitle(null)
   const startCreating = (): void => {
@@ -59,6 +62,23 @@ export function HomeScreen(): ReactElement {
           />
         </TileEmpty>
       )}
+      {pinned.length > 0 && (
+        <section aria-labelledby={pinnedId} className="u-mb-2">
+          <Typography
+            id={pinnedId}
+            variant="subtitle1"
+            component="h2"
+            className="u-mb-1"
+          >
+            {t('spaces.pinned')}
+          </Typography>
+          <CardGrid>
+            {pinned.map(space => (
+              <SpaceItem key={space.id} space={space} />
+            ))}
+          </CardGrid>
+        </section>
+      )}
       {spaces.data && spaces.data.length > 0 && (
         <section aria-labelledby={allId}>
           <Typography
@@ -77,36 +97,7 @@ export function HomeScreen(): ReactElement {
               onClick={startCreating}
             />
             {spaces.data.map(space => (
-              <SpaceCard
-                key={space.id}
-                avatar={
-                  <NameAvatar name={space.name} color={space.color} size="s" />
-                }
-                link={
-                  <RouterLink to={`/spaces/${space.id}`}>
-                    {space.name}
-                  </RouterLink>
-                }
-                description={space.description}
-                members={
-                  space.members.length > 0 && (
-                    <MemberAvatars>
-                      {space.members.map(member => {
-                        const name = member.displayName ?? member.username
-                        return (
-                          <NameAvatar
-                            key={member.id}
-                            name={name}
-                            label={name}
-                            size="s"
-                          />
-                        )
-                      })}
-                    </MemberAvatars>
-                  )
-                }
-                menu={<SpaceMenu space={space} />}
-              />
+              <SpaceItem key={space.id} space={space} />
             ))}
           </CardGrid>
         </section>
@@ -119,5 +110,28 @@ export function HomeScreen(): ReactElement {
         />
       )}
     </Page>
+  )
+}
+
+function SpaceItem({ space }: { space: SpaceSummary }): ReactElement {
+  return (
+    <SpaceCard
+      avatar={<NameAvatar name={space.name} color={space.color} size="s" />}
+      link={<RouterLink to={`/spaces/${space.id}`}>{space.name}</RouterLink>}
+      description={space.description}
+      members={
+        space.members.length > 0 && (
+          <MemberAvatars>
+            {space.members.map(member => {
+              const name = member.displayName ?? member.username
+              return (
+                <NameAvatar key={member.id} name={name} label={name} size="s" />
+              )
+            })}
+          </MemberAvatars>
+        )
+      }
+      menu={<SpaceMenu space={space} />}
+    />
   )
 }

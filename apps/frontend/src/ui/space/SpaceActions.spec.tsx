@@ -67,13 +67,36 @@ describe('SpaceActions', () => {
     ).not.toBeInTheDocument()
     const menu = await openMenu()
     expect(menu.getAllByRole('menuitem').map(item => item.textContent)).toEqual(
-      ['Share link', 'Members']
+      ['Share link', 'Pin', 'Members']
     )
     fireEvent.click(menu.getByRole('menuitem', { name: 'Members' }))
 
     expect(
       await screen.findByRole('dialog', { name: 'Members of “Roadmap”' })
     ).toBeInTheDocument()
+  })
+
+  it('pins the space, whatever the role', async () => {
+    const spaces = renderActions({ ...space, role: 'viewer' })
+
+    fireEvent.click((await openMenu()).getByRole('menuitem', { name: 'Pin' }))
+
+    await waitFor(() => {
+      expect(spaces.setPinned).toHaveBeenCalledWith('a1', true)
+    })
+  })
+
+  it('unpins a pinned space', async () => {
+    const spaces = renderActions({
+      ...space,
+      pinnedAt: '2026-10-02T08:00:00.000Z'
+    })
+
+    fireEvent.click((await openMenu()).getByRole('menuitem', { name: 'Unpin' }))
+
+    await waitFor(() => {
+      expect(spaces.setPinned).toHaveBeenCalledWith('a1', false)
+    })
   })
 
   it('copies the link of the space and says so', async () => {
@@ -113,6 +136,7 @@ describe('SpaceActions', () => {
     expect(menu.getAllByRole('menuitem').map(item => item.textContent)).toEqual(
       [
         'Share link',
+        'Pin',
         'Manage people',
         'Edit space',
         'Manage space',

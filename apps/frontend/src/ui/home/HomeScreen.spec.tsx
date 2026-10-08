@@ -112,6 +112,61 @@ describe('HomeScreen', () => {
     ).toHaveAttribute('href', '/spaces/a1')
   })
 
+  it('shows the pinned spaces above all spaces, which keep them', async () => {
+    const spaces = fakeSpaces([
+      {
+        id: 'a1',
+        name: 'Design Sprint',
+        role: 'admin',
+        color: null,
+        description: '',
+        pinnedAt: null,
+        openedAt: null,
+        members: []
+      },
+      {
+        id: 'b2',
+        name: 'Roadmap',
+        role: 'viewer',
+        color: null,
+        description: '',
+        pinnedAt: '2026-10-01T08:00:00.000Z',
+        openedAt: null,
+        members: []
+      }
+    ])
+    renderWithProviders(<HomeScreen />, { spaces })
+
+    const pinned = await screen.findByRole('region', { name: 'Pinned' })
+    expect(
+      within(pinned)
+        .getAllByRole('listitem')
+        .map(item => item.textContent)
+    ).toEqual([expect.stringContaining('Roadmap')])
+    const all = screen.getByRole('region', { name: 'All spaces' })
+    expect(within(all).getAllByRole('listitem')).toHaveLength(3)
+  })
+
+  it('shows no Pinned section when nothing is pinned', async () => {
+    renderWithProviders(<HomeScreen />, {
+      spaces: fakeSpaces([
+        {
+          id: 'a1',
+          name: 'Design Sprint',
+          role: 'admin',
+          color: null,
+          description: '',
+          pinnedAt: null,
+          openedAt: null,
+          members: []
+        }
+      ])
+    })
+
+    await screen.findByRole('region', { name: 'All spaces' })
+    expect(screen.queryByRole('region', { name: 'Pinned' })).toBe(null)
+  })
+
   it('shows an empty state with the create action when there is no space', async () => {
     renderWithProviders(<HomeScreen />)
 
