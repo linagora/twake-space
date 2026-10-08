@@ -29,7 +29,9 @@ export function fakeSpaces(initial: SpaceSummary[] = []): SpacesService {
         role: 'admin',
         color,
         description: '',
-        members: []
+        members: [],
+        pinnedAt: null,
+        openedAt: null
       }
       spaces.push(space)
       return Promise.resolve(space)
@@ -40,6 +42,8 @@ export function fakeSpaces(initial: SpaceSummary[] = []): SpacesService {
     ),
     setBanner: write(),
     remove: write(),
+    setPinned: write(),
+    markOpened: write(),
     addMembers: write(),
     setMemberRole: write(),
     removeMember: write(),

@@ -6,6 +6,7 @@ import {
   type UseMutationResult,
   type UseQueryResult
 } from '@tanstack/react-query'
+import { useEffect } from 'react'
 
 import type {
   NewSpace,
@@ -131,6 +132,33 @@ export function useDeleteSpace(id: string): UseMutationResult<void> {
       return queryClient.invalidateQueries({ queryKey: SPACES })
     }
   })
+}
+
+export function useSetPinned(
+  id: string
+): UseMutationResult<void, Error, boolean> {
+  const { spaces } = useServices()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: pinned => spaces.setPinned(id, pinned),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: SPACES })
+  })
+}
+
+// Recent follows each space shown. A visit that fails to be recorded only
+// leaves Recent behind, so it is not reported.
+export function useMarkOpened(id: string, shown: boolean): void {
+  const { spaces } = useServices()
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!shown) return
+    spaces
+      .markOpened(id)
+      .then(() =>
+        queryClient.invalidateQueries({ queryKey: SPACES, exact: true })
+      )
+      .catch(() => undefined)
+  }, [id, shown, spaces, queryClient])
 }
 
 export function useCreateSpace(): UseMutationResult<

@@ -14,6 +14,8 @@ const space: Space = {
   createdAt: '2026-10-01T08:00:00.000Z',
   color: null,
   description: 'Where the year is planned',
+  pinnedAt: null,
+  openedAt: null,
   apps: ['chat', 'drive'],
   chat: true,
   mail: true,

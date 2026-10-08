@@ -31,6 +31,9 @@ export function httpSpaces(api: KyInstance): SpacesService {
         })
       ),
     remove: id => send(api.delete(space(id))),
+    setPinned: (id, pinned) =>
+      send(pinned ? api.put(space(id, 'pin')) : api.delete(space(id, 'pin'))),
+    markOpened: id => send(api.put(space(id, 'opened'))),
     addMembers: (id, usernames, role) =>
       send(api.post(space(id, 'members'), { json: { usernames, role } })),
     setMemberRole: (id, userId, role) =>

@@ -17,6 +17,8 @@ const roadmap: Space = {
   createdAt: new Date().toISOString(),
   color: null,
   description: 'Where the year is planned',
+  pinnedAt: null,
+  openedAt: null,
   apps: ['chat', 'tasks', 'drive', 'mail', 'calendar'],
   chat: false,
   mail: true,

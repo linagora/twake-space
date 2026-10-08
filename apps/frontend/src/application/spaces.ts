@@ -17,6 +17,29 @@ export interface SpaceSummary {
   color: string | null
   description: string
   members: MemberSummary[]
+  /** When the person pinned the space, or null. */
+  pinnedAt: string | null
+  /** When the person last opened the space, or null. */
+  openedAt: string | null
+}
+
+const RECENT = 5
+
+/**
+ * The sidebar's sections: the pinned spaces, in the list's order, and the
+ * five last opened that are not pinned, newest first.
+ */
+export function pinnedAndRecent(spaces: SpaceSummary[]): {
+  pinned: SpaceSummary[]
+  recent: SpaceSummary[]
+} {
+  return {
+    pinned: spaces.filter(space => space.pinnedAt !== null),
+    recent: spaces
+      .filter(space => space.pinnedAt === null && space.openedAt !== null)
+      .sort((a, b) => (b.openedAt ?? '').localeCompare(a.openedAt ?? ''))
+      .slice(0, RECENT)
+  }
 }
 
 export type SpaceApp = 'chat' | 'tasks' | 'drive' | 'mail' | 'calendar'
@@ -107,7 +130,10 @@ export function nameMatches(name: string, query: string): boolean {
   return folded(name).includes(folded(query.trim()))
 }
 
-/** Every write but create needs the caller to be an admin of the space. */
+/**
+ * Every write but create and the person's own marks needs the caller to be an
+ * admin of the space.
+ */
 export interface SpacesService {
   list: () => Promise<SpaceSummary[]>
   get: (id: string) => Promise<Space>
@@ -118,6 +144,9 @@ export interface SpacesService {
   banner: (id: string) => Promise<Blob>
   setBanner: (id: string, image: Blob) => Promise<void>
   remove: (id: string) => Promise<void>
+  setPinned: (id: string, pinned: boolean) => Promise<void>
+  /** Records that the person opened the space now. */
+  markOpened: (id: string) => Promise<void>
   addMembers: (
     id: string,
     usernames: string[],

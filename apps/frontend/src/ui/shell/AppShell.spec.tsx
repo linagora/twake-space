@@ -31,6 +31,8 @@ const spaces = () =>
       role: 'admin',
       color: null,
       description: '',
+      pinnedAt: null,
+      openedAt: null,
       members: []
     },
     {
@@ -39,6 +41,8 @@ const spaces = () =>
       role: 'viewer',
       color: null,
       description: '',
+      pinnedAt: null,
+      openedAt: null,
       members: []
     }
   ])
@@ -50,6 +54,8 @@ const detail = (id: string, name: string, mailbox: string): Space => ({
   createdAt: '2026-01-01T00:00:00.000Z',
   color: null,
   description: '',
+  pinnedAt: null,
+  openedAt: null,
   apps: ['tasks', 'mail'],
   chat: true,
   mail: true,

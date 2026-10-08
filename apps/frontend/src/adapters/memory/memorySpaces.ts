@@ -12,6 +12,8 @@ const summary = ({
   role,
   color,
   description,
+  pinnedAt,
+  openedAt,
   members
 }: Space): SpaceSummary => ({
   id,
@@ -19,6 +21,8 @@ const summary = ({
   role,
   color,
   description,
+  pinnedAt,
+  openedAt,
   members: members.map(({ id, username, displayName }) => ({
     id,
     username,
@@ -64,6 +68,8 @@ export function memorySpaces(
         id: crypto.randomUUID(),
         role: 'admin',
         createdAt: new Date().toISOString(),
+        pinnedAt: null,
+        openedAt: null,
         chat: true,
         mail: false,
         homeserverUrl: spaces[0]?.homeserverUrl ?? null,
@@ -99,6 +105,18 @@ export function memorySpaces(
       write(id, () => {
         spaces = spaces.filter(space => space.id !== id)
       }),
+    setPinned: (id, pinned) => {
+      const space = find(id)
+      if (!space) return refuse(404, 'not_found')
+      space.pinnedAt = pinned ? new Date().toISOString() : null
+      return Promise.resolve()
+    },
+    markOpened: id => {
+      const space = find(id)
+      if (!space) return refuse(404, 'not_found')
+      space.openedAt = new Date().toISOString()
+      return Promise.resolve()
+    },
     addMembers: (id, usernames, role) =>
       write(id, space => {
         const added = organization.people

@@ -19,6 +19,8 @@ const space: Space = {
   createdAt: new Date(CREATED).toISOString(),
   color: null,
   description: '',
+  pinnedAt: null,
+  openedAt: null,
   apps: ['chat', 'tasks', 'drive', 'mail', 'calendar'],
   chat: true,
   mail: true,
