@@ -5,7 +5,8 @@ import {
   NavIcon,
   NavItem,
   NavText,
-  SearchBar
+  SearchBar,
+  IconButton
 } from '@linagora/twake-mui'
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { Outlet, NavLink as RouterNavLink, useMatch } from 'react-router'
@@ -19,8 +20,6 @@ import {
 import {
   AppFrame,
   NavAvatar,
-  SidebarAddButton,
-  SidebarFilterButton,
   SidebarHeader,
   SidebarNav,
   SidebarSearch,
@@ -81,8 +80,8 @@ export function AppShell(): ReactElement {
               title={t('shell.title')}
               action={
                 <>
-                  <SidebarFilterButton
-                    size="small"
+                  <IconButton
+                    size="medium"
                     aria-label={t('shell.searchSpaces')}
                     aria-pressed={query !== null}
                     onClick={() => {
@@ -90,8 +89,8 @@ export function AppShell(): ReactElement {
                     }}
                   >
                     <Icon icon={FilterListIcon} size={24} />
-                  </SidebarFilterButton>
-                  <SidebarAddButton
+                  </IconButton>
+                  <IconButton
                     size="medium"
                     color="primary"
                     aria-label={t('spaces.create')}
@@ -100,7 +99,7 @@ export function AppShell(): ReactElement {
                     }}
                   >
                     <Icon icon={AddIcon} size={24} />
-                  </SidebarAddButton>
+                  </IconButton>
                 </>
               }
             />
