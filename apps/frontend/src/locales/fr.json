@@ -394,5 +394,16 @@
     "maximize": "Agrandir",
     "restore": "Restaurer",
     "leave": "Quitter la réunion"
+  },
+  "assistant": {
+    "title": "Demander à Twake AI",
+    "open": "Assistant Twake AI",
+    "close": "Fermer l’assistant",
+    "newConversation": "Nouvelle conversation",
+    "loading": "Ouverture de l’assistant…",
+    "notSetUp": "L’assistant n’est pas configuré pour TwakeSpace.",
+    "failed": "L’assistant n’a pas pu être ouvert.",
+    "post": "Publier dans le fil",
+    "postFailed": "La réponse n’a pas pu être publiée."
   }
 }

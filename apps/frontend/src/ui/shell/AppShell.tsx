@@ -23,6 +23,7 @@ import {
 } from '@/ds/AppFrame'
 import { FilterListIcon } from '@/ds/FilterListIcon'
 import { NavDestination } from '@/ds/NavDestination'
+import { AssistantContext, AssistantPanel } from '@/ui/assistant/AssistantPanel'
 import { CallProvider } from '@/ui/call/CallContext'
 import { CallWindow } from '@/ui/call/CallWindow'
 import { AppFeedback } from '@/ui/feedback/AppFeedback'
@@ -39,12 +40,27 @@ export function AppShell(): ReactElement {
   // Null while the search is closed.
   const [query, setQuery] = useState<string | null>(null)
   const home = useMatch('/') !== null
+  // The assistant is a space's: it shows beside a space, and stays open
+  // from one space to the next.
+  const [assistantOpen, setAssistantOpen] = useState(false)
+  const spaceId = useMatch('/spaces/:spaceId/*')?.params.spaceId
 
   return (
     <CallProvider>
       <AppFrame
         topBar={<PlatformBar />}
         bare={home}
+        aside={
+          assistantOpen &&
+          spaceId !== undefined && (
+            <AssistantPanel
+              spaceId={spaceId}
+              onClose={() => {
+                setAssistantOpen(false)
+              }}
+            />
+          )
+        }
         sidebar={
           <>
             <SidebarHeader
@@ -99,7 +115,11 @@ export function AppShell(): ReactElement {
           </>
         }
       >
-        <Outlet />
+        <AssistantContext
+          value={{ open: assistantOpen, setOpen: setAssistantOpen }}
+        >
+          <Outlet />
+        </AssistantContext>
         <EmbeddedApps />
         <CallWindow />
         <AppFeedback />
