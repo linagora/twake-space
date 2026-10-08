@@ -65,6 +65,8 @@ export interface Space extends SpaceSummary {
   mail: boolean
   /** The organization's Matrix homeserver, once known. */
   homeserverUrl: string | null
+  /** The version of the banner an admin uploaded; null for the default art. */
+  banner: string | null
   members: Member[]
   groups: LinkedGroup[]
   /**
@@ -113,6 +115,8 @@ export interface SpacesService {
   apps: () => Promise<SpaceApp[]>
   create: (space: NewSpace) => Promise<SpaceSummary>
   edit: (id: string, change: SpaceChange) => Promise<void>
+  banner: (id: string) => Promise<Blob>
+  setBanner: (id: string, image: Blob) => Promise<void>
   remove: (id: string) => Promise<void>
   addMembers: (
     id: string,

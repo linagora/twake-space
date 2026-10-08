@@ -22,6 +22,14 @@ export function httpSpaces(api: KyInstance): SpacesService {
       (await api.get('spaces/apps').json<{ apps: SpaceApp[] }>()).apps,
     create: json => api.post('spaces', { json }).json<SpaceSummary>(),
     edit: (id, json) => send(api.patch(space(id), { json })),
+    banner: id => api.get(space(id, 'banner')).blob(),
+    setBanner: (id, image) =>
+      send(
+        api.put(space(id, 'banner'), {
+          body: image,
+          headers: { 'content-type': image.type }
+        })
+      ),
     remove: id => send(api.delete(space(id))),
     addMembers: (id, usernames, role) =>
       send(api.post(space(id, 'members'), { json: { usernames, role } })),

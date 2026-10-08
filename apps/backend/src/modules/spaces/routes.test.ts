@@ -8,6 +8,7 @@ import type { TokenCaller } from '../tokens/authenticator.ts'
 import { spaceApp, type SpaceApp } from './resources.ts'
 import { registerSpaceRoutes } from './routes.ts'
 import {
+  spaceBanners,
   spaceGroups,
   spaceMembers,
   spaceResources,
@@ -367,6 +368,60 @@ describe('GET /spaces/:id', () => {
     ['an id that is not a uuid', 'design']
   ])('answers 404 for %s', async (_case, id) => {
     const response = await setUp()(`/spaces/${id}`)
+
+    expect(response.statusCode).toBe(404)
+  })
+})
+
+describe('GET /spaces/:id/banner', () => {
+  const updatedAt = new Date('2026-10-08T08:00:00Z')
+  beforeEach(async () => {
+    await testDb.db.delete(spaceBanners)
+    await testDb.db.insert(spaceBanners).values([
+      {
+        spaceId: DESIGN,
+        contentType: 'image/webp',
+        image: Buffer.from('webp'),
+        updatedAt
+      },
+      {
+        spaceId: SALES,
+        contentType: 'image/png',
+        image: Buffer.from('png')
+      }
+    ])
+  })
+
+  it('gives the version of the banner with the space', async () => {
+    const get = setUp()
+
+    expect((await get(`/spaces/${DESIGN}`)).json()).toMatchObject({
+      banner: updatedAt.toISOString()
+    })
+    await testDb.db.delete(spaceBanners)
+    expect((await get(`/spaces/${DESIGN}`)).json()).toMatchObject({
+      banner: null
+    })
+  })
+
+  it('serves the banner as it was uploaded', async () => {
+    const response = await setUp()(`/spaces/${DESIGN}/banner`)
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['content-type']).toBe('image/webp')
+    expect(response.rawPayload).toEqual(Buffer.from('webp'))
+  })
+
+  it('answers 404 for a space the caller is not in', async () => {
+    const response = await setUp()(`/spaces/${SALES}/banner`)
+
+    expect(response.statusCode).toBe(404)
+  })
+
+  it('answers 404 for a space without a banner', async () => {
+    await testDb.db.delete(spaceBanners)
+
+    const response = await setUp()(`/spaces/${DESIGN}/banner`)
 
     expect(response.statusCode).toBe(404)
   })

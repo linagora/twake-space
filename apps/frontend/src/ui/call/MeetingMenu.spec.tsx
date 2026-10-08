@@ -19,6 +19,7 @@ const space: Space = {
   chat: true,
   mail: false,
   homeserverUrl: 'https://matrix.test',
+  banner: null,
   members: [],
   groups: [],
   resources: [{ kind: 'matrix_space', id: '!s:acme' }]

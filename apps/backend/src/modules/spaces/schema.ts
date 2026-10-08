@@ -1,4 +1,5 @@
 import {
+  bytea,
   index,
   pgEnum,
   pgTable,
@@ -38,6 +39,14 @@ export const spaceSettings = pgTable('space_settings', {
   description: text().notNull().default(''),
   color: text(),
   apps: spaceTab().array().notNull()
+})
+
+// Apart from the settings, so that reading a space does not read the image.
+export const spaceBanners = pgTable('space_banners', {
+  spaceId: uuid('space_id').primaryKey(),
+  contentType: text('content_type').notNull(),
+  image: bytea().notNull(),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow()
 })
 
 // The tables below have no foreign key to spaces: they are fed by events that can be

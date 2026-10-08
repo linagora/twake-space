@@ -35,6 +35,10 @@ export function fakeSpaces(initial: SpaceSummary[] = []): SpacesService {
       return Promise.resolve(space)
     }),
     edit: write(),
+    banner: vi.fn(() =>
+      Promise.resolve(new Blob(['png'], { type: 'image/png' }))
+    ),
+    setBanner: write(),
     remove: write(),
     addMembers: write(),
     setMemberRole: write(),

@@ -10,6 +10,11 @@
   "spaceHome": {
     "users": "Miembro del espacio |||| Miembros del espacio",
     "manageUsers": "Gestionar miembros",
+    "banner": {
+      "edit": "Cambiar el banner",
+      "invalid": "Elija una imagen PNG, JPEG, WebP o GIF de 5 MB como máximo.",
+      "failed": "No se pudo guardar el banner."
+    },
     "figures": {
       "tasks": "Tareas completadas",
       "files": "Archivos compartidos",

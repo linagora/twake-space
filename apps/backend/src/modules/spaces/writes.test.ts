@@ -13,7 +13,13 @@ import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
 import type { TokenCaller } from '../tokens/authenticator.ts'
 import { spacePlatformRoutes } from './events.ts'
-import { spaceGroups, spaceMembers, spaceSettings, spaces } from './schema.ts'
+import {
+  spaceBanners,
+  spaceGroups,
+  spaceMembers,
+  spaceSettings,
+  spaces
+} from './schema.ts'
 import { registerSpaceWriteRoutes } from './writes.ts'
 
 const ALICE = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
@@ -57,6 +63,7 @@ beforeEach(async () => {
     spaceMembers,
     spaceGroups,
     spaceSettings,
+    spaceBanners,
     spaces,
     lastChanges
   ]) {
@@ -137,15 +144,19 @@ function setUp(
   )
   registerSpaceWriteRoutes(app, { db: testDb.db, authorize, directory })
   return (
-    method: 'POST' | 'PATCH' | 'DELETE',
+    method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     url: string,
     payload?: object,
-    token = 'alice'
+    token = 'alice',
+    contentType?: string
   ) =>
     app.inject({
       method,
       url,
-      headers: { authorization: `Bearer ${token}` },
+      headers: {
+        authorization: `Bearer ${token}`,
+        ...(contentType && { 'content-type': contentType })
+      },
       ...(payload && { payload })
     })
 }
@@ -512,6 +523,61 @@ describe('space writes', () => {
     expect(await nameOf(DESIGN)).toBeUndefined()
     expect(await members()).toEqual([])
     expect(await testDb.db.select().from(spaceSettings)).toEqual([])
+  })
+
+  it('keeps the banner an admin uploads, and replaces it', async () => {
+    const { calls, directory } = ldapRest()
+    const write = setUp(directory)
+    const upload = (image: Buffer, type: string) =>
+      write('PUT', `/spaces/${DESIGN}/banner`, image, 'alice', type)
+
+    const first = await upload(Buffer.from('png'), 'image/png')
+    const second = await upload(Buffer.from('jpeg'), 'image/jpeg')
+
+    expect(first.statusCode).toBe(204)
+    expect(second.statusCode).toBe(204)
+    expect(calls).toEqual([])
+    expect(
+      await testDb.db
+        .select({
+          contentType: spaceBanners.contentType,
+          image: spaceBanners.image
+        })
+        .from(spaceBanners)
+    ).toEqual([{ contentType: 'image/jpeg', image: Buffer.from('jpeg') }])
+  })
+
+  it.each([
+    ['a member who is no admin', 'bob', 'image/png', 1, 403],
+    ['an SVG', 'alice', 'image/svg+xml', 1, 415],
+    ['an empty file', 'alice', 'image/png', 0, 415],
+    ['an image over 5 MB', 'alice', 'image/png', 5 * 1024 * 1024 + 1, 413]
+  ])('refuses a banner from %s', async (_, token, type, size, status) => {
+    const { directory } = ldapRest()
+
+    const response = await setUp(directory)(
+      'PUT',
+      `/spaces/${DESIGN}/banner`,
+      Buffer.alloc(size),
+      token,
+      type
+    )
+
+    expect(response.statusCode).toBe(status)
+    expect(await testDb.db.select().from(spaceBanners)).toEqual([])
+  })
+
+  it('deletes the banner with the space', async () => {
+    const { directory } = ldapRest()
+    await testDb.db.insert(spaceBanners).values({
+      spaceId: DESIGN,
+      contentType: 'image/png',
+      image: Buffer.from('png')
+    })
+
+    await setUp(directory)('DELETE', `/spaces/${DESIGN}`)
+
+    expect(await testDb.db.select().from(spaceBanners)).toEqual([])
   })
 
   it('writes as the service for an organization token', async () => {
