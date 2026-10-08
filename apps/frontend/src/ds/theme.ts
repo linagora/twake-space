@@ -32,6 +32,8 @@ interface PageBackground {
 export interface SpaceTokens {
   // The page behind the panels, in each color scheme
   page: { light: PageBackground; dark: PageBackground }
+  // The mockup's elevation 3, of the menus that open over the feed
+  menuShadow: string
 }
 
 export const spaceThemeOptions = {
@@ -44,6 +46,8 @@ export const spaceThemeOptions = {
     }
   },
   space: {
+    menuShadow:
+      '0px 1px 3px 0px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15)',
     page: {
       // Pink from the top left corner, green to the bottom right, on blue
       light: {
