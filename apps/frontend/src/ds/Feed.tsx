@@ -17,11 +17,13 @@ import { useState, type ReactElement, type ReactNode } from 'react'
 export function FeedLayout({
   toolbar,
   children,
-  composer
+  composer,
+  onScrolledAway
 }: {
   toolbar: ReactNode
   children: ReactNode
   composer: ReactNode
+  onScrolledAway?: (() => void) | undefined
 }): ReactElement {
   return (
     <Box
@@ -42,6 +44,10 @@ export function FeedLayout({
           flex: '1 1 auto',
           minHeight: 0,
           overflowY: 'auto'
+        }}
+        onScroll={event => {
+          // Reversed, the list rests at 0 and goes negative into older items.
+          if (Math.abs(event.currentTarget.scrollTop) > 16) onScrolledAway?.()
         }}
       >
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, pb: 2 }}>
