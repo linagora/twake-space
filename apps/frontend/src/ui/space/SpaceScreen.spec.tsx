@@ -162,7 +162,7 @@ describe('SpaceScreen', () => {
     const frame = await screen.findByTitle('Drive')
     expect(frame).toHaveAttribute(
       'src',
-      'https://alice-drive.twake.test/embed/sharings/sharing-1'
+      'https://alice-drive.twake.test/#/embed/sharings/sharing-1'
     )
 
     openTab('Feed')
