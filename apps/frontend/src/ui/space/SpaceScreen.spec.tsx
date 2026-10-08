@@ -246,6 +246,50 @@ describe('SpaceScreen', () => {
     })
   })
 
+  it('shows the upload in progress until the new banner is in', async () => {
+    const spaces = renderAt('/spaces/a1/home', { ...roadmap, role: 'admin' })
+    await screen.findByRole('button', { name: 'Change the banner' })
+    const save = Promise.withResolvers<undefined>()
+    const image = Promise.withResolvers<Blob>()
+    vi.mocked(spaces.setBanner).mockReturnValue(save.promise)
+    vi.mocked(spaces.banner).mockReturnValue(image.promise)
+    vi.mocked(spaces.get).mockResolvedValue({
+      ...roadmap,
+      role: 'admin',
+      banner: '2026-10-08T08:00:00.000Z'
+    })
+
+    fireEvent.change(screen.getByTestId('banner-file'), {
+      target: { files: [new File(['png'], 'cover.png', { type: 'image/png' })] }
+    })
+
+    const button = await screen.findByRole('button', {
+      name: 'Uploading the banner…'
+    })
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+
+    act(() => {
+      save.resolve(undefined)
+    })
+    await waitFor(() => {
+      expect(spaces.banner).toHaveBeenCalledWith('a1')
+    })
+    expect(button).toHaveAccessibleName('Uploading the banner…')
+
+    act(() => {
+      image.resolve(new Blob(['png'], { type: 'image/png' }))
+    })
+
+    expect(
+      await screen.findByRole('button', { name: 'Change the banner' })
+    ).toHaveAttribute('aria-disabled', 'false')
+    expect(document.querySelector('main img')).toHaveAttribute(
+      'src',
+      expect.stringMatching(/^data:image\/png;base64,/)
+    )
+  })
+
   it('refuses a banner that is no image the backend takes', async () => {
     const spaces = renderAt('/spaces/a1/home', { ...roadmap, role: 'admin' })
     await screen.findByRole('button', { name: 'Change the banner' })

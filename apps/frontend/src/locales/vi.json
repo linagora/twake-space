@@ -12,6 +12,7 @@
     "manageUsers": "Quản lý thành viên",
     "banner": {
       "edit": "Đổi ảnh bìa",
+      "uploading": "Đang tải ảnh bìa lên…",
       "invalid": "Hãy chọn ảnh PNG, JPEG, WebP hoặc GIF tối đa 5 MB.",
       "failed": "Không thể lưu ảnh bìa."
     },

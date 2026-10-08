@@ -12,6 +12,7 @@
     "manageUsers": "Gérer les membres",
     "banner": {
       "edit": "Changer la bannière",
+      "uploading": "Envoi de la bannière…",
       "invalid": "Choisissez une image PNG, JPEG, WebP ou GIF de 5 Mo au plus.",
       "failed": "La bannière n'a pas pu être enregistrée."
     },

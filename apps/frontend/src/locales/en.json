@@ -12,6 +12,7 @@
     "manageUsers": "Manage users",
     "banner": {
       "edit": "Change the banner",
+      "uploading": "Uploading the banner…",
       "invalid": "Pick a PNG, JPEG, WebP or GIF image of 5 MB at most.",
       "failed": "The banner could not be saved."
     },

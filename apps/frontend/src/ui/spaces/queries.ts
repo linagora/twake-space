@@ -1,4 +1,7 @@
 import {
+  keepPreviousData,
+  noop,
+  queryOptions,
   useMutation,
   useQueries,
   useQuery,
@@ -51,16 +54,23 @@ export function useSpaces(
 
 // Apart from SPACES and kept as long as its version, so that no write to the
 // space fetches the image again. A data URL, unlike an object URL, needs no
-// revoking.
+// revoking. A new version keeps the old image up until its own is in.
 export function useBanner(space: Space): string | undefined {
   const { spaces } = useServices()
   const { data } = useQuery({
-    queryKey: ['banners', space.id, space.banner],
-    queryFn: async () => dataUrl(await spaces.banner(space.id)),
+    ...bannerQuery(spaces, space),
     enabled: space.banner !== null,
-    staleTime: Infinity
+    placeholderData: keepPreviousData
   })
   return space.banner === null ? undefined : data
+}
+
+function bannerQuery(spaces: SpacesService, space: Space) {
+  return queryOptions({
+    queryKey: ['banners', space.id, space.banner],
+    queryFn: async () => dataUrl(await spaces.banner(space.id)),
+    staleTime: Infinity
+  })
 }
 
 function dataUrl(blob: Blob): Promise<string> {
@@ -81,8 +91,18 @@ export function useSetBanner(id: string): UseMutationResult<void, Error, Blob> {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: image => spaces.setBanner(id, image),
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: [...SPACES, id] })
+    // Pending until the new image is in the cache, so that the upload reads
+    // as done only once the banner shows it.
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [...SPACES, id] })
+      const space = queryClient.getQueryData<Space>([...SPACES, id])
+      if (space !== undefined && space.banner !== null)
+        await queryClient
+          .query({ ...bannerQuery(spaces, space), retry: false })
+          .catch(noop)
+    },
+    onError: () =>
+      void queryClient.invalidateQueries({ queryKey: [...SPACES, id] })
   })
 }
 

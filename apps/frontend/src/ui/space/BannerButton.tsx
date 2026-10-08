@@ -1,5 +1,5 @@
 import { Icon, Pen } from '@linagora/twake-icons'
-import { IconButton, Snackbar } from '@linagora/twake-mui'
+import { CircularProgress, IconButton, Snackbar } from '@linagora/twake-mui'
 import { useRef, useState, type ReactElement } from 'react'
 
 import { useI18n } from '@/ui/i18n/useI18n'
@@ -30,11 +30,22 @@ export function BannerButton({ spaceId }: { spaceId: string }): ReactElement {
   return (
     <>
       <IconButton
-        aria-label={t('spaceHome.banner.edit')}
-        disabled={setBanner.isPending}
-        onClick={() => input.current?.click()}
+        aria-label={t(
+          setBanner.isPending
+            ? 'spaceHome.banner.uploading'
+            : 'spaceHome.banner.edit'
+        )}
+        // Not `disabled`, which would drop the keyboard focus for the upload.
+        aria-disabled={setBanner.isPending}
+        onClick={() => {
+          if (!setBanner.isPending) input.current?.click()
+        }}
       >
-        <Icon icon={Pen} size={18} />
+        {setBanner.isPending ? (
+          <CircularProgress size={18} color="inherit" />
+        ) : (
+          <Icon icon={Pen} size={18} />
+        )}
       </IconButton>
       <input
         ref={input}

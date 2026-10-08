@@ -12,6 +12,7 @@
     "manageUsers": "Gestisci i membri",
     "banner": {
       "edit": "Cambia il banner",
+      "uploading": "Caricamento del banner…",
       "invalid": "Scegli un'immagine PNG, JPEG, WebP o GIF di massimo 5 MB.",
       "failed": "Non è stato possibile salvare il banner."
     },
