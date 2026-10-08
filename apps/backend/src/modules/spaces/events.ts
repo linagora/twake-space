@@ -22,6 +22,7 @@ import {
   groupNames,
   organizationMembers,
   organizationRole,
+  spaceBanners,
   spaceGroups,
   spaceMembers,
   spaceResourceKind,
@@ -473,6 +474,7 @@ export async function deleteSpace(
     reason: 'its only space was deleted'
   })
   await tx.delete(spaceSettings).where(eq(spaceSettings.spaceId, id))
+  await tx.delete(spaceBanners).where(eq(spaceBanners.spaceId, id))
   await tx.delete(spaces).where(eq(spaces.spaceId, id))
   await tell(
     tx,

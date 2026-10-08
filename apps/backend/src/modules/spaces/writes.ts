@@ -17,13 +17,23 @@ import {
   upsertMembers
 } from './events.ts'
 import { reachableSpaces } from './routes.ts'
-import { spaceMembers, spaceRole, spaceSettings, spaceTab } from './schema.ts'
+import {
+  spaceBanners,
+  spaceMembers,
+  spaceRole,
+  spaceSettings,
+  spaceTab
+} from './schema.ts'
 
 const role = z.enum(spaceRole.enumValues)
 const name = z.string().trim().min(1).max(255)
 const spaceParams = z.object({ id: z.uuid() })
 const memberParams = spaceParams.extend({ userId: z.uuid() })
 const groupParams = spaceParams.extend({ groupId: z.uuid() })
+
+// No SVG: it can carry a script.
+const BANNER_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+const BANNER_LIMIT = 5 * 1024 * 1024
 
 class Refusal extends Error {
   readonly status: number
@@ -252,6 +262,45 @@ export function registerSpaceWriteRoutes(
           await tellSpaceMembers(tx, id)
         })
       }
+      return reply.code(204).send()
+    })
+  )
+
+  app.addContentTypeParser(
+    BANNER_TYPES,
+    { parseAs: 'buffer', bodyLimit: BANNER_LIMIT },
+    (_request, body, done) => {
+      done(null, body)
+    }
+  )
+
+  app.put(
+    '/spaces/:id/banner',
+    writeSpace,
+    refusing(async (request, reply) => {
+      const { id } = parse(spaceParams, request.params)
+      const image = request.body
+      const contentType = request.headers['content-type']
+        ?.split(';', 1)[0]
+        ?.trim()
+        .toLowerCase()
+      if (
+        !Buffer.isBuffer(image) ||
+        image.length === 0 ||
+        contentType === undefined ||
+        !BANNER_TYPES.includes(contentType)
+      ) {
+        throw new Refusal(415, 'not_an_image')
+      }
+      await administered(request, id)
+      await db.transaction(async tx => {
+        const banner = { contentType, image, updatedAt: new Date() }
+        await tx
+          .insert(spaceBanners)
+          .values({ spaceId: id, ...banner })
+          .onConflictDoUpdate({ target: spaceBanners.spaceId, set: banner })
+        await tellSpaceMembers(tx, id)
+      })
       return reply.code(204).send()
     })
   )

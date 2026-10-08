@@ -7,6 +7,7 @@ import type { Authorize, Caller } from '../auth/index.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
 import { APP_KINDS, type SpaceApp } from './resources.ts'
 import {
+  spaceBanners,
   spaceGroups,
   spaceMembers,
   spaceResourceKind,
@@ -154,43 +155,54 @@ export function registerSpaceRoutes(
         return reply.code(404).send({ error: 'not_found' })
       }
 
-      const [members, groups, resources, [organization]] = await Promise.all([
-        db
-          .select({
-            id: spaceMembers.userId,
-            username: spaceMembers.username,
-            email: spaceMembers.email,
-            displayName: spaceMembers.displayName,
-            role: spaceMembers.role
-          })
-          .from(spaceMembers)
-          .where(eq(spaceMembers.spaceId, spaceId))
-          .orderBy(asc(spaceMembers.username)),
-        db
-          .select({
-            id: spaceGroups.groupId,
-            name: spaceGroups.name,
-            role: spaceGroups.role
-          })
-          .from(spaceGroups)
-          .where(eq(spaceGroups.spaceId, spaceId))
-          .orderBy(asc(spaceGroups.name)),
-        db
-          .select({ kind: spaceResources.kind, id: spaceResources.resourceId })
-          .from(spaceResources)
-          .where(eq(spaceResources.spaceId, spaceId)),
-        db
-          .select({
-            chat: organizations.chatAvailable,
-            mail: organizations.mailAvailable,
-            homeserverUrl: homeservers.url
-          })
-          .from(organizations)
-          .leftJoin(homeservers, eq(homeservers.id, organizations.homeserverId))
-          .where(
-            eq(organizations.organizationId, callerOf(request).organizationId)
-          )
-      ])
+      const [members, groups, resources, [organization], [banner]] =
+        await Promise.all([
+          db
+            .select({
+              id: spaceMembers.userId,
+              username: spaceMembers.username,
+              email: spaceMembers.email,
+              displayName: spaceMembers.displayName,
+              role: spaceMembers.role
+            })
+            .from(spaceMembers)
+            .where(eq(spaceMembers.spaceId, spaceId))
+            .orderBy(asc(spaceMembers.username)),
+          db
+            .select({
+              id: spaceGroups.groupId,
+              name: spaceGroups.name,
+              role: spaceGroups.role
+            })
+            .from(spaceGroups)
+            .where(eq(spaceGroups.spaceId, spaceId))
+            .orderBy(asc(spaceGroups.name)),
+          db
+            .select({
+              kind: spaceResources.kind,
+              id: spaceResources.resourceId
+            })
+            .from(spaceResources)
+            .where(eq(spaceResources.spaceId, spaceId)),
+          db
+            .select({
+              chat: organizations.chatAvailable,
+              mail: organizations.mailAvailable,
+              homeserverUrl: homeservers.url
+            })
+            .from(organizations)
+            .leftJoin(
+              homeservers,
+              eq(homeservers.id, organizations.homeserverId)
+            )
+            .where(
+              eq(organizations.organizationId, callerOf(request).organizationId)
+            ),
+          db
+            .select({ updatedAt: spaceBanners.updatedAt })
+            .from(spaceBanners)
+            .where(eq(spaceBanners.spaceId, spaceId))
+        ])
       const resourceIds = new Map(resources.map(r => [r.kind, r.id]))
 
       return {
@@ -200,6 +212,8 @@ export function registerSpaceRoutes(
         chat: organization?.chat ?? false,
         mail: organization?.mail ?? false,
         homeserverUrl: organization?.homeserverUrl ?? null,
+        // Changes with the image, so that a client can tell it needs the new one.
+        banner: banner?.updatedAt.toISOString() ?? null,
         members,
         groups,
         // A kind without an id is still being prepared by its app.
@@ -207,6 +221,32 @@ export function registerSpaceRoutes(
           .filter(kind => provided.has(kind))
           .map(kind => ({ kind, id: resourceIds.get(kind) ?? null }))
       }
+    }
+  )
+
+  app.get(
+    '/spaces/:id/banner',
+    { preHandler: authorize('space:read') },
+    async (request, reply) => {
+      const params = spaceParams.safeParse(request.params)
+      if (!params.success) return reply.code(404).send({ error: 'not_found' })
+      const spaceId = params.data.id
+      const [space] = await reachableSpaces(db, callerOf(request), spaceId)
+      const [banner] = space
+        ? await db
+            .select({
+              contentType: spaceBanners.contentType,
+              image: spaceBanners.image
+            })
+            .from(spaceBanners)
+            .where(eq(spaceBanners.spaceId, spaceId))
+        : []
+      if (!banner) return reply.code(404).send({ error: 'not_found' })
+      return reply
+        .header('content-type', banner.contentType)
+        .header('cache-control', 'private, no-cache')
+        .header('x-content-type-options', 'nosniff')
+        .send(banner.image)
     }
   )
 }
