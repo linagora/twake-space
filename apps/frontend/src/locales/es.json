@@ -64,6 +64,12 @@
     "spaceName": "Nombre del espacio",
     "noSpaceFound": "Ningún espacio encontrado"
   },
+  "spotSpace": {
+    "title": "SpotSpace",
+    "placeholder": "Ir a un espacio",
+    "move": "Moverse",
+    "open": "Abrir"
+  },
   "search": {
     "placeholder": "Buscar",
     "searching": "Buscando…",
