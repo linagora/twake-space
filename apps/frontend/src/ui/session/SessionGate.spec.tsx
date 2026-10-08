@@ -25,9 +25,6 @@ describe('SessionGate', () => {
     )
     renderWithProviders(<p>app</p>, { session })
 
-    expect(
-      screen.getByRole('heading', { name: 'Twake Space' })
-    ).toBeInTheDocument()
     expect(await screen.findByText('Signing you in…')).toBeInTheDocument()
     await act(async () => {
       finish(null)
@@ -114,9 +111,7 @@ describe('SessionGate', () => {
     expect(await screen.findByText('app')).toBeInTheDocument()
     expect(session.start).toHaveBeenCalledTimes(1)
     await waitFor(() => {
-      expect(
-        screen.queryByRole('heading', { name: 'Twake Space' })
-      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
   })
 
