@@ -287,17 +287,10 @@ sequenceDiagram
 
 ## The feed in the browser
 
-- The browser signs in to the organization's Synapse through SSO with its own device, and syncs with matrix-js-sdk.
-- Each filter is one Synapse filter on event types over the Matrix space:
-  - all: `m.room.message` and the four `com.twake.feed.*` types
-  - messages: `m.room.message` and `com.twake.feed.messages`
-  - files, activities, events: their `com.twake.feed.*` type only
-- An event becomes a feed entry:
-  - `m.room.message` with a string `body` -> a message.
-  - `com.twake.feed.<category>` with an `object` holding string `type`, `id`, `title` -> a card with its `actor` (when it has a known `type`) and `preview` (when it is a string).
-  - An `m.replace` event is not an entry. The SDK gives each event the content of its latest edit, so the first card about an object shows the latest content.
+- The browser reads the feed from the backend's [feed routes](api.md#feed), not from Matrix. It signs in to no homeserver, so the Feed tab works without chat.
+- Each filter (all, messages, files, activities, events) is its own paged query, with no `category` for all.
+- A `feed` live event updates every loaded filter of the space: an added item goes on top of the filters that show it, a changed one is replaced where it is loaded, and a removed one, or one the backend no longer finds, is dropped.
 - A card's title opens the space's tab for its container: `project` -> Tasks, `drive` -> Drive, `mailbox` -> Mail, `calendar` -> Calendar, `matrix_space` -> Chat. With no container, or a tab the space does not show, the title is plain text.
-- After a gap in the sync the timeline resets; the feed then loads older entries again.
 
 ## Retention
 
