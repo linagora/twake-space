@@ -77,13 +77,15 @@ const file: FeedItem = {
 }
 
 describe('memorySpaces', () => {
-  it('renames and removes a space', async () => {
+  it('edits and removes a space', async () => {
     const spaces = memorySpaces([roadmap], { people, groups })
 
-    await spaces.rename('roadmap', 'Roadmap 2027')
-    expect(await spaces.list()).toEqual([
-      expect.objectContaining({ id: 'roadmap', name: 'Roadmap 2027' })
-    ])
+    await spaces.edit('roadmap', { name: 'Roadmap 2027' })
+    await spaces.edit('roadmap', { apps: ['calendar'] })
+    expect(await spaces.get('roadmap')).toMatchObject({
+      name: 'Roadmap 2027',
+      apps: ['calendar']
+    })
     await spaces.remove('roadmap')
     expect(await spaces.list()).toEqual([])
   })
@@ -122,7 +124,7 @@ describe('memorySpaces', () => {
       groups
     })
 
-    await expect(spaces.rename('roadmap', 'Q3')).rejects.toMatchObject({
+    await expect(spaces.edit('roadmap', { name: 'Q3' })).rejects.toMatchObject({
       status: 403,
       code: 'not_space_admin'
     })

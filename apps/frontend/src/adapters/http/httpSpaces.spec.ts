@@ -98,10 +98,10 @@ describe('httpSpaces', () => {
 
   it.each([
     {
-      write: () => spaces.rename('a1', 'Q3'),
+      write: () => spaces.edit('a1', { name: 'Q3', apps: ['drive'] }),
       method: 'PATCH',
       path: 'spaces/a1',
-      body: { name: 'Q3' }
+      body: { name: 'Q3', apps: ['drive'] }
     },
     {
       write: () => spaces.remove('a1'),

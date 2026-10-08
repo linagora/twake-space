@@ -8,6 +8,7 @@ import {
   Trash
 } from '@linagora/twake-icons'
 import {
+  Alert,
   Button,
   Dialog,
   DialogActions,
@@ -23,13 +24,24 @@ import {
 import { useEffect, useId, useState, type ReactElement } from 'react'
 import { useNavigate } from 'react-router'
 
-import type { SpaceSummary } from '@/application/spaces'
+import type {
+  Space,
+  SpaceApp,
+  SpaceChange,
+  SpaceSummary
+} from '@/application/spaces'
 import { DialogHeader } from '@/ds/Dialog'
 import { MenuEntry } from '@/ds/Menu'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { AddToSpaceDialog } from '@/ui/space/AddToSpaceDialog'
 import { WriteError } from '@/ui/space/WriteError'
-import { useDeleteSpace, useRenameSpace, useSpace } from '@/ui/spaces/queries'
+import { AppPicker } from '@/ui/spaces/AppPicker'
+import {
+  useDeleteSpace,
+  useEditSpace,
+  useSpace,
+  useSpaceApps
+} from '@/ui/spaces/queries'
 
 type Named = Pick<SpaceSummary, 'id' | 'name'>
 
@@ -154,9 +166,21 @@ export function SpaceMenu({
       </Menu>
       {notice}
       {dialog === 'invite' && (
-        <InviteDialog spaceId={space.id} onClose={closeDialog} />
+        <WithSpace spaceId={space.id} onClose={closeDialog}>
+          {full => (
+            <AddToSpaceDialog
+              kind="people"
+              space={full}
+              onClose={closeDialog}
+            />
+          )}
+        </WithSpace>
       )}
-      {dialog === 'edit' && <EditDialog space={space} onClose={closeDialog} />}
+      {dialog === 'edit' && (
+        <WithSpace spaceId={space.id} onClose={closeDialog}>
+          {full => <EditDialog space={full} onClose={closeDialog} />}
+        </WithSpace>
+      )}
       {dialog === 'delete' && (
         <DeleteDialog space={space} onClose={closeDialog} />
       )}
@@ -164,40 +188,60 @@ export function SpaceMenu({
   )
 }
 
-// The people picker needs who is already in: read the space first.
-function InviteDialog({
+// The people picker needs who is already in, and the app picker the space's
+// apps: read the space first.
+function WithSpace({
   spaceId,
-  onClose
+  onClose,
+  children
 }: {
   spaceId: string
   onClose: () => void
+  children: (space: Space) => ReactElement
 }): ReactElement | null {
   const space = useSpace(spaceId)
   useEffect(() => {
     if (space.isError) onClose()
   }, [space.isError, onClose])
   if (!space.data) return null
-  return <AddToSpaceDialog kind="people" space={space.data} onClose={onClose} />
+  return children(space.data)
 }
 
-export function EditDialog({
+function EditDialog({
   space,
   onClose
 }: {
-  space: Named
+  space: Space
   onClose: () => void
 }): ReactElement {
   const { t } = useI18n()
   const titleId = useId()
-  const rename = useRenameSpace(space.id)
-  const [name, setName] = useState(space.name)
+  const appsId = useId()
+  const edit = useEditSpace(space.id)
+  const offered = useSpaceApps()
+  // A live update refetches the space while the dialog is open: compare with
+  // what the form opened on, so another admin's change is not reverted.
+  const [initial] = useState(space)
+  const [name, setName] = useState(initial.name)
+  // Apps this deployment no longer provides stay picked, out of sight.
+  const [apps, setApps] = useState<ReadonlySet<SpaceApp>>(
+    () => new Set(initial.apps)
+  )
   const trimmed = name.trim()
+  const appsChanged =
+    apps.size !== initial.apps.length ||
+    initial.apps.some(app => !apps.has(app))
+  const change: SpaceChange = {
+    ...(trimmed !== initial.name && { name: trimmed }),
+    ...(appsChanged && { apps: [...apps] })
+  }
   return (
-    <Dialog open onClose={onClose} aria-labelledby={titleId} size="small">
+    <Dialog open onClose={onClose} aria-labelledby={titleId} size="medium">
       <form
         onSubmit={event => {
           event.preventDefault()
-          rename.mutate(trimmed, { onSuccess: onClose })
+          if (Object.keys(change).length === 0) onClose()
+          else edit.mutate(change, { onSuccess: onClose })
         }}
       >
         <DialogHeader
@@ -207,14 +251,27 @@ export function EditDialog({
         />
         <DialogContent>
           <Stack spacing={2}>
-            <WriteError error={rename.error} />
+            <WriteError error={edit.error} />
             <TextField
               label={t('createSpace.name')}
               value={name}
               onChange={event => {
                 setName(event.target.value)
               }}
+              slotProps={{ htmlInput: { maxLength: 255 } }}
             />
+            <Typography id={appsId} variant="subtitle1">
+              {t('createSpace.apps')}
+            </Typography>
+            <AppPicker
+              provided={offered.data ?? []}
+              picked={apps}
+              onChange={setApps}
+              labelledBy={appsId}
+            />
+            {offered.isError && (
+              <Alert severity="error">{t('createSpace.appsFailed')}</Alert>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -224,7 +281,7 @@ export function EditDialog({
           <Button
             type="submit"
             variant="contained"
-            disabled={trimmed === '' || rename.isPending}
+            disabled={trimmed === '' || edit.isPending}
           >
             {t('common.save')}
           </Button>

@@ -19,7 +19,7 @@ Open http://localhost:3000. You're signed in as Alice Martin, an admin of the or
 
 The organization has four people (alice, bob, carol, dave) and one group, Designers. Each space has direct members and the Designers group with their own roles. The seed lives in `apps/frontend/src/adapters/memory/seed.ts`, and uses the same organization, people and roles as the local SSO stack, so the screens look the same on the real backend.
 
-Writes behave like the backend's: only a space admin can rename a space or change its members, and anyone else gets a 403 refusal.
+Writes behave like the backend's: only a space admin can rename a space, change its apps or change its members, and anyone else gets a 403 refusal.
 
 What mock mode doesn't do:
 
@@ -54,7 +54,7 @@ ESLint enforces these boundaries, and a few more rules: named exports only, UI f
 
 `useServices()` gives the screens:
 
-- `spaces`: list, read and create spaces. A space admin also renames or deletes a space, and adds, changes and removes its members and linked groups.
+- `spaces`: list, read and create spaces. A space admin also renames a space, changes its apps or deletes it, and adds, changes and removes its members and linked groups.
 - `directory`: search the organization's people and groups, 20 per page, to pick new members from.
 - `feed`: read a space's feed by filter and page, post, edit and delete your own posts, and react.
 - `tokens`: list, create, rename and revoke your personal API tokens, and the organization's when you are an owner or admin of it. The API tokens page (`/settings/api-tokens`) uses it.

@@ -80,9 +80,9 @@ export function memorySpaces(
       spaces.push(space)
       return Promise.resolve(summary(space))
     },
-    rename: (id, name) =>
+    edit: (id, change) =>
       write(id, space => {
-        space.name = name
+        Object.assign(space, change)
       }),
     remove: id =>
       write(id, () => {

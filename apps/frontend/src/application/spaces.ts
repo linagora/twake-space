@@ -28,6 +28,8 @@ export interface NewSpace {
   apps: SpaceApp[]
 }
 
+export type SpaceChange = Partial<Pick<NewSpace, 'name' | 'apps'>>
+
 export const RESOURCE_KINDS = [
   'matrix_space',
   'project',
@@ -99,7 +101,7 @@ export interface SpacesService {
   /** The apps the deployment and the organization provide to a new space. */
   apps: () => Promise<SpaceApp[]>
   create: (space: NewSpace) => Promise<SpaceSummary>
-  rename: (id: string, name: string) => Promise<void>
+  edit: (id: string, change: SpaceChange) => Promise<void>
   remove: (id: string) => Promise<void>
   addMembers: (
     id: string,
