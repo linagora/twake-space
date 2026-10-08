@@ -16,8 +16,11 @@ import type { ReactElement, ReactNode } from 'react'
 
 // Layout hands `sx` to a plain div, so it is styled here instead. The page
 // behind the panels is the mockups' soft gradient, lit from each corner.
-const Frame = styled(Layout)(({ theme }) => ({
-  height: 'calc(100dvh - var(--topBarHeight, 0px))',
+const Frame = styled(Layout, {
+  shouldForwardProp: prop => prop !== 'belowBar'
+})<{ belowBar: boolean }>(({ theme, belowBar }) => ({
+  '--topBarHeight': belowBar ? TWAKE_BAR_HEIGHT : '0px',
+  height: 'calc(100dvh - var(--topBarHeight))',
   backgroundColor: '#e2eaf9',
   backgroundImage: [
     'radial-gradient(at 0% 0%, #faf5f7 0px, transparent 55%)',
@@ -34,7 +37,7 @@ const Frame = styled(Layout)(({ theme }) => ({
   }),
   [theme.breakpoints.down('lg')]: {
     height: 'auto',
-    minHeight: 'calc(100dvh - var(--topBarHeight, 0px))',
+    minHeight: 'calc(100dvh - var(--topBarHeight))',
     flexDirection: 'column',
     paddingBottom: 'var(--sidebarHeight)'
   }
@@ -52,9 +55,7 @@ const GlassSidebar = styled(Sidebar)(({ theme }) => ({
   }
 }))
 
-// The platform bar sits above the frame, which gives it its height.
 const TopBar = styled('div')({
-  '--topBarHeight': TWAKE_BAR_HEIGHT,
   position: 'sticky',
   top: 0,
   zIndex: 1100
@@ -76,7 +77,7 @@ export function AppFrame({
   return (
     <>
       {topBar && <TopBar>{topBar}</TopBar>}
-      <Frame withTopBar={false}>
+      <Frame withTopBar={false} belowBar={Boolean(topBar)}>
         <GlassSidebar>{sidebar}</GlassSidebar>
         {/* Content's own 100% height ignores its margins and scrolls the page */}
         <Content
