@@ -24,6 +24,7 @@ export interface Services {
   driveUrlTemplate: string | null
   chatUrl: string | null
   calendarUrl: string | null
+  meetUrl: string | null
 }
 
 export const ServicesContext = createContext<Services | null>(null)
