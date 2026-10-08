@@ -12,6 +12,7 @@
     "manageUsers": "Mitglieder verwalten",
     "banner": {
       "edit": "Banner ändern",
+      "uploading": "Banner wird hochgeladen…",
       "invalid": "Wählen Sie ein PNG-, JPEG-, WebP- oder GIF-Bild mit höchstens 5 MB.",
       "failed": "Das Banner konnte nicht gespeichert werden."
     },
