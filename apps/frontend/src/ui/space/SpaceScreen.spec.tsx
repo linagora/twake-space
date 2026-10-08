@@ -81,13 +81,13 @@ describe('SpaceScreen', () => {
     ).toBeInTheDocument()
   })
 
-  it('opens on the feed, which every space has', async () => {
+  it('opens on the home, which every space has', async () => {
     renderAt('/spaces/a1', { ...roadmap, apps: ['chat', 'tasks'] })
 
     expect(
-      await screen.findByRole('tab', { name: 'Feed', selected: true })
+      await screen.findByRole('tab', { name: 'Home', selected: true })
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/feed')
+    expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/home')
   })
 
   it('turns Chat off without chat and says why', async () => {
@@ -118,9 +118,9 @@ describe('SpaceScreen', () => {
     renderAt('/spaces/a1/chat')
 
     expect(
-      await screen.findByRole('tab', { name: 'Feed', selected: true })
+      await screen.findByRole('tab', { name: 'Home', selected: true })
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/feed')
+    expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/home')
   })
 
   it('keeps the tab in the URL', async () => {
@@ -183,6 +183,29 @@ describe('SpaceScreen', () => {
     expect(document.querySelector('main img')).toBeNull()
   })
 
+  it('greets on the home, with a card per app that opens its tab', async () => {
+    renderAt('/spaces/a1/home')
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: /^Good \w+, / })
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open tasks' })).toHaveAttribute(
+      'href',
+      '/spaces/a1/tasks'
+    )
+    // Preparing, the tab is shown all the same; off, it is not.
+    expect(screen.getByRole('link', { name: 'Open files' })).toHaveAttribute(
+      'href',
+      '/spaces/a1/drive'
+    )
+    expect(screen.getByRole('button', { name: 'Open chat' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('link', { name: 'Open calendar' }))
+    expect(
+      await screen.findByRole('tab', { name: 'Calendar', selected: true })
+    ).toBeInTheDocument()
+  })
+
   it('folds the cover as the feed scrolls down, until it is back at its start', async () => {
     renderAt('/spaces/a1/feed', roadmap, [
       {
@@ -221,6 +244,41 @@ describe('SpaceScreen', () => {
     await waitFor(() => {
       expect(document.querySelector('main img')).not.toBeNull()
     })
+  })
+
+  it("counts the space's members, and lets an admin manage them", async () => {
+    const members = [
+      {
+        id: 'u1',
+        username: 'alice',
+        email: 'alice@acme.test',
+        displayName: 'Alice Martin',
+        role: 'admin' as const
+      },
+      {
+        id: 'u2',
+        username: 'bob',
+        email: 'bob@acme.test',
+        displayName: null,
+        role: 'viewer' as const
+      }
+    ]
+    renderAt('/spaces/a1/home', { ...roadmap, role: 'admin', members })
+
+    expect(await screen.findByText('Space users')).toBeInTheDocument()
+    expect(screen.getByLabelText('Alice Martin')).toBeInTheDocument()
+    expect(screen.getByLabelText('bob')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Manage users' }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('leaves managing the members to admins', async () => {
+    renderAt('/spaces/a1/home')
+
+    expect(await screen.findByText('Space users')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Manage users' })
+    ).not.toBeInTheDocument()
   })
 
   it("shows the space's feed on the Feed tab, chat or not", async () => {
@@ -363,6 +421,15 @@ describe('SpaceScreen', () => {
       expect(screen.getByRole('tab', { name: 'Tasks' })).toHaveTextContent(
         /^Tasks$/
       )
+    })
+
+    it("shows the same count on the app's card of the home", async () => {
+      renderAt('/spaces/a1/home')
+      await reportMail(3)
+
+      expect(
+        screen.getByRole('heading', { level: 3, name: 'Team mailbox, 3 new' })
+      ).toHaveTextContent('Team mailbox3')
     })
 
     it('shows 99+ above 99, and says the count in full', async () => {

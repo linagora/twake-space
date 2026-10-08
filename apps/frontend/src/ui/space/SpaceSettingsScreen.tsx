@@ -433,8 +433,11 @@ function Members({ space }: { space: Space }): ReactElement {
 function useAppTabs(space: Space) {
   const offered = useSpaceApps()
   const provided = offered.data ?? []
-  const tabs = TABS.filter(tab => tab === 'feed' || provided.includes(tab))
-  const isOn = (tab: (typeof TABS)[number]): boolean =>
+  const tabs = TABS.filter(
+    (tab): tab is 'feed' | SpaceApp =>
+      tab === 'feed' || (tab !== 'home' && provided.includes(tab))
+  )
+  const isOn = (tab: 'feed' | SpaceApp): boolean =>
     tab === 'feed' || space.apps.includes(tab)
   return { tabs, isOn, failed: offered.isError }
 }
