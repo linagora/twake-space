@@ -10,7 +10,10 @@ const { version } = JSON.parse(
 export default defineConfig({
   plugins: [pluginReact()],
   html: {
-    template: './index.html'
+    template: './index.html',
+    // The logo of the platform bar and the app tiles, emitted and linked as
+    // an SVG icon. Without it, Rsbuild would pick public/favicon.ico alone.
+    favicon: './src/assets/space.svg'
   },
   source: {
     define: { __APP_VERSION__: JSON.stringify(version) },
