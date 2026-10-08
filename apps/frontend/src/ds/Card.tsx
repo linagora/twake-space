@@ -88,14 +88,15 @@ export function SpaceCard({
             <Icon icon={Pin} size={16} />
           </Box>
         )}
-        {/* The menu button keeps its 48px target but takes the row's 24px,
-            its icon near the corner as in the mockup */}
+        {/* The menu button keeps its target but takes the row's 24px, its
+            icon clear of the card's corner */}
         {menu && (
           <Box
             sx={{
               position: 'relative',
               zIndex: 1,
               m: -1.5,
+              mr: 0,
               '& svg': { width: 10.667, height: 'auto' }
             }}
           >
