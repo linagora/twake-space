@@ -4,7 +4,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
-import type { SpaceDirectory } from '../../infra/ldap-rest.ts'
+import type { SpaceDirectory, SpaceRole } from '../../infra/ldap-rest.ts'
 import type { Authorize, Caller } from '../auth/index.ts'
 import { tellSpaceMembers } from '../live/notify.ts'
 import {
@@ -32,6 +32,11 @@ class Refusal extends Error {
     super(error)
     this.status = status
   }
+}
+
+function strongest(a: SpaceRole, b: SpaceRole): SpaceRole {
+  const order = spaceRole.enumValues
+  return order.indexOf(a) > order.indexOf(b) ? a : b
 }
 
 function callerOf(request: FastifyRequest) {
@@ -108,7 +113,8 @@ export function registerSpaceWriteRoutes(
         uuid: spaceMembers.userId,
         username: spaceMembers.username,
         email: spaceMembers.email,
-        displayName: spaceMembers.displayName
+        displayName: spaceMembers.displayName,
+        role: spaceMembers.role
       })
       .from(spaceMembers)
       .where(
@@ -308,15 +314,28 @@ export function registerSpaceWriteRoutes(
       const body = parse(z.object({ role }), request.body)
       const { orgId, actor } = await administered(request, id)
       const member = await memberOf(id, userId)
-      await ldapRest(() =>
+      // ldap-rest knows only the members a space holds directly; one in
+      // through a linked group gets a role of their own, and keeps the
+      // strongest of it and their groups' roles.
+      const held = await ldapRest(() =>
         directory.setMemberRole(orgId, id, member.username, body.role, actor)
+      ).then(
+        () => body.role,
+        async (error: unknown) => {
+          if (!(
+            error instanceof Refusal && error.message === 'MEMBER_NOT_FOUND'
+          ))
+            throw error
+          await ldapRest(() =>
+            directory.addMembers(orgId, id, [member.username], body.role, actor)
+          )
+          return strongest(body.role, member.role)
+        }
       )
       const at = new Date()
       await copy(request, () =>
         db.transaction(tx =>
-          upsertMembers(tx, request.log, id, at, [
-            { ...member, role: body.role }
-          ])
+          upsertMembers(tx, request.log, id, at, [{ ...member, role: held }])
         )
       )
       return reply.code(204).send()
