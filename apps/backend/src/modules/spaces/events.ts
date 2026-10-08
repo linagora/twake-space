@@ -596,20 +596,45 @@ const onGroupUpdated: Handler<PlatformEvent> = async (event, tx) => {
   for (const { spaceId } of linking) await tellSpaceMembers(tx, spaceId)
 }
 
+// ldap-rest writes the deletion date in ISO 8601 or as an LDAP generalized
+// time, like `20261005100000Z`.
+function deletionDate(value: string | undefined): Date | undefined {
+  if (value === undefined) return undefined
+  const generalized = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})?Z$/.exec(
+    value
+  )
+  const date = generalized
+    ? new Date(
+        Date.UTC(
+          Number(generalized[1]),
+          Number(generalized[2]) - 1,
+          Number(generalized[3]),
+          Number(generalized[4]),
+          Number(generalized[5]),
+          Number(generalized[6] ?? 0)
+        )
+      )
+    : z.iso.datetime({ offset: true }).safeParse(value).success
+      ? new Date(value)
+      : undefined
+  return date && !isNaN(date.getTime()) ? date : undefined
+}
+
 const userDeleted = z
   .looseObject({
     uuid: z.uuid().optional(),
     internalEmail: z.email().optional(),
-    timestamp
+    timestamp,
+    // ldap-rest's lifecycle event has no timestamp. An unreadable deletion
+    // date must not drop the deletion.
+    deletedAt: z.string().optional().transform(deletionDate).catch(undefined)
   })
   .refine(u => u.uuid ?? u.internalEmail, 'needs a uuid or an internalEmail')
 
 const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
-  const { uuid, internalEmail, timestamp } = parseOrDrop(
-    userDeleted,
-    event.body,
-    event.routingKey
-  )
+  const deleted = parseOrDrop(userDeleted, event.body, event.routingKey)
+  const { uuid, internalEmail } = deleted
+  const timestamp = deleted.timestamp ?? deleted.deletedAt
   // Before removing members: the email-to-uuid lookup reads them.
   const [known] = await withUserIds(tx, log, [{ uuid, email: internalEmail }])
   await fresh(tx, timestamp, [

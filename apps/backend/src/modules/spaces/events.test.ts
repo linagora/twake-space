@@ -731,6 +731,36 @@ describe('stale events', () => {
     }
   )
 
+  it.each([
+    ['ISO 8601', at('10:00:00')],
+    ['generalized time', at('10:00:00').replace(/[-:T]|\.\d+/g, '')]
+  ])(
+    'orders a deletion without a timestamp by its deletedAt in %s',
+    async (_format, deletedAt) => {
+      await space('twake.space.created', '09:00:00', { name: 'Design Sprint' })
+      await handle('domain.user.deleted', {
+        uuid: JDOE_ID,
+        internalEmail: jdoe.email,
+        deletedAt
+      })
+
+      await space('twake.space.member.added', '09:30:00', { members: [jdoe] })
+
+      expect(await readMembers()).toEqual([])
+    }
+  )
+
+  it('deletes a user whose deletedAt is unreadable, as an event without a time', async () => {
+    await space('twake.space.created', '09:00:00', { name: 'Design Sprint' })
+    await space('twake.space.member.added', '09:30:00', { members: [jdoe] })
+
+    await handle('domain.user.deleted', { uuid: JDOE_ID, deletedAt: 'soon' })
+    expect(await readMembers()).toEqual([])
+
+    await space('twake.space.member.added', '09:45:00', { members: [jdoe] })
+    expect(await readMembers()).toHaveLength(1)
+  })
+
   it('adds a user deleted by email when the addition is newer', async () => {
     await space('twake.space.created', '09:00:00', { name: 'Design Sprint' })
     await handle('domain.user.deleted', {
