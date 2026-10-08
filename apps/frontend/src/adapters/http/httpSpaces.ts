@@ -21,7 +21,7 @@ export function httpSpaces(api: KyInstance): SpacesService {
     apps: async () =>
       (await api.get('spaces/apps').json<{ apps: SpaceApp[] }>()).apps,
     create: json => api.post('spaces', { json }).json<SpaceSummary>(),
-    rename: (id, name) => send(api.patch(space(id), { json: { name } })),
+    edit: (id, json) => send(api.patch(space(id), { json })),
     remove: id => send(api.delete(space(id))),
     addMembers: (id, usernames, role) =>
       send(api.post(space(id, 'members'), { json: { usernames, role } })),

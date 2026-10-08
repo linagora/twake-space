@@ -34,7 +34,7 @@ export function fakeSpaces(initial: SpaceSummary[] = []): SpacesService {
       spaces.push(space)
       return Promise.resolve(space)
     }),
-    rename: write(),
+    edit: write(),
     remove: write(),
     addMembers: write(),
     setMemberRole: write(),

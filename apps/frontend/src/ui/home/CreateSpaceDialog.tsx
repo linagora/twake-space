@@ -1,22 +1,12 @@
-import {
-  CalendarApp,
-  Chat,
-  Drive,
-  Icon,
-  Mail,
-  Palette
-} from '@linagora/twake-icons'
+import { Icon, Palette } from '@linagora/twake-icons'
 import {
   Alert,
   Avatar,
   Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   Divider,
-  FormControlLabel,
-  Grid,
   Stack,
   TextField,
   Typography,
@@ -25,29 +15,13 @@ import {
 import { useId, useState, type ReactElement, type ReactNode } from 'react'
 
 import type { SpaceApp } from '@/application/spaces'
-import tasksTile from '@/assets/tasks.svg'
 import { AvatarPicker, ColorSwatches } from '@/ds/AvatarPicker'
 import { DialogHeader } from '@/ds/Dialog'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { AppPicker, DEFAULT_APPS } from '@/ui/spaces/AppPicker'
 import { useCreateSpace, useSpaceApps } from '@/ui/spaces/queries'
 
 type Step = 'details' | 'personalize' | 'apps'
-
-const tile = (src: string): ReactElement => (
-  <img src={src} alt="" width={24} height={24} />
-)
-
-const APP_ICONS: Record<SpaceApp, ReactElement> = {
-  drive: <Icon icon={Drive} size={24} />,
-  chat: <Icon icon={Chat} size={24} />,
-  tasks: tile(tasksTile),
-  calendar: <Icon icon={CalendarApp} size={24} />,
-  mail: <Icon icon={Mail} size={24} />
-}
-
-// The first column is on by default, the second one off.
-const DEFAULT_APPS: SpaceApp[] = ['drive', 'chat', 'tasks']
-const OTHER_APPS: SpaceApp[] = ['calendar', 'mail']
 
 const COLORS = [
   '#696c6f',
@@ -99,38 +73,6 @@ function DraftAvatar({
   )
 }
 
-function AppCheckbox({
-  icon,
-  label,
-  checked,
-  onChange
-}: {
-  icon: ReactNode
-  label: string
-  checked: boolean
-  onChange: (checked: boolean) => void
-}): ReactElement {
-  return (
-    <FormControlLabel
-      control={
-        <Checkbox
-          checked={checked}
-          onChange={(_event, value) => {
-            onChange(value)
-          }}
-        />
-      }
-      label={
-        <span className="u-flex u-flex-items-center u-ml-half">
-          {icon}
-          <span className="u-ml-half">{label}</span>
-        </span>
-      }
-      slotProps={{ typography: { variant: 'body2' } }}
-    />
-  )
-}
-
 export function CreateSpaceDialog({
   onClose
 }: {
@@ -152,15 +94,6 @@ export function CreateSpaceDialog({
   )
   const trimmed = name.trim()
 
-  const toggle = (key: SpaceApp) => (checked: boolean) => {
-    setApps(previous => {
-      const next = new Set(previous)
-      if (checked) next.add(key)
-      else next.delete(key)
-      return next
-    })
-  }
-
   const header = (title: string, back?: Step): ReactElement => (
     <DialogHeader
       id={titleId}
@@ -174,24 +107,6 @@ export function CreateSpaceDialog({
           }
         }
       }
-    />
-  )
-
-  const appColumn = (column: SpaceApp[]): ReactElement => (
-    <Grid size={{ xs: 12, sm: 6 }}>
-      <Stack spacing={1}>
-        {column.filter(app => provided.includes(app)).map(appCheckbox)}
-      </Stack>
-    </Grid>
-  )
-
-  const appCheckbox = (app: SpaceApp): ReactElement => (
-    <AppCheckbox
-      key={app}
-      icon={APP_ICONS[app]}
-      label={t(`createSpace.app.${app}`)}
-      checked={apps.has(app)}
-      onChange={toggle(app)}
     />
   )
 
@@ -303,15 +218,12 @@ export function CreateSpaceDialog({
             <Typography id={appsHintId} className="u-mb-1-half">
               {t('createSpace.appsHint')}
             </Typography>
-            <Grid
-              container
-              columnSpacing={3}
-              role="group"
-              aria-labelledby={appsHintId}
-            >
-              {appColumn(DEFAULT_APPS)}
-              {appColumn(OTHER_APPS)}
-            </Grid>
+            <AppPicker
+              provided={provided}
+              picked={apps}
+              onChange={setApps}
+              labelledBy={appsHintId}
+            />
             {offered.isError && (
               <Alert severity="error" className="u-mt-1">
                 {t('createSpace.appsFailed')}

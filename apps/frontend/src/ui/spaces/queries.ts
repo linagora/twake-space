@@ -11,6 +11,7 @@ import type {
   NewSpace,
   Space,
   SpaceApp,
+  SpaceChange,
   SpaceSummary,
   SpacesService
 } from '@/application/spaces'
@@ -70,13 +71,13 @@ export function useSpaceWrite(
   })
 }
 
-export function useRenameSpace(
+export function useEditSpace(
   id: string
-): UseMutationResult<void, Error, string> {
+): UseMutationResult<void, Error, SpaceChange> {
   const { spaces } = useServices()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: name => spaces.rename(id, name),
+    mutationFn: change => spaces.edit(id, change),
     // The list shows the name too.
     onSettled: () => queryClient.invalidateQueries({ queryKey: SPACES })
   })

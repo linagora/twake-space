@@ -28,6 +28,7 @@ function Path() {
 }
 
 function renderActions(target: Space, spaces = fakeSpaces()) {
+  vi.mocked(spaces.get).mockResolvedValue(target)
   renderWithProviders(
     <>
       <Routes>
@@ -124,11 +125,67 @@ describe('SpaceActions', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
-      expect(spaces.rename).toHaveBeenCalledWith('a1', 'Plans')
+      expect(spaces.edit).toHaveBeenCalledWith('a1', { name: 'Plans' })
     })
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
+  })
+
+  it('turns the app tabs of the space on and off', async () => {
+    const spaces = renderActions({ ...space, apps: ['chat', 'drive'] })
+
+    const menu = await openMenu()
+    fireEvent.click(menu.getByRole('menuitem', { name: 'Edit space' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit space' })
+    const apps = within(
+      await within(dialog).findByRole('group', { name: 'Apps to enable' })
+    )
+    expect(apps.getByRole('checkbox', { name: 'Chat' })).toBeChecked()
+    expect(apps.getByRole('checkbox', { name: 'Calendar' })).not.toBeChecked()
+    fireEvent.click(apps.getByRole('checkbox', { name: 'Chat' }))
+    fireEvent.click(apps.getByRole('checkbox', { name: 'Calendar' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(spaces.edit).toHaveBeenCalledWith('a1', {
+        apps: ['drive', 'calendar']
+      })
+    })
+  })
+
+  it('keeps the apps the deployment no longer provides', async () => {
+    const spaces = fakeSpaces()
+    vi.mocked(spaces.apps).mockResolvedValue(['chat'])
+    renderActions({ ...space, apps: ['chat', 'mail'] }, spaces)
+
+    const menu = await openMenu()
+    fireEvent.click(menu.getByRole('menuitem', { name: 'Edit space' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit space' })
+    const chat = await within(dialog).findByRole('checkbox', { name: 'Chat' })
+    expect(
+      within(dialog).queryByRole('checkbox', { name: 'Mail' })
+    ).not.toBeInTheDocument()
+    fireEvent.click(chat)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(spaces.edit).toHaveBeenCalledWith('a1', { apps: ['mail'] })
+    })
+  })
+
+  it('saves nothing when nothing changed', async () => {
+    const spaces = renderActions(space)
+
+    const menu = await openMenu()
+    fireEvent.click(menu.getByRole('menuitem', { name: 'Edit space' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit space' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+    expect(spaces.edit).not.toHaveBeenCalled()
   })
 
   it('deletes the space after confirming, and goes to the space list', async () => {
@@ -150,7 +207,7 @@ describe('SpaceActions', () => {
 
   it('shows why an edit was refused', async () => {
     const spaces = fakeSpaces()
-    vi.mocked(spaces.rename).mockRejectedValue(
+    vi.mocked(spaces.edit).mockRejectedValue(
       Object.assign(new Error('refused'), {
         status: 403,
         code: 'not_space_admin'
@@ -161,6 +218,9 @@ describe('SpaceActions', () => {
     const menu = await openMenu()
     fireEvent.click(menu.getByRole('menuitem', { name: 'Edit space' }))
     const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Space name'), {
+      target: { value: 'Plans' }
+    })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     expect(
