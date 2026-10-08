@@ -26,7 +26,7 @@ import {
   TileRow
 } from '@/ds/Card'
 import { ScrollPanel, SpaceCover } from '@/ds/Page'
-import { Greeting } from '@/ui/home/Greeting'
+import { useGreeting } from '@/ui/home/Greeting'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useBadges, useMetadata } from '@/ui/space/Badges'
 import { BannerButton } from '@/ui/space/BannerButton'
@@ -85,6 +85,7 @@ export function SpaceHome({
   const badges = useBadges()
   const metadata = useMetadata()
   const banner = useBanner(space)
+  const { date, greeting } = useGreeting()
   const [managing, setManaging] = useState(false)
   const stateOf = (app: SpaceApp) => tabs.find(item => item.tab === app)?.state
   // The wait starts over for another space, or an app that gets ready
@@ -128,10 +129,9 @@ export function SpaceHome({
       <SpaceCover
         src={banner}
         action={space.role === 'admin' && <BannerButton spaceId={space.id} />}
+        date={date}
+        title={greeting}
       />
-      <div>
-        <Greeting level="h2" />
-      </div>
       <TileRow>
         {figures.map(({ figure, shown }) => (
           <Tile key={figure}>

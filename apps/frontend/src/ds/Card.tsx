@@ -180,7 +180,7 @@ export function TileRow({ children }: { children: ReactNode }): ReactElement {
       sx={{
         display: 'flex',
         flexWrap: 'wrap',
-        gap: 3,
+        gap: { xs: 1.5, md: 3 },
         m: 0,
         p: 0,
         listStyle: 'none'
@@ -191,6 +191,8 @@ export function TileRow({ children }: { children: ReactNode }): ReactElement {
   )
 }
 
+// The figures share one line down to a phone's width; the wide tile takes the
+// next line there.
 export function Tile({
   wide = false,
   children
@@ -202,16 +204,20 @@ export function Tile({
     <Card
       component="li"
       sx={{
-        flex: wide ? '3 1 360px' : '1 1 140px',
+        flex: wide
+          ? { xs: '1 1 100%', md: '3 1 360px' }
+          : { xs: '1 1 0', md: '1 1 140px' },
+        minWidth: 0,
         display: 'flex',
         alignItems: 'center',
         justifyContent: wide ? 'flex-start' : 'center',
         flexWrap: 'wrap',
-        gap: 2,
-        minHeight: 83,
-        py: 1.5,
-        pl: wide ? 3.5 : 1.5,
-        pr: 1.5,
+        gap: { xs: 1.5, md: 2 },
+        '& > .MuiButton-root': { ml: 'auto' },
+        minHeight: { xs: 64, md: 72 },
+        py: 1,
+        pl: wide ? { xs: 2, md: 3.5 } : 1,
+        pr: 1,
         borderRadius: RADIUS,
         ...GREY_BUTTONS
       }}
@@ -232,9 +238,17 @@ export function TileNumber({
   return (
     <Box
       aria-busy={value === null ? true : undefined}
-      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center'
+      }}
     >
-      <Typography component="span" sx={{ fontSize: 32, fontWeight: 700 }}>
+      <Typography
+        component="span"
+        sx={{ fontSize: { xs: 24, md: 28 }, fontWeight: 700 }}
+      >
         {value ?? <Skeleton width={56} />}
       </Typography>
       <Typography component="span" variant="caption" color="textSecondary">

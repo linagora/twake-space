@@ -26,8 +26,7 @@ export function HomeScreen(): ReactElement {
 
   return (
     <Page>
-      {/* Below lg the mobile bar already shows the app name */}
-      <Greeting title={t('app.name')} level="h1" hideTitleOnMobile />
+      <Greeting title={t('app.name')} />
       {spaces.isPending && (
         <LoadingRows count={4} label={t('spaces.loading')} />
       )}
