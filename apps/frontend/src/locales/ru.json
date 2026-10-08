@@ -97,7 +97,6 @@
     "drive": "Диск",
     "mail": "Почта",
     "calendar": "Календарь",
-    "members": "Участники",
     "withCount": "%{app}, новых: %{smart_count}"
   },
   "members": {

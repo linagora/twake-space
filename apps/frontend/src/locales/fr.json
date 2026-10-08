@@ -97,7 +97,6 @@
     "drive": "Drive",
     "mail": "Mail",
     "calendar": "Agenda",
-    "members": "Membres",
     "withCount": "%{app}, %{smart_count} nouveau |||| %{app}, %{smart_count} nouveaux"
   },
   "members": {

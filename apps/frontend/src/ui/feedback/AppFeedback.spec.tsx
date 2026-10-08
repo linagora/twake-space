@@ -78,11 +78,11 @@ describe('feedback button', () => {
     const feedback = fakeFeedback()
     const spaces = fakeSpaces()
     vi.mocked(spaces.get).mockResolvedValue(space)
-    const { unmount } = renderRoute('/spaces/a1/members', { feedback, spaces })
-    await screen.findByRole('tab', { name: 'Members' })
+    const { unmount } = renderRoute('/spaces/a1/feed', { feedback, spaces })
+    await screen.findByRole('tab', { name: 'Feed' })
 
     await waitFor(() => {
-      expect(feedback.setSpaceTab).toHaveBeenCalledWith('members')
+      expect(feedback.setSpaceTab).toHaveBeenCalledWith('feed')
     })
 
     unmount()

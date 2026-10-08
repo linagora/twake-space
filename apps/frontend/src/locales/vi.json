@@ -97,7 +97,6 @@
     "drive": "Drive",
     "mail": "Thư",
     "calendar": "Lịch",
-    "members": "Thành viên",
     "withCount": "%{app}, %{smart_count} mới"
   },
   "members": {
