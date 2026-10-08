@@ -235,6 +235,19 @@ describe('FeedPanel', () => {
     })
   })
 
+  it('keeps the reaction button for hover until the item has a reaction', async () => {
+    renderFeed([
+      post(1),
+      post(2, { reactions: [{ key: '👍', userIds: ['u-bob'] }] })
+    ])
+
+    const buttons = await screen.findAllByRole('button', {
+      name: 'Add a reaction'
+    })
+    expect(buttons[0]).toHaveAttribute('data-quiet')
+    expect(buttons[1]).not.toHaveAttribute('data-quiet')
+  })
+
   it('shows who acted on a card, and the app when no person did', async () => {
     renderFeed([
       task,

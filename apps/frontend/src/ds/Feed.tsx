@@ -310,7 +310,12 @@ export function FeedRow({
         gap: 1,
         maxWidth: BUBBLE_WIDTH + 44,
         outline: 'none',
-        '&:focus > :last-child': { bgcolor: 'action.selected' }
+        '&:focus > :last-child': { bgcolor: 'action.selected' },
+        // A reaction button with no reaction beside it appears on hover or
+        // focus, and stays on a screen with no hover.
+        '& [data-quiet]': { opacity: 0 },
+        '&:hover [data-quiet], &:focus-within [data-quiet]': { opacity: 1 },
+        '@media (hover: none)': { '& [data-quiet]': { opacity: 1 } }
       }}
     >
       <Box sx={{ flex: '0 0 36px', display: 'flex' }}>{avatar}</Box>
@@ -434,25 +439,30 @@ export function FeedHeader({
   )
 }
 
-/** The three dots at the end of a header, 16px like the mockup's. */
-export const FeedMoreButton = ({
+/**
+ * The three dots at the end of a header: a 16px glyph in a 32px target, with
+ * a negative margin so the header stays 16px tall.
+ */
+export function FeedMoreButton({
   label,
   onClick
 }: {
   label: string
   onClick: (anchor: HTMLElement) => void
-}): ReactElement => (
-  <IconButton
-    aria-label={label}
-    aria-haspopup="menu"
-    onClick={event => {
-      onClick(event.currentTarget)
-    }}
-    sx={{ width: 16, height: 16, p: 0, color: 'text.secondary' }}
-  >
-    <Icon icon={MoreVertIcon} size={16} />
-  </IconButton>
-)
+}): ReactElement {
+  return (
+    <IconButton
+      aria-label={label}
+      aria-haspopup="menu"
+      onClick={event => {
+        onClick(event.currentTarget)
+      }}
+      sx={{ width: 32, height: 32, m: '-8px', color: 'text.secondary' }}
+    >
+      <Icon icon={MoreVertIcon} size={16} />
+    </IconButton>
+  )
+}
 
 export function FeedTitle({ children }: { children: ReactNode }): ReactElement {
   return (
@@ -753,11 +763,14 @@ export function ReactionChip({
 export function ReactionPicker({
   label,
   emojis,
-  onPick
+  onPick,
+  quiet = false
 }: {
   label: string
   emojis: string[]
   onPick: (emoji: string) => void
+  /** Shown on hover or focus only, while the item has no reaction. */
+  quiet?: boolean
 }): ReactElement {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   return (
@@ -767,10 +780,14 @@ export function ReactionPicker({
           size="small"
           aria-label={label}
           aria-haspopup="menu"
+          data-quiet={quiet ? '' : undefined}
           onClick={event => {
             setAnchor(event.currentTarget)
           }}
           sx={{
+            transition: 'opacity 0.15s',
+            // After the actions, so that its place at rest does not push them.
+            order: quiet ? 1 : 0,
             width: 28,
             height: 28,
             p: 0.5,

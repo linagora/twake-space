@@ -565,6 +565,7 @@ function Reactions({
         label={t('feed.react')}
         emojis={QUICK_REACTIONS}
         onPick={react}
+        quiet={item.reactions.length === 0}
       />
     </>
   )
