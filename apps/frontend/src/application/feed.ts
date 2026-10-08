@@ -168,6 +168,13 @@ export function cardAction(card: FeedCard): string | null {
   return /\.([a-z_]+)\.v\d+$/.exec(card.type)?.[1] ?? null
 }
 
+/** The upper-case extension of a file name, like `PPTX`, or null without one. */
+export function fileExtension(name: string): string | null {
+  const dot = name.lastIndexOf('.')
+  const extension = dot > 0 ? name.slice(dot + 1) : ''
+  return /^[a-z0-9]{1,5}$/i.test(extension) ? extension.toUpperCase() : null
+}
+
 export interface TimeRange {
   start: string
   end: string

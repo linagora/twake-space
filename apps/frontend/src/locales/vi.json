@@ -278,6 +278,10 @@
         "accepted": "đã chấp nhận sự kiện",
         "declined": "đã từ chối sự kiện",
         "proposed": "đã đề xuất thời gian khác"
+      },
+      "drive": {
+        "created": "đã thêm một tệp",
+        "updated": "đã cập nhật một tệp"
       }
     },
     "event": {
@@ -314,7 +318,8 @@
       "tasks": "Công việc"
     },
     "deletedUser": "Người dùng đã xóa",
-    "someone": "Ai đó"
+    "someone": "Ai đó",
+    "fromDrive": "Từ Drive"
   },
   "embed": {
     "overlay": "Cửa sổ của %{app}"

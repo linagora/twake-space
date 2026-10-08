@@ -191,6 +191,38 @@ describe('FeedPanel', () => {
     expect(within(eventCard).getByText(/Room 4/)).toBeInTheDocument()
   })
 
+  it('shows a file with its type, and opens the drive tab', async () => {
+    const drive = {
+      ...task,
+      id: 'file-card',
+      category: 'files',
+      type: 'com.twake.drive.file.created.v1',
+      object: {
+        type: 'file',
+        id: 'f-1',
+        title: 'Budget 2027.xlsx',
+        container: { kind: 'drive', id: 'drive-1' }
+      }
+    } satisfies FeedCard
+    renderFeed([drive], {
+      space: {
+        ...roadmap,
+        apps: [...roadmap.apps, 'drive'],
+        resources: [...roadmap.resources, { kind: 'drive', id: 'drive-1' }]
+      }
+    })
+
+    const card = await screen.findByRole('article', {
+      name: 'Bob Durand: Budget 2027.xlsx'
+    })
+    expect(within(card).getByText('added a file')).toBeInTheDocument()
+    expect(within(card).getByText('Budget 2027.xlsx')).toBeInTheDocument()
+    expect(within(card).getByText('XLSX · From Drive')).toBeInTheDocument()
+    expect(
+      within(card).getByRole('link', { name: 'Open in Drive' })
+    ).toHaveAttribute('href', '/spaces/a1/drive')
+  })
+
   it('shows who acted on a card, and the app when no person did', async () => {
     renderFeed([
       task,

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   cardAction,
   cardApp,
+  fileExtension,
   toEventState,
   toFeedChange,
   withReaction,
@@ -141,5 +142,18 @@ describe('toEventState', () => {
 
   it('has nothing to show without times', () => {
     expect(toEventState({})).toBeNull()
+  })
+})
+
+describe('fileExtension', () => {
+  it('reads the upper-case extension of a file name', () => {
+    expect(fileExtension('Budget 2027.xlsx')).toBe('XLSX')
+    expect(fileExtension('archive.tar.gz')).toBe('GZ')
+  })
+
+  it('reads none from a name without one, or a hidden file', () => {
+    expect(fileExtension('README')).toBe(null)
+    expect(fileExtension('.env')).toBe(null)
+    expect(fileExtension('Q4: plan. Final version')).toBe(null)
   })
 })
