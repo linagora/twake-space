@@ -246,6 +246,8 @@
       "task": "Créer une tâche"
     },
     "loadOlder": "Charger les plus anciens",
+    "new": "Nouveau",
+    "latest": "Aller aux plus récents",
     "loadOlderFailed": "Impossible de charger les plus anciens.",
     "filter": "Filtrer par",
     "filters": {

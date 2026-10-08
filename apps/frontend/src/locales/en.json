@@ -246,6 +246,8 @@
       "task": "Create a task"
     },
     "loadOlder": "Load older",
+    "new": "New",
+    "latest": "Jump to latest",
     "loadOlderFailed": "Could not load older entries.",
     "filter": "Filter by",
     "filters": {

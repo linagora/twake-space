@@ -1,4 +1,4 @@
-import { Icon, Plus, Send, type IconProps } from '@linagora/twake-icons'
+import { Down, Icon, Plus, Send, type IconProps } from '@linagora/twake-icons'
 import {
   Avatar,
   Box,
@@ -11,26 +11,155 @@ import {
   Typography
 } from '@linagora/twake-mui'
 import {
+  createContext,
+  useCallback,
+  useContext,
   useEffect,
+  useEffectEvent,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactElement,
   type ReactNode
 } from 'react'
 
-// The feed reads like a chat: the newest item sits at the bottom, right above
-// the composer, and the list scrolls up into older ones.
+// How close to the newest item still counts as being there, and how close to
+// the oldest one asks for older items.
+const AT_END = 32
+const NEAR_TOP = 200
+
+const RevealContext = createContext<(row: HTMLElement) => void>(() => undefined)
+
+// The feed reads like a chat: the oldest item on top, the newest right above
+// the composer. `placeKey` is null while the list loads; on each new one, the
+// list opens on the `FeedNewMark`, or else on the newest item. It follows the
+// newest items while the person is there, and otherwise keeps the rows in view
+// still while rows come in above or below.
 export function FeedLayout({
   toolbar,
   children,
   composer,
-  onScrolledAway
+  placeKey,
+  latestLabel,
+  onScrolledAway,
+  onAtEndChange,
+  onNearTop,
+  onAtTop
 }: {
   toolbar: ReactNode
   children: ReactNode
   composer: ReactNode
+  placeKey: string | null
+  latestLabel: string
+  /** The person scrolls down the list. */
   onScrolledAway?: (() => void) | undefined
+  onAtEndChange?: (atEnd: boolean) => void
+  onNearTop?: () => void
+  /** The person scrolls up to the very top of the list. */
+  onAtTop?: () => void
 }): ReactElement {
+  const scroller = useRef<HTMLDivElement>(null)
+  const content = useRef<HTMLDivElement>(null)
+  const atEnd = useRef(true)
+  const [behind, setBehind] = useState(false)
+  // The first row in view, and where it sits on the screen: when the list
+  // grows above, as the cover folds, the rows hold still under the eye.
+  const anchor = useRef<{ row: Element; top: number } | null>(null)
+  // A scroll this layout made itself is not the person scrolling away.
+  const ownScroll = useRef(false)
+  const lastTop = useRef(0)
+
+  const reportAtEnd = useEffectEvent((value: boolean) => {
+    onAtEndChange?.(value)
+  })
+  // Read from the ref: on the render that places the list, `behind` is still
+  // the one from before the placement.
+  useEffect(() => {
+    if (placeKey !== null) reportAtEnd(atEnd.current)
+  }, [placeKey, behind])
+
+  const scrollTo = (top: number) => {
+    const list = scroller.current
+    if (!list) return
+    const before = list.scrollTop
+    list.scrollTop = top
+    if (list.scrollTop !== before) ownScroll.current = true
+  }
+  const measure = (keepAnchor = false) => {
+    const list = scroller.current
+    if (!list) return
+    atEnd.current =
+      list.scrollHeight - list.scrollTop - list.clientHeight <= AT_END
+    setBehind(!atEnd.current)
+    if (keepAnchor) return
+    const top = list.getBoundingClientRect().top
+    const row = Array.from(list.querySelectorAll('article')).find(
+      item => item.getBoundingClientRect().bottom > top
+    )
+    anchor.current = row ? { row, top: row.getBoundingClientRect().top } : null
+  }
+  const keepPlace = useEffectEvent((rowsChanged: boolean) => {
+    const list = scroller.current
+    if (!list) return
+    const kept = anchor.current
+    if (atEnd.current) {
+      scrollTo(list.scrollHeight)
+    } else if (
+      kept?.row.isConnected &&
+      // At the very top, the list resizing (the cover coming back) pushes
+      // the first rows down like a page, instead of hiding them.
+      (rowsChanged || list.scrollTop > 0)
+    ) {
+      scrollTo(list.scrollTop + kept.row.getBoundingClientRect().top - kept.top)
+    }
+    measure()
+  })
+  // At once, not smoothly: the list resizing on the way would stop a smooth
+  // scroll short of the end.
+  const toEnd = () => {
+    atEnd.current = true
+    scrollTo(scroller.current?.scrollHeight ?? 0)
+    measure()
+  }
+  const reveal = useCallback((row: HTMLElement) => {
+    const list = scroller.current
+    if (!list) return
+    const top = list.getBoundingClientRect().top
+    const box = row.getBoundingClientRect()
+    scrollTo(
+      list.scrollTop + box.top - top - (list.clientHeight - box.height) / 2
+    )
+    measure()
+  }, [])
+
+  useLayoutEffect(() => {
+    const list = scroller.current
+    const rows = content.current
+    if (!list || !rows || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(entries => {
+      keepPlace(entries.some(entry => entry.target === rows))
+    })
+    observer.observe(list)
+    observer.observe(rows)
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    const list = scroller.current
+    if (placeKey === null || !list) return
+    const mark = list.querySelector('[data-feed-new]')
+    scrollTo(
+      mark
+        ? list.scrollTop +
+            mark.getBoundingClientRect().top -
+            list.getBoundingClientRect().top
+        : list.scrollHeight
+    )
+    measure()
+  }, [placeKey])
+
   return (
     <Box
       sx={{
@@ -45,28 +174,96 @@ export function FeedLayout({
       </Box>
       <Box
         sx={{
+          position: 'relative',
           display: 'flex',
-          flexDirection: 'column-reverse',
+          flexDirection: 'column',
           flex: '1 1 auto',
-          minHeight: 0,
-          overflowY: 'auto'
-        }}
-        onScroll={event => {
-          // Reversed, the list rests at 0 and goes negative into older items.
-          if (Math.abs(event.currentTarget.scrollTop) > 16) onScrolledAway?.()
+          minHeight: 0
         }}
       >
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, pb: 2 }}>
-          {children}
+        <Box
+          ref={scroller}
+          sx={{
+            flex: '1 1 auto',
+            minHeight: 0,
+            overflowY: 'auto',
+            // The layout keeps its rows in place itself, the same everywhere.
+            overflowAnchor: 'none'
+          }}
+          onScroll={event => {
+            const own = ownScroll.current
+            ownScroll.current = false
+            // The event of a scroll the layout made lands a frame late, when
+            // the rows may have moved again: the anchor it set still holds.
+            measure(own)
+            const { scrollTop } = event.currentTarget
+            const down = scrollTop > lastTop.current
+            lastTop.current = scrollTop
+            if (!own && down) onScrolledAway?.()
+            if (!own && scrollTop <= 0) onAtTop?.()
+            if (scrollTop < NEAR_TOP) onNearTop?.()
+          }}
+        >
+          <Box
+            ref={content}
+            sx={{ display: 'flex', flexDirection: 'column', gap: 1, pb: 2 }}
+          >
+            <RevealContext value={reveal}>{children}</RevealContext>
+          </Box>
         </Box>
+        {behind && (
+          <Button
+            size="small"
+            startIcon={<Icon icon={Down} size={16} />}
+            onClick={toEnd}
+            sx={{
+              position: 'absolute',
+              bottom: 16,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              borderRadius: 100,
+              boxShadow: 2
+            }}
+          >
+            {latestLabel}
+          </Button>
+        )}
       </Box>
-      {composer}
+      {/* Sending a message brings the person back to the newest items. */}
+      <Box onSubmitCapture={toEnd}>{composer}</Box>
     </Box>
   )
 }
 
-// A `focused` row takes the focus once, which scrolls it into view. It stands
-// out while it keeps the focus.
+/** Above the first item the person has not seen, where the feed opens. */
+export function FeedNewMark({ label }: { label: string }): ReactElement {
+  return (
+    <Box
+      data-feed-new
+      role="separator"
+      aria-label={label}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        color: 'error.main',
+        '&::before, &::after': {
+          content: '""',
+          flex: '1 1 auto',
+          borderTop: 1,
+          borderColor: 'currentColor'
+        }
+      }}
+    >
+      <Typography variant="caption" sx={{ fontWeight: 600 }} aria-hidden>
+        {label}
+      </Typography>
+    </Box>
+  )
+}
+
+// A `focused` row takes the focus once, and the feed brings it into view. It
+// stands out while it keeps the focus.
 export function FeedRow({
   avatar,
   label,
@@ -79,9 +276,13 @@ export function FeedRow({
   children: ReactNode
 }): ReactElement {
   const ref = useRef<HTMLElement>(null)
+  const reveal = useContext(RevealContext)
   useEffect(() => {
-    if (focused) ref.current?.focus()
-  }, [focused])
+    const row = ref.current
+    if (!focused || !row) return
+    row.focus({ preventScroll: true })
+    reveal(row)
+  }, [focused, reveal])
 
   return (
     <Box

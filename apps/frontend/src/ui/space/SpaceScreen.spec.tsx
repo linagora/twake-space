@@ -202,7 +202,7 @@ describe('SpaceScreen', () => {
     if (!list) throw new Error('no feed list')
     expect(document.querySelector('main img')).not.toBeNull()
 
-    fireEvent.scroll(list, { target: { scrollTop: -200 } })
+    fireEvent.scroll(list, { target: { scrollTop: 200 } })
     await waitFor(() => {
       expect(document.querySelector('main img')).toBeNull()
     })
