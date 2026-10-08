@@ -10,7 +10,13 @@ import {
   TextField,
   Typography
 } from '@linagora/twake-mui'
-import { useState, type ReactElement, type ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode
+} from 'react'
 
 // The feed reads like a chat: the newest item sits at the bottom, right above
 // the composer, and the list scrolls up into older ones.
@@ -59,20 +65,38 @@ export function FeedLayout({
   )
 }
 
+// A `focused` row takes the focus once, which scrolls it into view. It stands
+// out while it keeps the focus.
 export function FeedRow({
   avatar,
   label,
+  focused = false,
   children
 }: {
   avatar: ReactNode
   label: string
+  focused?: boolean
   children: ReactNode
 }): ReactElement {
+  const ref = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (focused) ref.current?.focus()
+  }, [focused])
+
   return (
     <Box
+      ref={ref}
       component="article"
       aria-label={label}
-      sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, maxWidth: 660 }}
+      tabIndex={focused ? -1 : undefined}
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: 1,
+        maxWidth: 660,
+        outline: 'none',
+        '&:focus > :last-child': { bgcolor: 'action.selected' }
+      }}
     >
       <Box sx={{ flex: '0 0 36px', display: 'flex' }}>{avatar}</Box>
       <Box

@@ -24,8 +24,8 @@ import {
   MenuItem
 } from '@linagora/twake-mui'
 import { useMutation } from '@tanstack/react-query'
-import { useState, type ReactElement } from 'react'
-import { Link as RouterLink } from 'react-router'
+import { useEffect, useState, type ReactElement } from 'react'
+import { Link as RouterLink, useLocation } from 'react-router'
 
 import {
   cardAction,
@@ -70,6 +70,16 @@ import { PeopleDialog } from '@/ui/space/PeopleDialog'
 
 const FILTERS: FeedFilter[] = ['all', ...FEED_CATEGORIES]
 
+/** The feed item a link opens at, from the history state it carries. */
+function feedItemOf(state: unknown): string | null {
+  return typeof state === 'object' &&
+    state !== null &&
+    'feedItem' in state &&
+    typeof state.feedItem === 'string'
+    ? state.feedItem
+    : null
+}
+
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '👀', '🙏']
 
 export function FeedPanel({
@@ -80,13 +90,35 @@ export function FeedPanel({
   onScrolledAway?: () => void
 }): ReactElement {
   const { t } = useI18n()
+  const location = useLocation()
+  const target = feedItemOf(location.state)
   const [filter, setFilter] = useState<FeedFilter>('all')
+  // A search result shows in the whole feed, whatever the filter was.
+  const [targetSeen, setTargetSeen] = useState(location.key)
+  if (target && targetSeen !== location.key) {
+    setTargetSeen(location.key)
+    setFilter('all')
+  }
   const feed = useFeed(space.id, filter)
   const myId = useSession().user.id
   // Held here: the setup prompt goes away with the feed's first item.
   const [inviting, setInviting] = useState(false)
 
   const items = feed.data?.pages.flatMap(page => page.items).toReversed() ?? []
+  // Once the filter changes, the target may never show: stop looking.
+  const targetMissing =
+    target !== null &&
+    filter === 'all' &&
+    !items.some(item => item.id === target)
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = feed
+  const pages = feed.data?.pages.length ?? 0
+  // An older target is on a page not loaded yet. Each page that comes in
+  // asks for the next: a quick answer never shows a page as fetching.
+  useEffect(() => {
+    if (targetMissing && hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage()
+    }
+  }, [targetMissing, hasNextPage, isFetchingNextPage, fetchNextPage, pages])
 
   return (
     <FeedLayout
@@ -127,7 +159,14 @@ export function FeedPanel({
           <Alert severity="info">{t('feed.empty')}</Alert>
         ))}
       {items.map(item => (
-        <Item key={item.id} item={item} space={space} myId={myId} />
+        <Item
+          // Mounted again on every visit, to take the focus again.
+          key={item.id === target ? `${item.id}:${location.key}` : item.id}
+          item={item}
+          space={space}
+          myId={myId}
+          focused={item.id === target}
+        />
       ))}
       {inviting && (
         <PeopleDialog
@@ -260,7 +299,7 @@ function Setup({
   )
 }
 
-function useActorName(actor: Actor | null): string | null {
+export function useActorName(actor: Actor | null): string | null {
   const { t } = useI18n()
   switch (actor?.type) {
     case undefined:
@@ -290,27 +329,31 @@ function useTime(): (iso: string) => string {
 function Item({
   item,
   space,
-  myId
+  myId,
+  focused
 }: {
   item: FeedItem
   space: Space
   myId: string | null
+  focused: boolean
 }): ReactElement {
   return item.kind === 'post' ? (
-    <Post post={item} space={space} myId={myId} />
+    <Post post={item} space={space} myId={myId} focused={focused} />
   ) : (
-    <Card card={item} space={space} myId={myId} />
+    <Card card={item} space={space} myId={myId} focused={focused} />
   )
 }
 
 function Post({
   post,
   space,
-  myId
+  myId,
+  focused
 }: {
   post: FeedPost
   space: Space
   myId: string | null
+  focused: boolean
 }): ReactElement {
   const { t } = useI18n()
   const { feed } = useServices()
@@ -334,7 +377,11 @@ function Post({
   })
 
   return (
-    <FeedRow label={author} avatar={<NameAvatar name={author} size="m" />}>
+    <FeedRow
+      label={author}
+      avatar={<NameAvatar name={author} size="m" />}
+      focused={focused}
+    >
       <FeedHeader
         who={author}
         what={post.editedAt && t('feed.edited')}
@@ -496,7 +543,7 @@ function Reactions({
   )
 }
 
-const APPS = {
+export const APPS = {
   tasks: { icon: Task, color: '#4caf50' },
   mail: { icon: Mail, color: '#0a84ff' },
   calendar: { icon: Calendar, color: '#f67e35' },
@@ -505,7 +552,7 @@ const APPS = {
 
 type App = keyof typeof APPS
 
-function isApp(app: string | null): app is App {
+export function isApp(app: string | null): app is App {
   return app !== null && Object.hasOwn(APPS, app)
 }
 
@@ -540,11 +587,13 @@ const VERBS: Record<string, TranslationKey> = {
 function Card({
   card,
   space,
-  myId
+  myId,
+  focused
 }: {
   card: FeedCard
   space: Space
   myId: string | null
+  focused: boolean
 }): ReactElement {
   const { t } = useI18n()
   const time = useTime()
@@ -562,6 +611,7 @@ function Card({
   return (
     <FeedRow
       label={label}
+      focused={focused}
       avatar={
         isApp(app) ? (
           <AppAvatar

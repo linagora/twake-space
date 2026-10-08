@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { containerTab, PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
+import type { FeedCard, FeedPost } from '@/application/feed'
+import {
+  containerTab,
+  itemPlace,
+  PREPARING_MS,
+  spaceTabs
+} from '@/application/spaceTabs'
 import type { Space } from '@/application/spaces'
 
 const CREATED = Date.UTC(2026, 9, 1, 8)
@@ -101,5 +107,49 @@ describe('containerTab', () => {
   it('opens no tab the space does not show', () => {
     expect(containerTab({ ...space, mail: false }, 'mailbox')).toBeNull()
     expect(containerTab({ ...space, apps: ['chat'] }, 'project')).toBeNull()
+  })
+})
+
+describe('itemPlace', () => {
+  const card: FeedCard = {
+    id: 'card-1',
+    kind: 'card',
+    category: 'activities',
+    time: '2026-10-07T08:00:00.000Z',
+    updatedAt: '2026-10-07T08:00:00.000Z',
+    reactions: [],
+    type: 'com.twake.tasks.task.created.v1',
+    actor: null,
+    object: {
+      type: 'task',
+      id: 'T-1',
+      title: 'Ship it',
+      container: { kind: 'project', id: 'project-1' }
+    },
+    preview: null,
+    state: {}
+  }
+  const post: FeedPost = {
+    id: 'post-1',
+    kind: 'post',
+    category: 'messages',
+    time: '2026-10-07T08:00:00.000Z',
+    updatedAt: '2026-10-07T08:00:00.000Z',
+    reactions: [],
+    author: { type: 'deleted_user' },
+    body: 'Hello',
+    editedAt: null
+  }
+
+  it("opens a card in its container's tab", () => {
+    expect(itemPlace(space, card)).toEqual({ tab: 'tasks', feedItem: null })
+  })
+
+  it('opens a post, or a card with no tab, in the feed at the item', () => {
+    expect(itemPlace(space, post)).toEqual({ tab: 'feed', feedItem: 'post-1' })
+    expect(itemPlace({ ...space, apps: ['chat'] }, card)).toEqual({
+      tab: 'feed',
+      feedItem: 'card-1'
+    })
   })
 })

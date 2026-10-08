@@ -1,4 +1,5 @@
 import {
+  searchedText,
   shows,
   type FeedItem,
   type FeedPost,
@@ -47,17 +48,23 @@ export function memoryFeed(
   }
 
   return {
-    list: (spaceId, { category, before }) => {
+    list: (spaceId, { category, before, q, limit = pageSize }) => {
+      const needle = q?.toLowerCase()
       const items = itemsOf(spaceId)
         .filter(item => shows(item, category ?? 'all'))
+        .filter(
+          item =>
+            !needle ||
+            searchedText(item).some(text => text.toLowerCase().includes(needle))
+        )
         .sort(newestFirst)
       const start = before
         ? items.findIndex(i => i.id === before) + 1 || items.length
         : 0
-      const page = items.slice(start, start + pageSize)
+      const page = items.slice(start, start + limit)
       return Promise.resolve({
         items: structuredClone(page),
-        next: start + pageSize < items.length ? (page.at(-1)?.id ?? null) : null
+        next: start + limit < items.length ? (page.at(-1)?.id ?? null) : null
       })
     },
     item: (spaceId, itemId) => {

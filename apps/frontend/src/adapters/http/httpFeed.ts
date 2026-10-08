@@ -10,12 +10,14 @@ export function httpFeed(api: KyInstance): FeedService {
   }
 
   return {
-    list: (spaceId, { category, before }) =>
+    list: (spaceId, { category, before, q, limit }) =>
       api
         .get(feed(spaceId), {
           searchParams: {
             ...(category && { category }),
-            ...(before && { before })
+            ...(before && { before }),
+            ...(q && { q }),
+            ...(limit && { limit })
           }
         })
         .json<FeedPage>(),
