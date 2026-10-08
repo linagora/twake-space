@@ -37,10 +37,12 @@ import { PlatformBar } from '@/ui/shell/PlatformBar'
 import { useBadges } from '@/ui/space/Badges'
 import { EmbeddedApps } from '@/ui/space/EmbeddedApps'
 import { useFillPage } from '@/ui/space/FillPage'
+import { useSession } from '@/ui/session/SessionGate'
 import { useSpaceList, useSpaces } from '@/ui/spaces/queries'
 
 export function AppShell(): ReactElement {
   const { t } = useI18n()
+  const { sdk } = useSession()
   const [creating, setCreating] = useState(false)
   // Null while the search is closed.
   const [query, setQuery] = useState<string | null>(null)
@@ -55,7 +57,8 @@ export function AppShell(): ReactElement {
   return (
     <CallProvider>
       <AppFrame
-        topBar={<PlatformBar />}
+        // Without a platform client there is no bar, and no room to leave for it
+        topBar={sdk ? <PlatformBar /> : undefined}
         bare={home}
         alone={alone}
         aside={
