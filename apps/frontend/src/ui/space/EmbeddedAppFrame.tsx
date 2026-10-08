@@ -21,7 +21,6 @@ import {
   type OverlayRegion
 } from '@linagora/twake-mui'
 
-import { parseAppNotification } from '@/application/appNotifications'
 import { badgesOf } from '@/application/metadata'
 import {
   isLoginRequired,
@@ -185,19 +184,18 @@ export function EmbeddedAppFrame({
           setRegion(reported)
           return
         }
-        const notification = parseAppNotification(event.data)
-        if (notification?.kind === 'show') {
-          const { tag, title, body, resourceId } = notification
+        const message = parseAppMessage(event.data)
+        if (message?.type === 'twake-embed:notification') {
+          const { tag, title, body, resourceId } = message
           notifications.show(app, { tag, title, body }, () => {
-            open.current?.(resourceId)
+            open.current?.(resourceId ?? null)
           })
           return
         }
-        if (notification?.kind === 'close') {
-          notifications.close(app, notification.tag)
+        if (message?.type === 'twake-embed:notification-close') {
+          notifications.close(app, message.tag)
           return
         }
-        const message = parseAppMessage(event.data)
         if (message?.type === 'twake-embed:ready') {
           setLoads(n => n + 1)
           return
