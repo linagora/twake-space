@@ -75,7 +75,7 @@ export function HomeScreen(): ReactElement {
           </Typography>
           <CardGrid>
             {pinned.map(space => (
-              <SpaceItem key={space.id} space={space} />
+              <SpaceItem key={space.id} space={space} pinned />
             ))}
           </CardGrid>
         </section>
@@ -114,9 +114,16 @@ export function HomeScreen(): ReactElement {
   )
 }
 
-function SpaceItem({ space }: { space: SpaceSummary }): ReactElement {
+function SpaceItem({
+  space,
+  pinned = false
+}: {
+  space: SpaceSummary
+  pinned?: boolean
+}): ReactElement {
   return (
     <SpaceCard
+      pinned={pinned}
       avatar={<NameAvatar name={space.name} color={space.color} size="s" />}
       link={<RouterLink to={`/spaces/${space.id}`}>{space.name}</RouterLink>}
       description={space.description}
