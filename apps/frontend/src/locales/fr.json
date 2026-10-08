@@ -288,7 +288,9 @@
       "allDay": "Toute la journée",
       "movedFrom": "Déplacé depuis %{time}",
       "proposed": "%{by} propose %{time}",
-      "rsvp": "%{accepted} oui · %{tentative} peut-être · %{declined} non · %{pending} en attente"
+      "rsvp": "%{accepted} oui · %{tentative} peut-être · %{declined} non · %{pending} en attente",
+      "join": "Rejoindre",
+      "visio": "Visio"
     },
     "loading": "Chargement du fil",
     "loadFailed": "Impossible de charger le fil.",

@@ -288,7 +288,9 @@
       "allDay": "Ganztägig",
       "movedFrom": "Verschoben von %{time}",
       "proposed": "%{by} schlägt %{time} vor",
-      "rsvp": "%{accepted} ja · %{tentative} vielleicht · %{declined} nein · %{pending} offen"
+      "rsvp": "%{accepted} ja · %{tentative} vielleicht · %{declined} nein · %{pending} offen",
+      "join": "Beitreten",
+      "visio": "Visio"
     },
     "loading": "Feed wird geladen",
     "loadFailed": "Feed konnte nicht geladen werden.",

@@ -288,7 +288,9 @@
       "allDay": "Cả ngày",
       "movedFrom": "Dời từ %{time}",
       "proposed": "%{by} đề xuất %{time}",
-      "rsvp": "%{accepted} có · %{tentative} có thể · %{declined} không · %{pending} chờ"
+      "rsvp": "%{accepted} có · %{tentative} có thể · %{declined} không · %{pending} chờ",
+      "join": "Tham gia",
+      "visio": "Visio"
     },
     "loading": "Đang tải bảng tin",
     "loadFailed": "Không thể tải bảng tin.",

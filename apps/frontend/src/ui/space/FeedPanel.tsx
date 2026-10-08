@@ -2,7 +2,7 @@ import {
   Calendar,
   CheckList,
   Icon,
-  Link,
+  Copy,
   Mail,
   Openwith,
   Pen,
@@ -15,7 +15,7 @@ import {
   getFileTypeIcon,
   type IconProps
 } from '@linagora/twake-icons'
-import { Alert, Button, Menu } from '@linagora/twake-mui'
+import { Alert, Button, IconButton, Menu } from '@linagora/twake-mui'
 import { useMutation } from '@tanstack/react-query'
 import { Fragment, useEffect, useRef, useState, type ReactElement } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router'
@@ -58,10 +58,12 @@ import {
   FeedNewMark,
   FeedRow,
   FeedTitle,
+  JoinButton,
   ReactionChip,
-  ReactionPicker
+  ReactionPicker,
+  VisioChip
 } from '@/ds/Feed'
-import { CalendarIcon, Videocam } from '@/ds/icons'
+import { CalendarIcon } from '@/ds/icons'
 import { MenuEntry } from '@/ds/Menu'
 import { LoadingRows, SetupPrompt } from '@/ds/Page'
 import { useCall } from '@/ui/call/CallContext'
@@ -686,7 +688,6 @@ function Card({
       )}
       <FeedFooter time={time(card.time)}>
         <Reactions item={card} spaceId={space.id} myId={myId} />
-        {app === 'calendar' && <MeetingActions card={card} />}
         {tab && open && (
           <FeedAction
             icon={app === 'drive' ? FolderOutlined : Openwith}
@@ -711,22 +712,21 @@ function MeetingActions({ card }: { card: FeedCard }): ReactElement | null {
   if (!link) return null
   return (
     <>
-      <FeedAction
-        icon={Videocam}
+      <JoinButton
+        label={t('feed.event.join')}
+        name={t('call.joinAction')}
         onClick={() => {
           join({ url: link })
         }}
-      >
-        {t('call.joinAction')}
-      </FeedAction>
-      <FeedAction
-        icon={Link}
+      />
+      <IconButton
+        aria-label={t('call.details')}
         onClick={() => {
           setSharing(true)
         }}
       >
-        {t('call.details')}
-      </FeedAction>
+        <Icon icon={Copy} />
+      </IconButton>
       {sharing && (
         <ConnectionDetailsDialog
           link={link}
@@ -778,6 +778,26 @@ function FileDetails({ card }: { card: FeedCard }): ReactElement {
   )
 }
 
+// "1 hour", "30 minutes", "1 hour 30 minutes", in the language of the page.
+function formatDuration(minutes: number, lang: string): string {
+  const unit = (value: number, name: 'day' | 'hour' | 'minute') =>
+    new Intl.NumberFormat(lang, {
+      style: 'unit',
+      unit: name,
+      unitDisplay: 'long'
+    }).format(value)
+  const days = Math.floor(minutes / 1440)
+  const hours = Math.floor((minutes % 1440) / 60)
+  const rest = minutes % 60
+  return [
+    days > 0 && unit(days, 'day'),
+    hours > 0 && unit(hours, 'hour'),
+    rest > 0 && unit(rest, 'minute')
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
 function EventDetails({ card }: { card: FeedCard }): ReactElement {
   const { t, lang } = useI18n()
   const event = toEventState(card.state)
@@ -802,9 +822,19 @@ function EventDetails({ card }: { card: FeedCard }): ReactElement {
       ? `${day(range.start)} · ${t('feed.event.allDay')}`
       : `${day(range.start)} · ${hour(range.start)} – ${hour(range.end)}`
   const start = date(event.start)
+  const minutes = Math.round(
+    (date(event.end).getTime() - start.getTime()) / 60_000
+  )
+  // The tile gives the day: the line gives the hour and how long it lasts.
+  const time = event.allDay
+    ? t('feed.event.allDay')
+    : [hour(event.start), formatDuration(minutes, lang)]
+        .filter(Boolean)
+        .join(' · ')
 
   return (
     <EventSummary
+      aside={<MeetingActions card={card} />}
       tile={
         <DateTile
           month={new Intl.DateTimeFormat(lang, { month: 'short' }).format(
@@ -814,10 +844,11 @@ function EventDetails({ card }: { card: FeedCard }): ReactElement {
         />
       }
     >
-      <FeedTitle>{card.object.title}</FeedTitle>
-      <FeedDetail>
-        {when(event)}
+      <FeedTitle large>{card.object.title}</FeedTitle>
+      <FeedDetail large>
+        {time}
         {event.location && ` · ${event.location}`}
+        {event.room && <VisioChip label={t('feed.event.visio')} />}
       </FeedDetail>
       {event.previous && (
         <FeedDetail>
