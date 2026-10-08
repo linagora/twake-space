@@ -12,8 +12,7 @@ export function Home(props: SVGAttributes<SVGSVGElement>): ReactElement {
   )
 }
 
-// Material's add_24px, as in the mockups: arms of 2px. Twake's Plus is
-// bolder, and drawn for a 14px box.
+// Twake's Plus is bolder and drawn for a 14px box; the mockups use 2px arms.
 export function AddIcon(props: SVGAttributes<SVGSVGElement>): ReactElement {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
@@ -22,7 +21,7 @@ export function AddIcon(props: SVGAttributes<SVGSVGElement>): ReactElement {
   )
 }
 
-// The mockup's calendar: a 2px rounded stroke. Twake's is a heavy 48px one.
+// Twake's calendar is a heavy 48px glyph; the mockups use a 2px stroke.
 export function CalendarIcon(
   props: SVGAttributes<SVGSVGElement>
 ): ReactElement {
@@ -39,7 +38,6 @@ export function CalendarIcon(
   )
 }
 
-// The mockup's space glyph, the filled cube of "All shared spaces".
 export function SpaceCubeIcon(
   props: SVGAttributes<SVGSVGElement>
 ): ReactElement {
