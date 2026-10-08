@@ -96,7 +96,7 @@ The entrypoint script `40-twake-space-runtime.sh` reads the environment at conta
 The script also writes the security headers, sent on every path except `/healthz`.
 
 - `Content-Security-Policy` has a fixed part: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'`. `style-src` allows inline styles because MUI injects its styles at runtime.
-- `connect-src` is `'self'` plus the origin of each of `API_URL`, `SSO_BASE_URL`, `POSTHOG_HOST` and `SENTRY_DSN` that is an absolute `http` or `https` URL. The origin drops the user info, so the Sentry public key stays out of the header. `CSP_CONNECT_SRC` appends more sources.
+- `connect-src` is `'self'` plus the origin of each of `API_URL`, `SSO_BASE_URL`, `POSTHOG_HOST` and `SENTRY_DSN` that is an absolute `http` or `https` URL. The origin drops the user info, so the Sentry public key stays out of the header. `CSP_CONNECT_SRC` appends more sources. The platform top bar exchanges the SSO token on each person's own Twake Workplace (`https://<workplaceFqdn>/auth/token_exchange`), so `CSP_CONNECT_SRC` must allow them all, such as `https://*.twake.example.com`.
 - `frame-src` is `CSP_FRAME_SRC` (default `'self'`) plus the origins of `TASKS_URL` and `CHAT_URL` when set. With `MAIL_URL` or `CALENDAR_URL`, it also gets their origins and the origin of `SSO_BASE_URL`, because the Mail embed signs in through a frame on the SSO and the Calendar embed moves its frame to the SSO.
 - `frame-ancestors` is `CSP_FRAME_ANCESTORS` (default `'self'`). Set it when another app embeds Twake Space.
 - `img-src` is `'self' data: blob:` plus `CSP_IMG_SRC`. Set it to the origins of the avatars in Twake Workplace common settings, which each person's Cozy instance serves, such as `https://*.twake.example.com`.
@@ -230,6 +230,25 @@ The directory: organizations, users, groups and technical accounts. Calls are au
 
 - The backend posts nothing to Matrix: the feed lives in Postgres.
 - The homeserver pushes app service transactions to `PUT /_matrix/app/v1/transactions/:txnId` on the API port, authenticated with the homeserver token (bearer header or `access_token` query). The homeserver must reach the backend.
+- The homeserver must register the backend as an [app service](https://spec.matrix.org/v1.16/application-service-api/#registration). In SaaS, the control plane renders one registration per organization with the tokens it returns to the backend.
+  - `url`: the backend's API base URL. The homeserver appends `/_matrix/app/v1/transactions/<txnId>`.
+  - `as_token`, `hs_token`: `MATRIX_AS_TOKEN` and `MATRIX_HS_TOKEN`, or the control plane's `asToken` and `hsToken`.
+  - `id`: any name unique on the homeserver.
+  - `sender_localpart`, `namespaces`: the homeserver only sends an app service the events of rooms where a user of its namespaces (or its sender) is a member, or rooms its room or alias namespaces match. The backend needs the events of every space's Matrix room.
+
+The registration that runs in development:
+
+```yaml
+id: twake-space
+url: https://space-api.example.com
+as_token: <MATRIX_AS_TOKEN>
+hs_token: <MATRIX_HS_TOKEN>
+sender_localpart: twakespace
+namespaces:
+  users:
+    - exclusive: true
+      regex: '@twakespace:example\.com'
+```
 
 ### Chat control plane (SaaS)
 
@@ -246,4 +265,5 @@ The directory: organizations, users, groups and technical accounts. Calls are au
 - @rezk2ll Several replicas start together and each runs the migrations. Does the Drizzle migrator lock against concurrent runs, or should one replica (or a job) migrate first?
 - @rezk2ll The backend relies on Postgres `LISTEN`. Is a transaction pooling proxy (PgBouncer) in front of Postgres ruled out for deployments?
 - @rezk2ll CI builds the images without a `platforms` setting. Is an arm64 image needed?
+- @rezk2ll The app service registration only covers the `twakespace` user, and the backend joins no room. Which service makes that user a member of each space's Matrix room, or should the registration match the rooms instead?
 - @rezk2ll Both a push to `main` and a release tag move `latest`. Should deployments pin version tags only?

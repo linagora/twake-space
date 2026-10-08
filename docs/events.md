@@ -72,6 +72,8 @@ Each message ends in one outcome:
 
 The dedupe claim and the handler run in the same Postgres transaction, so a handler failure releases the claim.
 
+To replay a platform event by hand, such as one from `twake-space.dlq`, publish it with its original AMQP `message_id` property. Without one, the backend logs `missing message id` and drops it. A message that was rejected, parked or dead-lettered never kept its claim, so the original id is not seen as a duplicate.
+
 ## Ordering
 
 - Events can arrive out of order or be replayed. `last_changes` keeps, per object key, the time of the last change applied.
