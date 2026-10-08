@@ -64,7 +64,7 @@ describe('PeopleDialog', () => {
 
     const list = await screen.findByRole('list', { name: 'Members' })
     const items = within(list).getAllByRole('listitem')
-    expect(items).toHaveLength(2)
+    expect(items).toHaveLength(3)
     expect(items[0]).toHaveTextContent('Carol DANVERS')
     expect(items[0]).toHaveTextContent('carol@acme.test')
     expect(items[0]).toHaveTextContent('Admin')
@@ -78,21 +78,23 @@ describe('PeopleDialog', () => {
     expect(within(list).getAllByRole('listitem')[1]).toHaveTextContent('alice')
   })
 
-  it('lists the linked groups with their roles', async () => {
+  it('lists the linked groups after the members, with their roles', async () => {
     renderWithProviders(<PeopleDialog space={space} onClose={noop} />)
 
-    const list = await screen.findByRole('list', { name: 'Groups' })
-    expect(within(list).getByRole('listitem')).toHaveTextContent('Designers')
-    expect(within(list).getByRole('listitem')).toHaveTextContent('Viewer')
+    const list = await screen.findByRole('list', { name: 'Members' })
+    const group = within(list).getAllByRole('listitem')[2]
+    expect(group).toHaveTextContent('Designers')
+    expect(group).toHaveTextContent('Group')
+    expect(group).toHaveTextContent('Viewer')
   })
 
   it('shows a viewer no way to add or change anyone', async () => {
     renderWithProviders(<PeopleDialog space={space} onClose={noop} />)
 
-    await screen.findByRole('dialog', { name: 'Members' })
+    await screen.findByRole('dialog', { name: 'Members of “Roadmap”' })
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /^(Remove|Unlink)/ })
+      screen.queryByRole('button', { name: /^(Remove|Unlink|Role of)/ })
     ).not.toBeInTheDocument()
   })
 
@@ -162,7 +164,7 @@ describe('PeopleDialog', () => {
     await type('sa')
     fireEvent.click(await screen.findByRole('option', { name: 'Sales' }))
     await pickRole('Role', 'Editor')
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Invite' }))
 
     await waitFor(() => {
       expect(spaces.addMembers).toHaveBeenCalledWith('a1', ['bob'], 'editor')
@@ -170,6 +172,24 @@ describe('PeopleDialog', () => {
     await waitFor(() => {
       expect(spaces.linkGroups).toHaveBeenCalledWith('a1', ['g-2'], 'editor')
     })
+  })
+
+  it('keeps the keys of the role menu out of the search field', async () => {
+    const directory = fakeDirectory(
+      [{ username: 'bob', email: 'bob@acme.test', displayName: 'Bob' }],
+      []
+    )
+    renderWithProviders(<PeopleDialog space={admin} onClose={noop} />, {
+      directory
+    })
+
+    await type('bo')
+    fireEvent.click(await screen.findByRole('option', { name: /Bob/ }))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Role' }), {
+      key: 'Backspace'
+    })
+
+    expect(screen.getByRole('button', { name: 'Bob' })).toBeInTheDocument()
   })
 
   it('says when a search matches no one', async () => {
@@ -234,7 +254,7 @@ describe('PeopleDialog', () => {
     ).toBeInTheDocument()
   })
 
-  it('says when there are no direct members or no linked groups', async () => {
+  it('says when no one has access', async () => {
     renderWithProviders(
       <PeopleDialog
         space={{ ...space, members: [], groups: [] }}
@@ -242,7 +262,8 @@ describe('PeopleDialog', () => {
       />
     )
 
-    expect(await screen.findByText('No direct members.')).toBeInTheDocument()
-    expect(screen.getByText('No linked groups.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('No one has access yet.')
+    ).toBeInTheDocument()
   })
 })
