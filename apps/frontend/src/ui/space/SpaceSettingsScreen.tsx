@@ -51,7 +51,7 @@ import { AddPeopleRow } from '@/ui/space/PeopleDialog'
 import { RoleMenu } from '@/ui/space/RoleMenu'
 import { DeleteDialog, EditDialog } from '@/ui/space/SpaceMenu'
 import { WriteError } from '@/ui/space/WriteError'
-import { APP_ICONS } from '@/ui/spaces/AppPicker'
+import { AppIcon } from '@/ui/spaces/AppPicker'
 import {
   useEditSpace,
   useSpace,
@@ -482,7 +482,7 @@ function Apps({ space }: { space: Space }): ReactElement {
                 {tab === 'feed' ? (
                   <Icon icon={ListIcon} size={24} />
                 ) : (
-                  APP_ICONS[tab]
+                  <AppIcon app={tab} />
                 )}
               </ListItemIcon>
               <ListItemText
