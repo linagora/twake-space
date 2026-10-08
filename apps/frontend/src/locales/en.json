@@ -381,5 +381,18 @@
     "done": "Done",
     "refused": "Refused: %{reason}",
     "failed": "The change could not be saved."
+  },
+  "call": {
+    "menu": "Video meeting",
+    "join": "Join a meeting",
+    "link": "Meeting link",
+    "linkHint": "URL or 10-letter code",
+    "invalidLink": "This is not a Twake Meet link or code.",
+    "joinAction": "Join meeting",
+    "window": "Video meeting",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "leave": "Leave the meeting"
   }
 }
