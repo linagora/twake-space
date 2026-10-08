@@ -219,7 +219,7 @@ function Settings({ space }: { space: Space }): ReactElement {
             />
             <Button
               component={RouterLink}
-              to="/settings/api-tokens"
+              to={`/settings/api-tokens?space=${encodeURIComponent(space.id)}`}
               variant="outlined"
               className="u-flex-none u-ml-1"
             >

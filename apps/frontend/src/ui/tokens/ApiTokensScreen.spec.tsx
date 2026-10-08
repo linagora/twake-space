@@ -52,6 +52,36 @@ describe('ApiTokensScreen', () => {
     expect(document.title).toBe('API tokens - Twake Space')
   })
 
+  it('leads back home by default', async () => {
+    renderRoute('/settings/api-tokens')
+
+    expect(await screen.findByRole('link', { name: 'Back' })).toHaveAttribute(
+      'href',
+      '/'
+    )
+  })
+
+  it('leads back to the space settings that linked here', async () => {
+    const { router } = renderRoute('/settings/api-tokens?space=a1')
+
+    expect(await screen.findByRole('link', { name: 'Back' })).toHaveAttribute(
+      'href',
+      '/spaces/a1/settings'
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Organization' }))
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        '/settings/api-tokens/organization'
+      )
+    })
+    expect(router.state.location.search).toBe('?space=a1')
+    expect(screen.getByRole('link', { name: 'Back' })).toHaveAttribute(
+      'href',
+      '/spaces/a1/settings'
+    )
+  })
+
   it('lists the organization tokens with their role and spaces', async () => {
     renderRoute('/settings/api-tokens/organization', {
       tokens: fakeTokens({ organization: [digest] })

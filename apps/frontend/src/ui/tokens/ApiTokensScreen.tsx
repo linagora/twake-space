@@ -1,6 +1,13 @@
-import { Tab, Tabs, Typography } from '@linagora/twake-mui'
+import { Icon, Previous } from '@linagora/twake-icons'
+import { Link, Tab, Tabs, Typography } from '@linagora/twake-mui'
 import type { ReactElement } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router'
+import {
+  Link as RouterLink,
+  Navigate,
+  useNavigate,
+  useParams,
+  useSearchParams
+} from 'react-router'
 
 import type { TokenOwner } from '@/application/tokens'
 import { Page, TabPanel } from '@/ds/Page'
@@ -20,11 +27,28 @@ export function ApiTokensScreen(): ReactElement {
   const { t } = useI18n()
   const navigate = useNavigate()
   const { owner = 'personal' } = useParams()
+  // The space settings that linked here, so the page can lead back to them.
+  const [params] = useSearchParams()
+  const spaceId = params.get('space')
+  const search = spaceId ? `?space=${encodeURIComponent(spaceId)}` : ''
   useDocumentTitle(t('apiTokens.title'))
-  if (!isOwner(owner)) return <Navigate to="/settings/api-tokens" replace />
+  if (!isOwner(owner)) {
+    return (
+      <Navigate to={{ pathname: '/settings/api-tokens', search }} replace />
+    )
+  }
 
   return (
     <Page>
+      <Link
+        component={RouterLink}
+        to={spaceId ? `/spaces/${encodeURIComponent(spaceId)}/settings` : '/'}
+        underline="none"
+        className="u-inline-flex u-flex-items-center u-flex-self-start u-mb-1"
+      >
+        <Icon icon={Previous} className="u-mr-half" />
+        {t('common.back')}
+      </Link>
       <Typography variant="h3" component="h1">
         {t('apiTokens.title')}
       </Typography>
@@ -35,7 +59,7 @@ export function ApiTokensScreen(): ReactElement {
         narrowed
         value={owner}
         onChange={(_event, value: TokenOwner) => {
-          void navigate(`/settings/api-tokens/${value}`)
+          void navigate({ pathname: `/settings/api-tokens/${value}`, search })
         }}
         className="u-mb-1"
       >

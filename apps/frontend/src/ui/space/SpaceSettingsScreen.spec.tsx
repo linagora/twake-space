@@ -135,7 +135,7 @@ describe('SpaceSettingsScreen', () => {
     const zone = await screen.findByRole('region', { name: 'Danger zone' })
     expect(within(zone).getByRole('link', { name: 'Manage' })).toHaveAttribute(
       'href',
-      '/settings/api-tokens'
+      '/settings/api-tokens?space=a1'
     )
   })
 
