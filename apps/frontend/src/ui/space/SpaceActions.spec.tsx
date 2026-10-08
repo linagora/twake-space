@@ -66,7 +66,7 @@ describe('SpaceActions', () => {
     fireEvent.click(menu.getByRole('menuitem', { name: 'Members' }))
 
     expect(
-      await screen.findByRole('dialog', { name: 'Members' })
+      await screen.findByRole('dialog', { name: 'Members of “Roadmap”' })
     ).toBeInTheDocument()
   })
 
@@ -94,7 +94,9 @@ describe('SpaceActions', () => {
     )
 
     expect(
-      await screen.findByRole('dialog', { name: 'Manage people' })
+      await screen.findByRole('dialog', {
+        name: 'Invite members to “Roadmap”'
+      })
     ).toBeInTheDocument()
   })
 

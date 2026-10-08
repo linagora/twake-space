@@ -38,7 +38,6 @@
     "close": "Đóng",
     "next": "Tiếp",
     "apply": "Áp dụng",
-    "add": "Thêm",
     "save": "Lưu",
     "delete": "Xóa"
   },
@@ -102,8 +101,11 @@
   "members": {
     "members": "Thành viên",
     "groups": "Nhóm",
-    "noMembers": "Không có thành viên trực tiếp.",
-    "noGroups": "Không có nhóm liên kết.",
+    "noMembers": "Chưa có ai có quyền truy cập.",
+    "title": "Thành viên của “%{name}”",
+    "inviteTitle": "Mời thành viên vào “%{name}”",
+    "invite": "Mời",
+    "group": "Nhóm",
     "people": "Người",
     "remove": "Xóa %{name}",
     "unlink": "Hủy liên kết %{name}",

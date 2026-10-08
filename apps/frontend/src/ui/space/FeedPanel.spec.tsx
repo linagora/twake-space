@@ -232,7 +232,9 @@ describe('FeedPanel', () => {
     ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Invite members' }))
     expect(
-      await screen.findByRole('dialog', { name: 'Manage people' })
+      await screen.findByRole('dialog', {
+        name: 'Invite members to “Roadmap”'
+      })
     ).toBeInTheDocument()
   })
 

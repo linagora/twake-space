@@ -38,7 +38,6 @@
     "close": "Schließen",
     "next": "Weiter",
     "apply": "Anwenden",
-    "add": "Hinzufügen",
     "save": "Speichern",
     "delete": "Löschen"
   },
@@ -102,8 +101,11 @@
   "members": {
     "members": "Mitglieder",
     "groups": "Gruppen",
-    "noMembers": "Keine direkten Mitglieder.",
-    "noGroups": "Keine verknüpften Gruppen.",
+    "noMembers": "Noch hat niemand Zugriff.",
+    "title": "Mitglieder von „%{name}“",
+    "inviteTitle": "Mitglieder zu „%{name}“ einladen",
+    "invite": "Einladen",
+    "group": "Gruppe",
     "people": "Personen",
     "remove": "%{name} entfernen",
     "unlink": "%{name} trennen",

@@ -38,7 +38,6 @@
     "close": "Cerrar",
     "next": "Siguiente",
     "apply": "Aplicar",
-    "add": "Añadir",
     "save": "Guardar",
     "delete": "Eliminar"
   },
@@ -102,8 +101,11 @@
   "members": {
     "members": "Miembros",
     "groups": "Grupos",
-    "noMembers": "No hay miembros directos.",
-    "noGroups": "No hay grupos vinculados.",
+    "noMembers": "Nadie tiene acceso todavía.",
+    "title": "Miembros de «%{name}»",
+    "inviteTitle": "Invitar miembros a «%{name}»",
+    "invite": "Invitar",
+    "group": "Grupo",
     "people": "Personas",
     "remove": "Quitar a %{name}",
     "unlink": "Desvincular %{name}",
