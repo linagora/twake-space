@@ -11,7 +11,15 @@
     "yourSpaces": "Ваши пространства",
     "title": "Пространство",
     "allSpaces": "Все общие пространства",
-    "spaceWithCount": "%{name}, новых: %{smart_count}"
+    "spaceWithCount": "%{name}, новых: %{smart_count}",
+    "searchSpaces": "Поиск по вашим пространствам",
+    "spaceName": "Название пространства",
+    "noSpaceFound": "Пространства не найдены"
+  },
+  "search": {
+    "placeholder": "Поиск",
+    "searching": "Поиск…",
+    "noResults": "Ничего не найдено"
   },
   "errors": {
     "notFound": "Страница не найдена",

@@ -19,6 +19,7 @@ import { useI18n } from '@/ui/i18n/useI18n'
 import { useBadges } from '@/ui/space/Badges'
 import { useAppUrls } from '@/ui/space/useAppUrls'
 import { FeedPanel } from '@/ui/space/FeedPanel'
+import { FeedSearch } from '@/ui/space/FeedSearch'
 import { SpaceActions } from '@/ui/space/SpaceActions'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
@@ -100,6 +101,7 @@ export function SpaceScreen(): ReactElement {
 
   return (
     <Page fill={!framed}>
+      <FeedSearch key={spaceId} space={space.data} />
       <SpaceHeader
         avatar={
           <NameAvatar

@@ -39,6 +39,14 @@ export function Page({
   )
 }
 
+export function PageSearch({
+  children
+}: {
+  children: ReactNode
+}): ReactElement {
+  return <Box sx={{ maxWidth: 834, mb: 2 }}>{children}</Box>
+}
+
 export function TabPanel({
   tab,
   children

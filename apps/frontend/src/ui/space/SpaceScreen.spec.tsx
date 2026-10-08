@@ -436,4 +436,105 @@ describe('SpaceScreen', () => {
       expect(screen.getByRole('tab', { name: 'Mail' })).toBeDisabled()
     })
   })
+
+  describe('search', () => {
+    const items: FeedItem[] = [
+      {
+        id: 'post-1',
+        kind: 'post',
+        category: 'messages',
+        time: '2026-10-07T09:00:00.000Z',
+        updatedAt: '2026-10-07T09:00:00.000Z',
+        reactions: [],
+        author: { type: 'user', id: 'u-bob', name: 'Bob Durand' },
+        body: 'The launch plan is ready',
+        editedAt: null
+      },
+      {
+        id: 'card-1',
+        kind: 'card',
+        category: 'activities',
+        time: '2026-10-07T08:00:00.000Z',
+        updatedAt: '2026-10-07T08:00:00.000Z',
+        reactions: [],
+        type: 'com.twake.tasks.task.created.v1',
+        actor: null,
+        object: {
+          type: 'task',
+          id: 'T-1',
+          title: 'Plan the launch',
+          container: { kind: 'project', id: 'project-1' }
+        },
+        preview: null,
+        state: {}
+      }
+    ]
+
+    async function search(text: string) {
+      const input = await screen.findByRole('combobox', { name: 'Search' })
+      fireEvent.change(input, { target: { value: text } })
+      return input
+    }
+
+    it('suggests feed items as one types and opens a post in the feed', async () => {
+      renderAt('/spaces/a1/tasks', roadmap, items)
+      await search('launch')
+
+      const options = await screen.findAllByRole('option')
+      expect(options.map(option => option.textContent)).toEqual([
+        'BDThe launch plan is readyBob Durand',
+        'Plan the launchTasks'
+      ])
+      fireEvent.click(screen.getByRole('option', { name: /launch plan/ }))
+
+      expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/feed')
+      await waitFor(() => {
+        expect(
+          screen.getByRole('article', { name: 'Bob Durand' })
+        ).toHaveFocus()
+      })
+    })
+
+    it("opens a card in its app's tab", async () => {
+      renderAt('/spaces/a1/feed', roadmap, items)
+      await search('plan the')
+
+      fireEvent.click(
+        await screen.findByRole('option', { name: /Plan the launch/ })
+      )
+
+      expect(screen.getByLabelText('path')).toHaveTextContent(
+        '/spaces/a1/tasks'
+      )
+    })
+
+    it('says when nothing matches', async () => {
+      renderAt('/spaces/a1/feed', roadmap, items)
+      await search('budget')
+
+      expect(await screen.findByText('No results')).toBeInTheDocument()
+    })
+
+    it('loads older pages of the feed until the post shows', async () => {
+      const posts: FeedItem[] = Array.from({ length: 25 }, (_, i) => ({
+        id: `post-${String(i)}`,
+        kind: 'post',
+        category: 'messages',
+        time: new Date(Date.UTC(2026, 9, 1, 8, i)).toISOString(),
+        updatedAt: new Date(Date.UTC(2026, 9, 1, 8, i)).toISOString(),
+        reactions: [],
+        author: { type: 'user', id: 'u-bob', name: `Author ${String(i)}` },
+        body: i === 0 ? 'The oldest note' : `Note ${String(i)}`,
+        editedAt: null
+      }))
+      renderAt('/spaces/a1/feed', roadmap, posts)
+      await search('oldest')
+
+      fireEvent.click(await screen.findByRole('option', { name: /oldest/ }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('article', { name: 'Author 0' })).toHaveFocus()
+      })
+    })
+  })
 })

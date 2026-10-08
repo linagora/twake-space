@@ -11,7 +11,15 @@
     "yourSpaces": "Không gian của bạn",
     "title": "Không gian",
     "allSpaces": "Tất cả không gian được chia sẻ",
-    "spaceWithCount": "%{name}, %{smart_count} mới"
+    "spaceWithCount": "%{name}, %{smart_count} mới",
+    "searchSpaces": "Tìm trong không gian của bạn",
+    "spaceName": "Tên không gian",
+    "noSpaceFound": "Không tìm thấy không gian nào"
+  },
+  "search": {
+    "placeholder": "Tìm kiếm",
+    "searching": "Đang tìm…",
+    "noResults": "Không có kết quả"
   },
   "errors": {
     "notFound": "Không tìm thấy trang",
