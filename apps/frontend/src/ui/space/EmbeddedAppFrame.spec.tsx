@@ -40,6 +40,7 @@ async function renderFrame(
         frameRef={createRef()}
         onPath={onPath}
         onBadges={onBadges}
+        onMetadata={vi.fn()}
       />
       <CallProbe />
     </>,

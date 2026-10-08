@@ -11,7 +11,8 @@ import { createPortal } from 'react-dom'
 import {
   helloMessage,
   parseAppMessage,
-  type Badge
+  type Badge,
+  type Metadata
 } from '@linagora/twake-embed'
 import {
   OverlayFrame,
@@ -20,6 +21,7 @@ import {
   type OverlayRegion
 } from '@linagora/twake-mui'
 
+import { badgesOf } from '@/application/metadata'
 import {
   isLoginRequired,
   legacyEmbedPath,
@@ -51,6 +53,9 @@ const ALLOW = 'clipboard-read; clipboard-write; fullscreen'
 //   where TwakeSpace is,
 // - its counts for the tabs (`twake-embed:badges`), the whole snapshot each
 //   time, forgotten when the frame's document reloads or the frame goes,
+// - the same for its metadata (`twake-embed:metadata`): the figures of the
+//   space home, and maybe its counts under `badge`. Once a document sends
+//   its counts there, its badges are left aside,
 // - an overlay over the whole page, on the app's origin, for its docked
 //   windows and dialogs: an empty page the app renders into, shown within
 //   the region the app reports (`twake-embed:overlay-region`),
@@ -72,6 +77,7 @@ export function EmbeddedAppFrame({
   frameRef,
   onPath,
   onBadges,
+  onMetadata,
   onFloat
 }: {
   // Names the frame `twake-embed-<app>`, and its overlay `<that>:overlay`
@@ -91,6 +97,7 @@ export function EmbeddedAppFrame({
   // The app's counts, already checked to come from the frame: its whole
   // snapshot, or null when the frame's document is gone
   onBadges: (badges: readonly Badge[] | null) => void
+  onMetadata: (metadata: readonly Metadata[]) => void
   onFloat?: (floats: boolean) => void
 }): ReactElement {
   const { t } = useI18n()
@@ -102,9 +109,12 @@ export function EmbeddedAppFrame({
 
   const report = useRef(onPath)
   const reportBadges = useRef(onBadges)
+  const reportMetadata = useRef(onMetadata)
+  const countsInMetadata = useRef(false)
   useEffect(() => {
     report.current = onPath
     reportBadges.current = onBadges
+    reportMetadata.current = onMetadata
   })
   // A frame replaced or removed takes its counts with it
   useEffect(
@@ -176,7 +186,15 @@ export function EmbeddedAppFrame({
           return
         }
         if (message?.type === 'twake-embed:badges') {
-          reportBadges.current(message.badges)
+          if (!countsInMetadata.current) reportBadges.current(message.badges)
+          return
+        }
+        if (message?.type === 'twake-embed:metadata') {
+          if (message.metadata.some(({ name }) => name === 'badge')) {
+            countsInMetadata.current = true
+            reportBadges.current(badgesOf(message.metadata))
+          }
+          reportMetadata.current(message.metadata)
           return
         }
         if (message?.type === 'twake-embed:pip') {
@@ -241,6 +259,7 @@ export function EmbeddedAppFrame({
           setRegion(null)
           setAsksPage(false)
           // The new document reports its counts again, on its greeting
+          countsInMetadata.current = false
           reportBadges.current(null)
           setLoads(n => n + 1)
         }}
