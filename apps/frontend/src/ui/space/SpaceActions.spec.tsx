@@ -33,10 +33,6 @@ function renderActions(target: Space, spaces = fakeSpaces()) {
     <>
       <Routes>
         <Route path="/spaces/a1" element={<SpaceActions space={target} />} />
-        <Route
-          path="/spaces/a1/members"
-          element={<SpaceActions space={target} />}
-        />
         <Route path="/" element={null} />
       </Routes>
       <Path />
@@ -69,11 +65,9 @@ describe('SpaceActions', () => {
     )
     fireEvent.click(menu.getByRole('menuitem', { name: 'Members' }))
 
-    await waitFor(() => {
-      expect(screen.getByLabelText('path')).toHaveTextContent(
-        '/spaces/a1/members'
-      )
-    })
+    expect(
+      await screen.findByRole('dialog', { name: 'Members' })
+    ).toBeInTheDocument()
   })
 
   it('copies the link of the space and says so', async () => {
@@ -100,7 +94,7 @@ describe('SpaceActions', () => {
     )
 
     expect(
-      await screen.findByRole('dialog', { name: 'Add people' })
+      await screen.findByRole('dialog', { name: 'Manage people' })
     ).toBeInTheDocument()
   })
 
@@ -109,13 +103,7 @@ describe('SpaceActions', () => {
 
     const menu = await openMenu()
     expect(menu.getAllByRole('menuitem').map(item => item.textContent)).toEqual(
-      [
-        'Share link',
-        'Invite people',
-        'Manage people',
-        'Edit space',
-        'Delete space'
-      ]
+      ['Share link', 'Manage people', 'Edit space', 'Delete space']
     )
     fireEvent.click(menu.getByRole('menuitem', { name: 'Edit space' }))
     const dialog = await screen.findByRole('dialog', { name: 'Edit space' })

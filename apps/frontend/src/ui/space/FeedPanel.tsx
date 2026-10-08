@@ -66,6 +66,7 @@ import { useI18n, type TranslationKey } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
 import { useFeed, useFeedCache } from '@/ui/space/feedQueries'
+import { PeopleDialog } from '@/ui/space/PeopleDialog'
 
 const FILTERS: FeedFilter[] = ['all', ...FEED_CATEGORIES]
 
@@ -76,6 +77,8 @@ export function FeedPanel({ space }: { space: Space }): ReactElement {
   const [filter, setFilter] = useState<FeedFilter>('all')
   const feed = useFeed(space.id, filter)
   const myId = useSession().user.id
+  // Held here: the setup prompt goes away with the feed's first item.
+  const [inviting, setInviting] = useState(false)
 
   const items = feed.data?.pages.flatMap(page => page.items).toReversed() ?? []
 
@@ -107,13 +110,26 @@ export function FeedPanel({ space }: { space: Space }): ReactElement {
       {feed.isSuccess &&
         items.length === 0 &&
         (filter === 'all' ? (
-          <Setup space={space} />
+          <Setup
+            space={space}
+            onInvite={() => {
+              setInviting(true)
+            }}
+          />
         ) : (
           <Alert severity="info">{t('feed.empty')}</Alert>
         ))}
       {items.map(item => (
         <Item key={item.id} item={item} space={space} myId={myId} />
       ))}
+      {inviting && (
+        <PeopleDialog
+          space={space}
+          onClose={() => {
+            setInviting(false)
+          }}
+        />
+      )}
     </FeedLayout>
   )
 }
@@ -199,7 +215,13 @@ function Composer({ space }: { space: Space }): ReactElement {
   )
 }
 
-function Setup({ space }: { space: Space }): ReactElement {
+function Setup({
+  space,
+  onInvite
+}: {
+  space: Space
+  onInvite: () => void
+}): ReactElement {
   const { t } = useI18n()
   const tasks =
     space.apps.includes('tasks') &&
@@ -211,11 +233,7 @@ function Setup({ space }: { space: Space }): ReactElement {
       actions={
         <>
           {space.role === 'admin' && (
-            <Button
-              component={RouterLink}
-              to={`/spaces/${space.id}/members`}
-              startIcon={<Icon icon={PersonAdd} />}
-            >
+            <Button startIcon={<Icon icon={PersonAdd} />} onClick={onInvite}>
               {t('feed.setup.invite')}
             </Button>
           )}
