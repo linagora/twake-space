@@ -93,16 +93,7 @@ const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '👀', '🙏']
 // on the oldest one it has.
 const MARK_PAGES = 5
 
-export function FeedPanel({
-  space,
-  onScrolledAway,
-  onReachedStart
-}: {
-  space: Space
-  onScrolledAway?: () => void
-  /** Scrolled up to the space's very first item. */
-  onReachedStart?: () => void
-}): ReactElement {
+export function FeedPanel({ space }: { space: Space }): ReactElement {
   const { t } = useI18n()
   const location = useLocation()
   const target = feedItemOf(location.state)
@@ -191,10 +182,6 @@ export function FeedPanel({
       composer={space.role !== 'viewer' && <Composer space={space} />}
       placeKey={ready ? filter : null}
       latestLabel={t('feed.latest')}
-      onScrolledAway={onScrolledAway}
-      onAtTop={() => {
-        if (ready && !hasNextPage) onReachedStart?.()
-      }}
       onAtEndChange={setAtEnd}
       onNearTop={() => {
         if (ready && hasNextPage && !isFetchingNextPage) void fetchNextPage()

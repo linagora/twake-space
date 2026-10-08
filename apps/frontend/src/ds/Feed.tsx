@@ -41,33 +41,26 @@ export function FeedLayout({
   composer,
   placeKey,
   latestLabel,
-  onScrolledAway,
   onAtEndChange,
-  onNearTop,
-  onAtTop
+  onNearTop
 }: {
   toolbar: ReactNode
   children: ReactNode
   composer: ReactNode
   placeKey: string | null
   latestLabel: string
-  /** The person scrolls down the list. */
-  onScrolledAway?: (() => void) | undefined
   onAtEndChange?: (atEnd: boolean) => void
   onNearTop?: () => void
-  /** The person scrolls up to the very top of the list. */
-  onAtTop?: () => void
 }): ReactElement {
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const atEnd = useRef(true)
   const [behind, setBehind] = useState(false)
   // The first row in view, and where it sits on the screen: when the list
-  // grows above, as the cover folds, the rows hold still under the eye.
+  // grows above or shrinks, the rows hold still under the eye.
   const anchor = useRef<{ row: Element; top: number } | null>(null)
-  // A scroll this layout made itself is not the person scrolling away.
+  // A scroll this layout made itself is not the person scrolling.
   const ownScroll = useRef(false)
-  const lastTop = useRef(0)
 
   const reportAtEnd = useEffectEvent((value: boolean) => {
     onAtEndChange?.(value)
@@ -106,8 +99,8 @@ export function FeedLayout({
       scrollTo(list.scrollHeight)
     } else if (
       kept?.row.isConnected &&
-      // At the very top, the list resizing (the cover coming back) pushes
-      // the first rows down like a page, instead of hiding them.
+      // At the very top, the list resizing pushes the first rows down like a
+      // page, instead of hiding them.
       (rowsChanged || list.scrollTop > 0)
     ) {
       scrollTo(list.scrollTop + kept.row.getBoundingClientRect().top - kept.top)
@@ -196,12 +189,7 @@ export function FeedLayout({
             // The event of a scroll the layout made lands a frame late, when
             // the rows may have moved again: the anchor it set still holds.
             measure(own)
-            const { scrollTop } = event.currentTarget
-            const down = scrollTop > lastTop.current
-            lastTop.current = scrollTop
-            if (!own && down) onScrolledAway?.()
-            if (!own && scrollTop <= 0) onAtTop?.()
-            if (scrollTop < NEAR_TOP) onNearTop?.()
+            if (event.currentTarget.scrollTop < NEAR_TOP) onNearTop?.()
           }}
         >
           <Box

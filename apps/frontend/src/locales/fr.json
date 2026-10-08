@@ -7,6 +7,37 @@
     "afternoon": "Bon après-midi, %{name}",
     "evening": "Bonsoir, %{name}"
   },
+  "spaceHome": {
+    "users": "Membre de l'espace |||| Membres de l'espace",
+    "manageUsers": "Gérer les membres",
+    "app": {
+      "calendar": {
+        "name": "Agenda",
+        "description": "Un service pour organiser les réunions et gérer le temps de travail",
+        "open": "Ouvrir l'agenda"
+      },
+      "mail": {
+        "name": "Boîte mail d'équipe",
+        "description": "Une messagerie sécurisée sur le domaine de l'entreprise",
+        "open": "Ouvrir la boîte mail"
+      },
+      "chat": {
+        "name": "Discussions",
+        "description": "Discussions et canaux pour échanger rapidement entre collègues",
+        "open": "Ouvrir le chat"
+      },
+      "drive": {
+        "name": "Fichiers de l'espace",
+        "description": "Un stockage partagé pour ranger les fichiers et documents de l'équipe",
+        "open": "Ouvrir les fichiers"
+      },
+      "tasks": {
+        "name": "Tâches",
+        "description": "Des tableaux pour planifier le travail de l'équipe et le suivre",
+        "open": "Ouvrir les tâches"
+      }
+    }
+  },
   "shell": {
     "yourSpaces": "Vos espaces",
     "title": "Espace",
@@ -99,6 +130,7 @@
     }
   },
   "tabs": {
+    "home": "Accueil",
     "feed": "Fil",
     "chat": "Chat",
     "tasks": "Tâches",

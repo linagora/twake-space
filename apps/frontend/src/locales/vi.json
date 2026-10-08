@@ -7,6 +7,37 @@
     "afternoon": "Chào buổi chiều, %{name}",
     "evening": "Chào buổi tối, %{name}"
   },
+  "spaceHome": {
+    "users": "Thành viên",
+    "manageUsers": "Quản lý thành viên",
+    "app": {
+      "calendar": {
+        "name": "Lịch",
+        "description": "Dịch vụ sắp xếp cuộc họp và quản lý thời gian làm việc",
+        "open": "Mở lịch"
+      },
+      "mail": {
+        "name": "Hộp thư nhóm",
+        "description": "Email doanh nghiệp bảo mật trên tên miền của công ty",
+        "open": "Mở hộp thư"
+      },
+      "chat": {
+        "name": "Trò chuyện",
+        "description": "Trò chuyện và kênh để trao đổi nhanh với đồng nghiệp",
+        "open": "Mở trò chuyện"
+      },
+      "drive": {
+        "name": "Tệp của không gian",
+        "description": "Lưu trữ đám mây của nhóm để sắp xếp tệp và tài liệu",
+        "open": "Mở tệp"
+      },
+      "tasks": {
+        "name": "Công việc",
+        "description": "Bảng để lên kế hoạch và theo dõi công việc của nhóm",
+        "open": "Mở công việc"
+      }
+    }
+  },
   "shell": {
     "yourSpaces": "Không gian của bạn",
     "title": "Không gian",
@@ -99,6 +130,7 @@
     }
   },
   "tabs": {
+    "home": "Trang chủ",
     "feed": "Bảng tin",
     "chat": "Trò chuyện",
     "tasks": "Công việc",

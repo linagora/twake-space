@@ -1,4 +1,4 @@
-import { Expand, Icon, Narrow } from '@linagora/twake-icons'
+import { Expand, Home, Icon, Narrow } from '@linagora/twake-icons'
 import {
   Alert,
   Button,
@@ -43,6 +43,7 @@ import { FeedPanel } from '@/ui/space/FeedPanel'
 import { FeedSearch } from '@/ui/space/FeedSearch'
 import { useFillPage } from '@/ui/space/FillPage'
 import { SpaceActions } from '@/ui/space/SpaceActions'
+import { SpaceHome } from '@/ui/space/SpaceHome'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
@@ -82,8 +83,6 @@ export function SpaceScreen(): ReactElement {
       ? tab
       : null
   useSpaceTabTag(readyTab)
-  // The cover folds as the feed scrolls down, and comes back at its start.
-  const [foldedIn, setFoldedIn] = useState<string | null>(null)
 
   // The page given to the open tab: until the person takes it back, another
   // space opens, or this one leaves or fails
@@ -216,7 +215,6 @@ export function SpaceScreen(): ReactElement {
               <SpaceActions space={space.data} />
             </>
           }
-          cover={current.tab === 'feed' && foldedIn !== spaceId}
           tabs={
             <Tabs
               narrowed
@@ -236,12 +234,18 @@ export function SpaceScreen(): ReactElement {
                     key={item.tab}
                     value={item.tab}
                     label={
-                      <CountedLabel label={name} count={badgeLabel(count)} />
+                      item.tab === 'home' ? (
+                        <Icon icon={Home} />
+                      ) : (
+                        <CountedLabel label={name} count={badgeLabel(count)} />
+                      )
                     }
                     aria-label={
                       count > 0
                         ? t('tabs.withCount', { app: name, smart_count: count })
-                        : undefined
+                        : item.tab === 'home'
+                          ? name
+                          : undefined
                     }
                     disabled={item.state === 'off'}
                     id={`tab-${item.tab}`}
@@ -287,17 +291,11 @@ export function SpaceScreen(): ReactElement {
               {t('space.stalled', { app: label })}
             </Alert>
           )}
+          {current.tab === 'home' && (
+            <SpaceHome space={space.data} tabs={tabs} />
+          )}
           {current.tab === 'feed' && (
-            <FeedPanel
-              key={spaceId}
-              space={space.data}
-              onScrolledAway={() => {
-                setFoldedIn(spaceId)
-              }}
-              onReachedStart={() => {
-                setFoldedIn(null)
-              }}
-            />
+            <FeedPanel key={spaceId} space={space.data} />
           )}
           {embedded && embeddedUrl === null && (
             <Typography>{t(`${embedded.app}.notSetUp`)}</Typography>

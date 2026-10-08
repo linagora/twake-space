@@ -7,6 +7,37 @@
     "afternoon": "Good afternoon, %{name}",
     "evening": "Good evening, %{name}"
   },
+  "spaceHome": {
+    "users": "Space user |||| Space users",
+    "manageUsers": "Manage users",
+    "app": {
+      "calendar": {
+        "name": "Calendar",
+        "description": "A service for organizing meetings and managing work time",
+        "open": "Open calendar"
+      },
+      "mail": {
+        "name": "Team mailbox",
+        "description": "Secure corporate email on the company domain",
+        "open": "Open mailbox"
+      },
+      "chat": {
+        "name": "Chats",
+        "description": "Chats and channels for quick communication with colleagues",
+        "open": "Open chat"
+      },
+      "drive": {
+        "name": "Space files",
+        "description": "Team cloud storage to organize your files and documents",
+        "open": "Open files"
+      },
+      "tasks": {
+        "name": "Tasks",
+        "description": "Boards to plan the team's work and follow it through",
+        "open": "Open tasks"
+      }
+    }
+  },
   "shell": {
     "yourSpaces": "Your spaces",
     "title": "Space",
@@ -99,6 +130,7 @@
     }
   },
   "tabs": {
+    "home": "Home",
     "feed": "Feed",
     "chat": "Chat",
     "tasks": "Tasks",
