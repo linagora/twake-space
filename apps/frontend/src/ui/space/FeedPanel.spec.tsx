@@ -552,6 +552,7 @@ describe('FeedPanel', () => {
             username: 'bob',
             email: 'bob@acme',
             displayName: 'Bob Durand',
+            workplaceFqdn: null,
             role: 'editor'
           }
         ]

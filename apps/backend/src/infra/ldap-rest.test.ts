@@ -221,6 +221,39 @@ describe('ldapRestDirectory', () => {
     })
   })
 
+  it("reads a live member's Twake Workplace address", async () => {
+    const { directory, organizations } = setup()
+    organizations.getUser
+      .mockResolvedValueOnce({ ...user, workspaceUrl: 'jdoe.twake.app' })
+      .mockResolvedValueOnce({
+        ...user,
+        workspaceUrl: 'https://jdoe.twake.app/'
+      })
+      .mockResolvedValueOnce(user)
+      .mockResolvedValueOnce({
+        ...user,
+        workspaceUrl: 'jdoe.twake.app',
+        isDeleted: true
+      })
+      .mockRejectedValueOnce(new NotFoundError('no such user'))
+
+    const answers = [
+      await directory.workplaceFqdn('org_acme', '3f2a'),
+      await directory.workplaceFqdn('org_acme', '3f2a'),
+      await directory.workplaceFqdn('org_acme', '3f2a'),
+      await directory.workplaceFqdn('org_acme', '3f2a'),
+      await directory.workplaceFqdn('org_acme', '3f2a')
+    ]
+
+    expect(answers).toEqual([
+      'jdoe.twake.app',
+      'jdoe.twake.app',
+      null,
+      null,
+      null
+    ])
+  })
+
   it('propagates other ldap-rest failures', async () => {
     const { directory, organizations } = setup()
     organizations.getUser.mockRejectedValue(new Error('ldap-rest unreachable'))

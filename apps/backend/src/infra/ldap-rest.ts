@@ -41,6 +41,7 @@ export interface Directory {
     orgId: string,
     accountId: string
   ): Promise<{ email: string; role: OrganizationRole } | undefined>
+  workplaceFqdn(orgId: string, accountId: string): Promise<string | null>
 }
 
 const organizationRoles = ['owner', 'admin', 'moderator', 'member'] as const
@@ -226,6 +227,13 @@ export function ldapRestDirectory(
       }
       return { email: user.mail, role }
     },
+    async workplaceFqdn(orgId, accountId) {
+      const user = await notFoundAsUndefined(
+        client.organizations.getUser(orgId, { by: 'id', value: accountId })
+      )
+      if (!user || user.isDeleted === true) return null
+      return fqdnOf(user.workspaceUrl)
+    },
     async organization(orgId) {
       const organization = await notFoundAsUndefined(
         client.organizations.get(orgId)
@@ -280,6 +288,20 @@ async function notFoundAsUndefined<T>(
   } catch (error) {
     if (error instanceof NotFoundError) return undefined
     throw error
+  }
+}
+
+// Despite its name, ldap-rest writes the instance's bare address there, like
+// `alice.twake.app`; a full URL is read too.
+function fqdnOf(workspaceUrl: string | undefined): string | null {
+  if (!workspaceUrl) return null
+  try {
+    const url = new URL(
+      workspaceUrl.includes('://') ? workspaceUrl : `https://${workspaceUrl}`
+    )
+    return url.hostname || null
+  } catch {
+    return null
   }
 }
 

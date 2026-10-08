@@ -27,6 +27,7 @@ const roadmap: Space = {
       username: 'alice',
       email: 'alice@acme.test',
       displayName: null,
+      workplaceFqdn: null,
       role: 'admin'
     }
   ],
@@ -103,6 +104,7 @@ describe('memorySpaces', () => {
       username: 'bob',
       email: 'bob@acme.test',
       displayName: 'Bob Durand',
+      workplaceFqdn: null,
       role: 'editor'
     })
     await spaces.removeMember('roadmap', 'u-bob')
@@ -152,7 +154,14 @@ describe('memorySpaces', () => {
         description: '',
         pinnedAt: null,
         openedAt: null,
-        members: [{ id: 'u-alice', username: 'alice', displayName: null }]
+        members: [
+          {
+            id: 'u-alice',
+            username: 'alice',
+            displayName: null,
+            workplaceFqdn: null
+          }
+        ]
       },
       created
     ])

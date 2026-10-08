@@ -2,6 +2,7 @@ import { Button } from '@linagora/twake-mui'
 import { useEffect, useState, type ReactElement } from 'react'
 import { Link as RouterLink } from 'react-router'
 
+import { avatarUrl } from '@/application/avatar'
 import { badgeLabel, tabCount } from '@/application/badges'
 import {
   HOME_FIGURES,
@@ -156,6 +157,7 @@ export function SpaceHome({
                     name={name}
                     label={name}
                     size="s"
+                    src={avatarUrl(member.workplaceFqdn)}
                   />
                 )
               })}

@@ -362,6 +362,7 @@ describe('SpaceScreen', () => {
         username: 'alice',
         email: 'alice@acme.test',
         displayName: 'Alice Martin',
+        workplaceFqdn: 'alice.acme.test',
         role: 'admin' as const
       },
       {
@@ -369,14 +370,22 @@ describe('SpaceScreen', () => {
         username: 'bob',
         email: 'bob@acme.test',
         displayName: null,
+        workplaceFqdn: null,
         role: 'viewer' as const
       }
     ]
     renderAt('/spaces/a1/home', { ...roadmap, role: 'admin', members })
 
     expect(await screen.findByText('Space users')).toBeInTheDocument()
-    expect(screen.getByLabelText('Alice Martin')).toBeInTheDocument()
-    expect(screen.getByLabelText('bob')).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Alice Martin').querySelector('img')
+    ).toHaveAttribute(
+      'src',
+      'https://alice.acme.test/public/avatar?fallback=404'
+    )
+    expect(
+      screen.getByLabelText('bob').querySelector('img')
+    ).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Manage users' }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })

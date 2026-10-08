@@ -18,6 +18,7 @@ import {
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useId, useState, type ReactElement, type ReactNode } from 'react'
 
+import { avatarUrl } from '@/application/avatar'
 import type { Space, SpaceRole, SpacesService } from '@/application/spaces'
 import { NameAvatar } from '@/ds/AppFrame'
 import { DialogHeader } from '@/ds/Dialog'
@@ -63,7 +64,9 @@ export function PeopleDialog({
       const name = m.displayName ?? m.username
       return {
         key: `people:${m.id}`,
-        avatar: <NameAvatar name={name} size="m" />,
+        avatar: (
+          <NameAvatar name={name} size="m" src={avatarUrl(m.workplaceFqdn)} />
+        ),
         primary: name,
         secondary: m.email,
         role: m.role,

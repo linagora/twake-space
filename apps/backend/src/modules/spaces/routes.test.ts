@@ -96,7 +96,15 @@ function setUp(
     token => (token === 'alice' ? anIdentity({ userId: ALICE }) : null),
     token => (token === 'tws_bot' ? tokenCaller : null)
   )
-  registerSpaceRoutes(app, { db: testDb.db, authorize, apps })
+  registerSpaceRoutes(app, {
+    db: testDb.db,
+    authorize,
+    apps,
+    workplaces: (_, ids) =>
+      Promise.resolve(
+        new Map(ids.map(id => [id, id === ALICE ? 'alice.twake.app' : null]))
+      )
+  })
   return (
     url: string,
     token = 'alice',
@@ -180,8 +188,18 @@ describe('GET /spaces', () => {
           pinnedAt: null,
           openedAt: null,
           members: [
-            { id: ALICE, username: 'alice', displayName: 'Alice LIDDELL' },
-            { id: BOB, username: 'bob', displayName: null }
+            {
+              id: ALICE,
+              username: 'alice',
+              displayName: 'Alice LIDDELL',
+              workplaceFqdn: 'alice.twake.app'
+            },
+            {
+              id: BOB,
+              username: 'bob',
+              displayName: null,
+              workplaceFqdn: null
+            }
           ]
         }
       ]
@@ -333,14 +351,16 @@ describe('GET /spaces/:id', () => {
           username: 'alice',
           email: 'alice@example.com',
           displayName: 'Alice LIDDELL',
-          role: 'admin'
+          role: 'admin',
+          workplaceFqdn: 'alice.twake.app'
         },
         {
           id: BOB,
           username: 'bob',
           email: 'bob@example.com',
           displayName: null,
-          role: 'viewer'
+          role: 'viewer',
+          workplaceFqdn: null
         }
       ],
       groups: [{ id: DESIGNERS, name: 'Designers', role: 'viewer' }]
@@ -518,7 +538,8 @@ it('asks for a bearer token', async () => {
   registerSpaceRoutes(app, {
     db: testDb.db,
     authorize: fakeAuth(app, () => null),
-    apps: []
+    apps: [],
+    workplaces: () => Promise.resolve(new Map())
   })
 
   const response = await app.inject({ method: 'GET', url: '/spaces' })

@@ -32,6 +32,7 @@ import {
   type FeedPost,
   withReaction
 } from '@/application/feed'
+import { avatarUrl } from '@/application/avatar'
 import { meetRoomUrl } from '@/application/meet'
 import type { ResourceKind, Space } from '@/application/spaces'
 import { containerTab } from '@/application/spaceTabs'
@@ -206,7 +207,8 @@ export function FeedPanel({ space }: { space: Space }): ReactElement {
 
   const members = space.members.map(member => ({
     id: member.id,
-    name: member.displayName ?? member.username
+    name: member.displayName ?? member.username,
+    avatar: avatarUrl(member.workplaceFqdn)
   }))
 
   return (
@@ -443,6 +445,13 @@ export function useActorName(actor: Actor | null): string | null {
   }
 }
 
+// Only a person still in the space has a known instance.
+function actorAvatar(space: Space, actor: Actor | null): string | null {
+  if (actor?.type !== 'user' || !actor.id) return null
+  const member = space.members.find(m => m.id === actor.id)
+  return avatarUrl(member?.workplaceFqdn ?? null)
+}
+
 function useTime(): (iso: string) => string {
   const { lang } = useI18n()
   return iso => {
@@ -509,7 +518,13 @@ function Post({
   return (
     <FeedRow
       label={author}
-      avatar={<NameAvatar name={author} size="m" />}
+      avatar={
+        <NameAvatar
+          name={author}
+          size="m"
+          src={actorAvatar(space, post.author)}
+        />
+      }
       focused={focused}
     >
       <FeedHeader
@@ -739,7 +754,11 @@ function Card({
       avatar={
         // The person who acted; an app or an integration has its own.
         card.actor?.type === 'user' && card.actor.name ? (
-          <NameAvatar name={card.actor.name} size="m" />
+          <NameAvatar
+            name={card.actor.name}
+            size="m"
+            src={actorAvatar(space, card.actor)}
+          />
         ) : isApp(app) ? (
           <AppAvatar icon={APPS[app].icon} app={app} label={appName ?? ''} />
         ) : (
