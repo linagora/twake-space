@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
+    <!-- The SVG icon comes from html.favicon; the ICO stays for the browsers
+    without SVG icons, and sizes lets the others pick the SVG. -->
+    <link rel="icon" href="<%= assetPrefix %>/favicon.ico" sizes="32x32" />
+    <link rel="apple-touch-icon" href="<%= assetPrefix %>/icons/Icon-192.png" />
     <title>Twake Space</title>
     <script src="<%= assetPrefix %>/.env.js"></script>
     <!-- The sign-in screen paints before any script runs; SignInScreen renders the same markup. -->
