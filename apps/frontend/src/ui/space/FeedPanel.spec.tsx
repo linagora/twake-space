@@ -248,6 +248,56 @@ describe('FeedPanel', () => {
     expect(buttons[1]).not.toHaveAttribute('data-quiet')
   })
 
+  it('says what every kind of activity did, and none as an update posted', async () => {
+    const verbs: Record<string, string> = {
+      'tasks.created': 'created a task',
+      'tasks.updated': 'updated a task',
+      'tasks.assigned': 'assigned a task',
+      'tasks.unassigned': 'unassigned a task',
+      'tasks.moved': 'moved a task',
+      'tasks.completed': 'completed a task',
+      'tasks.reopened': 'reopened a task',
+      'tasks.deleted': 'deleted a task',
+      'tasks.restored': 'restored a task',
+      'mail.received': 'New email received',
+      'mail.sent': 'Email sent',
+      'calendar.created': 'created an event',
+      'calendar.updated': 'updated an event',
+      'calendar.rescheduled': 'rescheduled an event',
+      'calendar.accepted': 'accepted an event',
+      'calendar.declined': 'declined an event',
+      'calendar.proposed': 'proposed a new time',
+      'drive.created': 'added a file',
+      'drive.updated': 'updated a file'
+    }
+    const cards = Object.keys(verbs).map((key, i): FeedCard => ({
+      ...task,
+      id: key,
+      time: at(i),
+      updatedAt: at(i),
+      type: `com.twake.${key.replace('.', '.thing.')}.v1`,
+      actor: { type: 'user', id: 'u-bob', name: 'Bob Durand' },
+      object: {
+        ...task.object,
+        id: key,
+        title: `Object of ${key}`,
+        container: null
+      }
+    }))
+    const showcase: Space = roadmap
+    renderFeed(cards, { space: showcase, pageSize: 100 })
+
+    await screen.findAllByRole('article')
+    const texts = screen
+      .getAllByRole('article')
+      .map(article => article.textContent)
+    const missing = Object.values(verbs).filter(
+      verb => !texts.some(text => text.includes(verb))
+    )
+    expect(missing).toEqual([])
+    expect(texts.some(text => text.includes('posted an update'))).toBe(false)
+  })
+
   it('shows who acted on a card, and the app when no person did', async () => {
     renderFeed([
       task,
