@@ -19,6 +19,7 @@ export function SpaceActions({ space }: { space: Space }): ReactElement {
   return (
     <>
       <IconButton
+        size="small"
         aria-label={t('assistant.open')}
         aria-pressed={assistant.open}
         onClick={() => {
@@ -29,6 +30,7 @@ export function SpaceActions({ space }: { space: Space }): ReactElement {
       </IconButton>
       {space.role === 'admin' && (
         <IconButton
+          size="small"
           aria-label={t('spaceMenu.invite')}
           onClick={() => {
             setInviting(true)

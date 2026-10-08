@@ -206,6 +206,7 @@ export function SpaceScreen(): ReactElement {
             <>
               <IconButton
                 ref={fillButton}
+                size="small"
                 aria-label={t('space.fullPage')}
                 onClick={() => {
                   focusNext.current = 'leave'
