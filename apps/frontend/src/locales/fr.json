@@ -386,6 +386,7 @@
   },
   "call": {
     "menu": "Réunion vidéo",
+    "start": "Démarrer une réunion instantanée",
     "join": "Rejoindre une réunion",
     "link": "Lien de la réunion",
     "linkHint": "URL ou code de 10 lettres",

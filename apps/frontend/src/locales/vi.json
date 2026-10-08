@@ -386,6 +386,7 @@
   },
   "call": {
     "menu": "Cuộc họp video",
+    "start": "Bắt đầu cuộc họp ngay",
     "join": "Tham gia cuộc họp",
     "link": "Liên kết cuộc họp",
     "linkHint": "URL hoặc mã 10 chữ cái",

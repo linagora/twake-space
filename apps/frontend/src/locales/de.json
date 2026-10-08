@@ -386,6 +386,7 @@
   },
   "call": {
     "menu": "Videobesprechung",
+    "start": "Sofortbesprechung starten",
     "join": "An einer Besprechung teilnehmen",
     "link": "Besprechungslink",
     "linkHint": "URL oder 10-stelliger Buchstabencode",

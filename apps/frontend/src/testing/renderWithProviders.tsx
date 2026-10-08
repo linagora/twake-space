@@ -20,6 +20,7 @@ import { fakeSession } from '@/testing/fakeSession'
 import { fakeSettings } from '@/testing/fakeSettings'
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { fakeTokens } from '@/testing/fakeTokens'
+import { CallProvider } from '@/ui/call/CallContext'
 import type { SupportedLanguage } from '@/ui/i18n/languages'
 import { SessionGate } from '@/ui/session/SessionGate'
 import { FollowCommonSettings } from '@/ui/settings/FollowCommonSettings'
@@ -85,7 +86,9 @@ function withProviders(
       }}
     >
       <SessionGate session={session}>
-        <FollowCommonSettings>{router}</FollowCommonSettings>
+        <FollowCommonSettings>
+          <CallProvider>{router}</CallProvider>
+        </FollowCommonSettings>
       </SessionGate>
     </AppProviders>
   )

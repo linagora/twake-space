@@ -386,6 +386,7 @@
   },
   "call": {
     "menu": "Video meeting",
+    "start": "Start an instant meeting",
     "join": "Join a meeting",
     "link": "Meeting link",
     "linkHint": "URL or 10-letter code",

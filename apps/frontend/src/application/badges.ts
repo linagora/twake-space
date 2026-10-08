@@ -2,7 +2,7 @@ import type { Badge } from '@linagora/twake-embed'
 
 import { EMBEDDED_APPS, type EmbeddedApp } from '@/application/embeddedApps'
 import type { Space } from '@/application/spaces'
-import { spaceTabs } from '@/application/spaceTabs'
+import { isTabReady } from '@/application/spaceTabs'
 
 // What each app last reported: its counts by resource id, for every space the
 // user has, not only the one shown. One snapshot per app.
@@ -68,10 +68,7 @@ export function tabCount(
   space: Space,
   app: EmbeddedApp
 ): number {
-  const ready = spaceTabs(space, 0).some(
-    item => item.tab === app && item.state === 'ready'
-  )
-  return ready ? (spaceCount(snapshots, space, app) ?? 0) : 0
+  return isTabReady(space, app) ? (spaceCount(snapshots, space, app) ?? 0) : 0
 }
 
 // The sum, over the apps, of the counts of a space's resources, as long as
