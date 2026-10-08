@@ -70,6 +70,7 @@ export const amqpTopology = z
     AMQP_ADMIN_PANEL_EXCHANGE: z.string().min(1).default('admin-panel'),
     AMQP_SETTINGS_EXCHANGE: z.string().min(1).default('settings'),
     AMQP_TWAKE_SPACE_EXCHANGE: z.string().min(1).default('twake-space'),
+    AMQP_LIVE_EXCHANGE: z.string().min(1).default('twake-space.live'),
     AMQP_EVENTS: overrides.default({})
   })
   .transform((env, ctx) => {
@@ -118,6 +119,7 @@ export const amqpTopology = z
         deliveryLimit: env.AMQP_DELIVERY_LIMIT,
         activityExchange: env.AMQP_ACTIVITY_EXCHANGE,
         twakeSpaceExchange: env.AMQP_TWAKE_SPACE_EXCHANGE,
+        liveExchange: env.AMQP_LIVE_EXCHANGE,
         events
       }
     }

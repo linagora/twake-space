@@ -157,6 +157,7 @@ The defaults match the platform. [Events](events.md#consuming-rabbitmq) lists th
 - `AMQP_SPACE_EXCHANGE`, `AMQP_B2B_EXCHANGE`, `AMQP_ADMIN_PANEL_EXCHANGE`, `AMQP_SETTINGS_EXCHANGE`: the platform exchanges, default `space`, `b2b`, `admin-panel` and `settings` (common settings' `RABBITMQ_EXCHANGE`).
 - `AMQP_ACTIVITY_EXCHANGE`: the exchange the apps publish their activity on, default `activity`.
 - `AMQP_TWAKE_SPACE_EXCHANGE`: the topic exchange Twake Space publishes its own messages on, default `twake-space`. The backend declares it as a durable topic exchange on its first publish.
+- `AMQP_LIVE_EXCHANGE`: the topic exchange replicas share live updates and session revocations on, default `twake-space.live`. The backend declares it, and each replica binds its own exclusive queue to it.
 - `AMQP_EVENTS`: JSON that moves single events to another exchange or routing key, such as `{"dns.validated": {"exchange": "dns", "routingKey": "domain.dns.validated"}}`. An event the backend has no handler for, a routing key with `*` or `#`, two events on the same exchange and key, or an event on the activity exchange is a configuration error.
 
 RabbitMQ refuses to redeclare a queue with other arguments, and the queue name, the dead letter exchange, the first `space` event's binding and the delivery limit are arguments. Changing one of them means deleting the queue first, after it has drained. Bindings an older version or setting left on the queue stay until it is deleted.
@@ -169,9 +170,9 @@ The backend starts in this order. A failure at any step stops the process.
 2. Applies the database migrations.
 3. In single installation mode, writes the homeserver settings to the database and links every organization to it.
 4. Runs OIDC discovery on `OIDC_ISSUER` (5 second timeout).
-5. Opens the Postgres `LISTEN` channels for live updates and session revocations.
-6. Starts the API and metrics servers.
-7. Connects to RabbitMQ, checks the exchanges other services own, declares its queue, bindings and dead letter queue, and starts consuming.
+5. Starts the API and metrics servers.
+6. Connects to RabbitMQ and declares its own exclusive queue on the live exchange, for live updates and session revocations.
+7. Checks the exchanges other services own, declares its queue, bindings and dead letter queue, and starts consuming.
 8. Starts the background jobs and reports ready.
 
 On `SIGTERM` or `SIGINT` it reports not ready, stops the jobs and closes the RabbitMQ connection, after waiting up to 5 seconds for the message in its handler. A message still unacknowledged then is delivered again. After 5 seconds, so the load balancer has moved traffic away, it closes both servers and the Postgres pool, then flushes Sentry. It exits with code 1 when this fails or takes over 25 seconds, which fits the default 30 second grace period. A signal during startup exits at once.
@@ -206,7 +207,6 @@ Health requests are not logged. The metrics port answers `/health/live` and `/he
 ### PostgreSQL
 
 - Holds all state and the migrations.
-- Uses `LISTEN` and `NOTIFY` for live updates and session revocations across replicas.
 - Uses advisory locks so only one replica runs the hourly purge and the single installation homeserver setup at a time.
 - The hourly purge deletes feed events, cards, posts, messages and reactions after 365 days, notifications after 90 days, and Matrix app service transactions after 7 days.
 
@@ -265,7 +265,6 @@ namespaces:
 - @rezk2ll The entrypoint writes `POSTHOG_KEY` and `POSTHOG_HOST` to `/.env.js` and adds `POSTHOG_HOST` to `connect-src`, but the frontend source does not read either. Is PostHog planned, or should the script drop them?
 - @rezk2ll `twake-space.dlq` has no length limit or TTL. Who watches it, and should it get a limit?
 - @rezk2ll Several replicas start together and each runs the migrations. Does the Drizzle migrator lock against concurrent runs, or should one replica (or a job) migrate first?
-- @rezk2ll The backend relies on Postgres `LISTEN`. Is a transaction pooling proxy (PgBouncer) in front of Postgres ruled out for deployments?
 - @rezk2ll CI builds the images without a `platforms` setting. Is an arm64 image needed?
 - @rezk2ll The app service registration only covers the `twakespace` user, and the backend joins no room. Which service makes that user a member of each space's Matrix room, or should the registration match the rooms instead?
 - @rezk2ll Both a push to `main` and a release tag move `latest`. Should deployments pin version tags only?

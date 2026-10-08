@@ -1,17 +1,8 @@
-import { eq, lt, sql } from 'drizzle-orm'
-import type postgres from 'postgres'
+import { eq, inArray, lt } from 'drizzle-orm'
+import type { Logger } from 'pino'
 import type { Db } from '../../infra/db.ts'
+import { tellRevoked } from '../live/notify.ts'
 import { oidcRevokedSessions } from './schema.ts'
-
-const SESSION_REVOKED = 'session_revoked'
-
-// Every replica hears it, so each closes the streams it holds for the session.
-export async function listenForRevocations(
-  client: postgres.Sql,
-  onRevoked: (sessionId: string) => void
-): Promise<void> {
-  await client.listen(SESSION_REVOKED, onRevoked)
-}
 
 export interface AuthStore {
   isRevoked: (sessionId: string) => Promise<boolean>
@@ -38,10 +29,37 @@ export function postgresAuthStore(db: Db): AuthStore {
           .insert(oidcRevokedSessions)
           .values({ sid: sessionId, expiresAt: until })
           .onConflictDoNothing()
-        await tx.execute(
-          sql`select pg_notify(${SESSION_REVOKED}, ${sessionId})`
-        )
+        // Every replica closes the streams it holds for the session.
+        tellRevoked(tx, sessionId)
       })
     }
+  }
+}
+
+const SWEEP_EVERY_MS = 60_000
+
+// A replica misses a revocation sent while it was disconnected from RabbitMQ,
+// or by a replica of another version.
+export function scheduleRevocationSweep(
+  db: Db,
+  streams: { sessions: () => string[]; closeSession: (id: string) => void },
+  logger: Logger
+): () => void {
+  const sweep = async () => {
+    const open = streams.sessions()
+    if (open.length === 0) return
+    const revoked = await db
+      .select({ sid: oidcRevokedSessions.sid })
+      .from(oidcRevokedSessions)
+      .where(inArray(oidcRevokedSessions.sid, open))
+    for (const { sid } of revoked) streams.closeSession(sid)
+  }
+  const timer = setInterval(() => {
+    sweep().catch((error: unknown) => {
+      logger.error({ err: error }, 'revocation sweep failed')
+    })
+  }, SWEEP_EVERY_MS)
+  return () => {
+    clearInterval(timer)
   }
 }

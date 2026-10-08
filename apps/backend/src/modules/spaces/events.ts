@@ -303,7 +303,7 @@ export async function upsertMembers(
         role: sql`excluded.role`
       }
     })
-  await tell(tx, 'spaces', [...byUser.keys()], { spaceId })
+  tell(tx, 'spaces', [...byUser.keys()], { spaceId })
 }
 
 export async function deletedAfter(
@@ -359,7 +359,7 @@ async function removeMembers(
     )
   )
   for (const spaceId of new Set(removed.map(m => m.spaceId))) {
-    await tell(
+    tell(
       tx,
       'spaces',
       removed.filter(m => m.spaceId === spaceId).map(m => m.userId),
@@ -478,7 +478,7 @@ export async function deleteSpace(
   await tx.delete(spaceBanners).where(eq(spaceBanners.spaceId, id))
   await tx.delete(spaceMarks).where(eq(spaceMarks.spaceId, id))
   await tx.delete(spaces).where(eq(spaces.spaceId, id))
-  await tell(
+  tell(
     tx,
     'spaces',
     members.map(m => m.userId),

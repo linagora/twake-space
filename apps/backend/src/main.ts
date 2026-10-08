@@ -19,7 +19,7 @@ import {
   ldapRestDirectory,
   ldapRestSpaces
 } from './infra/ldap-rest.ts'
-import { listenForRevocations, setUpAuth } from './modules/auth/index.ts'
+import { scheduleRevocationSweep, setUpAuth } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
 import { registerMetrics } from './modules/feed/metrics.ts'
 import { schedulePurge } from './modules/feed/retention.ts'
@@ -133,10 +133,6 @@ registerSettingsRoutes(server, { db, authorize })
 registerTransactionRoutes(server, { db, localpart: config.MATRIX_LOCALPART })
 const streams = createStreams()
 registerLiveRoutes(server, { authorize, streams })
-await listenForRevocations(sql, sessionId => {
-  streams.closeSession(sessionId)
-})
-await listenForLive(sql, streams)
 await server.listen({ host: config.HTTP_HOST, port: config.HTTP_PORT })
 const metrics = createServer({ logger, isReady: () => Promise.resolve(true) })
 registerMetrics(metrics, { db, consumer: consumerStatus })
@@ -148,7 +144,14 @@ const handle = createMessageHandler({
   park: parkIn(db),
   logger
 })
-const consumer = await startConsumer(config, logger, handle, consumerStatus)
+// Live updates first, so the changes the consumer commits reach browsers.
+const consumer = await startConsumer(
+  config,
+  logger,
+  handle,
+  consumerStatus,
+  client => listenForLive(client, config.amqp.liveExchange, streams, logger)
+)
 // Mandatory: unroutable while no calendar consumer is bound, so the route
 // fails instead of dropping the meeting. The client waits for the broker
 // without end and retries for over a minute, longer than a request should
@@ -175,11 +178,13 @@ const stopParked = scheduleParkedRetries(
   logger
 )
 const stopPurge = schedulePurge(db, logger)
+const stopSweep = scheduleRevocationSweep(db, streams, logger)
 accepting = true
 lifecycle.started(async () => {
   accepting = false
   const parkedStopped = stopParked()
   stopPurge()
+  stopSweep()
   try {
     await parkedStopped
     await consumer.close()

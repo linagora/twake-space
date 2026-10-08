@@ -1,11 +1,16 @@
-import type postgres from 'postgres'
 import { afterAll, beforeAll, expect, it, vi } from 'vitest'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
-import { listenForLive, tell } from './notify.ts'
+import { tell, tellRevoked } from './notify.ts'
+import { listenInMemory } from './testing.ts'
 
 let testDb: TestDb
+const replicas = [
+  { send: vi.fn(), closeSession: vi.fn() },
+  { send: vi.fn(), closeSession: vi.fn() }
+]
 beforeAll(async () => {
   testDb = await createTestDb()
+  await listenInMemory(...replicas)
 })
 afterAll(() => testDb.drop())
 
@@ -13,58 +18,46 @@ const ALICE = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
 const BOB = 'c9f0f895-fb98-4b91-a1a4-7f3e2d1c0b5a'
 
 it('reaches every replica once the change is committed', async () => {
-  const send = vi.fn()
-  await listenForLive(testDb.sql, { send })
-
   await testDb.db
-    .transaction(async tx => {
-      await tell(tx, 'notification', [ALICE], {})
-      tx.rollback()
+    .transaction(tx => {
+      tell(tx, 'notification', [ALICE], {})
+      return Promise.reject(new Error('rolled back'))
     })
     .catch(() => undefined)
-  await testDb.db.transaction(tx =>
-    tell(tx, 'spaces', [ALICE, BOB], { spaceId: 'design' })
-  )
-
-  await vi.waitFor(() => {
-    expect(send).toHaveBeenCalledTimes(2)
-  })
-  expect(send.mock.calls).toEqual([
-    [ALICE, 'spaces', { spaceId: 'design' }],
-    [BOB, 'spaces', { spaceId: 'design' }]
-  ])
-})
-
-// A throw would end the connection every listener shares, revocations included.
-it('skips a settings message from a replica still on 0.1.8', async () => {
-  const listeners: ((payload: string) => void)[] = []
-  const client = {
-    listen: (_channel: string, fn: (payload: string) => void) => {
-      listeners.push(fn)
+  await testDb.db.transaction(async tx => {
+    tell(tx, 'spaces', [ALICE, BOB, ALICE], { spaceId: 'design' })
+    await tx.transaction(savepoint => {
+      tell(savepoint, 'notification', [BOB], {})
       return Promise.resolve()
-    }
-  } as unknown as postgres.Sql
-  const send = vi.fn()
-  await listenForLive(client, { send })
+    })
+    await tx
+      .transaction(savepoint => {
+        tell(savepoint, 'notification', [ALICE], {})
+        return Promise.reject(new Error('rolled back'))
+      })
+      .catch(() => undefined)
+  })
 
-  const old = { event: 'settings', email: 'alice@example.com', data: {} }
-  expect(() => {
-    listeners[0]?.(JSON.stringify(old))
-  }).not.toThrow()
-  expect(send).not.toHaveBeenCalled()
+  for (const { send } of replicas) {
+    await vi.waitFor(() => {
+      expect(send.mock.calls).toEqual([
+        [ALICE, 'spaces', { spaceId: 'design' }],
+        [BOB, 'spaces', { spaceId: 'design' }],
+        [BOB, 'notification', {}]
+      ])
+    })
+  }
 })
 
-it('splits a large audience under the notification size limit', async () => {
-  const send = vi.fn()
-  await listenForLive(testDb.sql, { send })
-  const everyone = Array.from(
-    { length: 500 },
-    (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`
-  )
-
-  await testDb.db.transaction(tx => tell(tx, 'notification', everyone, {}))
-
-  await vi.waitFor(() => {
-    expect(send).toHaveBeenCalledTimes(500)
+it('closes the revoked session on every replica', async () => {
+  await testDb.db.transaction(tx => {
+    tellRevoked(tx, 'session-1')
+    return Promise.resolve()
   })
+
+  for (const { closeSession } of replicas) {
+    await vi.waitFor(() => {
+      expect(closeSession).toHaveBeenCalledWith('session-1')
+    })
+  }
 })

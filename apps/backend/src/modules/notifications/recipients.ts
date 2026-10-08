@@ -152,7 +152,7 @@ export async function notifyUsers(
     .values(rows)
     .onConflictDoNothing()
     .returning({ userId: notifications.userId })
-  await tell(
+  tell(
     tx,
     'notification',
     inserted.map(n => n.userId),
