@@ -1,10 +1,4 @@
-import { CrossMedium, Icon, Pen } from '@linagora/twake-icons'
-import {
-  Alert,
-  IconButton,
-  Typography,
-  useColorScheme
-} from '@linagora/twake-mui'
+import { Alert, Typography, useColorScheme } from '@linagora/twake-mui'
 import { useMutation } from '@tanstack/react-query'
 import {
   createContext,
@@ -27,7 +21,6 @@ import type { Sdk, SdkStatus } from '@linagora/twake-sdk'
 
 import { EmbedFrame } from '@/ds/EmbedFrame'
 import { LoadingRows } from '@/ds/Page'
-import { SidePanel } from '@/ds/Panel'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
@@ -47,47 +40,6 @@ export function useAssistant(): {
   return use(AssistantContext)
 }
 
-// Twake Assistant as the scribe of a space: its answers can be posted in
-// the space's feed. The mockup's history waits for the assistant's API.
-export function AssistantPanel({
-  spaceId,
-  onClose
-}: {
-  spaceId: string
-  onClose: () => void
-}): ReactElement {
-  const { t } = useI18n()
-  // A new conversation is a new intent: the frame is replaced.
-  const [conversation, setConversation] = useState(0)
-  return (
-    <SidePanel
-      title={t('assistant.title')}
-      actions={
-        <>
-          <IconButton
-            size="small"
-            aria-label={t('assistant.newConversation')}
-            onClick={() => {
-              setConversation(n => n + 1)
-            }}
-          >
-            <Icon icon={Pen} />
-          </IconButton>
-          <IconButton
-            size="small"
-            aria-label={t('assistant.close')}
-            onClick={onClose}
-          >
-            <Icon icon={CrossMedium} />
-          </IconButton>
-        </>
-      }
-    >
-      <Conversation key={conversation} spaceId={spaceId} />
-    </SidePanel>
-  )
-}
-
 // The platform's client: `waiting` while its token is exchanged, `public`
 // when the user has no platform or the exchange failed.
 function useSdkStatus(sdk: Sdk | null): SdkStatus {
@@ -97,7 +49,13 @@ function useSdkStatus(sdk: Sdk | null): SdkStatus {
   )
 }
 
-function Conversation({ spaceId }: { spaceId: string }): ReactElement {
+export function AssistantPanel({
+  spaceId,
+  onClose
+}: {
+  spaceId: string
+  onClose: () => void
+}): ReactElement {
   const { t } = useI18n()
   const { sdk } = useSession()
   const status = useSdkStatus(sdk)
@@ -156,13 +114,15 @@ function Conversation({ spaceId }: { spaceId: string }): ReactElement {
         message.result.answerAction === 'post'
       ) {
         mutate(message.result.text)
+      } else if (message?.kind === 'cancel') {
+        onClose()
       }
     }
     window.addEventListener('message', onMessage)
     return () => {
       window.removeEventListener('message', onMessage)
     }
-  }, [service, postLabel, theme, mutate])
+  }, [service, postLabel, theme, mutate, onClose])
 
   if (status === 'public') {
     return <Typography className="u-p-1">{t('assistant.notSetUp')}</Typography>

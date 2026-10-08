@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ASSISTANT_INTENT } from '@/application/assistant'
@@ -108,17 +108,14 @@ describe('AssistantPanel', () => {
     ).toBeInTheDocument()
   })
 
-  it('closes, and starts a new conversation on a new intent', async () => {
+  it('closes when the user closes the scribe', async () => {
     const { onClose } = renderPanel()
     await findFrame()
-    const intents = createIntent.mock.calls.length
 
-    fireEvent.click(screen.getByRole('button', { name: 'New conversation' }))
-    await waitFor(() => {
-      expect(createIntent.mock.calls.length).toBeGreaterThan(intents)
-    })
+    receive({ type: 'intent-i1:cancel' }, 'https://elsewhere.test')
+    expect(onClose).not.toHaveBeenCalled()
+    receive({ type: 'intent-i1:cancel' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close the assistant' }))
     expect(onClose).toHaveBeenCalled()
   })
 

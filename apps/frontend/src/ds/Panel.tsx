@@ -10,53 +10,6 @@ import type { ReactElement, ReactNode } from 'react'
 
 const RADIUS = '20px'
 
-// The chrome of the frame's side panel: a title row with its actions, and
-// a column the content fills.
-export function SidePanel({
-  title,
-  actions,
-  children
-}: {
-  title: string
-  actions: ReactNode
-  children: ReactNode
-}): ReactElement {
-  return (
-    <>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0.5,
-          pl: 2,
-          pr: 1,
-          py: 1
-        }}
-      >
-        <Typography
-          variant="subtitle1"
-          component="h2"
-          noWrap
-          sx={{ flex: '1 1 auto', minWidth: 0 }}
-        >
-          {title}
-        </Typography>
-        {actions}
-      </Box>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          flex: '1 1 auto',
-          minHeight: 0
-        }}
-      >
-        {children}
-      </Box>
-    </>
-  )
-}
-
 // The main column, and a narrower one that stays in view beside it on wide
 // screens and drops below it on narrow ones.
 export function SplitLayout({

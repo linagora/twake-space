@@ -458,8 +458,6 @@
   "assistant": {
     "title": "Twake AI fragen",
     "open": "Twake AI Assistent",
-    "close": "Assistenten schließen",
-    "newConversation": "Neue Unterhaltung",
     "loading": "Assistent wird geöffnet…",
     "notSetUp": "Der Assistent ist für TwakeSpace nicht eingerichtet.",
     "failed": "Der Assistent konnte nicht geöffnet werden.",
