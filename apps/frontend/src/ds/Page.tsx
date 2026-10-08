@@ -184,12 +184,13 @@ export function SpaceCover({
         <Box
           sx={{
             position: 'absolute',
-            top: 8,
-            right: 8,
+            bottom: 12,
+            right: 12,
             '& .MuiIconButton-root': {
-              color: 'common.white',
-              bgcolor: 'rgba(0,0,0,0.4)',
-              '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' }
+              color: 'grey.900',
+              bgcolor: 'rgba(255,255,255,0.85)',
+              boxShadow: 1,
+              '&:hover': { bgcolor: 'common.white' }
             }
           }}
         >

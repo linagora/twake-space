@@ -30,6 +30,7 @@ export function BannerButton({ spaceId }: { spaceId: string }): ReactElement {
   return (
     <>
       <IconButton
+        size="small"
         aria-label={t(
           setBanner.isPending
             ? 'spaceHome.banner.uploading'
@@ -42,9 +43,9 @@ export function BannerButton({ spaceId }: { spaceId: string }): ReactElement {
         }}
       >
         {setBanner.isPending ? (
-          <CircularProgress size={18} color="inherit" />
+          <CircularProgress size={16} color="inherit" />
         ) : (
-          <Icon icon={Pen} size={18} />
+          <Icon icon={Pen} size={16} />
         )}
       </IconButton>
       <input
