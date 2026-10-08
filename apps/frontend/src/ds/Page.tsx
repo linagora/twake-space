@@ -79,6 +79,29 @@ export function TabPanel({
   )
 }
 
+// A panel that scrolls as a whole, under the space's header.
+export function ScrollPanel({
+  children
+}: {
+  children: ReactNode
+}): ReactElement {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        flex: '1 1 auto',
+        minHeight: 0,
+        overflowY: 'auto',
+        pb: 2
+      }}
+    >
+      {children}
+    </Box>
+  )
+}
+
 export function SpaceHeader({
   avatar,
   title,

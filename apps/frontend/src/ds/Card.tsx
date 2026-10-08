@@ -136,6 +136,239 @@ export function MemberAvatars({
   )
 }
 
+// The space home's cards, side by side down to a phone's width.
+export function TileGrid({
+  min,
+  children
+}: {
+  min: number
+  children: ReactNode
+}): ReactElement {
+  return (
+    <Box
+      component="ul"
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(auto-fill, minmax(min(${String(min)}px, 100%), 1fr))`,
+        gap: 3,
+        m: 0,
+        p: 0,
+        listStyle: 'none'
+      }}
+    >
+      {children}
+    </Box>
+  )
+}
+
+// The mockup's grey outlined button, for the buttons of tiles and app cards
+const GREY_BUTTONS = {
+  '& .MuiButton-outlined': {
+    px: 3,
+    py: 1.25,
+    color: 'text.primary',
+    borderColor: 'divider'
+  }
+}
+
+export function Tile({ children }: { children: ReactNode }): ReactElement {
+  return (
+    <Card
+      component="li"
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 2,
+        minHeight: 83,
+        py: 1.5,
+        pl: 3.5,
+        pr: 1.5,
+        borderRadius: RADIUS,
+        ...GREY_BUTTONS
+      }}
+    >
+      {children}
+    </Card>
+  )
+}
+
+export function TileNumber({
+  value,
+  label
+}: {
+  value: ReactNode
+  label: ReactNode
+}): ReactElement {
+  return (
+    <Box
+      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+    >
+      <Typography component="span" sx={{ fontSize: 32, fontWeight: 700 }}>
+        {value}
+      </Typography>
+      <Typography component="span" variant="caption" color="textSecondary">
+        {label}
+      </Typography>
+    </Box>
+  )
+}
+
+export function CalendarLeaf({
+  weekday,
+  day,
+  month
+}: {
+  weekday: string
+  day: string
+  month: string
+}): ReactElement {
+  const small = { fontSize: 11, fontWeight: 400 }
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 1.5
+      }}
+    >
+      <Typography component="span" color="textSecondary" sx={small}>
+        {weekday}
+      </Typography>
+      <Typography
+        component="span"
+        sx={{ fontSize: 32, fontWeight: 600, lineHeight: '42px' }}
+      >
+        {day}
+      </Typography>
+      <Typography component="span" color="textSecondary" sx={small}>
+        {month}
+      </Typography>
+    </Box>
+  )
+}
+
+// The mockup tilts the pictures of the apps a little.
+export function AppArt({ src }: { src: string }): ReactElement {
+  return (
+    <Box
+      component="img"
+      src={src}
+      alt=""
+      sx={{ maxWidth: 1, transform: 'rotate(-5deg)' }}
+    />
+  )
+}
+
+// `count` is only what is shown ("3", "99+"): `nameLabel` names it for
+// assistive technology.
+export function AppCard({
+  visual,
+  icon,
+  name,
+  nameLabel,
+  count,
+  description,
+  action
+}: {
+  visual: ReactNode
+  icon: ReactNode
+  name: string
+  nameLabel?: string | undefined
+  count: string | null
+  description: string
+  action: ReactNode
+}): ReactElement {
+  return (
+    <Card
+      component="li"
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.5,
+        minHeight: 156,
+        p: 1.5,
+        borderRadius: RADIUS,
+        ...GREY_BUTTONS
+      }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: 'none',
+          alignSelf: 'stretch',
+          width: 100,
+          minHeight: 132,
+          p: 1.5,
+          borderRadius: RADIUS,
+          bgcolor: 'action.hover',
+          overflow: 'hidden'
+        }}
+      >
+        {visual}
+      </Box>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: 0.75,
+          minWidth: 0,
+          py: 1.5,
+          pr: 1.5
+        }}
+      >
+        <Typography
+          variant="h6"
+          component="h3"
+          aria-label={nameLabel}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.75,
+            fontWeight: 600
+          }}
+        >
+          {icon}
+          {name}
+          {count !== null && (
+            <Box
+              component="span"
+              aria-hidden
+              sx={{
+                minWidth: 16,
+                px: '4.5px',
+                borderRadius: '10000px',
+                bgcolor: 'action.selected',
+                fontSize: 11,
+                fontWeight: 500,
+                lineHeight: '16px',
+                letterSpacing: 0.5,
+                textAlign: 'center'
+              }}
+            >
+              {count}
+            </Box>
+          )}
+        </Typography>
+        <Typography
+          variant="body2"
+          component="p"
+          color="textSecondary"
+          sx={{ fontSize: 12, lineHeight: 1.4 }}
+        >
+          {description}
+        </Typography>
+        <Box sx={{ mt: 0.75 }}>{action}</Box>
+      </Box>
+    </Card>
+  )
+}
+
 export function CreateCard({
   icon,
   title,
