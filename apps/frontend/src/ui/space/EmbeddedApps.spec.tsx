@@ -492,7 +492,7 @@ describe('EmbeddedApps', () => {
 
     expect(await screen.findByTitle('Drive')).toHaveAttribute(
       'src',
-      'https://alice-drive.twake.test/embed/sharings/s%2F1/folder/f1'
+      'https://alice-drive.twake.test/#/embed/sharings/s%2F1/folder/f1'
     )
     expect(screen.queryByTitle('Drive windows')).not.toBeInTheDocument()
   })

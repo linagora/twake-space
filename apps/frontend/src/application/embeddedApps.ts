@@ -50,11 +50,11 @@ export const EMBEDDED_APPS: Record<EmbeddedApp, EmbeddedAppSpec> = {
     overlayPath: '/embed/overlay.html'
   },
   // Twake Drive's embed of a shared drive, opened from its sharing id alone.
-  // Placeholder until Twake Drive publishes the route.
+  // Drive routes in the hash: cozy-stack serves no other path than its files.
   drive: {
     app: 'drive',
     resource: 'drive',
-    embedPath: id => `/embed/sharings/${encodeURIComponent(id)}`,
+    embedPath: id => `/#/embed/sharings/${encodeURIComponent(id)}`,
     overlayPath: null
   },
   mail: {
