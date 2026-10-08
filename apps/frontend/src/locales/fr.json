@@ -10,6 +10,11 @@
   "spaceHome": {
     "users": "Membre de l'espace |||| Membres de l'espace",
     "manageUsers": "Gérer les membres",
+    "figures": {
+      "tasks": "Tâches terminées",
+      "files": "Fichiers partagés",
+      "events": "Événements à venir"
+    },
     "app": {
       "calendar": {
         "name": "Agenda",
