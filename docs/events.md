@@ -129,10 +129,10 @@ The browser reads `GET /settings` once signed in and again each time the tab com
 - `b2b.group.updated`: renames the group in every space.
 - `b2b.member.role.changed`: upserts the person's organization role.
 - `b2b.member.disabled`: revokes the account's tokens in that organization.
-- `domain.user.deleted`: deletes the person's notifications and reactions, turns them into `deleted_user` on stored cards and posts, revokes their tokens, and removes them from every space and organization.
+- `domain.user.deleted`: deletes the person's notifications and reactions, turns them into `deleted_user` on stored cards and posts, revokes their tokens, and removes them from every space and organization. Its time is `timestamp`, or `deletedAt` (ISO 8601 or LDAP generalized time) when it has none, as ldap-rest sends it. An unreadable `deletedAt` leaves it without a time.
 - `domain.organization.deleted`: revokes the organization's tokens.
 
-A person sent without a `uuid` (ldap-rest lifecycle events carry none) is matched in the copy by email, among space members and then among the organization roles (in the event's organization when it names one). `b2b.member.disabled` also falls back to the username, among space members only: organization roles hold no username.
+A person sent without a `uuid` (a deletion ldap-rest replays carries none) is matched in the copy by email, among space members and then among the organization roles (in the event's organization when it names one). `b2b.member.disabled` also falls back to the username, among space members only: organization roles hold no username.
 
 Upserts and removals of members, groups and names send a `spaces` live event to the members concerned.
 
