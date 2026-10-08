@@ -49,15 +49,18 @@ describe('cachedWorkplaces', () => {
     )
   })
 
-  it('gives null when the directory fails, and asks again next time', async () => {
-    const { workplaces, workplaceFqdn } = setUp()
+  it('gives null when the directory fails, and asks again a minute later', async () => {
+    const { workplaces, workplaceFqdn, later } = setUp()
     workplaceFqdn
       .mockRejectedValueOnce(new Error('ldap-rest unreachable'))
       .mockResolvedValueOnce('alice.twake.app')
 
     expect((await workplaces('org', ['alice'])).get('alice')).toBeNull()
+    expect((await workplaces('org', ['alice'])).get('alice')).toBeNull()
+    later(60 * 1000)
     expect((await workplaces('org', ['alice'])).get('alice')).toBe(
       'alice.twake.app'
     )
+    expect(workplaceFqdn).toHaveBeenCalledTimes(2)
   })
 })

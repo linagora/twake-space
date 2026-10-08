@@ -8,6 +8,8 @@ export type Workplaces = (
 // An instance address barely changes, but an account gets one some time after
 // it joins: the cache keeps it a while, not for good.
 const TTL_MS = 10 * 60 * 1000
+// While the directory fails, each page would otherwise wait for its timeout.
+const FAILURE_TTL_MS = 60 * 1000
 
 /**
  * Each account's Twake Workplace address, or null while it has none. A failing
@@ -17,16 +19,19 @@ export function cachedWorkplaces(
   directory: Pick<Directory, 'workplaceFqdn'>,
   now: () => number = Date.now
 ): Workplaces {
-  const cache = new Map<string, { at: number; fqdn: Promise<string | null> }>()
+  const cache = new Map<
+    string,
+    { until: number; fqdn: Promise<string | null> }
+  >()
   const lookup = (orgId: string, accountId: string) => {
     const key = `${orgId}:${accountId}`
     const hit = cache.get(key)
-    if (hit && now() - hit.at < TTL_MS) return hit.fqdn
+    if (hit && now() < hit.until) return hit.fqdn
     const fqdn = directory.workplaceFqdn(orgId, accountId).catch(() => {
-      cache.delete(key)
+      cache.set(key, { until: now() + FAILURE_TTL_MS, fqdn })
       return null
     })
-    cache.set(key, { at: now(), fqdn })
+    cache.set(key, { until: now() + TTL_MS, fqdn })
     return fqdn
   }
   return async (orgId, accountIds) => {

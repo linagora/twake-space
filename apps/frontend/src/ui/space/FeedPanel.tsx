@@ -446,7 +446,7 @@ export function useActorName(actor: Actor | null): string | null {
 }
 
 // Only a person still in the space has a known instance.
-function actorAvatar(space: Space, actor: Actor | null): string | null {
+export function actorAvatar(space: Space, actor: Actor | null): string | null {
   if (actor?.type !== 'user' || !actor.id) return null
   const member = space.members.find(m => m.id === actor.id)
   return avatarUrl(member?.workplaceFqdn ?? null)
@@ -762,7 +762,11 @@ function Card({
         ) : isApp(app) ? (
           <AppAvatar icon={APPS[app].icon} app={app} label={appName ?? ''} />
         ) : (
-          <NameAvatar name={actor ?? '?'} size="m" />
+          <NameAvatar
+            name={actor ?? '?'}
+            size="m"
+            src={actorAvatar(space, card.actor)}
+          />
         )
       }
     >

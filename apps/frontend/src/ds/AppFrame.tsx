@@ -234,8 +234,8 @@ export function SidebarSection({
 }
 
 // `label` names the person for assistive technology; without it the avatar
-// is decoration next to the name it stands for. The initials show until the
-// picture loads, and stay when it fails.
+// is decoration next to the name it stands for. The initials show when there
+// is no picture or it fails to load.
 export function NameAvatar({
   name,
   size,
