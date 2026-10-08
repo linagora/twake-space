@@ -22,6 +22,8 @@ export function CallWindow(): ReactElement | null {
         close: t('call.leave')
       }}
       onClose={leave}
+      // Meet's join screen needs a wide room, and does not scroll
+      maximized
     >
       {moving => (
         <WindowFrame
