@@ -1,3 +1,4 @@
+import type { FeedItem } from '@/application/feed'
 import type { ResourceKind, Space } from '@/application/spaces'
 
 export const TABS = [
@@ -57,4 +58,17 @@ export function containerTab(space: Space, kind: ResourceKind): Tab | null {
     item => item.tab === tab && item.state !== 'off'
   )
   return tab && shown ? tab : null
+}
+
+/**
+ * Where a feed item opens: a card in its container's tab, anything else in
+ * the feed, at the item.
+ */
+export function itemPlace(
+  space: Space,
+  item: FeedItem
+): { tab: Tab; feedItem: string | null } {
+  const container = item.kind === 'card' ? item.object.container : null
+  const tab = container && containerTab(space, container.kind)
+  return tab ? { tab, feedItem: null } : { tab: 'feed', feedItem: item.id }
 }

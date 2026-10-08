@@ -250,6 +250,25 @@ describe('GET /spaces/:spaceId/feed', () => {
     })
   })
 
+  it('searches card titles and previews and post bodies with q', async () => {
+    const roadmap = await aCard('Roadmap', '2026-10-05T09:00:00Z')
+    await aCard('budget', '2026-10-05T09:30:00Z')
+    const post = await aPost('The ROADMAP is out', '2026-10-05T10:00:00Z')
+    await aPost('Lunch?', '2026-10-05T11:00:00Z')
+    const get = setUp()
+
+    const byTitle = await get('GET', `/spaces/${DESIGN}/feed?q=roadmap`)
+    const byPreview = await get('GET', `/spaces/${DESIGN}/feed?q=first%20draft`)
+    const wildcard = await get('GET', `/spaces/${DESIGN}/feed?q=%25`)
+
+    expect(byTitle.json<Page>().items.map(i => i.id)).toEqual([post, roadmap])
+    expect(byPreview.json<Page>().items.map(i => i.kind)).toEqual([
+      'card',
+      'card'
+    ])
+    expect(wildcard.json<Page>().items).toEqual([])
+  })
+
   it('pages with the next cursor', async () => {
     await aCard('one', '2026-10-05T09:00:00Z')
     await aPost('two', '2026-10-05T10:00:00Z')

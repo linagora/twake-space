@@ -1,4 +1,15 @@
-import { and, asc, desc, eq, inArray, sql, type Column } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  ilike,
+  inArray,
+  or,
+  sql,
+  type Column
+} from 'drizzle-orm'
 import { unionAll } from 'drizzle-orm/pg-core'
 import type { Db, Tx } from '../../infra/db.ts'
 import { spaceMembers } from '../spaces/schema.ts'
@@ -90,12 +101,34 @@ export function decodeCursor(cursor: string): Cursor | null {
 export async function listItems(
   db: Db,
   spaceId: string,
-  options: { category?: Category; before?: Cursor; limit: number }
+  options: { category?: Category; before?: Cursor; q?: string; limit: number }
 ): Promise<{ items: FeedItem[]; next: string | null }> {
-  const { category, before, limit } = options
+  const { category, before, q, limit } = options
   const after = (time: Column, id: Column) =>
     before &&
     sql`(${time}, ${id}) < (${before.time.toISOString()}::timestamptz, ${before.id}::uuid)`
+  const pattern = q && `%${q.replace(/[\\%_]/g, '\\$&')}%`
+  // A card matches on what it shows: its latest event's title and preview.
+  const cardMatches =
+    pattern === undefined
+      ? undefined
+      : exists(
+          db
+            .select({ id: activityEvents.id })
+            .from(activityEvents)
+            .where(
+              and(
+                eq(activityEvents.id, feedCards.latestEventId),
+                or(
+                  ilike(
+                    sql`${activityEvents.content}->'object'->>'title'`,
+                    pattern
+                  ),
+                  ilike(sql`${activityEvents.content}->>'preview'`, pattern)
+                )
+              )
+            )
+        )
   const cards = db
     .select({
       kind: sql<'card' | 'post'>`'card'`.as('kind'),
@@ -107,7 +140,8 @@ export async function listItems(
       and(
         eq(feedCards.spaceId, spaceId),
         category && eq(feedCards.category, category),
-        after(feedCards.time, feedCards.id)
+        after(feedCards.time, feedCards.id),
+        cardMatches
       )
     )
   const posts = db
@@ -118,7 +152,11 @@ export async function listItems(
     })
     .from(feedPosts)
     .where(
-      and(eq(feedPosts.spaceId, spaceId), after(feedPosts.time, feedPosts.id))
+      and(
+        eq(feedPosts.spaceId, spaceId),
+        after(feedPosts.time, feedPosts.id),
+        pattern === undefined ? undefined : ilike(feedPosts.body, pattern)
+      )
     )
   const page = await (
     category && category !== 'messages' ? cards : unionAll(cards, posts)

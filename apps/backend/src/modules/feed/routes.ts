@@ -31,6 +31,7 @@ const feedQuery = z.object({
       return z.NEVER
     })
     .optional(),
+  q: z.string().trim().min(1).max(200).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20)
 })
 
@@ -140,11 +141,12 @@ export function registerFeedRoutes(
     async (request, reply) => {
       try {
         const spaceId = (await reach(request)).space.id
-        const { category, before, limit } = parse(feedQuery, request.query)
+        const { category, before, q, limit } = parse(feedQuery, request.query)
         const page = await listItems(db, spaceId, {
           limit,
           ...(category && { category }),
-          ...(before && { before })
+          ...(before && { before }),
+          ...(q && { q })
         })
         return { items: page.items.map(serialize), next: page.next }
       } catch (error) {

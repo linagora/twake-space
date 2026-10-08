@@ -11,7 +11,15 @@
     "yourSpaces": "Vos espaces",
     "title": "Espace",
     "allSpaces": "Tous les espaces partagés",
-    "spaceWithCount": "%{name}, %{smart_count} nouveau |||| %{name}, %{smart_count} nouveaux"
+    "spaceWithCount": "%{name}, %{smart_count} nouveau |||| %{name}, %{smart_count} nouveaux",
+    "searchSpaces": "Rechercher dans vos espaces",
+    "spaceName": "Nom de l'espace",
+    "noSpaceFound": "Aucun espace trouvé"
+  },
+  "search": {
+    "placeholder": "Rechercher",
+    "searching": "Recherche…",
+    "noResults": "Aucun résultat"
   },
   "errors": {
     "notFound": "Page introuvable",

@@ -117,6 +117,29 @@ describe('AppShell', () => {
     )
   })
 
+  it('filters the spaces by name from the sidebar search', async () => {
+    renderRoute('/', { spaces: spaces() })
+    const list = within(
+      await screen.findByRole('list', { name: 'Your spaces' })
+    )
+    await list.findByRole('link', { name: 'Design' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Search your spaces' }))
+    const search = screen.getByRole('textbox', { name: 'Space name' })
+    expect(search).toHaveFocus()
+    fireEvent.change(search, { target: { value: 'LAUN' } })
+
+    expect(list.getByRole('link', { name: 'Launch' })).toBeInTheDocument()
+    expect(list.queryByRole('link', { name: 'Design' })).toBe(null)
+
+    fireEvent.change(search, { target: { value: 'nothing' } })
+    expect(list.getByText('No space found')).toBeInTheDocument()
+
+    fireEvent.keyDown(search, { key: 'Escape' })
+    expect(screen.queryByRole('textbox', { name: 'Space name' })).toBe(null)
+    expect(list.getByRole('link', { name: 'Design' })).toBeInTheDocument()
+  })
+
   it('links home from the navigation', async () => {
     renderRoute('/', { spaces: spaces() })
 

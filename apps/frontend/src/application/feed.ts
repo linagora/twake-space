@@ -68,7 +68,13 @@ export interface FeedPage {
 export interface FeedService {
   list: (
     spaceId: string,
-    options: { category?: FeedCategory; before?: string }
+    options: {
+      category?: FeedCategory
+      before?: string
+      /** Matches card titles and previews, and post bodies. */
+      q?: string
+      limit?: number
+    }
   ) => Promise<FeedPage>
   item: (spaceId: string, itemId: string) => Promise<FeedItem>
   /** Editors and admins only: a viewer is refused with `cannot_post`. */
@@ -106,6 +112,12 @@ export function toFeedChange(data: unknown): FeedChange | null {
 
 export function shows(item: FeedItem, filter: FeedFilter): boolean {
   return filter === 'all' || item.category === filter
+}
+
+/** What a search matches an item on, as the backend does. */
+export function searchedText(item: FeedItem): string[] {
+  if (item.kind === 'post') return [item.body]
+  return [item.object.title, item.preview ?? '']
 }
 
 /** The item once a user has added (`on`) or taken back a reaction. */

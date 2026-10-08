@@ -1,5 +1,6 @@
 import {
   useInfiniteQuery,
+  useQuery,
   useQueryClient,
   type InfiniteData,
   type QueryClient,
@@ -32,6 +33,16 @@ export function useFeed(spaceId: string, filter: FeedFilter) {
       }),
     initialPageParam: '',
     getNextPageParam: page => page.next
+  })
+}
+
+// Kept apart from `feedKey`: live changes write into every query under it.
+export function useFeedSearch(spaceId: string, q: string, limit: number) {
+  const { feed } = useServices()
+  return useQuery({
+    queryKey: ['feedSearch', spaceId, q, limit],
+    queryFn: () => feed.list(spaceId, { q, limit }),
+    enabled: q !== ''
   })
 }
 
