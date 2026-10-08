@@ -134,3 +134,15 @@ export const spaceResources = pgTable(
     index().on(table.kind, table.resourceId)
   ]
 )
+
+// What a member did with a space: pinned it, opened it last.
+export const spaceMarks = pgTable(
+  'space_marks',
+  {
+    spaceId: uuid('space_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    pinnedAt: timestamptz('pinned_at'),
+    openedAt: timestamptz('opened_at')
+  },
+  table => [primaryKey({ columns: [table.spaceId, table.userId] })]
+)

@@ -24,6 +24,7 @@ import { spacePlatformRoutes } from './events.ts'
 import {
   organizationMembers,
   spaceGroups,
+  spaceMarks,
   spaceMembers,
   spaces
 } from './schema.ts'
@@ -51,6 +52,7 @@ const warn = vi.spyOn(log, 'warn')
 beforeEach(async () => {
   warn.mockClear()
   await testDb.db.delete(spaceMembers)
+  await testDb.db.delete(spaceMarks)
   await testDb.db.delete(spaceGroups)
   await testDb.db.delete(spaces)
   await testDb.db.delete(lastChanges)
@@ -172,8 +174,11 @@ describe('space events', () => {
     expect(await readSpace()).toMatchObject([{ name: 'Design Week' }])
   })
 
-  it('removes a deleted space and its members', async () => {
+  it('removes a deleted space, its members and their marks', async () => {
     await created()
+    await testDb.db
+      .insert(spaceMarks)
+      .values({ spaceId: SPACE_ID, userId: JDOE_ID, pinnedAt: new Date() })
     await handle('twake.space.deleted', {
       organizationId: 'evilcorp123',
       id: SPACE_ID,
@@ -182,6 +187,7 @@ describe('space events', () => {
 
     expect(await readSpace()).toEqual([])
     expect(await readMembers()).toEqual([])
+    expect(await testDb.db.select().from(spaceMarks)).toEqual([])
   })
 
   it('removes a deleted user and no one else', async () => {
@@ -206,6 +212,28 @@ describe('space events', () => {
         .from(spaceMembers)
         .where(eq(spaceMembers.spaceId, otherSpace))
     ).toHaveLength(1)
+  })
+
+  it("forgets a deleted user's pins and visits, and no one else's", async () => {
+    const other = '1679091c-5a88-4faf-afb5-e6087eb1b2dc'
+    await created()
+    await testDb.db.insert(spaceMarks).values([
+      { spaceId: SPACE_ID, userId: JDOE_ID, pinnedAt: new Date() },
+      { spaceId: SPACE_ID, userId: other, openedAt: new Date() }
+    ])
+    await handle('domain.user.deleted', {
+      emitter: 'ldap-rest',
+      type: 'user.deleted',
+      uuid: JDOE_ID,
+      userId: 'jdoe',
+      internalEmail: 'jdoe@evilcorp.com',
+      organizationId: 'evilcorp123',
+      reason: 'user deleted'
+    })
+
+    expect(
+      (await testDb.db.select().from(spaceMarks)).map(m => m.userId)
+    ).toEqual([other])
   })
 
   it('removes a deleted user sent without a uuid by their email', async () => {

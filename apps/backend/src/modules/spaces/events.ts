@@ -24,6 +24,7 @@ import {
   organizationRole,
   spaceBanners,
   spaceGroups,
+  spaceMarks,
   spaceMembers,
   spaceResourceKind,
   spaceResources,
@@ -475,6 +476,7 @@ export async function deleteSpace(
   })
   await tx.delete(spaceSettings).where(eq(spaceSettings.spaceId, id))
   await tx.delete(spaceBanners).where(eq(spaceBanners.spaceId, id))
+  await tx.delete(spaceMarks).where(eq(spaceMarks.spaceId, id))
   await tx.delete(spaces).where(eq(spaces.spaceId, id))
   await tell(
     tx,
@@ -645,6 +647,7 @@ const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
   ])
   if (known) {
     await deleteNotificationsOf(tx, known.uuid)
+    await tx.delete(spaceMarks).where(eq(spaceMarks.userId, known.uuid))
     await forgetActor(tx, {
       uuid: known.uuid,
       ...(internalEmail && { email: internalEmail })

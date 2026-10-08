@@ -10,6 +10,7 @@ import { registerSpaceRoutes } from './routes.ts'
 import {
   spaceBanners,
   spaceGroups,
+  spaceMarks,
   spaceMembers,
   spaceResources,
   spaceSettings,
@@ -32,6 +33,7 @@ afterAll(() => testDb.drop())
 beforeEach(async () => {
   const { db } = testDb
   for (const table of [
+    spaceMarks,
     spaceMembers,
     spaceGroups,
     spaceResources,
@@ -95,9 +97,13 @@ function setUp(
     token => (token === 'tws_bot' ? tokenCaller : null)
   )
   registerSpaceRoutes(app, { db: testDb.db, authorize, apps })
-  return (url: string, token = 'alice') =>
+  return (
+    url: string,
+    token = 'alice',
+    method: 'GET' | 'PUT' | 'DELETE' = 'GET'
+  ) =>
     app.inject({
-      method: 'GET',
+      method,
       url,
       headers: { authorization: `Bearer ${token}` }
     })
@@ -171,6 +177,8 @@ describe('GET /spaces', () => {
           role: 'admin',
           color: null,
           description: '',
+          pinnedAt: null,
+          openedAt: null,
           members: [
             { id: ALICE, username: 'alice', displayName: 'Alice LIDDELL' },
             { id: BOB, username: 'bob', displayName: null }
@@ -192,6 +200,81 @@ describe('GET /spaces', () => {
     expect(response.json()).toMatchObject({
       spaces: [{ id: DESIGN, description: 'Brand and product design' }]
     })
+  })
+})
+
+describe('pinned and opened spaces', () => {
+  const marks = (body: {
+    spaces: { pinnedAt: string | null; openedAt: string | null }[]
+  }) => body.spaces.map(({ pinnedAt, openedAt }) => ({ pinnedAt, openedAt }))
+  const AT = expect.any(String) as string
+
+  it('pins a space for the caller, and unpins it', async () => {
+    const request = setUp()
+
+    expect(
+      (await request(`/spaces/${DESIGN}/pin`, 'alice', 'PUT')).statusCode
+    ).toBe(204)
+    const pinned = marks((await request('/spaces')).json())
+    expect(pinned).toEqual([{ pinnedAt: AT, openedAt: null }])
+
+    await request(`/spaces/${DESIGN}/pin`, 'alice', 'DELETE')
+    expect(marks((await request('/spaces')).json())).toEqual([
+      { pinnedAt: null, openedAt: null }
+    ])
+  })
+
+  it('remembers when the caller last opened a space, pin kept', async () => {
+    const request = setUp()
+    await request(`/spaces/${DESIGN}/pin`, 'alice', 'PUT')
+
+    await request(`/spaces/${DESIGN}/opened`, 'alice', 'PUT')
+
+    expect(marks((await request('/spaces')).json())).toEqual([
+      { pinnedAt: AT, openedAt: AT }
+    ])
+    expect((await request(`/spaces/${DESIGN}`)).json()).toMatchObject({
+      pinnedAt: AT,
+      openedAt: AT
+    })
+  })
+
+  it("keeps each person's marks to themselves", async () => {
+    await testDb.db
+      .insert(spaceMarks)
+      .values({ spaceId: DESIGN, userId: BOB, pinnedAt: new Date() })
+
+    const response = await setUp()('/spaces')
+
+    expect(marks(response.json())).toEqual([{ pinnedAt: null, openedAt: null }])
+  })
+
+  it('answers 404 for a space the caller is not in', async () => {
+    const response = await setUp()(`/spaces/${SALES}/pin`, 'alice', 'PUT')
+
+    expect(response.statusCode).toBe(404)
+    expect(await testDb.db.select().from(spaceMarks)).toEqual([])
+  })
+
+  it('is for people, not tokens', async () => {
+    const response = await setUp(aTokenCaller({ userId: ALICE }))(
+      `/spaces/${DESIGN}/pin`,
+      'tws_bot',
+      'PUT'
+    )
+
+    expect(response.statusCode).toBe(403)
+  })
+
+  it('gives no marks to an organization token', async () => {
+    const response = await setUp(
+      aTokenCaller({ userId: null, role: 'editor' })
+    )('/spaces', 'tws_bot')
+
+    expect(marks(response.json())).toEqual([
+      { pinnedAt: null, openedAt: null },
+      { pinnedAt: null, openedAt: null }
+    ])
   })
 })
 
