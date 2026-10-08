@@ -3,8 +3,10 @@ import {
   Avatar,
   Box,
   Button,
+  Checkbox,
   IconButton,
   InputBase,
+  ListItemText,
   Menu,
   MenuItem,
   TextField,
@@ -23,10 +25,14 @@ import {
   type ReactNode
 } from 'react'
 
+import { ChevronDownIcon } from '@/ds/icons'
+
 // How close to the newest item still counts as being there, and how close to
 // the oldest one asks for older items.
 const AT_END = 32
 const NEAR_TOP = 200
+// The height of the fade at the top of the list.
+const FADE = 32
 
 const RevealContext = createContext<(row: HTMLElement) => void>(() => undefined)
 
@@ -162,9 +168,6 @@ export function FeedLayout({
         minHeight: 0
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', py: 1 }}>
-        {toolbar}
-      </Box>
       <Box
         sx={{
           position: 'relative',
@@ -174,12 +177,25 @@ export function FeedLayout({
           minHeight: 0
         }}
       >
+        {/* Over the list, so that no row of its own sits above the first card. */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 8,
+            right: { xs: 0, md: 24 },
+            zIndex: 1
+          }}
+        >
+          {toolbar}
+        </Box>
         <Box
           ref={scroller}
           sx={{
             flex: '1 1 auto',
             minHeight: 0,
             overflowY: 'auto',
+            // The cards fade out under the top edge instead of being cut.
+            maskImage: `linear-gradient(to bottom, transparent 0, #000 ${String(FADE)}px)`,
             // The layout keeps its rows in place itself, the same everywhere.
             overflowAnchor: 'none'
           }}
@@ -194,7 +210,13 @@ export function FeedLayout({
         >
           <Box
             ref={content}
-            sx={{ display: 'flex', flexDirection: 'column', gap: 1, pb: 2 }}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1,
+              pt: 5,
+              pb: 2
+            }}
           >
             <RevealContext value={reveal}>{children}</RevealContext>
           </Box>
@@ -727,5 +749,89 @@ export function FeedComposer({
         <Icon icon={Send} />
       </IconButton>
     </Box>
+  )
+}
+
+/** The filter as a chip over the list; one option holds at a time. */
+export function FeedFilterMenu<T extends string>({
+  label,
+  options,
+  value,
+  onChange
+}: {
+  label: string
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (value: T) => void
+}): ReactElement {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  return (
+    <>
+      <Button
+        variant="text"
+        size="small"
+        endIcon={<Icon icon={ChevronDownIcon} size={16} />}
+        aria-haspopup="menu"
+        aria-expanded={anchor !== null}
+        onClick={event => {
+          setAnchor(event.currentTarget)
+        }}
+        sx={{
+          height: 32,
+          px: 1.5,
+          borderRadius: '8px',
+          bgcolor: 'background.default',
+          color: 'text.primary',
+          fontSize: 12,
+          fontWeight: 500,
+          letterSpacing: 0.5,
+          '&:hover': { bgcolor: 'action.hover' }
+        }}
+      >
+        {label}
+      </Button>
+      <Menu
+        anchorEl={anchor}
+        open={anchor !== null}
+        onClose={() => {
+          setAnchor(null)
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{
+          paper: {
+            sx: theme => ({
+              width: 256,
+              borderRadius: '16px',
+              boxShadow: theme.space.menuShadow
+            })
+          }
+        }}
+      >
+        {options.map(option => (
+          <MenuItem
+            key={option.value}
+            role="menuitemradio"
+            aria-checked={option.value === value}
+            selected={option.value === value}
+            onClick={() => {
+              onChange(option.value)
+              setAnchor(null)
+            }}
+            sx={{ minHeight: 40, pl: 2, gap: 2, fontSize: 16 }}
+          >
+            <Checkbox
+              size="small"
+              checked={option.value === value}
+              tabIndex={-1}
+              disableRipple
+              slotProps={{ input: { 'aria-hidden': true } }}
+              sx={{ p: 0, pointerEvents: 'none' }}
+            />
+            <ListItemText>{option.label}</ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
   )
 }

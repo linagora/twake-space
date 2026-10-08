@@ -1,9 +1,7 @@
 import {
   Calendar,
-  Check,
   CheckList,
   Dots,
-  DropdownOpen,
   Icon,
   Link,
   Mail,
@@ -15,15 +13,7 @@ import {
   Drive,
   type IconProps
 } from '@linagora/twake-icons'
-import {
-  Alert,
-  Button,
-  IconButton,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem
-} from '@linagora/twake-mui'
+import { Alert, Button, IconButton, Menu } from '@linagora/twake-mui'
 import { useMutation } from '@tanstack/react-query'
 import { Fragment, useEffect, useRef, useState, type ReactElement } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router'
@@ -55,6 +45,7 @@ import {
   FeedComposer,
   FeedDetail,
   FeedEditForm,
+  FeedFilterMenu,
   FeedFooter,
   FeedHeader,
   FeedLayout,
@@ -255,47 +246,20 @@ function FilterMenu({
   onChange: (filter: FeedFilter) => void
 }): ReactElement {
   const { t } = useI18n()
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   return (
-    <>
-      <Button
-        variant="text"
-        endIcon={<Icon icon={DropdownOpen} />}
-        aria-haspopup="menu"
-        aria-expanded={anchor !== null}
-        onClick={event => {
-          setAnchor(event.currentTarget)
-        }}
-      >
-        {t('feed.filter')}
-        {filter !== 'all' && `: ${t(`feed.filters.${filter}`)}`}
-      </Button>
-      <Menu
-        anchorEl={anchor}
-        open={anchor !== null}
-        onClose={() => {
-          setAnchor(null)
-        }}
-      >
-        {FILTERS.map(option => (
-          <MenuItem
-            key={option}
-            role="menuitemradio"
-            aria-checked={option === filter}
-            selected={option === filter}
-            onClick={() => {
-              onChange(option)
-              setAnchor(null)
-            }}
-          >
-            <ListItemIcon>
-              {option === filter && <Icon icon={Check} />}
-            </ListItemIcon>
-            <ListItemText>{t(`feed.filters.${option}`)}</ListItemText>
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
+    <FeedFilterMenu
+      label={
+        filter === 'all'
+          ? t('feed.filter')
+          : `${t('feed.filter')}: ${t(`feed.filters.${filter}`)}`
+      }
+      options={FILTERS.map(option => ({
+        value: option,
+        label: t(`feed.filters.${option}`)
+      }))}
+      value={filter}
+      onChange={onChange}
+    />
   )
 }
 
