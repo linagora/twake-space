@@ -94,6 +94,7 @@ export function FloatingWindow({
   labels,
   onClose,
   onBody,
+  maximized = false,
   children
 }: {
   title: string
@@ -101,12 +102,14 @@ export function FloatingWindow({
   labels: Labels
   onClose?: () => void
   onBody?: (body: WindowBody) => void
+  // Opens maximized
+  maximized?: boolean
   children?: (moving: boolean) => ReactNode
 }): ReactElement {
   const [box, setBox] = useState(() =>
     fitBox(readGeometry(storageKey) ?? initialBox(viewport()), viewport())
   )
-  const [mode, setMode] = useState<Mode>('normal')
+  const [mode, setMode] = useState<Mode>(maximized ? 'maximized' : 'normal')
   const [moving, setMoving] = useState(false)
   const [view, setView] = useState(viewport)
 

@@ -112,6 +112,10 @@ describe('MeetingMenu', () => {
     await join('https://meet.test/abc-defg-hij')
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    // Maximized: Meet's join screen fits a wide room only
+    expect(
+      within(meeting()).getByRole('button', { name: 'Restore' })
+    ).toBeInTheDocument()
     const frame = within(meeting()).getByTitle('Video meeting')
     expect(frame).toHaveAttribute('src', 'https://meet.test/abc-defg-hij')
     expect(frame).toHaveAttribute(
