@@ -33,14 +33,17 @@ export function KeptAlive({
 }
 
 // The place of the frames, under the shell's content: in the flow, with the
-// page's padding, while a framed tab shows; hidden over the content
-// otherwise, so the frames keep a real size.
+// page's padding (none when `flush`, on a page given to the content), while
+// a framed tab shows; hidden over the content otherwise, so the frames keep
+// a real size.
 export function KeptAliveStack({
   active,
+  flush = false,
   children,
   ...rest
 }: {
   active: boolean
+  flush?: boolean
   children: ReactNode
 } & Pick<
   HTMLAttributes<HTMLDivElement>,
@@ -54,7 +57,12 @@ export function KeptAliveStack({
       inert={!active}
       sx={
         active
-          ? { position: 'relative', minHeight: 0, px: { xs: 2, lg: 3 }, pb: 2 }
+          ? {
+              position: 'relative',
+              minHeight: 0,
+              px: flush ? 0 : { xs: 2, lg: 3 },
+              pb: flush ? 0 : 2
+            }
           : {
               position: 'absolute',
               inset: 0,
