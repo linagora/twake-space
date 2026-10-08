@@ -58,12 +58,15 @@ import {
   FeedNewMark,
   FeedRow,
   FeedTitle,
+  FeedToolbar,
+  FeedWithSide,
   JoinButton,
   ReactionChip,
   ReactionPicker,
   VisioChip
 } from '@/ds/Feed'
 import { CalendarIcon } from '@/ds/icons'
+import { MembersPanel } from '@/ds/MembersPanel'
 import { MenuEntry } from '@/ds/Menu'
 import { LoadingRows, SetupPrompt } from '@/ds/Page'
 import { useCall } from '@/ui/call/CallContext'
@@ -139,6 +142,7 @@ export function FeedPanel({ space }: { space: Space }): ReactElement {
   const myId = useSession().user.id
   // Held here: the setup prompt goes away with the feed's first item.
   const [inviting, setInviting] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
 
   const items = feed.data?.pages.flatMap(page => page.items).toReversed() ?? []
   // Once the filter changes, the target may never show: stop looking.
@@ -202,79 +206,120 @@ export function FeedPanel({ space }: { space: Space }): ReactElement {
     })
   }, [ready, atEnd, filter, newest, markRead])
 
+  const members = space.members.map(member => ({
+    id: member.id,
+    name: member.displayName ?? member.username
+  }))
+
   return (
-    <FeedLayout
-      toolbar={
-        // Nothing to filter in a feed with nothing in it.
-        (!ready || items.length > 0 || filter !== 'all') && (
-          <FilterMenu filter={filter} onChange={setFilter} />
-        )
-      }
-      composer={space.role !== 'viewer' && <Composer space={space} />}
-      placeKey={ready ? filter : null}
-      latestLabel={t('feed.latest')}
-      onAtEndChange={setAtEnd}
-      onNearTop={() => {
-        if (ready && hasNextPage && !isFetchingNextPage) void fetchNextPage()
-      }}
-    >
-      {!ready && !feed.isError && (
-        <LoadingRows count={3} label={t('feed.loading')} />
-      )}
-      {feed.isError && !feed.isFetchNextPageError && (
-        <Alert severity="error">{t('feed.loadFailed')}</Alert>
-      )}
-      {feed.hasNextPage && (
-        <FeedCentered>
-          <Button
-            variant="text"
-            disabled={feed.isFetchingNextPage}
-            onClick={() => {
-              void feed.fetchNextPage()
-            }}
-          >
-            {t('feed.loadOlder')}
-          </Button>
-        </FeedCentered>
-      )}
-      {feed.isFetchNextPageError && (
-        <Alert severity="error">{t('feed.loadOlderFailed')}</Alert>
-      )}
-      {ready &&
-        items.length === 0 &&
-        (filter === 'all' ? (
-          <Setup
-            space={space}
-            onInvite={() => {
-              setInviting(true)
+    <FeedWithSide
+      side={
+        membersOpen && (
+          <MembersPanel
+            title={t('feed.members.title')}
+            count={t('feed.members.count', { smart_count: members.length })}
+            searchLabel={t('feed.members.search')}
+            noneLabel={t('feed.members.none')}
+            members={members}
+            addLabel={t('feed.members.add')}
+            onAdd={
+              space.role === 'admin'
+                ? () => {
+                    setInviting(true)
+                  }
+                : undefined
+            }
+            closeLabel={t('feed.members.hide')}
+            onClose={() => {
+              setMembersOpen(false)
             }}
           />
-        ) : (
-          <Alert severity="info">{t('feed.empty')}</Alert>
-        ))}
-      {ready &&
-        items.map(item => (
-          <Fragment key={item.id}>
-            {item.id === markId && <FeedNewMark label={t('feed.new')} />}
-            <Item
-              // Mounted again on every visit, to take the focus again.
-              key={item.id === target ? location.key : undefined}
-              item={item}
+        )
+      }
+    >
+      <FeedLayout
+        toolbar={
+          <FeedToolbar
+            panelLabel={t(
+              membersOpen ? 'feed.members.hide' : 'feed.members.show'
+            )}
+            panelOpen={membersOpen}
+            onPanel={() => {
+              setMembersOpen(open => !open)
+            }}
+          >
+            {/* Nothing to filter in a feed with nothing in it. */}
+            {(!ready || items.length > 0 || filter !== 'all') && (
+              <FilterMenu filter={filter} onChange={setFilter} />
+            )}
+          </FeedToolbar>
+        }
+        composer={space.role !== 'viewer' && <Composer space={space} />}
+        placeKey={ready ? filter : null}
+        latestLabel={t('feed.latest')}
+        onAtEndChange={setAtEnd}
+        onNearTop={() => {
+          if (ready && hasNextPage && !isFetchingNextPage) void fetchNextPage()
+        }}
+      >
+        {!ready && !feed.isError && (
+          <LoadingRows count={3} label={t('feed.loading')} />
+        )}
+        {feed.isError && !feed.isFetchNextPageError && (
+          <Alert severity="error">{t('feed.loadFailed')}</Alert>
+        )}
+        {feed.hasNextPage && (
+          <FeedCentered>
+            <Button
+              variant="text"
+              disabled={feed.isFetchingNextPage}
+              onClick={() => {
+                void feed.fetchNextPage()
+              }}
+            >
+              {t('feed.loadOlder')}
+            </Button>
+          </FeedCentered>
+        )}
+        {feed.isFetchNextPageError && (
+          <Alert severity="error">{t('feed.loadOlderFailed')}</Alert>
+        )}
+        {ready &&
+          items.length === 0 &&
+          (filter === 'all' ? (
+            <Setup
               space={space}
-              myId={myId}
-              focused={item.id === target}
+              onInvite={() => {
+                setInviting(true)
+              }}
             />
-          </Fragment>
-        ))}
-      {inviting && (
-        <PeopleDialog
-          space={space}
-          onClose={() => {
-            setInviting(false)
-          }}
-        />
-      )}
-    </FeedLayout>
+          ) : (
+            <Alert severity="info">{t('feed.empty')}</Alert>
+          ))}
+        {ready &&
+          items.map(item => (
+            <Fragment key={item.id}>
+              {item.id === markId && <FeedNewMark label={t('feed.new')} />}
+              <Item
+                // Mounted again on every visit, to take the focus again.
+                key={item.id === target ? location.key : undefined}
+                item={item}
+                space={space}
+                myId={myId}
+                focused={item.id === target}
+              />
+            </Fragment>
+          ))}
+        {inviting && (
+          <PeopleDialog
+            space={space}
+            onClose={() => {
+              setInviting(false)
+            }}
+          />
+        )}
+      </FeedLayout>
+    </FeedWithSide>
   )
 }
 

@@ -541,6 +541,66 @@ describe('FeedPanel', () => {
     expect(screen.queryByRole('button', { name: 'Filter by' })).toBe(null)
   })
 
+  it('shows the members of the space beside the feed, and invites more', async () => {
+    renderFeed([post(1)], {
+      space: {
+        ...roadmap,
+        role: 'admin',
+        members: [
+          {
+            id: 'u-bob',
+            username: 'bob',
+            email: 'bob@acme',
+            displayName: 'Bob Durand',
+            role: 'editor'
+          }
+        ]
+      }
+    })
+    await screen.findByText('Message 1')
+    expect(screen.queryByRole('complementary', { name: 'Space members' })).toBe(
+      null
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show the members' }))
+    const panel = screen.getByRole('complementary', { name: 'Space members' })
+    expect(within(panel).getByText('Bob')).toBeInTheDocument()
+
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Hide the members' })
+    )
+    expect(screen.queryByRole('complementary', { name: 'Space members' })).toBe(
+      null
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show the members' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add member' }))
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Invite members to “Roadmap”'
+      })
+    ).toBeInTheDocument()
+  })
+
+  it('moves the focus into the members panel, and back on Escape', async () => {
+    renderFeed([post(1)])
+    await screen.findByText('Message 1')
+    const button = screen.getByRole('button', { name: 'Show the members' })
+    button.focus()
+
+    fireEvent.click(button)
+    const panel = screen.getByRole('complementary', { name: 'Space members' })
+    expect(panel).toHaveFocus()
+
+    fireEvent.keyDown(panel, { key: 'Escape' })
+    expect(screen.queryByRole('complementary', { name: 'Space members' })).toBe(
+      null
+    )
+    expect(
+      screen.getByRole('button', { name: 'Show the members' })
+    ).toHaveFocus()
+  })
+
   it('says so when a category is empty', async () => {
     renderFeed([post(1)])
     await screen.findByText('Message 1')
