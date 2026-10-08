@@ -24,6 +24,8 @@ describe('useLiveUpdates', () => {
         role: 'viewer',
         color: null,
         description: '',
+        pinnedAt: null,
+        openedAt: null,
         members: []
       }
     ])

@@ -85,6 +85,8 @@ describe('HomeScreen', () => {
         role: 'admin',
         color: null,
         description: '',
+        pinnedAt: null,
+        openedAt: null,
         members: []
       },
       {
@@ -93,6 +95,8 @@ describe('HomeScreen', () => {
         role: 'viewer',
         color: null,
         description: '',
+        pinnedAt: null,
+        openedAt: null,
         members: []
       }
     ])

@@ -19,6 +19,8 @@ const space: Space = {
   createdAt: '2026-01-01T00:00:00.000Z',
   color: null,
   description: '',
+  pinnedAt: null,
+  openedAt: null,
   apps: ['chat', 'tasks', 'drive', 'mail', 'calendar'],
   chat: true,
   mail: true,
