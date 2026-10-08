@@ -12,11 +12,13 @@ import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
 const MAIL = 'https://mail.test'
 const EMBED = '/embed/team-mailboxes/m%2F1'
 
+let notifications = { show: vi.fn(), close: vi.fn() }
 let onBadges = vi.fn<(badges: readonly Badge[] | null) => void>()
 let unmountFrame: () => void = () => undefined
 
 async function renderFrame(session: SessionService = fakeSession()) {
   const onPath = vi.fn<(report: EmbedPath) => void>()
+  notifications = { show: vi.fn(), close: vi.fn() }
   onBadges = vi.fn<(badges: readonly Badge[] | null) => void>()
   const { unmount } = renderWithProviders(
     <EmbeddedAppFrame
@@ -30,7 +32,7 @@ async function renderFrame(session: SessionService = fakeSession()) {
       onPath={onPath}
       onBadges={onBadges}
     />,
-    { session }
+    { session, notifications }
   )
   unmountFrame = unmount
   await screen.findByTitle('Mail')
@@ -294,6 +296,43 @@ describe('EmbeddedAppFrame', () => {
     fireEvent.load(frame())
 
     expect(overlay().style.clipPath).toBe('inset(0 0 100% 0)')
+  })
+
+  describe('system notifications', () => {
+    const ring = {
+      type: 'twake-embed:notification',
+      tag: 'call',
+      title: 'Alice',
+      body: 'Incoming call'
+    }
+
+    it('shows, then closes, the notification the app asks for', async () => {
+      await renderFrame()
+
+      postFromFrame(ring)
+      expect(notifications.show).toHaveBeenCalledWith('mail', {
+        kind: 'show',
+        tag: 'call',
+        title: 'Alice',
+        body: 'Incoming call'
+      })
+
+      postFromFrame({ type: 'twake-embed:notification-close', tag: 'call' })
+      expect(notifications.close).toHaveBeenCalledWith('mail', 'call')
+    })
+
+    it('ignores a notification from another origin or window', async () => {
+      await renderFrame()
+
+      postFromFrame(ring, 'https://evil.test')
+      postFromFrame(ring, MAIL, window)
+      postFromFrame(
+        { type: 'twake-embed:notification-close', tag: 'call' },
+        'https://evil.test'
+      )
+      expect(notifications.show).not.toHaveBeenCalled()
+      expect(notifications.close).not.toHaveBeenCalled()
+    })
   })
 
   describe('counts for the tabs', () => {

@@ -7,6 +7,7 @@ import type { FeedbackService } from '@/application/feedback'
 import type { FeedService } from '@/application/feed'
 import type { LiveService } from '@/application/live'
 import type { MeetingsService } from '@/application/meetings'
+import type { SystemNotifications } from '@/application/notifications'
 import type { SessionService } from '@/application/session'
 import type { SettingsService } from '@/application/settings'
 import type { SpacesService } from '@/application/spaces'
@@ -36,6 +37,7 @@ interface Options {
   live?: LiveService
   feed?: FeedService
   meetings?: MeetingsService
+  notifications?: SystemNotifications
   feedback?: FeedbackService | null
   path?: string
   tasksUrl?: string | null
@@ -58,6 +60,7 @@ function withProviders(
     live = fakeLive(),
     feed = fakeFeed(),
     meetings = { schedule: () => Promise.resolve() },
+    notifications = { show: () => undefined, close: () => undefined },
     feedback = null,
     tasksUrl = 'https://tasks.test/',
     mailUrl = 'https://mail.test/',
@@ -79,6 +82,7 @@ function withProviders(
         live,
         feed,
         meetings,
+        notifications,
         feedback,
         apiUrl: 'https://space.test/api/',
         tasksUrl,

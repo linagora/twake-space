@@ -20,6 +20,7 @@ import {
   type OverlayRegion
 } from '@linagora/twake-mui'
 
+import { parseAppNotification } from '@/application/appNotifications'
 import {
   isLoginRequired,
   legacyEmbedPath,
@@ -28,6 +29,7 @@ import {
 } from '@/application/embeddedApps'
 import { EmbedFrame } from '@/ds/EmbedFrame'
 import { FloatingWindow, type WindowBody } from '@/ds/FloatingWindow'
+import { useServices } from '@/ui/services/Services'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
 
@@ -48,6 +50,8 @@ const ALLOW = 'clipboard-read; clipboard-write; fullscreen'
 //   where TwakeSpace is,
 // - its counts for the tabs (`twake-embed:badges`), the whole snapshot each
 //   time, forgotten when the frame's document reloads or the frame goes,
+// - the system notifications it asks for (`twake-embed:notification`, and
+//   `-close` for one tag), which the browser refuses to the frame itself,
 // - an overlay over the whole page, on the app's origin, for its docked
 //   windows and dialogs: an empty page the app renders into, shown within
 //   the region the app reports (`twake-embed:overlay-region`),
@@ -90,6 +94,7 @@ export function EmbeddedAppFrame({
 }): ReactElement {
   const { t } = useI18n()
   const { signIn } = useSession()
+  const { notifications } = useServices()
   const origin = new URL(appUrl).origin
   const name = `twake-embed-${app}`
 
@@ -159,6 +164,15 @@ export function EmbeddedAppFrame({
           setRegion(reported)
           return
         }
+        const notification = parseAppNotification(event.data)
+        if (notification?.kind === 'show') {
+          notifications.show(app, notification)
+          return
+        }
+        if (notification?.kind === 'close') {
+          notifications.close(app, notification.tag)
+          return
+        }
         const message = parseAppMessage(event.data)
         if (message?.type === 'twake-embed:ready') {
           setLoads(n => n + 1)
@@ -210,7 +224,7 @@ export function EmbeddedAppFrame({
     return () => {
       listening.abort()
     }
-  }, [embedPath, frameRef, origin, signIn])
+  }, [app, embedPath, frameRef, notifications, origin, signIn])
 
   return (
     <>

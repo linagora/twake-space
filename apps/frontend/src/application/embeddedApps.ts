@@ -40,7 +40,7 @@ export const EMBEDDED_APPS: Record<EmbeddedApp, EmbeddedAppSpec> = {
     resource: 'matrix_space',
     embedPath: id => `/embed/rooms/${encodeURIComponent(id)}`,
     overlayPath: '/embed/overlay.html',
-    allow: 'camera; microphone; display-capture',
+    allow: 'camera; microphone; display-capture; autoplay',
     canFillPage: true
   },
   tasks: {
