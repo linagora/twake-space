@@ -68,3 +68,33 @@ export function ChevronDownIcon(
     </svg>
   )
 }
+
+// The mockup's more_vert: three dots, one over the other. Twake's Dots lie flat.
+export function MoreVertIcon(
+  props: SVGAttributes<SVGSVGElement>
+): ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" {...props}>
+      <path d="M8 5.333A1.333 1.333 0 1 0 8 2.667a1.333 1.333 0 0 0 0 2.666Zm0 1.334a1.333 1.333 0 1 0 0 2.666 1.333 1.333 0 0 0 0-2.666Zm0 4a1.333 1.333 0 1 0 0 2.666 1.333 1.333 0 0 0 0-2.666Z" />
+    </svg>
+  )
+}
+
+// A smiling face with a plus: the button that adds a reaction.
+export function AddReactionIcon(
+  props: SVGAttributes<SVGSVGElement>
+): ReactElement {
+  return (
+    <svg viewBox="0 0 20 20" {...props}>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        d="M17.2 9.6A7.25 7.25 0 1 1 10.4 2.8M7 11.9a3.9 3.9 0 0 0 6 0M14.5 1.5v4M12.5 3.5h4"
+      />
+      <circle cx="7.2" cy="8.4" r="0.9" fill="currentColor" />
+      <circle cx="12.6" cy="9.6" r="0.9" fill="currentColor" />
+    </svg>
+  )
+}
