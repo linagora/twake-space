@@ -2,7 +2,6 @@ import {
   Avatar,
   Box,
   Content,
-  IconButton,
   Layout,
   List,
   ListSubheader,
@@ -130,16 +129,6 @@ export function AppFrame({
     </>
   )
 }
-
-// The filter hugs its icon; the add button keeps a 48px target.
-export const SidebarFilterButton = styled(IconButton)(({ theme }) => ({
-  padding: theme.spacing(0.5),
-  color: theme.vars.palette.text.secondary
-}))
-
-export const SidebarAddButton = styled(IconButton)(({ theme }) => ({
-  padding: theme.spacing(1.5)
-}))
 
 export function SidebarHeader({
   title,
