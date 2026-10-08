@@ -124,7 +124,7 @@ export function SpaceHome({
     <ScrollPanel>
       <SpaceCover />
       <div>
-        <Greeting title={space.name} level="h2" />
+        <Greeting level="h2" />
       </div>
       <TileRow>
         {figures.map(({ figure, shown }) => (
