@@ -295,9 +295,11 @@
     "empty": "Noch nichts hier.",
     "setup": {
       "title": "%{name} einrichten",
-      "text": "Dieser Space ist bereit. Laden Sie Ihr Team ein, und alles, was Sie gemeinsam teilen, erscheint hier im Feed.",
+      "text": "Dieser Bereich ist bereit. Laden Sie Ihr Team ein, tragen Sie den ersten Termin in den Kalender ein, und alles, was Sie gemeinsam teilen, erscheint hier im Feed.",
       "invite": "Mitglieder einladen",
-      "task": "Aufgabe erstellen"
+      "task": "Aufgabe erstellen",
+      "file": "Datei teilen",
+      "event": "Termin erstellen"
     },
     "loadOlder": "Ältere laden",
     "new": "Neu",

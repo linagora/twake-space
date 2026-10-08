@@ -295,9 +295,11 @@
     "empty": "Rien pour l'instant.",
     "setup": {
       "title": "Configurer %{name}",
-      "text": "Cet espace est prêt. Invitez votre équipe, et tout ce que vous partagez apparaîtra ici, dans le fil.",
+      "text": "Cet espace est prêt. Invitez votre équipe, ajoutez votre premier événement à l'agenda, et tout ce que vous partagez ensemble apparaîtra ici, dans le fil.",
       "invite": "Inviter des membres",
-      "task": "Créer une tâche"
+      "task": "Créer une tâche",
+      "file": "Partager un fichier",
+      "event": "Créer un événement"
     },
     "loadOlder": "Charger les plus anciens",
     "new": "Nouveau",

@@ -295,9 +295,11 @@
     "empty": "Ancora niente qui.",
     "setup": {
       "title": "Configura %{name}",
-      "text": "Questo spazio è pronto. Invita il tuo team, e tutto ciò che condividete apparirà qui, nel feed.",
+      "text": "Questo spazio è pronto. Invita il tuo team, metti il primo evento in calendario e tutto ciò che condividete apparirà qui, nel feed.",
       "invite": "Invita membri",
-      "task": "Crea un'attività"
+      "task": "Crea un'attività",
+      "file": "Condividi un file",
+      "event": "Crea un evento"
     },
     "loadOlder": "Carica precedenti",
     "new": "Nuovo",

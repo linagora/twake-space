@@ -9,6 +9,7 @@ import {
   PersonAdd,
   Task,
   Trash,
+  Upload,
   Drive,
   FolderOutlined,
   getFileTypeIcon,
@@ -34,7 +35,7 @@ import {
   withReaction
 } from '@/application/feed'
 import { meetRoomUrl } from '@/application/meet'
-import type { Space } from '@/application/spaces'
+import type { ResourceKind, Space } from '@/application/spaces'
 import { containerTab } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
 import {
@@ -60,7 +61,7 @@ import {
   ReactionChip,
   ReactionPicker
 } from '@/ds/Feed'
-import { Videocam } from '@/ds/icons'
+import { CalendarIcon, Videocam } from '@/ds/icons'
 import { MenuEntry } from '@/ds/Menu'
 import { LoadingRows, SetupPrompt } from '@/ds/Page'
 import { useCall } from '@/ui/call/CallContext'
@@ -174,7 +175,12 @@ export function FeedPanel({ space }: { space: Space }): ReactElement {
 
   return (
     <FeedLayout
-      toolbar={<FilterMenu filter={filter} onChange={setFilter} />}
+      toolbar={
+        // Nothing to filter in a feed with nothing in it.
+        (!ready || items.length > 0 || filter !== 'all') && (
+          <FilterMenu filter={filter} onChange={setFilter} />
+        )
+      }
       composer={space.role !== 'viewer' && <Composer space={space} />}
       placeKey={ready ? filter : null}
       latestLabel={t('feed.latest')}
@@ -305,9 +311,15 @@ function Setup({
   onInvite: () => void
 }): ReactElement {
   const { t } = useI18n()
-  const tasks =
-    space.apps.includes('tasks') &&
-    space.resources.some(r => r.kind === 'project' && r.id)
+  // Each action opens the tab of an app the space has, once it is ready.
+  const has = (app: 'tasks' | 'drive' | 'calendar', kind: ResourceKind) =>
+    space.apps.includes(app) &&
+    space.resources.some(r => r.kind === kind && r.id)
+  const open = (app: 'tasks' | 'drive' | 'calendar') => ({
+    component: RouterLink,
+    to: `/spaces/${space.id}/${app}`,
+    variant: 'ghost' as const
+  })
   return (
     <SetupPrompt
       title={t('feed.setup.title', { name: space.name })}
@@ -319,14 +331,22 @@ function Setup({
               {t('feed.setup.invite')}
             </Button>
           )}
-          {tasks && (
-            <Button
-              component={RouterLink}
-              to={`/spaces/${space.id}/tasks`}
-              variant="ghost"
-              startIcon={<Icon icon={CheckList} />}
-            >
+          {has('drive', 'drive') && (
+            <Button {...open('drive')} startIcon={<Icon icon={Upload} />}>
+              {t('feed.setup.file')}
+            </Button>
+          )}
+          {has('tasks', 'project') && (
+            <Button {...open('tasks')} startIcon={<Icon icon={CheckList} />}>
               {t('feed.setup.task')}
+            </Button>
+          )}
+          {has('calendar', 'calendar') && (
+            <Button
+              {...open('calendar')}
+              startIcon={<Icon icon={CalendarIcon} />}
+            >
+              {t('feed.setup.event')}
             </Button>
           )}
         </>

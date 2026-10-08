@@ -295,9 +295,11 @@
     "empty": "Chưa có gì.",
     "setup": {
       "title": "Thiết lập %{name}",
-      "text": "Không gian này đã sẵn sàng. Hãy mời nhóm của bạn, mọi thứ bạn chia sẻ sẽ hiện ngay tại bảng tin này.",
+      "text": "Không gian này đã sẵn sàng. Hãy mời nhóm của bạn, đặt sự kiện đầu tiên vào lịch, và mọi thứ bạn chia sẻ sẽ hiện ngay tại đây, trong bảng tin.",
       "invite": "Mời thành viên",
-      "task": "Tạo công việc"
+      "task": "Tạo công việc",
+      "file": "Chia sẻ tệp",
+      "event": "Tạo sự kiện"
     },
     "loadOlder": "Tải cũ hơn",
     "new": "Mới",
