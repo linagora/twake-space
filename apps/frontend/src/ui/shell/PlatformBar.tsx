@@ -1,6 +1,7 @@
 import { SdkProvider, TwakeBar } from '@linagora/twake-bar'
 import type { ReactElement } from 'react'
 
+import spaceTextIcon from '@/assets/space-text.svg'
 import spaceIcon from '@/assets/space.svg'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
@@ -20,7 +21,8 @@ export function PlatformBar(): ReactElement | null {
         app={{
           slug: 'space',
           name: t('app.name'),
-          icon: new URL(spaceIcon, window.location.origin).href
+          icon: new URL(spaceIcon, window.location.origin).href,
+          textIcon: new URL(spaceTextIcon, window.location.origin).href
         }}
         onLogOut={() => void signOut()}
       />
