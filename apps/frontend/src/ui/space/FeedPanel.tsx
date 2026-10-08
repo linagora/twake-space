@@ -10,6 +10,8 @@ import {
   Task,
   Trash,
   Drive,
+  FolderOutlined,
+  getFileTypeIcon,
   type IconProps
 } from '@linagora/twake-icons'
 import { Alert, Button, Menu } from '@linagora/twake-mui'
@@ -21,6 +23,7 @@ import {
   cardAction,
   cardApp,
   FEED_CATEGORIES,
+  fileExtension,
   firstUnread,
   toEventState,
   type Actor,
@@ -45,6 +48,7 @@ import {
   FeedDetail,
   FeedEditForm,
   FeedFilterMenu,
+  FeedFile,
   FeedFooter,
   FeedHeader,
   FeedLayout,
@@ -603,7 +607,9 @@ const VERBS: Record<string, TranslationKey> = {
   'calendar.rescheduled': 'feed.verbs.calendar.rescheduled',
   'calendar.accepted': 'feed.verbs.calendar.accepted',
   'calendar.declined': 'feed.verbs.calendar.declined',
-  'calendar.proposed': 'feed.verbs.calendar.proposed'
+  'calendar.proposed': 'feed.verbs.calendar.proposed',
+  'drive.created': 'feed.verbs.drive.created',
+  'drive.updated': 'feed.verbs.drive.updated'
 }
 
 function Card({
@@ -651,6 +657,8 @@ function Card({
       />
       {app === 'calendar' ? (
         <EventDetails card={card} />
+      ) : app === 'drive' ? (
+        <FileDetails card={card} />
       ) : (
         <Summary card={card} />
       )}
@@ -659,7 +667,7 @@ function Card({
         {app === 'calendar' && <MeetingActions card={card} />}
         {tab && open && (
           <FeedAction
-            icon={Openwith}
+            icon={app === 'drive' ? FolderOutlined : Openwith}
             component={RouterLink}
             to={`/spaces/${space.id}/${tab}`}
           >
@@ -713,6 +721,25 @@ function Summary({ card }: { card: FeedCard }): ReactElement {
   return (
     <>
       <FeedTitle>{card.object.title}</FeedTitle>
+      {card.preview && <FeedDetail>{card.preview}</FeedDetail>}
+    </>
+  )
+}
+
+function FileDetails({ card }: { card: FeedCard }): ReactElement {
+  const { t } = useI18n()
+  const extension = fileExtension(card.object.title)
+  return (
+    <>
+      <FeedFile
+        icon={getFileTypeIcon(card.object.title)}
+        name={card.object.title}
+        detail={
+          <FeedDetail>
+            {[extension, t('feed.fromDrive')].filter(Boolean).join(' · ')}
+          </FeedDetail>
+        }
+      />
       {card.preview && <FeedDetail>{card.preview}</FeedDetail>}
     </>
   )

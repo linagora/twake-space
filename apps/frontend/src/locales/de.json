@@ -278,6 +278,10 @@
         "accepted": "hat einen Termin angenommen",
         "declined": "hat einen Termin abgelehnt",
         "proposed": "hat eine neue Zeit vorgeschlagen"
+      },
+      "drive": {
+        "created": "hat eine Datei hinzugefügt",
+        "updated": "hat eine Datei aktualisiert"
       }
     },
     "event": {
@@ -314,7 +318,8 @@
       "tasks": "Aufgaben"
     },
     "deletedUser": "Gelöschter Benutzer",
-    "someone": "Jemand"
+    "someone": "Jemand",
+    "fromDrive": "Aus Drive"
   },
   "embed": {
     "overlay": "Fenster von %{app}"

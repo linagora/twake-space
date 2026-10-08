@@ -278,6 +278,10 @@
         "accepted": "accepted an event",
         "declined": "declined an event",
         "proposed": "proposed a new time"
+      },
+      "drive": {
+        "created": "added a file",
+        "updated": "updated a file"
       }
     },
     "event": {
@@ -314,7 +318,8 @@
       "tasks": "Tasks"
     },
     "deletedUser": "Deleted user",
-    "someone": "Someone"
+    "someone": "Someone",
+    "fromDrive": "From Drive"
   },
   "embed": {
     "overlay": "%{app} windows"

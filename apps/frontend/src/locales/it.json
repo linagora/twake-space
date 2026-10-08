@@ -278,6 +278,10 @@
         "accepted": "ha accettato un evento",
         "declined": "ha rifiutato un evento",
         "proposed": "ha proposto un altro orario"
+      },
+      "drive": {
+        "created": "ha aggiunto un file",
+        "updated": "ha aggiornato un file"
       }
     },
     "event": {
@@ -314,7 +318,8 @@
       "tasks": "Attività"
     },
     "deletedUser": "Utente eliminato",
-    "someone": "Qualcuno"
+    "someone": "Qualcuno",
+    "fromDrive": "Da Drive"
   },
   "embed": {
     "overlay": "Finestre di %{app}"

@@ -470,6 +470,44 @@ export function FeedTitle({ children }: { children: ReactNode }): ReactElement {
   )
 }
 
+/** A file the card is about: its type icon, its name over two lines, a detail. */
+export function FeedFile({
+  icon,
+  name,
+  detail
+}: {
+  icon: IconProps['icon']
+  name: string
+  detail: ReactNode
+}): ReactElement {
+  return (
+    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+      <Box sx={{ flex: '0 0 48px', display: 'flex' }}>
+        <Icon icon={icon} size={48} />
+      </Box>
+      <Box sx={{ minWidth: 0, pt: 0.5 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: 600,
+            lineHeight: '20px',
+            letterSpacing: 0.25,
+            maxHeight: 40,
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflowWrap: 'anywhere'
+          }}
+        >
+          {name}
+        </Typography>
+        {detail}
+      </Box>
+    </Box>
+  )
+}
+
 export function FeedDetail({
   children
 }: {
