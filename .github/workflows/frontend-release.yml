@@ -25,8 +25,6 @@ jobs:
           allowed-branches: main
       - id: version
         run: echo "version=${GITHUB_REF_NAME#frontend-v}" >> "$GITHUB_OUTPUT"
-      - name: Verify the Cozy registry manifest has the same version
-        run: test "$(jq -r .version apps/frontend/manifest.webapp)" = "${{ steps.version.outputs.version }}"
 
   check:
     needs: [verify]
@@ -45,6 +43,13 @@ jobs:
       push: true
       version: ${{ needs.verify.outputs.version }}
 
+  manifest:
+    needs: [verify, check]
+    uses: linagora/twake-workflows/.github/workflows/publish-manifest.yml@v1
+    secrets:
+      REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+      DOWNCLOUD_SSH_KEY: ${{ secrets.DOWNCLOUD_SSH_KEY }}
+
   release:
     needs: [verify, publish]
     runs-on: ubuntu-latest
@@ -61,11 +66,8 @@ jobs:
           path: apps/frontend
           workflow-prefix: frontend
           tag-prefix: frontend-v
-      - name: Archive the Cozy registry app
-        run: tar -czf space.tar.gz -C apps/frontend manifest.webapp src/assets/space.svg
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: Frontend ${{ needs.verify.outputs.version }}
           body_path: ${{ steps.notes.outputs.body-path }}
-          files: space.tar.gz
