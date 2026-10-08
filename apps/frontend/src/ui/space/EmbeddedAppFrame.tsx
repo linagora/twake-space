@@ -31,9 +31,11 @@ import { EmbedFrame } from '@/ds/EmbedFrame'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
 
-// Downloads too: a sandboxed frame without it cannot save a file
+// Downloads too: a sandboxed frame without it cannot save a file. Its popups
+// leave the sandbox: a sandboxed page cannot load a response with COOP (the
+// sign-in callbacks of the apps)
 const SANDBOX =
-  'allow-scripts allow-same-origin allow-popups allow-forms allow-downloads'
+  'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-downloads'
 const ALLOW = 'clipboard-read; clipboard-write'
 
 // The frame of an app, and what every embedded app gets from TwakeSpace:
