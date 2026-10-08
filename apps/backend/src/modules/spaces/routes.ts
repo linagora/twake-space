@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray } from 'drizzle-orm'
-import type { FastifyRequest } from 'fastify'
+import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
@@ -9,6 +9,7 @@ import { APP_KINDS, type SpaceApp } from './resources.ts'
 import {
   spaceBanners,
   spaceGroups,
+  spaceMarks,
   spaceMembers,
   spaceResourceKind,
   spaceResources,
@@ -48,10 +49,17 @@ export function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
       .leftJoin(spaceSettings, settings)
       .where(covered)
       .orderBy(asc(spaces.name))
-      .then(rows => rows.map(row => ({ ...row, role })))
+      .then(rows =>
+        rows.map(row => ({ ...row, role, pinnedAt: null, openedAt: null }))
+      )
   }
   return db
-    .select({ ...fields, role: spaceMembers.role })
+    .select({
+      ...fields,
+      role: spaceMembers.role,
+      pinnedAt: spaceMarks.pinnedAt,
+      openedAt: spaceMarks.openedAt
+    })
     .from(spaces)
     .innerJoin(
       spaceMembers,
@@ -61,6 +69,10 @@ export function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
       )
     )
     .leftJoin(spaceSettings, settings)
+    .leftJoin(
+      spaceMarks,
+      and(eq(spaceMarks.spaceId, spaces.spaceId), eq(spaceMarks.userId, userId))
+    )
     .where(covered)
     .orderBy(asc(spaces.name))
 }
@@ -99,20 +111,24 @@ export function registerSpaceRoutes(
             )
             .orderBy(asc(spaceMembers.username))
     return {
-      spaces: reached.map(({ id, name, role, color, description }) => ({
-        id,
-        name,
-        role,
-        color,
-        description: description ?? '',
-        members: members
-          .filter(member => member.spaceId === id)
-          .map(({ id, username, displayName }) => ({
-            id,
-            username,
-            displayName
-          }))
-      }))
+      spaces: reached.map(
+        ({ id, name, role, color, description, pinnedAt, openedAt }) => ({
+          id,
+          name,
+          role,
+          color,
+          description: description ?? '',
+          pinnedAt,
+          openedAt,
+          members: members
+            .filter(member => member.spaceId === id)
+            .map(({ id, username, displayName }) => ({
+              id,
+              username,
+              displayName
+            }))
+        })
+      )
     }
   })
 
@@ -248,5 +264,45 @@ export function registerSpaceRoutes(
         .header('x-content-type-options', 'nosniff')
         .send(banner.image)
     }
+  )
+
+  // Marks are a person's own: no token sets them.
+  const own = { preHandler: authorize() }
+  const mark =
+    (change: () => { pinnedAt?: Date | null; openedAt?: Date }) =>
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const caller = callerOf(request)
+      if (caller.kind !== 'session') {
+        throw new Error('authorize let a request through')
+      }
+      const params = spaceParams.safeParse(request.params)
+      if (!params.success) return reply.code(404).send({ error: 'not_found' })
+      const [space] = await reachableSpaces(db, caller, params.data.id)
+      if (!space) return reply.code(404).send({ error: 'not_found' })
+      const set = change()
+      await db
+        .insert(spaceMarks)
+        .values({ spaceId: space.id, userId: caller.userId, ...set })
+        .onConflictDoUpdate({
+          target: [spaceMarks.spaceId, spaceMarks.userId],
+          set
+        })
+      return reply.code(204).send()
+    }
+
+  app.put(
+    '/spaces/:id/pin',
+    own,
+    mark(() => ({ pinnedAt: new Date() }))
+  )
+  app.delete(
+    '/spaces/:id/pin',
+    own,
+    mark(() => ({ pinnedAt: null }))
+  )
+  app.put(
+    '/spaces/:id/opened',
+    own,
+    mark(() => ({ openedAt: new Date() }))
   )
 }

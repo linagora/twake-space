@@ -68,6 +68,7 @@ The refusals look like this.
 - Caller: session, or token with `space:read`.
 - Returns the spaces the caller reaches, sorted by name, with the role it acts with in each, the avatar color picked at creation (null when none was), the description (empty when none was) and the people who are members of it, sorted by username.
 - A session caller or an account token reaches the spaces its account is a member of. An organization token reaches every space of the organization and acts with its own role. A token that covers a list of spaces reaches only those.
+- `pinnedAt` is when the caller's account pinned the space and `openedAt` when it last opened it, both null when it did not. They are null for an organization token.
 
 ```json
 {
@@ -78,6 +79,8 @@ The refusals look like this.
       "role": "admin",
       "color": "#46a2ff",
       "description": "Brand and product design",
+      "pinnedAt": "2026-10-08T09:00:00.000Z",
+      "openedAt": null,
       "members": [
         { "id": "<uuid>", "username": "jdoe", "displayName": "Jane Doe" }
       ]
@@ -103,6 +106,7 @@ The refusals look like this.
 - `description`, `color` and `apps` are what was picked at creation. `apps` lists the tabs the space shows when this deployment provides their app. A space created outside twake-space has an empty description, no color and every tab.
 - `chat` and `mail` are the organization's chat and mail availability, false when the organization is unknown. `homeserverUrl` is the organization's Matrix homeserver, or null.
 - `createdAt` is when the backend learned of the space.
+- `pinnedAt` and `openedAt` are as in `GET /spaces`.
 - `resources` lists the kind (`drive`, `mailbox`, `calendar`, `matrix_space`, `project`) of each app this deployment provides, set by `SPACE_APPS` in [Deploying](deploy.md#configuration). A kind whose `id` is null is still being prepared by its app.
 
 ```json
@@ -132,6 +136,16 @@ The refusals look like this.
   ]
 }
 ```
+
+### PUT /spaces/:id/pin, DELETE /spaces/:id/pin
+
+- Caller: session.
+- Pins the space for the caller, or unpins it. Answers `204`, or `404 {"error":"not_found"}` when the caller is not a member.
+
+### PUT /spaces/:id/opened
+
+- Caller: session.
+- Sets the space's `openedAt` to now for the caller. The frontend sends it each time it shows a space. Answers like the pin.
 
 ## Organization directory
 
