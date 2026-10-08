@@ -295,9 +295,11 @@
     "empty": "Nothing here yet.",
     "setup": {
       "title": "Set up %{name}",
-      "text": "This space is ready to go. Invite your team, and everything you share together will show up right here in the feed.",
+      "text": "This space is ready to go. Invite your team, put your first event on the calendar, and everything you share together will show up right here in the feed.",
       "invite": "Invite members",
-      "task": "Create a task"
+      "task": "Create a task",
+      "file": "Share a file",
+      "event": "Create an event"
     },
     "loadOlder": "Load older",
     "new": "New",

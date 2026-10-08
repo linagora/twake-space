@@ -417,6 +417,34 @@ describe('FeedPanel', () => {
     ).toBeInTheDocument()
   })
 
+  it('offers the apps the new space has, and no filter', async () => {
+    renderFeed([], {
+      space: {
+        ...roadmap,
+        apps: ['tasks', 'drive', 'calendar'],
+        resources: [
+          { kind: 'project', id: 'project-1' },
+          { kind: 'drive', id: 'drive-1' },
+          { kind: 'calendar', id: 'cal-1' }
+        ]
+      }
+    })
+
+    await screen.findByRole('heading', { name: 'Set up Roadmap' })
+    expect(screen.getByRole('link', { name: 'Share a file' })).toHaveAttribute(
+      'href',
+      '/spaces/a1/drive'
+    )
+    expect(screen.getByRole('link', { name: 'Create a task' })).toHaveAttribute(
+      'href',
+      '/spaces/a1/tasks'
+    )
+    expect(
+      screen.getByRole('link', { name: 'Create an event' })
+    ).toHaveAttribute('href', '/spaces/a1/calendar')
+    expect(screen.queryByRole('button', { name: 'Filter by' })).toBe(null)
+  })
+
   it('says so when a category is empty', async () => {
     renderFeed([post(1)])
     await screen.findByText('Message 1')
