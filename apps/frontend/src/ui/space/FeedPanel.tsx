@@ -4,14 +4,12 @@ import {
   Icon,
   Copy,
   Mail,
-  Openwith,
   Pen,
   PersonAdd,
   Task,
   Trash,
   Upload,
   Drive,
-  FolderOutlined,
   getFileTypeIcon,
   type IconProps
 } from '@linagora/twake-icons'
@@ -65,7 +63,7 @@ import {
   ReactionPicker,
   VisioChip
 } from '@/ds/Feed'
-import { CalendarIcon } from '@/ds/icons'
+import { CalendarIcon, FolderIcon, OpenInNewIcon } from '@/ds/icons'
 import { MembersPanel } from '@/ds/MembersPanel'
 import { MenuEntry } from '@/ds/Menu'
 import { LoadingRows, SetupPrompt } from '@/ds/Page'
@@ -764,7 +762,7 @@ function Card({
         <Reactions item={card} spaceId={space.id} myId={myId} />
         {tab && open && (
           <FeedAction
-            icon={app === 'drive' ? FolderOutlined : Openwith}
+            icon={app === 'drive' ? FolderIcon : OpenInNewIcon}
             component={RouterLink}
             to={`/spaces/${space.id}/${tab}`}
           >
