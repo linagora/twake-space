@@ -1,10 +1,4 @@
-import {
-  act,
-  cleanup,
-  fireEvent,
-  screen,
-  waitFor
-} from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { Route, Routes, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -177,13 +171,12 @@ describe('SpaceScreen', () => {
     expect(isHidden(frame)).toBe(true)
   })
 
-  it.each(['tasks', 'mail'])('keeps the cover over the %s frame', async tab => {
+  it.each(['tasks', 'mail'])('shows the %s frame alone', async tab => {
     renderAt(`/spaces/a1/${tab}`)
 
     expect(await screen.findByRole('tabpanel')).toContainElement(
       document.querySelector('iframe')
     )
-    expect(document.querySelector('main img')).not.toBeNull()
     expect(
       screen.queryByText('Where the year is planned')
     ).not.toBeInTheDocument()
@@ -198,29 +191,6 @@ describe('SpaceScreen', () => {
     expect(
       await screen.findByRole('textbox', { name: 'Text message' })
     ).toBeInTheDocument()
-  })
-
-  it('keeps the cover over the feed, empty or not', async () => {
-    renderAt('/spaces/a1/feed')
-    await screen.findByRole('heading', { name: 'Set up Roadmap' })
-    expect(document.querySelector('main img')).not.toBeNull()
-
-    cleanup()
-    renderAt('/spaces/a1/feed', roadmap, [
-      {
-        id: 'p1',
-        kind: 'post',
-        category: 'messages',
-        time: '2026-10-07T08:00:00.000Z',
-        updatedAt: '2026-10-07T08:00:00.000Z',
-        reactions: [],
-        author: { type: 'user', id: 'u-bob', name: 'Bob' },
-        body: 'Hello',
-        editedAt: null
-      }
-    ])
-    await screen.findByText('Hello')
-    expect(document.querySelector('main img')).not.toBeNull()
   })
 
   it("lists the space's people on the Members tab", async () => {

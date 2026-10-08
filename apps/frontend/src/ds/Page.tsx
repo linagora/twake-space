@@ -9,8 +9,6 @@ import {
 } from '@linagora/twake-mui'
 import type { ReactElement, ReactNode } from 'react'
 
-import cover from '@/assets/space-cover.png'
-
 // `fill` off leaves the rest of the content to what follows the page: the
 // frame of an embedded app, under the tabs.
 export function Page({
@@ -76,31 +74,6 @@ export function SpaceHeader({
 }): ReactElement {
   return (
     <Box sx={{ mb: 2 }}>
-      <Box
-        sx={{
-          position: 'relative',
-          overflow: 'hidden',
-          height: { xs: 120, md: 211 },
-          borderRadius: '8px',
-          bgcolor: 'primary.dark',
-          containerType: 'size'
-        }}
-      >
-        {/* The artwork is portrait; turned, it spans the banner's width. */}
-        <Box
-          component="img"
-          src={cover}
-          alt=""
-          sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            height: '100cqw',
-            maxWidth: 'none',
-            transform: 'translate(-50%, -50%) rotate(-90deg)'
-          }}
-        />
-      </Box>
       <Box
         sx={{
           display: 'flex',
