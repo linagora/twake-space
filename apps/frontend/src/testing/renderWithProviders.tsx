@@ -2,6 +2,10 @@ import { render, type RenderResult } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
 
+import type {
+  HarnessService,
+  SuggestionsService
+} from '@/application/suggestions'
 import type { DirectoryService } from '@/application/directory'
 import type { FeedbackService } from '@/application/feedback'
 import type { FeedService } from '@/application/feed'
@@ -15,6 +19,7 @@ import type { TokensService } from '@/application/tokens'
 import { AppProviders } from '@/app/AppProviders'
 import { makeQueryClient } from '@/app/queryClient'
 import { routes } from '@/app/routes'
+import { fakeHarness, fakeSuggestions } from '@/testing/fakeSuggestions'
 import { fakeDirectory } from '@/testing/fakeDirectory'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeLive } from '@/testing/fakeLive'
@@ -38,6 +43,8 @@ interface Options {
   feed?: FeedService
   meetings?: MeetingsService
   notifications?: SystemNotifications
+  suggestions?: SuggestionsService
+  harness?: HarnessService | null
   feedback?: FeedbackService | null
   path?: string
   tasksUrl?: string | null
@@ -67,6 +74,8 @@ function withProviders(
       subscribe: () => () => undefined,
       allow: () => undefined
     },
+    suggestions = fakeSuggestions(),
+    harness = fakeHarness(),
     feedback = null,
     tasksUrl = 'https://tasks.test/',
     mailUrl = 'https://mail.test/',
@@ -89,6 +98,8 @@ function withProviders(
         feed,
         meetings,
         notifications,
+        suggestions,
+        harness,
         feedback,
         apiUrl: 'https://space.test/api/',
         tasksUrl,

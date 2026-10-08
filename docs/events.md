@@ -287,10 +287,14 @@ Each entry in `data.recipients` is `{ uuid?, email, reason }`. The reason sets t
 
 A new `m.room.message` notifies each user in `m.mentions.user_ids` who is on the same homeserver, is not the sender, and is a member of the space. The Matrix localpart is matched to the member's username (`MATRIX_LOCALPART=uid`, the default) or to the part of their email before `@` (`email`).
 
+### From the assistant
+
+`POST /notifications/suggestions` (API token with `notifications:write`) creates an `assistant_suggestion` for one user, found by Matrix id as for mentions, with `{ text, pendingCallId, matrixRoomId }` as payload. It follows the user's settings and sends the `notification` live event like the others.
+
 ### Settings and delivery
 
 - Every type is on by default except `space_change`. A row in `notification_settings` is the user's choice.
-- A notification row points to either an activity event or a Matrix event, never both. A user gets one notification per type and source.
+- A notification row has exactly one source: an activity event, a Matrix event or an `external_id` pushed through the API. A user gets one notification per type and source (per `external_id` for the last).
 - Each inserted notification sends a `notification` live event to its user.
 - The API: `GET /notifications` (paged, with the unread count and the card's type, category, actor, content and time), `POST /notifications/read`, `POST /notifications/:id/read`, `GET` and `PUT /notifications/settings`.
 
@@ -315,7 +319,7 @@ sequenceDiagram
 - A revoked session goes over the same exchange, so every replica closes that session's streams. Every minute, each replica also closes the streams of sessions revoked meanwhile, for a revocation it missed.
 - `GET /stream` needs a session. It is `text/event-stream`, sends a heartbeat comment every 25 seconds, and closes when the session expires, when the session is revoked, or when the server stops.
 - The frontend reads it with `fetch` (EventSource cannot send the bearer token) and reconnects with a backoff from 1 to 30 seconds.
-- On `spaces`, the frontend invalidates its spaces queries. On a reconnect it invalidates every query, since events sent while the stream was closed are lost.
+- On `spaces`, the frontend invalidates its spaces queries. On `notification`, it reads the assistant suggestions again. On a reconnect it invalidates every query, since events sent while the stream was closed are lost.
 
 ## The feed in the browser
 

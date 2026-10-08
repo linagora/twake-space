@@ -508,5 +508,12 @@
     "failed": "Không thể mở trợ lý.",
     "post": "Đăng lên bảng tin",
     "postFailed": "Không thể đăng câu trả lời."
+  },
+  "suggestions": {
+    "title": "Gợi ý của trợ lý",
+    "create": "Tạo cuộc họp",
+    "anotherTime": "Thời gian khác",
+    "notUseful": "Không hữu ích",
+    "failed": "Không thể kết nối với trợ lý. Hãy thử lại."
   }
 }

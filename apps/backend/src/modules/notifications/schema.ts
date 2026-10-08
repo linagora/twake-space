@@ -19,7 +19,8 @@ export const notificationType = pgEnum('notification_type', [
   'assignment',
   'invitation',
   'attended_event_change',
-  'space_change'
+  'space_change',
+  'assistant_suggestion'
 ])
 
 export const notifications = pgTable(
@@ -33,6 +34,8 @@ export const notifications = pgTable(
     spaceId: uuid('space_id'),
     activityEventId: uuid('activity_event_id'),
     matrixEventId: text('matrix_event_id'),
+    // The caller's own id, for a notification pushed through the API.
+    externalId: text('external_id'),
     payload: jsonb().notNull(),
     readAt: timestamptz('read_at'),
     createdAt: timestamptz('created_at').notNull().defaultNow()
@@ -40,7 +43,7 @@ export const notifications = pgTable(
   table => [
     check(
       'notifications_one_source',
-      sql`(${table.activityEventId} is null) <> (${table.matrixEventId} is null)`
+      sql`num_nonnulls(${table.activityEventId}, ${table.matrixEventId}, ${table.externalId}) = 1`
     ),
     uniqueIndex('notifications_activity_event_idx')
       .on(table.userId, table.type, table.activityEventId)
@@ -48,6 +51,9 @@ export const notifications = pgTable(
     uniqueIndex('notifications_matrix_event_idx')
       .on(table.userId, table.type, table.matrixEventId)
       .where(sql`${table.matrixEventId} is not null`),
+    uniqueIndex('notifications_external_id_idx')
+      .on(table.userId, table.externalId)
+      .where(sql`${table.externalId} is not null`),
     index('notifications_user_idx').on(
       table.userId,
       sql`(${table.readAt} is null)`,

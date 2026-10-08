@@ -1,4 +1,5 @@
 import type { MemoryOrganization } from '@/adapters/memory/memoryDirectory'
+import type { Suggestion } from '@/application/suggestions'
 import type {
   FeedCard,
   FeedItem,
@@ -607,3 +608,11 @@ export const seedTokens: Record<TokenOwner, ApiToken[]> = {
     }
   ]
 }
+
+export const seedSuggestions: Suggestion[] = [
+  {
+    id: 'suggestion-1',
+    text: 'You are free on Monday between 9:30 and 9:45. Do you want to plan the meeting?',
+    pendingCallId: 'pending-call-1'
+  }
+]

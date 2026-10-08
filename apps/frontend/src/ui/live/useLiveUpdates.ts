@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 
 import { useServices } from '@/ui/services/Services'
 import { followFeedChange } from '@/ui/space/feedQueries'
+import { SUGGESTIONS } from '@/ui/assistant/queries'
 import { SPACES } from '@/ui/spaces/queries'
 
 export function useLiveUpdates(): void {
@@ -15,6 +16,9 @@ export function useLiveUpdates(): void {
         onEvent: (event, data) => {
           if (event === 'spaces') {
             void queryClient.invalidateQueries({ queryKey: SPACES })
+          }
+          if (event === 'notification') {
+            void queryClient.invalidateQueries({ queryKey: SUGGESTIONS })
           }
           if (event === 'feed') followFeedChange(queryClient, feed, data)
         },
