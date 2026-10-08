@@ -1,15 +1,27 @@
 import { Cube, Icon, Key, Plus } from '@linagora/twake-icons'
-import { IconButton, Nav, NavIcon, NavItem, NavText } from '@linagora/twake-mui'
+import {
+  IconButton,
+  ListItem,
+  ListItemText,
+  Nav,
+  NavIcon,
+  NavItem,
+  NavText,
+  SearchBar
+} from '@linagora/twake-mui'
 import { useState, type ReactElement, type ReactNode } from 'react'
 import { Outlet, NavLink as RouterNavLink, useMatch } from 'react-router'
 
 import { badgeLabel, hasCounts, spaceTotal } from '@/application/badges'
+import { nameMatches } from '@/application/spaces'
 import {
   AppFrame,
   NavAvatar,
   SidebarHeader,
+  SidebarSearch,
   SidebarSection
 } from '@/ds/AppFrame'
+import { FilterListIcon } from '@/ds/FilterListIcon'
 import { NavDestination } from '@/ds/NavDestination'
 import { AppFeedback } from '@/ui/feedback/AppFeedback'
 import { useI18n } from '@/ui/i18n/useI18n'
@@ -22,6 +34,8 @@ import { useSpaceList, useSpaces } from '@/ui/spaces/queries'
 export function AppShell(): ReactElement {
   const { t } = useI18n()
   const [creating, setCreating] = useState(false)
+  // Null while the search is closed.
+  const [query, setQuery] = useState<string | null>(null)
   const home = useMatch('/') !== null
 
   return (
@@ -33,18 +47,52 @@ export function AppShell(): ReactElement {
           <SidebarHeader
             title={t('shell.title')}
             action={
-              <IconButton
-                aria-label={t('spaces.create')}
-                onClick={() => {
-                  setCreating(true)
-                }}
-              >
-                <Icon icon={Plus} />
-              </IconButton>
+              <>
+                <IconButton
+                  aria-label={t('shell.searchSpaces')}
+                  aria-pressed={query !== null}
+                  onClick={() => {
+                    setQuery(query === null ? '' : null)
+                  }}
+                >
+                  <Icon icon={FilterListIcon} size={24} />
+                </IconButton>
+                <IconButton
+                  aria-label={t('spaces.create')}
+                  onClick={() => {
+                    setCreating(true)
+                  }}
+                >
+                  <Icon icon={Plus} />
+                </IconButton>
+              </>
             }
           />
+          {query !== null && (
+            <SidebarSearch>
+              <SearchBar
+                elevation={0}
+                placeholder={t('shell.spaceName')}
+                value={query}
+                onChange={event => {
+                  setQuery(event.target.value)
+                }}
+                onClear={() => {
+                  setQuery('')
+                }}
+                componentsProps={{
+                  inputBase: {
+                    autoFocus: true,
+                    onKeyDown: event => {
+                      if (event.key === 'Escape') setQuery(null)
+                    }
+                  }
+                }}
+              />
+            </SidebarSearch>
+          )}
           <AppNav />
-          <SpaceList />
+          <SpaceList query={query ?? ''} />
         </>
       }
     >
@@ -108,7 +156,7 @@ function AppNav(): ReactElement {
   )
 }
 
-function SpaceList(): ReactElement | null {
+function SpaceList({ query }: { query: string }): ReactElement | null {
   const { t } = useI18n()
   const spaces = useSpaceList().data ?? []
   const badges = useBadges()
@@ -123,7 +171,13 @@ function SpaceList(): ReactElement | null {
 
   return (
     <SidebarSection label={t('shell.yourSpaces')}>
+      {!spaces.some(space => nameMatches(space.name, query)) && (
+        <ListItem>
+          <ListItemText secondary={t('shell.noSpaceFound')} />
+        </ListItem>
+      )}
       {spaces.map((space, index) => {
+        if (!nameMatches(space.name, query)) return null
         const detail = details[index]?.data
         const total = detail ? spaceTotal(badges, detail) : 0
         return (

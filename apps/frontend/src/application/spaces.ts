@@ -94,6 +94,17 @@ export function isRefusal(error: unknown): error is Refusal {
   )
 }
 
+const folded = (text: string) =>
+  text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+
+/** Whether a name holds the query, whatever the case and the accents. */
+export function nameMatches(name: string, query: string): boolean {
+  return folded(name).includes(folded(query.trim()))
+}
+
 /** Every write but create needs the caller to be an admin of the space. */
 export interface SpacesService {
   list: () => Promise<SpaceSummary[]>

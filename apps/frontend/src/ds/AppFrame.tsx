@@ -125,7 +125,20 @@ export function SidebarHeader({
       <Typography variant="h3" component="p">
         {title}
       </Typography>
-      {action}
+      <Box sx={{ display: 'flex', gap: 0.5 }}>{action}</Box>
+    </Box>
+  )
+}
+
+// Under the header, on wide screens like the list it filters.
+export function SidebarSearch({
+  children
+}: {
+  children: ReactNode
+}): ReactElement {
+  return (
+    <Box sx={{ display: { xs: 'none', lg: 'flex' }, px: 2, pt: 1 }}>
+      {children}
     </Box>
   )
 }
