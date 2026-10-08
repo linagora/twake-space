@@ -288,7 +288,9 @@
       "allDay": "All day",
       "movedFrom": "Moved from %{time}",
       "proposed": "%{by} proposed %{time}",
-      "rsvp": "%{accepted} yes · %{tentative} maybe · %{declined} no · %{pending} waiting"
+      "rsvp": "%{accepted} yes · %{tentative} maybe · %{declined} no · %{pending} waiting",
+      "join": "Join",
+      "visio": "Visio"
     },
     "loading": "Loading the feed",
     "loadFailed": "Could not load the feed.",

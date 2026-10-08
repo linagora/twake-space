@@ -288,7 +288,9 @@
       "allDay": "Tutto il giorno",
       "movedFrom": "Spostato da %{time}",
       "proposed": "%{by} propone %{time}",
-      "rsvp": "%{accepted} sì · %{tentative} forse · %{declined} no · %{pending} in attesa"
+      "rsvp": "%{accepted} sì · %{tentative} forse · %{declined} no · %{pending} in attesa",
+      "join": "Partecipa",
+      "visio": "Visio"
     },
     "loading": "Caricamento del feed",
     "loadFailed": "Impossibile caricare il feed.",

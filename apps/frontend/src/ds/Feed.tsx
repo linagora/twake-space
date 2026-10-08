@@ -26,7 +26,12 @@ import {
   type ReactNode
 } from 'react'
 
-import { AddReactionIcon, ChevronDownIcon, MoreVertIcon } from '@/ds/icons'
+import {
+  AddReactionIcon,
+  ChevronDownIcon,
+  MoreVertIcon,
+  Videocam
+} from '@/ds/icons'
 import type { SpaceTokens } from '@/ds/theme'
 
 // How close to the newest item still counts as being there, and how close to
@@ -464,13 +469,20 @@ export function FeedMoreButton({
   )
 }
 
-export function FeedTitle({ children }: { children: ReactNode }): ReactElement {
+export function FeedTitle({
+  children,
+  large = false
+}: {
+  children: ReactNode
+  large?: boolean
+}): ReactElement {
   return (
     <Typography
       variant="body2"
       sx={{
         fontWeight: 600,
-        lineHeight: '20px',
+        fontSize: large ? 16 : undefined,
+        lineHeight: large ? '24px' : '20px',
         letterSpacing: 0.25,
         overflowWrap: 'anywhere'
       }}
@@ -578,18 +590,22 @@ export function FeedAttachment({
 }
 
 export function FeedDetail({
-  children
+  children,
+  large = false
 }: {
   children: ReactNode
+  /** The line under an event's title: 14px, regular. */
+  large?: boolean
 }): ReactElement {
   return (
     <Typography
       variant="caption"
       color="textSecondary"
       sx={{
-        fontWeight: 500,
-        lineHeight: '16px',
-        letterSpacing: 0.4,
+        fontSize: large ? 14 : undefined,
+        fontWeight: large ? 400 : 500,
+        lineHeight: large ? '20px' : '16px',
+        letterSpacing: large ? undefined : 0.4,
         pt: '5px'
       }}
     >
@@ -874,18 +890,92 @@ export function FeedEditForm({
 
 export function EventSummary({
   tile,
-  children
+  children,
+  aside
 }: {
   tile: ReactNode
   children: ReactNode
+  /** At the end of the row, centered: the meeting's buttons. */
+  aside?: ReactNode
 }): ReactElement {
   return (
-    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-      {tile}
-      <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        {children}
+    <Box
+      sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 1.5,
+          alignItems: 'flex-start',
+          flex: '1 1 260px',
+          minWidth: 0
+        }}
+      >
+        {tile}
+        <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          {children}
+        </Box>
       </Box>
+      {aside}
     </Box>
+  )
+}
+
+/** The video call of an event, as a small chip. */
+export function VisioChip({ label }: { label: string }): ReactElement {
+  return (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.75,
+        px: 0.5,
+        py: '3px',
+        fontSize: 12,
+        lineHeight: '16px',
+        color: 'text.primary'
+      }}
+    >
+      <Icon icon={Videocam} size={16} />
+      {label}
+    </Box>
+  )
+}
+
+/** The call's button, in the calendar's orange. */
+export function JoinButton({
+  label,
+  name,
+  onClick
+}: {
+  label: string
+  name: string
+  onClick: () => void
+}): ReactElement {
+  return (
+    <Button
+      aria-label={name}
+      startIcon={<Icon icon={Videocam} size={24} />}
+      onClick={onClick}
+      sx={theme => ({
+        borderRadius: '4px',
+        px: 1.5,
+        py: 1,
+        bgcolor: theme.space.appColors.calendar,
+        color: 'common.white',
+        fontSize: 14,
+        fontWeight: 500,
+        lineHeight: '20px',
+        letterSpacing: 0.1,
+        '&:hover': {
+          bgcolor: theme.space.appColors.calendar,
+          filter: 'brightness(0.92)'
+        }
+      })}
+    >
+      {label}
+    </Button>
   )
 }
 

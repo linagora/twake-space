@@ -295,6 +295,52 @@ describe('FeedPanel', () => {
     expect(within(card).queryByText(/waiting/)).not.toBeInTheDocument()
   })
 
+  it('says how long an event lasts, and marks a call with a Visio chip', async () => {
+    renderFeed([
+      {
+        ...event,
+        state: {
+          ...event.state,
+          end: '2026-10-09T10:30:00Z',
+          meeting: { room: 'abc-defg-hij' }
+        }
+      }
+    ])
+
+    const card = await screen.findByRole('article', {
+      name: 'Someone: Roadmap review'
+    })
+    expect(within(card).getByText(/· 1 hour 30 minutes/)).toBeInTheDocument()
+    expect(within(card).getByText('Visio')).toBeInTheDocument()
+    expect(
+      within(card).getByRole('button', { name: 'Join meeting' })
+    ).toHaveTextContent('Join')
+  })
+
+  it('shows no Visio chip or Join button on an event without a room', async () => {
+    renderFeed([event])
+
+    const card = await screen.findByRole('article', {
+      name: 'Someone: Roadmap review'
+    })
+    expect(within(card).getByText(/· 1 hour/)).toBeInTheDocument()
+    expect(within(card).queryByText('Visio')).toBe(null)
+    expect(within(card).queryByRole('button', { name: 'Join meeting' })).toBe(
+      null
+    )
+  })
+
+  it('gives only the hour of an event that has no length', async () => {
+    renderFeed([
+      { ...event, state: { ...event.state, end: event.state.start } }
+    ])
+
+    const card = await screen.findByRole('article', {
+      name: 'Someone: Roadmap review'
+    })
+    expect(within(card).queryByText(/·\s*·/)).toBe(null)
+  })
+
   it("joins an event's Meet room, and shares its link", async () => {
     const writeText = vi.fn<(text: string) => Promise<void>>(() =>
       Promise.resolve()

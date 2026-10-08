@@ -288,7 +288,9 @@
       "allDay": "Весь день",
       "movedFrom": "Перенесено с %{time}",
       "proposed": "%{by} предлагает %{time}",
-      "rsvp": "%{accepted} да · %{tentative} возможно · %{declined} нет · %{pending} ждут ответа"
+      "rsvp": "%{accepted} да · %{tentative} возможно · %{declined} нет · %{pending} ждут ответа",
+      "join": "Войти",
+      "visio": "Visio"
     },
     "loading": "Загрузка ленты",
     "loadFailed": "Не удалось загрузить ленту.",

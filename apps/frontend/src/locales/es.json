@@ -288,7 +288,9 @@
       "allDay": "Todo el día",
       "movedFrom": "Movido desde %{time}",
       "proposed": "%{by} propone %{time}",
-      "rsvp": "%{accepted} sí · %{tentative} quizás · %{declined} no · %{pending} pendientes"
+      "rsvp": "%{accepted} sí · %{tentative} quizás · %{declined} no · %{pending} pendientes",
+      "join": "Unirse",
+      "visio": "Visio"
     },
     "loading": "Cargando novedades",
     "loadFailed": "No se pudieron cargar las novedades.",
