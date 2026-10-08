@@ -300,6 +300,18 @@ Deletes the post and its reactions. Its author only, otherwise `403 {"error":"no
 
 Takes the caller's reaction back. Answers `204`.
 
+## Meetings
+
+### POST /spaces/:spaceId/meetings
+
+Asks the calendar to schedule a video meeting in the space's team calendar, as described in [Events](events.md#meeting-requests).
+
+- Body: `title` (1 to 255 characters, trimmed), `start` and `end` (ISO 8601 with an offset, `end` after `start` and at most 24 hours later), `timezone` (IANA name), `description` (up to 4000 characters, optional) and `uid` (UUID, optional).
+- A session only. Editors and admins, otherwise `403 {"error":"cannot_schedule"}`.
+- `409 {"error":"no_calendar"}` when the calendar has not provisioned the space yet.
+- `503 {"error":"unavailable"}` when RabbitMQ does not confirm the request, or no consumer is bound to it.
+- Answers `202 {"uid":"<uuid>"}`. The meeting shows up as the feed card of the calendar event with that UID. A retry sends the same `uid`, so the calendar creates one meeting.
+
 ## Live stream
 
 ### GET /stream

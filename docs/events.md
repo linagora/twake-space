@@ -136,6 +136,34 @@ A person sent without a `uuid` (a deletion ldap-rest replays carries none) is ma
 
 Upserts and removals of members, groups and names send a `spaces` live event to the members concerned.
 
+## Meeting requests
+
+[`POST /spaces/:spaceId/meetings`](api.md#post-spacesspaceidmeetings) publishes a `com.twake.space.meeting.requested.v1` CloudEvent on the `twake-space` topic exchange, routing key equal to the type. The message is persistent, sent with publisher confirms and `mandatory`, so the route fails when no queue is bound. The calendar side service consumes it, creates the Meet room and the event as the organizer, and its `event.created` activity event brings the card.
+
+```json
+{
+  "specversion": "1.0",
+  "id": "<uuid>",
+  "source": "twake://space",
+  "type": "com.twake.space.meeting.requested.v1",
+  "time": "2026-10-08T10:00:00.000Z",
+  "twakeorg": "<organization id>",
+  "twakeactorid": "<user uuid>",
+  "twakeactor": "alice@example.com",
+  "data": {
+    "uid": "<uuid>",
+    "container": { "kind": "calendar", "id": "<team calendar id>" },
+    "title": "Design review",
+    "start": "2026-10-08T12:30:00+02:00",
+    "end": "2026-10-08T13:00:00+02:00",
+    "timezone": "Europe/Paris",
+    "description": "Last pass on the mockups"
+  }
+}
+```
+
+`data.uid` is the calendar event's UID. A retry publishes the same UID with a new `id`.
+
 ## Activity events
 
 ### Resources provisioned by apps

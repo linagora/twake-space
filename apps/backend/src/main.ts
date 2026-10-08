@@ -28,6 +28,10 @@ import { registerTransactionRoutes } from './modules/feed/transactions.ts'
 import { listenForLive } from './modules/live/notify.ts'
 import { registerLiveRoutes } from './modules/live/routes.ts'
 import { createStreams } from './modules/live/streams.ts'
+import {
+  registerMeetingRoutes,
+  type Publish
+} from './modules/meetings/routes.ts'
 import { registerNotificationRoutes } from './modules/notifications/routes.ts'
 import {
   meetingOrganizations,
@@ -48,6 +52,8 @@ import { registerTokenRoutes } from './modules/tokens/routes.ts'
 // balancer stops routing here first. Both fit the default 30 s grace period.
 const DRAIN_MS = 5000
 const SHUTDOWN_DEADLINE_MS = 25_000
+
+const PUBLISH_TIMEOUT_MS = 10_000
 
 const config = loadConfig()
 const logger = pino({ level: config.LOG_LEVEL })
@@ -116,6 +122,13 @@ registerTokenRoutes(server, { db, authorize, directory })
 registerDirectoryRoutes(server, { authorize, directory })
 registerNotificationRoutes(server, { db, authorize })
 registerFeedRoutes(server, { db, authorize })
+// Publishing reuses the consumer's client, which starts after the server listens.
+let publish: Publish = () => Promise.reject(new Error('not connected yet'))
+registerMeetingRoutes(server, {
+  db,
+  authorize,
+  publish: (...message) => publish(...message)
+})
 registerSettingsRoutes(server, { db, authorize })
 registerTransactionRoutes(server, { db, localpart: config.MATRIX_LOCALPART })
 const streams = createStreams()
@@ -136,6 +149,24 @@ const handle = createMessageHandler({
   logger
 })
 const consumer = await startConsumer(config, logger, handle, consumerStatus)
+// Mandatory: unroutable while no calendar consumer is bound, so the route
+// fails instead of dropping the meeting. The client waits for the broker
+// without end and retries for over a minute, longer than a request should
+// hang; a publish that lands late is harmless, the retry carries its uid.
+publish = (routingKey, event, messageId) => {
+  if (!consumer.isConnected()) {
+    return Promise.reject(new Error('RabbitMQ is disconnected'))
+  }
+  return Promise.race([
+    consumer.publish(config.amqp.twakeSpaceExchange, routingKey, event, {
+      messageId,
+      mandatory: true
+    }),
+    delay(PUBLISH_TIMEOUT_MS, undefined, { ref: false }).then(() => {
+      throw new Error('RabbitMQ did not confirm in time')
+    })
+  ])
+}
 isAlive = consumerAlive(consumer, consumerStatus)
 const stopParked = scheduleParkedRetries(
   db,
