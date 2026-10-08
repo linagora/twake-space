@@ -29,6 +29,7 @@ import {
 import {
   AddReactionIcon,
   ChevronDownIcon,
+  EmojiIcon,
   MoreVertIcon,
   Videocam
 } from '@/ds/icons'
@@ -1023,6 +1024,8 @@ export function DateTile({
 export function FeedComposer({
   label,
   sendLabel,
+  emojiLabel,
+  emojis,
   value,
   onChange,
   onSend,
@@ -1030,12 +1033,28 @@ export function FeedComposer({
 }: {
   label: string
   sendLabel: string
+  emojiLabel: string
+  emojis: string[]
   value: string
   onChange: (value: string) => void
   onSend: () => void
   disabled: boolean
 }): ReactElement {
   const empty = value.trim() === ''
+  const field = useRef<HTMLTextAreaElement>(null)
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  // The emoji goes where the caret is, and the caret stays after it.
+  const insert = (emoji: string) => {
+    const input = field.current
+    const start = input?.selectionStart ?? value.length
+    const end = input?.selectionEnd ?? value.length
+    onChange(value.slice(0, start) + emoji + value.slice(end))
+    const caret = start + emoji.length
+    requestAnimationFrame(() => {
+      input?.focus()
+      input?.setSelectionRange(caret, caret)
+    })
+  }
   return (
     <Box
       component="form"
@@ -1049,6 +1068,7 @@ export function FeedComposer({
         multiline
         maxRows={6}
         placeholder={label}
+        inputRef={field}
         inputProps={{ 'aria-label': label, maxLength: 4000 }}
         value={value}
         onChange={event => {
@@ -1060,16 +1080,72 @@ export function FeedComposer({
             event.currentTarget.closest('form')?.requestSubmit()
           }
         }}
+        endAdornment={
+          <IconButton
+            size="small"
+            aria-label={emojiLabel}
+            aria-haspopup="menu"
+            onClick={event => {
+              setAnchor(event.currentTarget)
+            }}
+            sx={{
+              alignSelf: 'flex-end',
+              width: 28,
+              height: 28,
+              p: 0,
+              // Taller than a line, the button must not stretch the field.
+              m: '-2px 0 -2px 8px',
+              color: 'text.secondary'
+            }}
+          >
+            <Icon icon={EmojiIcon} size={20} />
+          </IconButton>
+        }
         sx={{
           flex: '1 1 auto',
+          minHeight: 44,
           border: 1,
-          borderColor: 'divider',
-          borderRadius: '24px',
-          px: 2,
-          py: 1,
-          fontSize: 16
+          borderColor: 'border.main',
+          borderRadius: '22px',
+          pl: 2,
+          pr: '4px',
+          py: '10px',
+          fontSize: 17,
+          lineHeight: '24px',
+          letterSpacing: -0.15,
+          '& textarea::placeholder': { color: 'text.secondary', opacity: 1 }
         }}
       />
+      <Menu
+        anchorEl={anchor}
+        open={anchor !== null}
+        onClose={() => {
+          setAnchor(null)
+        }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        sx={{
+          '& .MuiList-root': {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(6, 44px)'
+          },
+          '& .MuiMenuItem-root': { minWidth: 0, px: 0 }
+        }}
+      >
+        {emojis.map(emoji => (
+          <MenuItem
+            key={emoji}
+            aria-label={emoji}
+            onClick={() => {
+              setAnchor(null)
+              insert(emoji)
+            }}
+            sx={{ fontSize: 20, justifyContent: 'center' }}
+          >
+            {emoji}
+          </MenuItem>
+        ))}
+      </Menu>
       <IconButton
         type="submit"
         aria-label={sendLabel}
