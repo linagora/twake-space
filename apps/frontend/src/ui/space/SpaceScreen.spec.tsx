@@ -206,44 +206,14 @@ describe('SpaceScreen', () => {
     ).toBeInTheDocument()
   })
 
-  it('folds the cover as the feed scrolls down, until it is back at its start', async () => {
-    renderAt('/spaces/a1/feed', roadmap, [
-      {
-        id: 'p1',
-        kind: 'post',
-        category: 'messages',
-        time: '2026-10-07T08:00:00.000Z',
-        updatedAt: '2026-10-07T08:00:00.000Z',
-        reactions: [],
-        author: { type: 'user', id: 'u-bob', name: 'Bob' },
-        body: 'Hello',
-        editedAt: null
-      }
-    ])
-    const list = (await screen.findByText('Hello')).closest('article')
-      ?.parentElement?.parentElement
-    if (!list) throw new Error('no feed list')
+  it('shows the banner on the home, not on the feed', async () => {
+    renderAt('/spaces/a1/home')
+    await screen.findByRole('tab', { name: 'Home', selected: true })
     expect(document.querySelector('main img')).not.toBeNull()
 
-    fireEvent.scroll(list, { target: { scrollTop: 200 } })
-    await waitFor(() => {
-      expect(document.querySelector('main img')).toBeNull()
-    })
-    fireEvent.scroll(list, { target: { scrollTop: 100 } })
-    expect(document.querySelector('main img')).toBeNull()
-
-    openTab('Tasks')
-    await screen.findByRole('tab', { name: 'Tasks', selected: true })
     openTab('Feed')
-    const back = (await screen.findByText('Hello')).closest('article')
-      ?.parentElement?.parentElement
-    if (!back) throw new Error('no feed list')
+    await screen.findByRole('tab', { name: 'Feed', selected: true })
     expect(document.querySelector('main img')).toBeNull()
-
-    fireEvent.scroll(back, { target: { scrollTop: 0 } })
-    await waitFor(() => {
-      expect(document.querySelector('main img')).not.toBeNull()
-    })
   })
 
   it("counts the space's members, and lets an admin manage them", async () => {

@@ -19,7 +19,7 @@ import {
   TileGrid,
   TileNumber
 } from '@/ds/Card'
-import { ScrollPanel } from '@/ds/Page'
+import { ScrollPanel, SpaceCover } from '@/ds/Page'
 import { Greeting } from '@/ui/home/Greeting'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useBadges } from '@/ui/space/Badges'
@@ -77,6 +77,7 @@ export function SpaceHome({
 
   return (
     <ScrollPanel>
+      <SpaceCover />
       <div>
         <Greeting title={space.name} level="h2" />
       </div>
