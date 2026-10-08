@@ -37,6 +37,7 @@ export function memorySpaces(
 ): SpacesService {
   let spaces = seed.map(space => ({ ...space }))
   const find = (id: string) => spaces.find(space => space.id === id)
+  const banners = new Map<string, Blob>()
 
   // Runs a change on a space the caller administers, like the backend.
   const write = (id: string, change: (space: Space) => void) => {
@@ -66,6 +67,7 @@ export function memorySpaces(
         chat: true,
         mail: false,
         homeserverUrl: spaces[0]?.homeserverUrl ?? null,
+        banner: null,
         members: [],
         groups: [],
         // A new space's apps are still preparing its resources.
@@ -83,6 +85,15 @@ export function memorySpaces(
     edit: (id, change) =>
       write(id, space => {
         Object.assign(space, change)
+      }),
+    banner: id => {
+      const banner = banners.get(id)
+      return banner ? Promise.resolve(banner) : refuse(404, 'not_found')
+    },
+    setBanner: (id, image) =>
+      write(id, space => {
+        banners.set(id, image)
+        space.banner = new Date().toISOString()
       }),
     remove: id =>
       write(id, () => {

@@ -66,6 +66,7 @@ export const seedSpaces: Space[] = [
     chat: true,
     mail: true,
     homeserverUrl: HOMESERVER,
+    banner: null,
     members: [
       member('alice', 'admin'),
       member('bob', 'editor'),
@@ -91,6 +92,7 @@ export const seedSpaces: Space[] = [
     chat: true,
     mail: false,
     homeserverUrl: HOMESERVER,
+    banner: null,
     members: [member('carol', 'admin'), member('alice', 'editor')],
     groups: [designers('editor')],
     resources: [
@@ -112,6 +114,7 @@ export const seedSpaces: Space[] = [
     chat: false,
     mail: false,
     homeserverUrl: null,
+    banner: null,
     members: [member('dave', 'admin'), member('alice', 'viewer')],
     groups: [],
     resources: [

@@ -21,6 +21,7 @@ const roadmap: Space = {
   chat: false,
   mail: true,
   homeserverUrl: null,
+  banner: null,
   members: [],
   groups: [],
   resources: [

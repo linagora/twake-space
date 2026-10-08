@@ -18,6 +18,7 @@ const roadmap: Space = {
   chat: true,
   mail: true,
   homeserverUrl: 'https://matrix.acme.test',
+  banner: null,
   members: [
     {
       id: 'u-alice',

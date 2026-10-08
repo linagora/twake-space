@@ -23,6 +23,7 @@ const space: Space = {
   chat: true,
   mail: true,
   homeserverUrl: 'https://matrix.acme.test',
+  banner: null,
   members: [],
   groups: [],
   resources: [
