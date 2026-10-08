@@ -158,14 +158,16 @@ describe('loadConfig: RabbitMQ topology', () => {
       AMQP_DELIVERY_LIMIT: '5',
       AMQP_ACTIVITY_EXCHANGE: 'apps',
       AMQP_B2B_EXCHANGE: 'b2b-saas',
-      AMQP_SETTINGS_EXCHANGE: 'common-settings'
+      AMQP_SETTINGS_EXCHANGE: 'common-settings',
+      AMQP_TWAKE_SPACE_EXCHANGE: 'space-commands'
     })
 
     expect(amqp).toMatchObject({
       queue: 'space-events',
       deadLetterExchange: 'space-events.dlx',
       deliveryLimit: 5,
-      activityExchange: 'apps'
+      activityExchange: 'apps',
+      twakeSpaceExchange: 'space-commands'
     })
     expect(amqp.events['b2b.group.updated'].exchange).toBe('b2b-saas')
     expect(amqp.events['user.settings.updated'].exchange).toBe(

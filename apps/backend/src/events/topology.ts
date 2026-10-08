@@ -69,6 +69,7 @@ export const amqpTopology = z
     AMQP_B2B_EXCHANGE: z.string().min(1).default('b2b'),
     AMQP_ADMIN_PANEL_EXCHANGE: z.string().min(1).default('admin-panel'),
     AMQP_SETTINGS_EXCHANGE: z.string().min(1).default('settings'),
+    AMQP_TWAKE_SPACE_EXCHANGE: z.string().min(1).default('twake-space'),
     AMQP_EVENTS: overrides.default({})
   })
   .transform((env, ctx) => {
@@ -116,6 +117,7 @@ export const amqpTopology = z
           env.AMQP_DEAD_LETTER_EXCHANGE ?? `${env.AMQP_QUEUE}.dlx`,
         deliveryLimit: env.AMQP_DELIVERY_LIMIT,
         activityExchange: env.AMQP_ACTIVITY_EXCHANGE,
+        twakeSpaceExchange: env.AMQP_TWAKE_SPACE_EXCHANGE,
         events
       }
     }
