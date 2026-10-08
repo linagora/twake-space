@@ -396,7 +396,21 @@
     "minimize": "Minimize",
     "maximize": "Maximize",
     "restore": "Restore",
-    "leave": "Leave the meeting"
+    "leave": "Leave the meeting",
+    "schedule": "Schedule a meeting",
+    "meetingTitle": "Title",
+    "date": "Date",
+    "time": "Start time",
+    "duration": "Lasts %{minutes} minutes",
+    "description": "Description",
+    "scheduleAction": "Schedule",
+    "scheduled": "Meeting scheduled. It shows in the feed once the calendar has created it.",
+    "refusal": {
+      "cannotSchedule": "Only editors and admins can schedule a meeting.",
+      "noCalendar": "The space's calendar is not ready yet.",
+      "unavailable": "The calendar cannot be reached. Try again in a moment.",
+      "failed": "The meeting could not be scheduled. Try again."
+    }
   },
   "assistant": {
     "title": "Ask Twake AI",

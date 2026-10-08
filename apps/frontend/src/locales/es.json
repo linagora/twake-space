@@ -396,7 +396,21 @@
     "minimize": "Minimizar",
     "maximize": "Maximizar",
     "restore": "Restaurar",
-    "leave": "Salir de la reunión"
+    "leave": "Salir de la reunión",
+    "schedule": "Programar una reunión",
+    "meetingTitle": "Título",
+    "date": "Fecha",
+    "time": "Hora de inicio",
+    "duration": "Dura %{minutes} minutos",
+    "description": "Descripción",
+    "scheduleAction": "Programar",
+    "scheduled": "Reunión programada. Aparecerá en el feed cuando el calendario la haya creado.",
+    "refusal": {
+      "cannotSchedule": "Solo los editores y administradores pueden programar una reunión.",
+      "noCalendar": "El calendario del espacio aún no está listo.",
+      "unavailable": "No se puede acceder al calendario. Inténtalo de nuevo en un momento.",
+      "failed": "No se pudo programar la reunión. Inténtalo de nuevo."
+    }
   },
   "assistant": {
     "title": "Preguntar a Twake AI",

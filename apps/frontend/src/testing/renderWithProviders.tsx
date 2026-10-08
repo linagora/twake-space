@@ -6,6 +6,7 @@ import type { DirectoryService } from '@/application/directory'
 import type { FeedbackService } from '@/application/feedback'
 import type { FeedService } from '@/application/feed'
 import type { LiveService } from '@/application/live'
+import type { MeetingsService } from '@/application/meetings'
 import type { SessionService } from '@/application/session'
 import type { SettingsService } from '@/application/settings'
 import type { SpacesService } from '@/application/spaces'
@@ -34,6 +35,7 @@ interface Options {
   directory?: DirectoryService
   live?: LiveService
   feed?: FeedService
+  meetings?: MeetingsService
   feedback?: FeedbackService | null
   path?: string
   tasksUrl?: string | null
@@ -55,6 +57,7 @@ function withProviders(
     directory = fakeDirectory(),
     live = fakeLive(),
     feed = fakeFeed(),
+    meetings = { schedule: () => Promise.resolve() },
     feedback = null,
     tasksUrl = 'https://tasks.test/',
     mailUrl = 'https://mail.test/',
@@ -75,6 +78,7 @@ function withProviders(
         directory,
         live,
         feed,
+        meetings,
         feedback,
         apiUrl: 'https://space.test/api/',
         tasksUrl,

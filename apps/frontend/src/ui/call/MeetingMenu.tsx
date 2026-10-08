@@ -1,5 +1,5 @@
-import { Icon, Link } from '@linagora/twake-icons'
-import { IconButton, Menu } from '@linagora/twake-mui'
+import { Calendar, Icon, Link } from '@linagora/twake-icons'
+import { IconButton, Menu, Snackbar } from '@linagora/twake-mui'
 import { useState, type ReactElement } from 'react'
 import { useNavigate } from 'react-router'
 
@@ -10,6 +10,7 @@ import { Videocam } from '@/ds/icons'
 import { MenuEntry } from '@/ds/Menu'
 import { useCall } from '@/ui/call/CallContext'
 import { JoinMeetingDialog } from '@/ui/call/JoinMeetingDialog'
+import { ScheduleMeetingDialog } from '@/ui/call/ScheduleMeetingDialog'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useAppUrls } from '@/ui/space/useAppUrls'
@@ -23,8 +24,11 @@ export function MeetingMenu({ space }: { space: Space }): ReactElement | null {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [joining, setJoining] = useState(false)
   const { leave } = useCall()
+  const [scheduling, setScheduling] = useState(false)
+  const [scheduled, setScheduled] = useState(false)
   const chatCall = appUrls.chat !== null && isTabReady(space, 'chat')
-  if (!meetUrl && !chatCall) return null
+  const canSchedule = space.role !== 'viewer' && isTabReady(space, 'calendar')
+  if (!meetUrl && !chatCall && !canSchedule) return null
   const close = (): void => {
     setAnchor(null)
   }
@@ -54,6 +58,17 @@ export function MeetingMenu({ space }: { space: Space }): ReactElement | null {
             {t('call.start')}
           </MenuEntry>
         )}
+        {canSchedule && (
+          <MenuEntry
+            icon={<Icon icon={Calendar} />}
+            onClick={() => {
+              close()
+              setScheduling(true)
+            }}
+          >
+            {t('call.schedule')}
+          </MenuEntry>
+        )}
         {meetUrl && (
           <MenuEntry
             icon={<Icon icon={Link} />}
@@ -74,6 +89,26 @@ export function MeetingMenu({ space }: { space: Space }): ReactElement | null {
           }}
         />
       )}
+      {scheduling && (
+        <ScheduleMeetingDialog
+          space={space}
+          onClose={() => {
+            setScheduling(false)
+          }}
+          onScheduled={() => {
+            setScheduling(false)
+            setScheduled(true)
+          }}
+        />
+      )}
+      <Snackbar
+        open={scheduled}
+        autoHideDuration={6000}
+        onClose={() => {
+          setScheduled(false)
+        }}
+        message={t('call.scheduled')}
+      />
     </>
   )
 }

@@ -396,7 +396,21 @@
     "minimize": "Thu nhỏ",
     "maximize": "Phóng to",
     "restore": "Khôi phục",
-    "leave": "Rời cuộc họp"
+    "leave": "Rời cuộc họp",
+    "schedule": "Lên lịch cuộc họp",
+    "meetingTitle": "Tiêu đề",
+    "date": "Ngày",
+    "time": "Giờ bắt đầu",
+    "duration": "Kéo dài %{minutes} phút",
+    "description": "Mô tả",
+    "scheduleAction": "Lên lịch",
+    "scheduled": "Đã lên lịch cuộc họp. Cuộc họp sẽ hiện trong bảng tin khi lịch đã tạo xong.",
+    "refusal": {
+      "cannotSchedule": "Chỉ người chỉnh sửa và quản trị viên mới có thể lên lịch cuộc họp.",
+      "noCalendar": "Lịch của không gian chưa sẵn sàng.",
+      "unavailable": "Không thể kết nối tới lịch. Vui lòng thử lại sau giây lát.",
+      "failed": "Không thể lên lịch cuộc họp. Vui lòng thử lại."
+    }
   },
   "assistant": {
     "title": "Hỏi Twake AI",

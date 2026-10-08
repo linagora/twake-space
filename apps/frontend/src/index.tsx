@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client'
 import { backend } from '@/adapters/http/backend'
 import { httpDirectory } from '@/adapters/http/httpDirectory'
 import { httpFeed } from '@/adapters/http/httpFeed'
+import { httpMeetings } from '@/adapters/http/httpMeetings'
 import { httpSettings } from '@/adapters/http/httpSettings'
 import { httpSpaces } from '@/adapters/http/httpSpaces'
 import { httpTokens } from '@/adapters/http/httpTokens'
@@ -32,6 +33,7 @@ const services = {
   directory: httpDirectory(api),
   live: liveStream(api),
   feed: httpFeed(api),
+  meetings: httpMeetings(api),
   feedback,
   apiUrl,
   tasksUrl: window.TASKS_URL ?? null,

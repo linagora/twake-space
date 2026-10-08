@@ -396,7 +396,21 @@
     "minimize": "Minimieren",
     "maximize": "Maximieren",
     "restore": "Wiederherstellen",
-    "leave": "Besprechung verlassen"
+    "leave": "Besprechung verlassen",
+    "schedule": "Besprechung planen",
+    "meetingTitle": "Titel",
+    "date": "Datum",
+    "time": "Beginn",
+    "duration": "Dauert %{minutes} Minuten",
+    "description": "Beschreibung",
+    "scheduleAction": "Planen",
+    "scheduled": "Besprechung geplant. Sie erscheint im Feed, sobald der Kalender sie erstellt hat.",
+    "refusal": {
+      "cannotSchedule": "Nur Bearbeiter und Administratoren können eine Besprechung planen.",
+      "noCalendar": "Der Kalender des Bereichs ist noch nicht bereit.",
+      "unavailable": "Der Kalender ist nicht erreichbar. Versuchen Sie es gleich noch einmal.",
+      "failed": "Die Besprechung konnte nicht geplant werden. Versuchen Sie es erneut."
+    }
   },
   "assistant": {
     "title": "Twake AI fragen",
