@@ -324,7 +324,16 @@
     "deletedUser": "Deleted user",
     "someone": "Someone",
     "fromDrive": "From Drive",
-    "emoji": "Add an emoji"
+    "emoji": "Add an emoji",
+    "members": {
+      "title": "Space members",
+      "show": "Show the members",
+      "hide": "Hide the members",
+      "search": "Search by name",
+      "add": "Add member",
+      "count": "%{smart_count} member |||| %{smart_count} members",
+      "none": "No member found."
+    }
   },
   "embed": {
     "overlay": "%{app} windows"

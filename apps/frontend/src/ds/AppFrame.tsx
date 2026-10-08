@@ -253,7 +253,7 @@ export function NameAvatar({
   label
 }: {
   name: string
-  size: 'xs' | 's' | 'm' | 'l'
+  size: 'xs' | 's' | 'm' | 'l' | number
   color?: string | null
   label?: string
 }): ReactElement {
