@@ -120,11 +120,7 @@ function Result({ item }: { item: FeedItem }): ReactElement {
     <>
       <ListItemAvatar>
         {isApp(app) ? (
-          <AppAvatar
-            icon={APPS[app].icon}
-            color={APPS[app].color}
-            label={appName ?? ''}
-          />
+          <AppAvatar icon={APPS[app].icon} app={app} label={appName ?? ''} />
         ) : (
           <NameAvatar name={actor ?? '?'} size="m" />
         )}
