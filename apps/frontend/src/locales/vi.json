@@ -62,7 +62,12 @@
     "spaceWithCount": "%{name}, %{smart_count} mới",
     "searchSpaces": "Tìm trong không gian của bạn",
     "spaceName": "Tên không gian",
-    "noSpaceFound": "Không tìm thấy không gian nào"
+    "noSpaceFound": "Không tìm thấy không gian nào",
+    "notificationPermission": {
+      "message": "Cho phép thông báo cuộc gọi và ứng dụng?",
+      "allow": "Cho phép",
+      "dismiss": "Để sau"
+    }
   },
   "search": {
     "placeholder": "Tìm kiếm",

@@ -54,7 +54,13 @@ const other: Space = {
 
 const CHAT = 'https://chat.test'
 
-const notifications = { show: vi.fn(), close: vi.fn() }
+const notifications = {
+  isWaiting: () => false,
+  subscribe: () => () => undefined,
+  allow: vi.fn(),
+  show: vi.fn(),
+  close: vi.fn()
+}
 
 function Path() {
   const { pathname, search } = useLocation()

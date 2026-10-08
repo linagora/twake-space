@@ -41,6 +41,7 @@ import { EmbeddedApps } from '@/ui/space/EmbeddedApps'
 import { useFillPage } from '@/ui/space/FillPage'
 import { useSession } from '@/ui/session/SessionGate'
 import { useSpaceList, useSpaces } from '@/ui/spaces/queries'
+import { NotificationPermissionPrompt } from '@/ui/shell/NotificationPermissionPrompt'
 
 export function AppShell(): ReactElement {
   const { t } = useI18n()
@@ -137,6 +138,7 @@ export function AppShell(): ReactElement {
           <Outlet />
         </AssistantContext>
         <EmbeddedApps />
+        <NotificationPermissionPrompt />
         <CallWindow />
         <AppFeedback />
         {creating && (

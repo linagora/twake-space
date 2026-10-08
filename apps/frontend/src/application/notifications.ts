@@ -11,4 +11,13 @@ export interface SystemNotifications {
     onClick: () => void
   ) => void
   close: (app: string, tag: string) => void
+  /**
+   * Whether a notification waits for the permission of the browser, which
+   * it asks on a user gesture only: a click in an app's frame is not one
+   * for this page
+   */
+  isWaiting: () => boolean
+  subscribe: (listener: () => void) => () => void
+  /** Asks the permission now: from a click on this page */
+  allow: () => void
 }

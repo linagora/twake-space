@@ -62,7 +62,12 @@
     "spaceWithCount": "%{name}, %{smart_count} nouveau |||| %{name}, %{smart_count} nouveaux",
     "searchSpaces": "Rechercher dans vos espaces",
     "spaceName": "Nom de l'espace",
-    "noSpaceFound": "Aucun espace trouvé"
+    "noSpaceFound": "Aucun espace trouvé",
+    "notificationPermission": {
+      "message": "Autoriser les notifications des appels et des apps ?",
+      "allow": "Autoriser",
+      "dismiss": "Plus tard"
+    }
   },
   "search": {
     "placeholder": "Rechercher",
