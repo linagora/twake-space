@@ -56,7 +56,7 @@
     "noPinned": "Fissa uno spazio dal suo menu",
     "noRecent": "Qui compaiono gli spazi che apri",
     "title": "Spazio",
-    "allSpaces": "Tutti gli spazi condivisi",
+    "allSpaces": "Tutti gli spazi",
     "spaceWithCount": "%{name}, %{smart_count} nuovo |||| %{name}, %{smart_count} nuovi",
     "searchSpaces": "Cerca nei tuoi spazi",
     "spaceName": "Nome dello spazio",
