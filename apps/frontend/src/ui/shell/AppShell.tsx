@@ -1,4 +1,4 @@
-import { Cube, Icon } from '@linagora/twake-icons'
+import { Icon } from '@linagora/twake-icons'
 import {
   ListItem,
   ListItemText,
@@ -27,7 +27,7 @@ import {
   SidebarSection
 } from '@/ds/AppFrame'
 import { FilterListIcon } from '@/ds/FilterListIcon'
-import { AddIcon } from '@/ds/icons'
+import { AddIcon, SpaceCubeIcon } from '@/ds/icons'
 import { NavDestination } from '@/ds/NavDestination'
 import { AssistantContext, AssistantPanel } from '@/ui/assistant/AssistantPanel'
 import { CallProvider } from '@/ui/call/CallContext'
@@ -183,7 +183,7 @@ function AppNav(): ReactElement {
     <SidebarNav>
       <NavItem>
         <RouteNavLink to="/" end>
-          <NavIcon icon={Cube} />
+          <NavIcon icon={SpaceCubeIcon} />
           <NavText>{t('shell.allSpaces')}</NavText>
         </RouteNavLink>
       </NavItem>

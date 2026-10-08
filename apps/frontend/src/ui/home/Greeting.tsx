@@ -1,10 +1,11 @@
-import { Calendar, Icon } from '@linagora/twake-icons'
+import { Icon } from '@linagora/twake-icons'
 import { Typography } from '@linagora/twake-mui'
 import type { ReactElement, ReactNode } from 'react'
 
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
 import { useCommonSettings } from '@/ui/settings/useCommonSettings'
+import { CalendarIcon } from '@/ds/icons'
 
 function greetingKey(hour: number): 'morning' | 'afternoon' | 'evening' {
   if (hour < 12) return 'morning'
@@ -55,7 +56,7 @@ export function Greeting({ title }: { title: ReactNode }): ReactElement {
           component="p"
           className="u-flex u-flex-items-center u-ml-auto"
         >
-          <Icon icon={Calendar} className="u-mr-half" />
+          <Icon icon={CalendarIcon} size={16} className="u-mr-half" />
           {date}
         </Typography>
       </div>
