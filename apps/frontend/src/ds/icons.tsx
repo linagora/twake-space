@@ -12,6 +12,16 @@ export function Home(props: SVGAttributes<SVGSVGElement>): ReactElement {
   )
 }
 
+// Material's add_24px, as in the mockups: arms of 2px. Twake's Plus is
+// bolder, and drawn for a 14px box.
+export function AddIcon(props: SVGAttributes<SVGSVGElement>): ReactElement {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M20 13H13V20H11V13H4V11H11V4H13V11H20V13Z" />
+    </svg>
+  )
+}
+
 // twake-icons has no video camera.
 export function Videocam(props: SVGAttributes<SVGSVGElement>): ReactElement {
   return (

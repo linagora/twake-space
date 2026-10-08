@@ -7,6 +7,7 @@ import { pinnedAndRecent, type SpaceSummary } from '@/application/spaces'
 import spaceTile from '@/assets/space.svg'
 import { NameAvatar } from '@/ds/AppFrame'
 import { CardGrid, CreateCard, MemberAvatars, SpaceCard } from '@/ds/Card'
+import { AddIcon } from '@/ds/icons'
 import { LoadingRows, Page, TileEmpty } from '@/ds/Page'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
 import { Greeting } from '@/ui/home/Greeting'
@@ -91,7 +92,7 @@ export function HomeScreen(): ReactElement {
           </Typography>
           <CardGrid>
             <CreateCard
-              icon={<Icon icon={Plus} size={24} />}
+              icon={<Icon icon={AddIcon} size={24} />}
               title={t('spaces.createCard')}
               text={t('spaces.createHint')}
               onClick={startCreating}

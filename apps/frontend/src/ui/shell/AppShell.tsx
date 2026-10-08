@@ -1,6 +1,5 @@
-import { Cube, Icon, Plus } from '@linagora/twake-icons'
+import { Cube, Icon } from '@linagora/twake-icons'
 import {
-  IconButton,
   ListItem,
   ListItemText,
   NavIcon,
@@ -20,12 +19,15 @@ import {
 import {
   AppFrame,
   NavAvatar,
+  SidebarAddButton,
+  SidebarFilterButton,
   SidebarHeader,
   SidebarNav,
   SidebarSearch,
   SidebarSection
 } from '@/ds/AppFrame'
 import { FilterListIcon } from '@/ds/FilterListIcon'
+import { AddIcon } from '@/ds/icons'
 import { NavDestination } from '@/ds/NavDestination'
 import { AssistantContext, AssistantPanel } from '@/ui/assistant/AssistantPanel'
 import { CallProvider } from '@/ui/call/CallContext'
@@ -78,7 +80,7 @@ export function AppShell(): ReactElement {
               title={t('shell.title')}
               action={
                 <>
-                  <IconButton
+                  <SidebarFilterButton
                     size="small"
                     aria-label={t('shell.searchSpaces')}
                     aria-pressed={query !== null}
@@ -87,8 +89,8 @@ export function AppShell(): ReactElement {
                     }}
                   >
                     <Icon icon={FilterListIcon} size={24} />
-                  </IconButton>
-                  <IconButton
+                  </SidebarFilterButton>
+                  <SidebarAddButton
                     size="medium"
                     color="primary"
                     aria-label={t('spaces.create')}
@@ -96,8 +98,8 @@ export function AppShell(): ReactElement {
                       setCreating(true)
                     }}
                   >
-                    <Icon icon={Plus} size={24} />
-                  </IconButton>
+                    <Icon icon={AddIcon} size={24} />
+                  </SidebarAddButton>
                 </>
               }
             />
