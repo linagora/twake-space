@@ -183,7 +183,7 @@ describe('SpaceScreen', () => {
     expect(document.querySelector('main img')).toBeNull()
   })
 
-  it('keeps the cover folded across tabs once the feed scrolls', async () => {
+  it('folds the cover as the feed scrolls down, until it is back at its start', async () => {
     renderAt('/spaces/a1/feed', roadmap, [
       {
         id: 'p1',
@@ -206,14 +206,21 @@ describe('SpaceScreen', () => {
     await waitFor(() => {
       expect(document.querySelector('main img')).toBeNull()
     })
-    fireEvent.scroll(list, { target: { scrollTop: 0 } })
+    fireEvent.scroll(list, { target: { scrollTop: 100 } })
     expect(document.querySelector('main img')).toBeNull()
 
     openTab('Tasks')
     await screen.findByRole('tab', { name: 'Tasks', selected: true })
     openTab('Feed')
-    await screen.findByText('Hello')
+    const back = (await screen.findByText('Hello')).closest('article')
+      ?.parentElement?.parentElement
+    if (!back) throw new Error('no feed list')
     expect(document.querySelector('main img')).toBeNull()
+
+    fireEvent.scroll(back, { target: { scrollTop: 0 } })
+    await waitFor(() => {
+      expect(document.querySelector('main img')).not.toBeNull()
+    })
   })
 
   it("shows the space's feed on the Feed tab, chat or not", async () => {
