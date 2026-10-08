@@ -31,6 +31,11 @@ export function browserNotifications(): SystemNotifications {
     const gesture = new AbortController()
     const ask = () => {
       gesture.abort()
+      // What waited is over (closed before the click): nothing to ask for
+      if (pending.size === 0) {
+        asking = false
+        return
+      }
       void Notification.requestPermission().then(permission => {
         asking = false
         if (permission === 'granted') {
