@@ -22,19 +22,11 @@ const Frame = styled(Layout, {
 })<{ belowBar: boolean; alone: boolean }>(({ theme, belowBar, alone }) => ({
   '--topBarHeight': belowBar ? TWAKE_BAR_HEIGHT : '0px',
   height: 'calc(100dvh - var(--topBarHeight))',
-  backgroundColor: '#e2eaf9',
-  backgroundImage: [
-    'radial-gradient(at 0% 0%, #faf5f7 0px, transparent 55%)',
-    'radial-gradient(at 100% 0%, #dde9ff 0px, transparent 55%)',
-    'radial-gradient(at 100% 100%, #e9f7f0 0px, transparent 55%)'
-  ].join(', '),
+  backgroundColor: theme.space.page.light.base,
+  backgroundImage: theme.space.page.light.layers.join(', '),
   ...theme.applyStyles('dark', {
-    backgroundColor: '#1a3146',
-    backgroundImage: [
-      'radial-gradient(at 0% 0%, #363648 0px, transparent 55%)',
-      'radial-gradient(at 100% 0%, #193745 0px, transparent 55%)',
-      'radial-gradient(at 100% 100%, #2e3648 0px, transparent 55%)'
-    ].join(', ')
+    backgroundColor: theme.space.page.dark.base,
+    backgroundImage: theme.space.page.dark.layers.join(', ')
   }),
   [theme.breakpoints.down('lg')]: {
     height: 'auto',
