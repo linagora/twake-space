@@ -381,5 +381,18 @@
     "done": "Xong",
     "refused": "Bị từ chối: %{reason}",
     "failed": "Không thể lưu thay đổi."
+  },
+  "call": {
+    "menu": "Cuộc họp video",
+    "join": "Tham gia cuộc họp",
+    "link": "Liên kết cuộc họp",
+    "linkHint": "URL hoặc mã 10 chữ cái",
+    "invalidLink": "Đây không phải là liên kết hoặc mã Twake Meet.",
+    "joinAction": "Tham gia cuộc họp",
+    "window": "Cuộc họp video",
+    "minimize": "Thu nhỏ",
+    "maximize": "Phóng to",
+    "restore": "Khôi phục",
+    "leave": "Rời cuộc họp"
   }
 }

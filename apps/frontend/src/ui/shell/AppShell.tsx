@@ -23,6 +23,8 @@ import {
 } from '@/ds/AppFrame'
 import { FilterListIcon } from '@/ds/FilterListIcon'
 import { NavDestination } from '@/ds/NavDestination'
+import { CallProvider } from '@/ui/call/CallContext'
+import { CallWindow } from '@/ui/call/CallWindow'
 import { AppFeedback } from '@/ui/feedback/AppFeedback'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
@@ -39,74 +41,77 @@ export function AppShell(): ReactElement {
   const home = useMatch('/') !== null
 
   return (
-    <AppFrame
-      topBar={<PlatformBar />}
-      bare={home}
-      sidebar={
-        <>
-          <SidebarHeader
-            title={t('shell.title')}
-            action={
-              <>
-                <IconButton
-                  aria-label={t('shell.searchSpaces')}
-                  aria-pressed={query !== null}
-                  onClick={() => {
-                    setQuery(query === null ? '' : null)
+    <CallProvider>
+      <AppFrame
+        topBar={<PlatformBar />}
+        bare={home}
+        sidebar={
+          <>
+            <SidebarHeader
+              title={t('shell.title')}
+              action={
+                <>
+                  <IconButton
+                    aria-label={t('shell.searchSpaces')}
+                    aria-pressed={query !== null}
+                    onClick={() => {
+                      setQuery(query === null ? '' : null)
+                    }}
+                  >
+                    <Icon icon={FilterListIcon} size={24} />
+                  </IconButton>
+                  <IconButton
+                    aria-label={t('spaces.create')}
+                    onClick={() => {
+                      setCreating(true)
+                    }}
+                  >
+                    <Icon icon={Plus} />
+                  </IconButton>
+                </>
+              }
+            />
+            {query !== null && (
+              <SidebarSearch>
+                <SearchBar
+                  elevation={0}
+                  placeholder={t('shell.spaceName')}
+                  value={query}
+                  onChange={event => {
+                    setQuery(event.target.value)
                   }}
-                >
-                  <Icon icon={FilterListIcon} size={24} />
-                </IconButton>
-                <IconButton
-                  aria-label={t('spaces.create')}
-                  onClick={() => {
-                    setCreating(true)
+                  onClear={() => {
+                    setQuery('')
                   }}
-                >
-                  <Icon icon={Plus} />
-                </IconButton>
-              </>
-            }
-          />
-          {query !== null && (
-            <SidebarSearch>
-              <SearchBar
-                elevation={0}
-                placeholder={t('shell.spaceName')}
-                value={query}
-                onChange={event => {
-                  setQuery(event.target.value)
-                }}
-                onClear={() => {
-                  setQuery('')
-                }}
-                componentsProps={{
-                  inputBase: {
-                    autoFocus: true,
-                    onKeyDown: event => {
-                      if (event.key === 'Escape') setQuery(null)
+                  componentsProps={{
+                    inputBase: {
+                      autoFocus: true,
+                      onKeyDown: event => {
+                        if (event.key === 'Escape') setQuery(null)
+                      }
                     }
-                  }
-                }}
-              />
-            </SidebarSearch>
-          )}
-          <AppNav />
-          <SpaceList query={query ?? ''} />
-        </>
-      }
-    >
-      <Outlet />
-      <EmbeddedApps />
-      <AppFeedback />
-      {creating && (
-        <CreateSpaceDialog
-          onClose={() => {
-            setCreating(false)
-          }}
-        />
-      )}
-    </AppFrame>
+                  }}
+                />
+              </SidebarSearch>
+            )}
+            <AppNav />
+            <SpaceList query={query ?? ''} />
+          </>
+        }
+      >
+        <Outlet />
+        <EmbeddedApps />
+        <CallWindow />
+        <AppFeedback />
+        {creating && (
+          <CreateSpaceDialog
+            onClose={() => {
+              setCreating(false)
+            }}
+          />
+        )}
+      </AppFrame>
+    </CallProvider>
   )
 }
 

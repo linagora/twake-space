@@ -381,5 +381,18 @@
     "done": "Terminé",
     "refused": "Refusé : %{reason}",
     "failed": "La modification n’a pas pu être enregistrée."
+  },
+  "call": {
+    "menu": "Réunion vidéo",
+    "join": "Rejoindre une réunion",
+    "link": "Lien de la réunion",
+    "linkHint": "URL ou code de 10 lettres",
+    "invalidLink": "Ce n’est pas un lien ni un code Twake Meet.",
+    "joinAction": "Rejoindre la réunion",
+    "window": "Réunion vidéo",
+    "minimize": "Réduire",
+    "maximize": "Agrandir",
+    "restore": "Restaurer",
+    "leave": "Quitter la réunion"
   }
 }

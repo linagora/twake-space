@@ -381,5 +381,18 @@
     "done": "Fertig",
     "refused": "Abgelehnt: %{reason}",
     "failed": "Die Änderung konnte nicht gespeichert werden."
+  },
+  "call": {
+    "menu": "Videobesprechung",
+    "join": "An einer Besprechung teilnehmen",
+    "link": "Besprechungslink",
+    "linkHint": "URL oder 10-stelliger Buchstabencode",
+    "invalidLink": "Das ist kein Twake-Meet-Link oder -Code.",
+    "joinAction": "Teilnehmen",
+    "window": "Videobesprechung",
+    "minimize": "Minimieren",
+    "maximize": "Maximieren",
+    "restore": "Wiederherstellen",
+    "leave": "Besprechung verlassen"
   }
 }

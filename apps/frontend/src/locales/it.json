@@ -381,5 +381,18 @@
     "done": "Fatto",
     "refused": "Rifiutato: %{reason}",
     "failed": "Impossibile salvare la modifica."
+  },
+  "call": {
+    "menu": "Riunione video",
+    "join": "Partecipa a una riunione",
+    "link": "Link della riunione",
+    "linkHint": "URL o codice di 10 lettere",
+    "invalidLink": "Non è un link o un codice di Twake Meet.",
+    "joinAction": "Partecipa alla riunione",
+    "window": "Riunione video",
+    "minimize": "Riduci a icona",
+    "maximize": "Ingrandisci",
+    "restore": "Ripristina",
+    "leave": "Esci dalla riunione"
   }
 }

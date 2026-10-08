@@ -1,0 +1,37 @@
+import type { ReactElement } from 'react'
+
+import { FloatingWindow, WindowFrame } from '@/ds/FloatingWindow'
+import { useCall } from '@/ui/call/CallContext'
+import { useI18n } from '@/ui/i18n/useI18n'
+
+const MEET_PERMISSIONS =
+  'camera; microphone; display-capture; autoplay; fullscreen; clipboard-write'
+
+export function CallWindow(): ReactElement | null {
+  const { t } = useI18n()
+  const { call, leave } = useCall()
+  if (!call) return null
+  return (
+    <FloatingWindow
+      title={t('call.window')}
+      storageKey="twake-space:call-window"
+      labels={{
+        minimize: t('call.minimize'),
+        maximize: t('call.maximize'),
+        restore: t('call.restore'),
+        close: t('call.leave')
+      }}
+      onClose={leave}
+    >
+      {moving => (
+        <WindowFrame
+          key={call.url}
+          moving={moving}
+          src={call.url}
+          title={t('call.window')}
+          allow={MEET_PERMISSIONS}
+        />
+      )}
+    </FloatingWindow>
+  )
+}

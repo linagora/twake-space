@@ -381,5 +381,18 @@
     "done": "Listo",
     "refused": "Rechazado: %{reason}",
     "failed": "No se pudo guardar el cambio."
+  },
+  "call": {
+    "menu": "Reunión de vídeo",
+    "join": "Unirse a una reunión",
+    "link": "Enlace de la reunión",
+    "linkHint": "URL o código de 10 letras",
+    "invalidLink": "No es un enlace ni un código de Twake Meet.",
+    "joinAction": "Unirse a la reunión",
+    "window": "Reunión de vídeo",
+    "minimize": "Minimizar",
+    "maximize": "Maximizar",
+    "restore": "Restaurar",
+    "leave": "Salir de la reunión"
   }
 }

@@ -38,7 +38,8 @@ const services = {
   mailUrl: window.MAIL_URL ?? null,
   driveUrlTemplate: window.DRIVE_URL ?? null,
   chatUrl: window.CHAT_URL ?? null,
-  calendarUrl: window.CALENDAR_URL ?? null
+  calendarUrl: window.CALENDAR_URL ?? null,
+  meetUrl: window.MEET_URL ?? null
 }
 
 const reportUncaughtError = Sentry.reactErrorHandler((error, info) => {
