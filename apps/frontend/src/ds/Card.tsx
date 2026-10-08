@@ -9,6 +9,13 @@ import type { ReactElement, ReactNode } from 'react'
 
 const RADIUS = '20px'
 
+// The mockup's subtitle3, which the theme lacks: subtitle2 at 12px, on two
+// lines of 18.4px.
+const SMALL_TEXT = {
+  fontSize: 12,
+  lineHeight: '18.4px'
+}
+
 export function CardGrid({ children }: { children: ReactNode }): ReactElement {
   return (
     <Box
@@ -74,7 +81,11 @@ export function SpaceCard({
         >
           {link}
         </Typography>
-        {menu && <Box sx={{ position: 'relative', zIndex: 1 }}>{menu}</Box>}
+        {/* The menu button keeps its 48px target but takes the row's 24px,
+            its icon near the corner as in the mockup */}
+        {menu && (
+          <Box sx={{ position: 'relative', zIndex: 1, m: -1.5 }}>{menu}</Box>
+        )}
       </Box>
       {description && (
         <Typography
@@ -82,7 +93,7 @@ export function SpaceCard({
           component="p"
           color="textSecondary"
           sx={{
-            fontSize: 12,
+            ...SMALL_TEXT,
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
@@ -97,7 +108,7 @@ export function SpaceCard({
   )
 }
 
-// The first members of a space, the rest counted.
+// The first members of a space side by side, the rest counted.
 export function MemberAvatars({
   children,
   max = 5
@@ -108,9 +119,16 @@ export function MemberAvatars({
   return (
     <AvatarGroup
       max={max}
+      spacing={0}
       sx={{
         justifyContent: 'flex-end',
-        '& .MuiAvatar-root': { width: 24, height: 24, fontSize: 11 }
+        // The white ring is drawn inside the 24px, as in the mockup
+        '& .MuiAvatar-root': {
+          width: 24,
+          height: 24,
+          boxSizing: 'border-box',
+          fontSize: 11
+        }
       }}
     >
       {children}
@@ -149,10 +167,10 @@ export function CreateCard({
         >
           {icon}
         </Box>
-        <Typography variant="h5" component="span">
+        <Typography variant="h5" component="span" noWrap sx={{ maxWidth: 1 }}>
           {title}
         </Typography>
-        <Typography variant="caption" color="textSecondary">
+        <Typography variant="subtitle2" color="textSecondary" sx={SMALL_TEXT}>
           {text}
         </Typography>
       </CardActionArea>
