@@ -743,7 +743,11 @@ function Summary({ card }: { card: FeedCard }): ReactElement {
   return (
     <>
       <FeedTitle>{card.object.title}</FeedTitle>
-      {card.preview && <FeedDetail>{card.preview}</FeedDetail>}
+      {card.preview && (
+        <FeedDetail oneLine={cardApp(card) === 'mail'}>
+          {card.preview}
+        </FeedDetail>
+      )}
     </>
   )
 }

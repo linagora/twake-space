@@ -591,11 +591,14 @@ export function FeedAttachment({
 
 export function FeedDetail({
   children,
-  large = false
+  large = false,
+  oneLine = false
 }: {
   children: ReactNode
   /** The line under an event's title: 14px, regular. */
   large?: boolean
+  /** Cut with an ellipsis at the end of the first line, like a mail's text. */
+  oneLine?: boolean
 }): ReactElement {
   return (
     <Typography
@@ -608,6 +611,7 @@ export function FeedDetail({
         letterSpacing: large ? undefined : 0.4,
         pt: '5px'
       }}
+      noWrap={oneLine}
     >
       {children}
     </Typography>
