@@ -2,6 +2,7 @@ import { Icon, Pen } from '@linagora/twake-icons'
 import { CircularProgress, IconButton, Snackbar } from '@linagora/twake-mui'
 import { useRef, useState, type ReactElement } from 'react'
 
+import { isRefusal } from '@/application/spaces'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSetBanner } from '@/ui/spaces/queries'
 
@@ -21,8 +22,19 @@ export function BannerButton({ spaceId }: { spaceId: string }): ReactElement {
       return
     }
     setBanner.mutate(file, {
-      onError: () => {
-        setNotice(t('spaceHome.banner.failed'))
+      onError: error => {
+        // A proxy in front of the backend, nginx or an ingress, may cap the
+        // body below 5 MB and refuse it with a 413 of its own.
+        const status = isRefusal(error) ? error.status : null
+        setNotice(
+          t(
+            status === 413
+              ? 'spaceHome.banner.tooLarge'
+              : status === 415
+                ? 'spaceHome.banner.unsupported'
+                : 'spaceHome.banner.failed'
+          )
+        )
       }
     })
   }

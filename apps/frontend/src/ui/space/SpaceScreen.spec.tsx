@@ -328,6 +328,24 @@ describe('SpaceScreen', () => {
     expect(spaces.setBanner).not.toHaveBeenCalled()
   })
 
+  it.each([
+    [413, 'The server refused the image as too large.'],
+    [415, 'The server refused this type of image.'],
+    [500, 'The banner could not be saved.']
+  ])('says why the server refused a banner (%i)', async (status, notice) => {
+    const spaces = renderAt('/spaces/a1/home', { ...roadmap, role: 'admin' })
+    await screen.findByRole('button', { name: 'Change the banner' })
+    vi.mocked(spaces.setBanner).mockRejectedValue(
+      Object.assign(new Error('refused'), { status, code: null })
+    )
+
+    fireEvent.change(screen.getByTestId('banner-file'), {
+      target: { files: [new File(['png'], 'cover.png', { type: 'image/png' })] }
+    })
+
+    expect(await screen.findByText(notice)).toBeInTheDocument()
+  })
+
   it('leaves the banner to admins', async () => {
     renderAt('/spaces/a1/home')
 
