@@ -10,13 +10,6 @@ import type { ReactElement, ReactNode } from 'react'
 
 const RADIUS = '20px'
 
-// The mockup's subtitle3, which the theme lacks: subtitle2 at 12px, on two
-// lines of 18.4px.
-const SMALL_TEXT = {
-  fontSize: 12,
-  lineHeight: '18.4px'
-}
-
 export function CardGrid({ children }: { children: ReactNode }): ReactElement {
   return (
     <Box
@@ -90,11 +83,10 @@ export function SpaceCard({
       </Box>
       {description && (
         <Typography
-          variant="subtitle2"
+          variant="subtitle3"
           component="p"
           color="textSecondary"
           sx={{
-            ...SMALL_TEXT,
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
@@ -447,7 +439,7 @@ export function CreateCard({
         <Typography variant="h5" component="span" noWrap sx={{ maxWidth: 1 }}>
           {title}
         </Typography>
-        <Typography variant="subtitle2" color="textSecondary" sx={SMALL_TEXT}>
+        <Typography variant="subtitle3" component="span" color="textSecondary">
           {text}
         </Typography>
       </CardActionArea>
