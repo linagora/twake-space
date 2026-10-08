@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes, useLocation, useNavigate } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -43,9 +43,13 @@ const other: Space = {
       ? { ...r, id: 'p2' }
       : r.kind === 'mailbox'
         ? { ...r, id: 'other@acme' }
-        : r
+        : r.kind === 'matrix_space'
+          ? { ...r, id: '!o:acme' }
+          : r
   )
 }
+
+const CHAT = 'https://chat.test'
 
 function Path() {
   const { pathname, search } = useLocation()
@@ -131,6 +135,10 @@ function postFromFrame(data: unknown, origin = TASKS, title = 'Tasks') {
       })
     )
   })
+}
+
+function fillPage(fill: boolean, origin = CHAT) {
+  postFromFrame({ type: 'twake-embed:fill-page', fill }, origin, 'Chat')
 }
 
 function embedPath(resourceId: string, path: string, replace: boolean) {
@@ -417,52 +425,94 @@ describe('EmbeddedApps', () => {
     )
   })
 
-  it('lets Chat cover the page while it asks for it, shown and from its frame only', async () => {
+  it("floats Chat's call in a window while Chat asks for the page, from its frame only", async () => {
     renderAt('/spaces/a1/chat')
     await screen.findByTitle('Chat')
     const chat = frame('Chat')
-    const fillPage = (fill: boolean) => ({
-      type: 'twake-embed:fill-page',
-      fill
-    })
-    const post = (data: unknown, origin = 'https://chat.test') => {
-      act(() => {
-        window.dispatchEvent(
-          new MessageEvent('message', {
-            data,
-            origin,
-            source: chat.contentWindow
-          })
-        )
-      })
-    }
+    const callWindow = () =>
+      screen.queryByRole('region', { name: 'Video meeting' })
 
     await waitFor(() => {
-      post(fillPage(true))
+      fillPage(true)
+      expect(callWindow()).toBeInTheDocument()
+    })
+    expect(getComputedStyle(chat).position).toBe('fixed')
+    // The page stays usable, and the call has no close button: Chat hangs up
+    expect(
+      screen.getByRole('button', { name: 'Go /' }).closest('[inert]')
+    ).toBeNull()
+    expect(
+      within(screen.getByRole('region', { name: 'Video meeting' })).queryByRole(
+        'button',
+        { name: 'Leave the meeting' }
+      )
+    ).not.toBeInTheDocument()
+
+    fillPage(false)
+    expect(callWindow()).not.toBeInTheDocument()
+    expect(getComputedStyle(chat).position).not.toBe('fixed')
+
+    fillPage(true, 'https://evil.test')
+    expect(callWindow()).not.toBeInTheDocument()
+
+    fillPage(true)
+    fireEvent.load(chat)
+    expect(callWindow()).not.toBeInTheDocument()
+  })
+
+  it("keeps Chat's call within reach on another tab, and the same frame", async () => {
+    renderAt('/spaces/a1/chat')
+    await screen.findByTitle('Chat')
+    const chat = frame('Chat')
+    await waitFor(() => {
+      fillPage(true)
       expect(getComputedStyle(chat).position).toBe('fixed')
     })
-    // The rest of the page is out of reach, the frame alone is not
-    expect(screen.getByRole('button', { name: 'Go /' }).inert).toBe(true)
-    expect(chat.closest('[aria-hidden]')).toBeNull()
 
-    post(fillPage(false))
-    expect(getComputedStyle(chat).position).not.toBe('fixed')
-    expect(screen.getByRole('button', { name: 'Go /' }).inert).toBe(false)
-
-    post(fillPage(true), 'https://evil.test')
-    expect(getComputedStyle(chat).position).not.toBe('fixed')
-
-    post(fillPage(true))
     fireEvent.click(screen.getByRole('tab', { name: 'Feed' }))
     await screen.findByRole('tab', { name: 'Feed', selected: true })
-    expect(getComputedStyle(chat).position).not.toBe('fixed')
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Chat' }))
+    expect(frame('Chat')).toBe(chat)
+    expect(getComputedStyle(chat).position).toBe('fixed')
+    expect(getComputedStyle(chat).visibility).toBe('visible')
+    expect(chat.closest('[inert]')).toBeNull()
+    expect(chat.closest('[aria-hidden]')).toBeNull()
+  })
+
+  it("keeps Chat's call in its conversation on another space until it ends", async () => {
+    renderAt('/spaces/a1/chat')
+    await screen.findByTitle('Chat')
+    const chat = frame('Chat')
+    postFromFrame(embedPath('!s:acme', '', true), CHAT, 'Chat')
     await waitFor(() => {
+      fillPage(true)
       expect(getComputedStyle(chat).position).toBe('fixed')
     })
-    fireEvent.load(chat)
-    expect(getComputedStyle(chat).position).not.toBe('fixed')
+    const post = spyOnFrame('Chat')
+
+    go('/spaces/b2/tasks')
+    await screen.findByRole('tab', { name: 'Tasks', selected: true })
+    expect(post).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'twake-embed:load' }),
+      CHAT
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Chat' }))
+    await screen.findByRole('tab', { name: 'Chat', selected: true })
+    postFromFrame(embedPath('!s:acme', '/room', false), CHAT, 'Chat')
+    expect(post).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'twake-embed:load' }),
+      CHAT
+    )
+    expect(screen.getByLabelText('path').textContent).toBe('/spaces/b2/chat')
+
+    fillPage(false)
+    await waitFor(() => {
+      expect(post).toHaveBeenCalledWith(
+        { type: 'twake-embed:load', resourceId: '!o:acme', path: '' },
+        CHAT
+      )
+    })
   })
 
   it('does not let Tasks cover the page', async () => {

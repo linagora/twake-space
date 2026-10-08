@@ -2,6 +2,7 @@ import { CrossMedium, Dash, Expand, Icon, Narrow } from '@linagora/twake-icons'
 import { Box, IconButton, Paper, Typography } from '@linagora/twake-mui'
 import {
   useEffect,
+  useLayoutEffect,
   useState,
   type ComponentProps,
   type PointerEvent as ReactPointerEvent,
@@ -18,8 +19,21 @@ import {
 } from '@/ds/floatingWindowGeometry'
 
 const HEADER_HEIGHT = 48
+const MAXIMIZED_INSET = 16
+const RESIZE_HANDLE = 16
 
 type Mode = 'normal' | 'minimized' | 'maximized'
+
+// Where the window's content shows, in the viewport, for a frame drawn over
+// it from elsewhere in the page
+export interface WindowBody {
+  left: number
+  top: number
+  width: number
+  height: number
+  hidden: boolean
+  moving: boolean
+}
 
 interface Labels {
   minimize: string
@@ -72,28 +86,54 @@ export function WindowFrame({
 // A window over the page, without a backdrop: the page stays usable. It is
 // dragged by its header and resized from its bottom right corner, and its
 // place is kept per browser. Its content stays mounted in every mode, so a
-// frame in it never reloads.
+// frame in it never reloads. Without `children`, its body is left for a frame
+// that `onBody` places over it. Without `onClose`, the content closes it.
 export function FloatingWindow({
   title,
   storageKey,
   labels,
   onClose,
+  onBody,
   children
 }: {
   title: string
   storageKey: string
   labels: Labels
-  onClose: () => void
-  children: (moving: boolean) => ReactNode
+  onClose?: () => void
+  onBody?: (body: WindowBody) => void
+  children?: (moving: boolean) => ReactNode
 }): ReactElement {
   const [box, setBox] = useState(() =>
     fitBox(readGeometry(storageKey) ?? initialBox(viewport()), viewport())
   )
   const [mode, setMode] = useState<Mode>('normal')
   const [moving, setMoving] = useState(false)
+  const [view, setView] = useState(viewport)
+
+  // Before paint: the frame over the body moves with the window
+  useLayoutEffect(() => {
+    const frame =
+      mode === 'maximized'
+        ? {
+            x: MAXIMIZED_INSET,
+            y: MAXIMIZED_INSET,
+            width: view.width - 2 * MAXIMIZED_INSET,
+            height: view.height - 2 * MAXIMIZED_INSET
+          }
+        : box
+    onBody?.({
+      left: frame.x,
+      top: frame.y + HEADER_HEIGHT,
+      width: frame.width,
+      height: frame.height - HEADER_HEIGHT,
+      hidden: mode === 'minimized',
+      moving
+    })
+  }, [box, mode, moving, view, onBody])
 
   useEffect(() => {
     const fit = () => {
+      setView(viewport())
       setBox(current => fitBox(current, viewport()))
     }
     window.addEventListener('resize', fit)
@@ -151,7 +191,7 @@ export function FloatingWindow({
 
   const place =
     mode === 'maximized'
-      ? { inset: 16 }
+      ? { inset: MAXIMIZED_INSET }
       : {
           left: box.x,
           top: box.y,
@@ -160,78 +200,85 @@ export function FloatingWindow({
         }
 
   return (
-    <Paper
-      component="section"
-      aria-label={title}
-      elevation={8}
-      sx={{
-        position: 'fixed',
-        ...place,
-        zIndex: theme => theme.zIndex.modal - 1,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        borderRadius: 2
-      }}
-    >
-      <Box
-        onPointerDown={drag}
+    <>
+      <Paper
+        component="section"
+        aria-label={title}
+        elevation={8}
         sx={{
+          position: 'fixed',
+          ...place,
+          zIndex: theme => theme.zIndex.modal - 1,
           display: 'flex',
-          alignItems: 'center',
-          flex: '0 0 auto',
-          height: HEADER_HEIGHT,
-          pl: 2,
-          pr: 0.5,
-          cursor: mode === 'maximized' ? 'default' : 'move',
-          touchAction: 'none',
-          userSelect: 'none'
+          flexDirection: 'column',
+          overflow: 'hidden',
+          borderRadius: 2
         }}
       >
-        <Typography variant="subtitle1" noWrap sx={{ flex: '1 1 auto' }}>
-          {title}
-        </Typography>
-        <IconButton
-          aria-label={mode === 'minimized' ? labels.restore : labels.minimize}
-          onClick={toggle('minimized')}
+        <Box
+          onPointerDown={drag}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flex: '0 0 auto',
+            height: HEADER_HEIGHT,
+            pl: 2,
+            pr: 0.5,
+            cursor: mode === 'maximized' ? 'default' : 'move',
+            touchAction: 'none',
+            userSelect: 'none'
+          }}
         >
-          <Icon icon={Dash} />
-        </IconButton>
-        <IconButton
-          aria-label={mode === 'maximized' ? labels.restore : labels.maximize}
-          onClick={toggle('maximized')}
+          <Typography variant="subtitle1" noWrap sx={{ flex: '1 1 auto' }}>
+            {title}
+          </Typography>
+          <IconButton
+            aria-label={mode === 'minimized' ? labels.restore : labels.minimize}
+            onClick={toggle('minimized')}
+          >
+            <Icon icon={Dash} />
+          </IconButton>
+          <IconButton
+            aria-label={mode === 'maximized' ? labels.restore : labels.maximize}
+            onClick={toggle('maximized')}
+          >
+            <Icon icon={mode === 'maximized' ? Narrow : Expand} />
+          </IconButton>
+          {onClose && (
+            <IconButton aria-label={labels.close} onClick={onClose}>
+              <Icon icon={CrossMedium} />
+            </IconButton>
+          )}
+        </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            flex: '1 1 auto',
+            minHeight: 0,
+            visibility: mode === 'minimized' ? 'hidden' : 'visible'
+          }}
         >
-          <Icon icon={mode === 'maximized' ? Narrow : Expand} />
-        </IconButton>
-        <IconButton aria-label={labels.close} onClick={onClose}>
-          <Icon icon={CrossMedium} />
-        </IconButton>
-      </Box>
-      <Box
-        sx={{
-          display: 'flex',
-          flex: '1 1 auto',
-          minHeight: 0,
-          visibility: mode === 'minimized' ? 'hidden' : 'visible'
-        }}
-      >
-        {children(moving)}
-      </Box>
+          {children?.(moving)}
+        </Box>
+      </Paper>
+      {/* Beside the window, not in it: a frame placed over the body would
+        cover it */}
       {mode === 'normal' && (
         <Box
           aria-hidden
           onPointerDown={resize}
           sx={{
-            position: 'absolute',
-            right: 0,
-            bottom: 0,
-            width: 16,
-            height: 16,
+            position: 'fixed',
+            left: box.x + box.width - RESIZE_HANDLE,
+            top: box.y + box.height - RESIZE_HANDLE,
+            width: RESIZE_HANDLE,
+            height: RESIZE_HANDLE,
+            zIndex: theme => theme.zIndex.modal,
             cursor: 'nwse-resize',
             touchAction: 'none'
           }}
         />
       )}
-    </Paper>
+    </>
   )
 }

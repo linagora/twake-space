@@ -193,7 +193,6 @@ function Conversation({ spaceId }: { spaceId: string }): ReactElement {
         src={service.href}
         title={t('assistant.title')}
         allow="clipboard-write"
-        fillsPage={false}
       />
     </>
   )

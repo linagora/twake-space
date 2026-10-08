@@ -26,7 +26,6 @@ async function renderFrame(session: SessionService = fakeSession()) {
       src={`${MAIL}${EMBED}`}
       title="Mail"
       overlayPath="/embed/overlay.html"
-      active
       frameRef={createRef()}
       onPath={onPath}
       onBadges={onBadges}

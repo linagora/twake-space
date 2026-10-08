@@ -165,7 +165,7 @@ describe('full page', () => {
     expect(screen.getByRole('tabpanel', { name: 'Feed' })).toBe(panel)
   })
 
-  it('lets an app cover the page over it, and keeps it once the app is done', async () => {
+  it("floats Chat's call over it, and keeps it once the call is done", async () => {
     renderAt('/spaces/space-1/chat')
     await screen.findByTitle('Chat')
     const chat = frame('Chat')
@@ -186,13 +186,12 @@ describe('full page', () => {
       post(true)
       expect(getComputedStyle(chat).position).toBe('fixed')
     })
-    // The app's own way back is the only one while it covers the page
-    expect(isInert(leaveButton())).toBe(true)
+    // The page under the call stays usable
+    expect(isInert(leaveButton())).toBe(false)
 
     post(false)
 
     expect(getComputedStyle(chat).position).not.toBe('fixed')
-    expect(isInert(leaveButton())).toBe(false)
     expectChrome(false)
   })
 

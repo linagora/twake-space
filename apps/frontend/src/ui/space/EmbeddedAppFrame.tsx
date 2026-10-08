@@ -6,6 +6,7 @@ import {
   type ReactElement,
   type RefObject
 } from 'react'
+import { createPortal } from 'react-dom'
 
 import {
   helloMessage,
@@ -26,6 +27,7 @@ import {
   type EmbedPath
 } from '@/application/embeddedApps'
 import { EmbedFrame } from '@/ds/EmbedFrame'
+import { FloatingWindow, type WindowBody } from '@/ds/FloatingWindow'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
 
@@ -49,8 +51,9 @@ const ALLOW = 'clipboard-read; clipboard-write; fullscreen'
 // - an overlay over the whole page, on the app's origin, for its docked
 //   windows and dialogs: an empty page the app renders into, shown within
 //   the region the app reports (`twake-embed:overlay-region`),
-// - with `canFillPage`, the whole page while the app asks for it
-//   (`twake-embed:fill-page`): Chat during a call.
+// - with `canFillPage`, a floating window while the app asks for the page
+//   (`twake-embed:fill-page`): Chat during a call, on whichever tab or page
+//   TwakeSpace shows, which stays usable.
 // The frame's `src` is set once: the host moves it with messages.
 export function EmbeddedAppFrame({
   app,
@@ -61,10 +64,10 @@ export function EmbeddedAppFrame({
   overlayPath,
   allow,
   canFillPage = false,
-  active,
   frameRef,
   onPath,
-  onBadges
+  onBadges,
+  onFloat
 }: {
   // Names the frame `twake-embed-<app>`, and its overlay `<that>:overlay`
   app: string
@@ -77,14 +80,13 @@ export function EmbeddedAppFrame({
   // Permissions of this app alone, beyond the clipboard (Chat's calls)
   allow?: string | undefined
   canFillPage?: boolean | undefined
-  // Shown, or hidden on another tab: a hidden frame never covers the page
-  active: boolean
   frameRef: RefObject<HTMLIFrameElement | null>
   // The frame's URL, already checked to come from it
   onPath: (report: EmbedPath) => void
   // The app's counts, already checked to come from the frame: its whole
   // snapshot, or null when the frame's document is gone
   onBadges: (badges: readonly Badge[] | null) => void
+  onFloat?: (floats: boolean) => void
 }): ReactElement {
   const { t } = useI18n()
   const { signIn } = useSession()
@@ -107,14 +109,21 @@ export function EmbeddedAppFrame({
 
   const [region, setRegion] = useState<OverlayRegion | null>(null)
 
-  // Never on a hidden tab: the page would stay inert under nothing
   const [asksPage, setAsksPage] = useState(false)
-  const fillsPage = canFillPage && asksPage && active
+  const floats = canFillPage && asksPage
+  const [body, setBody] = useState<WindowBody | null>(null)
+  const float = useRef(onFloat)
   useEffect(() => {
-    const element = frameRef.current
-    if (!fillsPage || !element) return
-    return inertAround(element)
-  }, [fillsPage, frameRef])
+    float.current = onFloat
+  })
+  useEffect(() => {
+    if (!floats) return
+    float.current?.(true)
+    return () => {
+      float.current?.(false)
+      setBody(null)
+    }
+  }, [floats])
 
   // Until the app loads, the frame holds about:blank on this page's origin.
   // Each document the frame loads (the silent login makes several) is
@@ -212,10 +221,10 @@ export function EmbeddedAppFrame({
         src={src}
         sandbox={SANDBOX}
         allow={allow === undefined ? ALLOW : `${ALLOW}; ${allow}`}
-        fillsPage={fillsPage}
+        over={floats ? body : null}
         onLoad={() => {
           // A frame loaded again draws nothing on the overlay yet, and
-          // covers nothing
+          // floats no more
           setRegion(null)
           setAsksPage(false)
           // The new document reports its counts again, on its greeting
@@ -231,34 +240,23 @@ export function EmbeddedAppFrame({
           region={region}
         />
       )}
+      {floats &&
+        createPortal(
+          <FloatingWindow
+            title={t('call.window')}
+            storageKey={`twake-space:${name}:call-window`}
+            labels={{
+              minimize: t('call.minimize'),
+              maximize: t('call.maximize'),
+              restore: t('call.restore'),
+              close: t('call.leave')
+            }}
+            onBody={setBody}
+          />,
+          document.body
+        )}
     </>
   )
-}
-
-// Everything on the page but `element` made inert, until the returned
-// function gives it back: the keyboard and screen readers stay in the frame
-// while it covers the page
-function inertAround(element: HTMLElement): () => void {
-  const made: HTMLElement[] = []
-  for (
-    let node: HTMLElement = element;
-    node !== document.body && node.parentElement;
-    node = node.parentElement
-  ) {
-    for (const sibling of Array.from(node.parentElement.children)) {
-      if (
-        sibling !== node &&
-        sibling instanceof HTMLElement &&
-        !sibling.inert
-      ) {
-        sibling.inert = true
-        made.push(sibling)
-      }
-    }
-  }
-  return () => {
-    for (const sibling of made) sibling.inert = false
-  }
 }
 
 // The overlay, shown within the region its app reports.

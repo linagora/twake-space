@@ -99,6 +99,8 @@ export function EmbeddedApps(): ReactElement | null {
   const here = location.pathname + location.search + location.hash
 
   const [frames, setFrames] = useState<Frames>({})
+  // The app whose frame floats over the page (Chat in a call)
+  const [floating, setFloating] = useState<EmbeddedApp | null>(null)
   const [elements] = useState<
     Record<EmbeddedApp, RefObject<HTMLIFrameElement | null>>
   >(() => ({
@@ -113,11 +115,13 @@ export function EmbeddedApps(): ReactElement | null {
   // React derives state from props. Each step settles on the next render.
   // The frames of the space's other ready tabs are mounted up front, hidden,
   // so that every app can report its counts: they follow the space shown,
-  // never the address.
+  // never the address. A floating frame keeps its resource until it lands:
+  // moving it would end Chat's call.
   let adopt: string | null = null
   let next = frames
   for (const target of hiddenTargets) {
     const { spec: hiddenSpec, resourceId: hiddenResource } = target
+    if (hiddenSpec.app === floating) continue
     const frame = frames[hiddenSpec.app] ?? null
     const step = reconcileHidden(
       frame,
@@ -157,7 +161,15 @@ export function EmbeddedApps(): ReactElement | null {
   if (written !== undefined) {
     // The address TwakeSpace wrote shows: the frame follows it again
     next = withFrame(next, written, { writtenFrom: null })
-  } else if (shown !== null && appUrl !== null && spec !== null) {
+  } else if (
+    shown !== null &&
+    appUrl !== null &&
+    spec !== null &&
+    !(
+      shown.app === floating &&
+      frames[shown.app]?.resourceId !== shown.resourceId
+    )
+  ) {
     const frame = frames[shown.app] ?? null
     const step = reconcile(frame, shown, spec, appUrl, popped, here)
     switch (step.kind) {
@@ -274,8 +286,11 @@ export function EmbeddedApps(): ReactElement | null {
       return
     }
     const { here: from } = committed.current
+    // A floating frame still on another space's resource writes no address
     const to =
-      current?.app === app ? tabPath(current.spaceId, app) + report.path : null
+      current?.app === app && current.resourceId === frame.resourceId
+        ? tabPath(current.spaceId, app) + report.path
+        : null
     const writes = to !== null && to !== from
     setFrames(prev =>
       withFrame(prev, app, {
@@ -295,6 +310,7 @@ export function EmbeddedApps(): ReactElement | null {
   return (
     <KeptAliveStack
       active={shown !== null}
+      reachable={floating !== null}
       flush={filled}
       role="tabpanel"
       id={shown ? `panel-${shown.app}` : undefined}
@@ -307,7 +323,11 @@ export function EmbeddedApps(): ReactElement | null {
         const url = appUrls[app]
         if (!frame || url === null) return null
         return (
-          <KeptAlive key={app} active={shown?.app === app}>
+          <KeptAlive
+            key={app}
+            active={shown?.app === app}
+            reachable={floating === app}
+          >
             <EmbeddedAppFrame
               key={frame.key}
               app={app}
@@ -318,8 +338,12 @@ export function EmbeddedApps(): ReactElement | null {
               overlayPath={EMBEDDED_APPS[app].overlayPath}
               allow={EMBEDDED_APPS[app].allow}
               canFillPage={EMBEDDED_APPS[app].canFillPage}
-              active={shown?.app === app}
               frameRef={elements[app]}
+              onFloat={floats => {
+                setFloating(current =>
+                  floats ? app : current === app ? null : current
+                )
+              }}
               onPath={report => {
                 onPath(app, report)
               }}

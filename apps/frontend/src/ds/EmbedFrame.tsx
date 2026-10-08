@@ -1,29 +1,37 @@
 import { Box } from '@linagora/twake-mui'
 import type { ComponentProps, ReactElement, Ref } from 'react'
 
-// The frame of an embedded app: it fills its place, or with `fillsPage` the
-// whole page, under TwakeSpace's own dialogs.
+import type { WindowBody } from '@/ds/FloatingWindow'
+
+// The frame of an embedded app: it fills its place, or with `over` the body
+// of a floating window, without leaving its place in the page (a frame moved
+// in the document loads again). Above the window, under TwakeSpace's dialogs,
+// which open later in the page.
 export function EmbedFrame({
   frameRef,
-  fillsPage,
+  over = null,
   ...props
 }: Omit<ComponentProps<'iframe'>, 'ref' | 'className' | 'style'> & {
   frameRef: Ref<HTMLIFrameElement>
-  fillsPage: boolean
+  over?: WindowBody | null
 }): ReactElement {
   return (
     <Box
       component="iframe"
       ref={frameRef}
       {...props}
-      className="u-w-100 u-flex-auto u-bdw-0"
+      className={over ? 'u-bdw-0' : 'u-w-100 u-flex-auto u-bdw-0'}
       sx={
-        fillsPage
+        over
           ? {
               position: 'fixed',
-              inset: 0,
-              height: '100%',
-              zIndex: theme => theme.zIndex.modal - 1
+              left: over.left,
+              top: over.top,
+              width: over.width,
+              height: over.height,
+              zIndex: theme => theme.zIndex.modal,
+              visibility: over.hidden ? 'hidden' : 'visible',
+              pointerEvents: over.moving ? 'none' : 'auto'
             }
           : undefined
       }
