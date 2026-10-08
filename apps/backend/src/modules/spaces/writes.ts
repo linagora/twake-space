@@ -6,6 +6,7 @@ import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import type { SpaceDirectory } from '../../infra/ldap-rest.ts'
 import type { Authorize, Caller } from '../auth/index.ts'
+import { tellSpaceMembers } from '../live/notify.ts'
 import {
   createSpace,
   deleteSpace,
@@ -214,13 +215,37 @@ export function registerSpaceWriteRoutes(
     writeSpace,
     refusing(async (request, reply) => {
       const { id } = parse(spaceParams, request.params)
-      const body = parse(z.object({ name }), request.body)
-      const { orgId, actor } = await administered(request, id)
-      await ldapRest(() => directory.rename(orgId, id, body.name, actor))
-      const at = new Date()
-      await copy(request, () =>
-        db.transaction(tx => renameSpace(tx, id, body.name, at))
+      const body = parse(
+        z
+          .object({
+            name: name.optional(),
+            apps: z.array(z.enum(spaceTab.enumValues)).optional()
+          })
+          .refine(b => b.name !== undefined || b.apps !== undefined),
+        request.body
       )
+      const { orgId, actor } = await administered(request, id)
+      const newName = body.name
+      if (newName !== undefined) {
+        await ldapRest(() => directory.rename(orgId, id, newName, actor))
+        const at = new Date()
+        await copy(request, () =>
+          db.transaction(tx => renameSpace(tx, id, newName, at))
+        )
+      }
+      const apps = body.apps && [...new Set(body.apps)]
+      if (apps) {
+        await db.transaction(async tx => {
+          await tx
+            .insert(spaceSettings)
+            .values({ spaceId: id, apps })
+            .onConflictDoUpdate({
+              target: spaceSettings.spaceId,
+              set: { apps }
+            })
+          await tellSpaceMembers(tx, id)
+        })
+      }
       return reply.code(204).send()
     })
   )

@@ -294,6 +294,60 @@ describe('space writes', () => {
     expect(await nameOf(DESIGN)).toBe('Design 2')
   })
 
+  it('changes the apps without asking ldap-rest', async () => {
+    const { calls, directory } = ldapRest()
+    await testDb.db.insert(spaceSettings).values({
+      spaceId: DESIGN,
+      description: 'Ship it',
+      color: '#46a2ff',
+      apps: ['drive']
+    })
+
+    const response = await setUp(directory)('PATCH', `/spaces/${DESIGN}`, {
+      apps: ['drive', 'calendar']
+    })
+
+    expect(response.statusCode).toBe(204)
+    expect(calls).toEqual([])
+    expect(await testDb.db.select().from(spaceSettings)).toEqual([
+      {
+        spaceId: DESIGN,
+        description: 'Ship it',
+        color: '#46a2ff',
+        apps: ['drive', 'calendar']
+      }
+    ])
+  })
+
+  it('changes the apps of a space created elsewhere', async () => {
+    const { directory } = ldapRest()
+
+    await setUp(directory)('PATCH', `/spaces/${DESIGN}`, {
+      apps: ['chat', 'chat']
+    })
+
+    expect(await testDb.db.select().from(spaceSettings)).toEqual([
+      { spaceId: DESIGN, description: '', color: null, apps: ['chat'] }
+    ])
+  })
+
+  it.each([
+    ['an empty change', {}],
+    ['an unknown app', { apps: ['contacts'] }]
+  ])('refuses %s to a space', async (_case, change) => {
+    const { calls, directory } = ldapRest()
+
+    const response = await setUp(directory)(
+      'PATCH',
+      `/spaces/${DESIGN}`,
+      change
+    )
+
+    expect(response.statusCode).toBe(400)
+    expect(calls).toEqual([])
+    expect(await testDb.db.select().from(spaceSettings)).toEqual([])
+  })
+
   it('adds members to the copy with their account ids', async () => {
     const { calls, directory } = ldapRest()
 

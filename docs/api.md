@@ -511,7 +511,10 @@ Shared rules:
 
 ### PATCH /spaces/:id
 
-Body `{"name":"..."}`. Renames the space. Answers `204`.
+- Body: `{"name":"...","apps":["chat","drive"]}`, with at least one of the two.
+- `name` renames the space.
+- `apps` replaces the app tabs the space shows, among the same values as on creation. It stays in twake-space, so ldap-rest is not called for it.
+- Answers `204`.
 
 ### DELETE /spaces/:id
 
