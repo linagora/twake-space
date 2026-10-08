@@ -50,6 +50,10 @@
   },
   "shell": {
     "yourSpaces": "Your spaces",
+    "pinned": "Pinned",
+    "recent": "Recent",
+    "noPinned": "Pin a space from its menu",
+    "noRecent": "The spaces you open show here",
     "title": "Space",
     "allSpaces": "All shared spaces",
     "spaceWithCount": "%{name}, %{smart_count} new",
@@ -99,6 +103,8 @@
   "spaceMenu": {
     "open": "More actions for %{name}",
     "shareLink": "Share link",
+    "pin": "Pin",
+    "unpin": "Unpin",
     "linkCopied": "Link copied",
     "invite": "Invite people",
     "managePeople": "Manage people",
@@ -119,6 +125,7 @@
     "createFailed": "The space could not be created.",
     "channelsHint": "A space can hold multiple channels for different topics or teams",
     "all": "All spaces",
+    "pinned": "Pinned",
     "createHint": "Project, department, topic group…",
     "createCard": "Create new space"
   },

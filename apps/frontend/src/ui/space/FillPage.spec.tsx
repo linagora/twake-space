@@ -52,7 +52,7 @@ function renderAt(path: string) {
       role: 'admin',
       color: null,
       description: '',
-      pinnedAt: null,
+      pinnedAt: '2026-10-01T08:00:00.000Z',
       openedAt: null,
       members: []
     },
@@ -96,7 +96,7 @@ function isInert(element: HTMLElement): boolean {
 function expectChrome(shown: boolean) {
   const chrome = [
     screen.queryByRole('banner'),
-    screen.queryByRole('list', { name: 'Your spaces' }),
+    screen.queryByRole('list', { name: 'Pinned' }),
     screen.queryByRole('tablist')
   ]
   for (const element of chrome) {
@@ -218,8 +218,6 @@ describe('full page', () => {
     await act(() => router.navigate('/spaces/space-2/settings'))
 
     expect(screen.queryByRole('button', { name: 'Leave full page' })).toBe(null)
-    expect(
-      screen.getByRole('list', { name: 'Your spaces' })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Pinned' })).toBeInTheDocument()
   })
 })

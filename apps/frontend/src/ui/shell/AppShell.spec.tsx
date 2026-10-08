@@ -31,13 +31,23 @@ const spaces = () =>
       role: 'admin',
       color: null,
       description: '',
-      pinnedAt: null,
-      openedAt: null,
+      pinnedAt: '2026-10-01T08:00:00.000Z',
+      openedAt: '2026-10-02T08:00:00.000Z',
       members: []
     },
     {
       id: 'space-2',
       name: 'Launch',
+      role: 'viewer',
+      color: null,
+      description: '',
+      pinnedAt: null,
+      openedAt: '2026-10-01T08:00:00.000Z',
+      members: []
+    },
+    {
+      id: 'space-3',
+      name: 'Handover',
       role: 'viewer',
       color: null,
       description: '',
@@ -110,41 +120,72 @@ describe('AppShell', () => {
     expect(createSdk).not.toHaveBeenCalled()
   })
 
-  it('lists the spaces in the sidebar and marks the current one', async () => {
+  it('lists the pinned and recent spaces in the sidebar and marks the current one', async () => {
     renderRoute('/spaces/space-2/feed', { spaces: spaces() })
 
-    const list = within(
-      await screen.findByRole('list', { name: 'Your spaces' })
-    )
-    const launch = await list.findByRole('link', { name: 'Launch' })
+    const pinned = within(await screen.findByRole('list', { name: 'Pinned' }))
+    const recent = within(screen.getByRole('list', { name: 'Recent' }))
+    const launch = recent.getByRole('link', { name: 'Launch' })
     expect(launch).toHaveAttribute('href', '/spaces/space-2')
     expect(launch).toHaveAttribute('aria-current', 'page')
-    expect(list.getByRole('link', { name: 'Design' })).not.toHaveAttribute(
+    expect(pinned.getByRole('link', { name: 'Design' })).not.toHaveAttribute(
       'aria-current'
     )
+    expect(recent.queryByRole('link', { name: 'Design' })).toBe(null)
+    expect(screen.queryByRole('link', { name: 'Handover' })).toBe(null)
   })
 
-  it('filters the spaces by name from the sidebar search', async () => {
+  it('shows Pinned and Recent with a hint while they are empty', async () => {
+    const service = fakeSpaces([
+      {
+        id: 'space-3',
+        name: 'Handover',
+        role: 'viewer',
+        color: null,
+        description: '',
+        pinnedAt: null,
+        openedAt: null,
+        members: []
+      }
+    ])
+    renderRoute('/', { spaces: service })
+
+    expect(
+      within(await screen.findByRole('list', { name: 'Pinned' })).getByText(
+        'Pin a space from its menu'
+      )
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('list', { name: 'Recent' })).getByText(
+        'The spaces you open show here'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('searches every space by name from the sidebar', async () => {
     renderRoute('/', { spaces: spaces() })
-    const list = within(
-      await screen.findByRole('list', { name: 'Your spaces' })
-    )
-    await list.findByRole('link', { name: 'Design' })
+    await screen.findByRole('list', { name: 'Pinned' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Search your spaces' }))
     const search = screen.getByRole('textbox', { name: 'Space name' })
     expect(search).toHaveFocus()
-    fireEvent.change(search, { target: { value: 'LAUN' } })
+    fireEvent.change(search, { target: { value: 'HAND' } })
 
-    expect(list.getByRole('link', { name: 'Launch' })).toBeInTheDocument()
-    expect(list.queryByRole('link', { name: 'Design' })).toBe(null)
+    const found = within(screen.getByRole('list', { name: 'Your spaces' }))
+    expect(found.getByRole('link', { name: 'Handover' })).toBeInTheDocument()
+    expect(found.queryByRole('link', { name: 'Design' })).toBe(null)
+    expect(screen.queryByRole('list', { name: 'Pinned' })).toBe(null)
 
     fireEvent.change(search, { target: { value: 'nothing' } })
-    expect(list.getByText('No space found')).toBeInTheDocument()
+    expect(found.getByText('No space found')).toBeInTheDocument()
 
     fireEvent.keyDown(search, { key: 'Escape' })
     expect(screen.queryByRole('textbox', { name: 'Space name' })).toBe(null)
-    expect(list.getByRole('link', { name: 'Design' })).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('list', { name: 'Pinned' })).getByRole('link', {
+        name: 'Design'
+      })
+    ).toBeInTheDocument()
   })
 
   it('links home from the navigation', async () => {
@@ -160,7 +201,7 @@ describe('AppShell', () => {
     renderRoute('/', { lang: 'fr', spaces: spaces() })
 
     expect(
-      await screen.findByRole('list', { name: 'Vos espaces' })
+      await screen.findByRole('list', { name: 'Épinglés' })
     ).toBeInTheDocument()
   })
 
@@ -203,12 +244,13 @@ describe('AppShell', () => {
           screen.getByRole('link', { name: 'Design, 5 new' })
         ).toBeInTheDocument()
       })
-      const list = within(screen.getByRole('list', { name: 'Your spaces' }))
-      expect(list.getByText('5')).toBeInTheDocument()
+      const pinned = within(screen.getByRole('list', { name: 'Pinned' }))
+      const recent = within(screen.getByRole('list', { name: 'Recent' }))
+      expect(pinned.getByText('5')).toBeInTheDocument()
       expect(
-        list.getByRole('link', { name: 'Launch, 120 new' })
+        recent.getByRole('link', { name: 'Launch, 120 new' })
       ).toBeInTheDocument()
-      expect(list.getByText('99+')).toBeInTheDocument()
+      expect(recent.getByText('99+')).toBeInTheDocument()
     })
 
     it('shows no total for a space the apps reported nothing for', async () => {

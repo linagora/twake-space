@@ -84,6 +84,24 @@ describe('SpaceScreen', () => {
     ).toBeInTheDocument()
   })
 
+  it('records the visit for Recent once the space shows', async () => {
+    const spaces = renderAt('/spaces/a1/feed')
+
+    await screen.findByRole('heading', { level: 1, name: 'Roadmap' })
+
+    await waitFor(() => {
+      expect(spaces.markOpened).toHaveBeenCalledWith('a1')
+    })
+  })
+
+  it('records no visit of a space it cannot show', async () => {
+    const spaces = renderAt('/spaces/zz', null)
+
+    await screen.findByText('This space does not exist, or you are not in it.')
+
+    expect(spaces.markOpened).not.toHaveBeenCalled()
+  })
+
   it('opens on the home, which every space has', async () => {
     renderAt('/spaces/a1', { ...roadmap, apps: ['chat', 'tasks'] })
 
