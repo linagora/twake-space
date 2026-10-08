@@ -323,7 +323,8 @@
     },
     "deletedUser": "Удалённый пользователь",
     "someone": "Кто-то",
-    "fromDrive": "С Диска"
+    "fromDrive": "С Диска",
+    "emoji": "Добавить эмодзи"
   },
   "embed": {
     "overlay": "Окна %{app}"

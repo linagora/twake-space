@@ -323,7 +323,8 @@
     },
     "deletedUser": "Người dùng đã xóa",
     "someone": "Ai đó",
-    "fromDrive": "Từ Drive"
+    "fromDrive": "Từ Drive",
+    "emoji": "Thêm biểu tượng cảm xúc"
   },
   "embed": {
     "overlay": "Cửa sổ của %{app}"

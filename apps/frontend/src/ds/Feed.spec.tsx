@@ -1,7 +1,13 @@
 import { fireEvent, screen } from '@testing-library/react'
+import { useState, type ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { FeedFilterMenu, FeedLayout, ReactionPicker } from '@/ds/Feed'
+import {
+  FeedComposer,
+  FeedFilterMenu,
+  FeedLayout,
+  ReactionPicker
+} from '@/ds/Feed'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 
 const options = [
@@ -87,5 +93,48 @@ describe('ReactionPicker', () => {
     fireEvent.click(button)
     fireEvent.click(await screen.findByRole('menuitem', { name: '🎉' }))
     expect(onPick).toHaveBeenCalledWith('🎉')
+  })
+})
+
+function Composer({ onSend }: { onSend: () => void }): ReactElement {
+  const [value, setValue] = useState('')
+  return (
+    <FeedComposer
+      label="Text message"
+      sendLabel="Send"
+      emojiLabel="Add an emoji"
+      emojis={['😍', '🎉']}
+      value={value}
+      onChange={setValue}
+      onSend={onSend}
+      disabled={false}
+    />
+  )
+}
+
+describe('FeedComposer', () => {
+  it('puts the emoji picked after the text', async () => {
+    renderWithProviders(<Composer onSend={vi.fn()} />)
+    const field = await screen.findByRole('textbox', { name: 'Text message' })
+    fireEvent.change(field, { target: { value: 'Well done ' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add an emoji' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: '🎉' }))
+
+    expect(field).toHaveValue('Well done 🎉')
+  })
+
+  it('sends only when there is something to send', async () => {
+    const onSend = vi.fn()
+    renderWithProviders(<Composer onSend={onSend} />)
+    const send = await screen.findByRole('button', { name: 'Send' })
+    expect(send).toBeDisabled()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Text message' }), {
+      target: { value: 'Hi' }
+    })
+    fireEvent.click(send)
+
+    expect(onSend).toHaveBeenCalledTimes(1)
   })
 })

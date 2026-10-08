@@ -88,6 +88,33 @@ function feedItemOf(state: unknown): string | null {
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '👀', '🙏']
 
+const COMPOSER_EMOJIS = [
+  '😀',
+  '😂',
+  '🙂',
+  '😉',
+  '😍',
+  '🥳',
+  '😎',
+  '🤔',
+  '😅',
+  '😢',
+  '😮',
+  '🙏',
+  '👍',
+  '👏',
+  '🙌',
+  '💪',
+  '👀',
+  '🎉',
+  '❤️',
+  '🔥',
+  '✅',
+  '🚀',
+  '💡',
+  '☕'
+]
+
 // How many pages the feed loads back to the first new item, before it opens
 // on the oldest one it has.
 const MARK_PAGES = 5
@@ -294,6 +321,8 @@ function Composer({ space }: { space: Space }): ReactElement {
       <FeedComposer
         label={t('feed.composer')}
         sendLabel={t('feed.send')}
+        emojiLabel={t('feed.emoji')}
+        emojis={COMPOSER_EMOJIS}
         value={body}
         onChange={setBody}
         onSend={() => {

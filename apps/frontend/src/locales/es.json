@@ -323,7 +323,8 @@
     },
     "deletedUser": "Usuario eliminado",
     "someone": "Alguien",
-    "fromDrive": "Desde Drive"
+    "fromDrive": "Desde Drive",
+    "emoji": "Añadir un emoji"
   },
   "embed": {
     "overlay": "Ventanas de %{app}"
