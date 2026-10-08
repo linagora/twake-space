@@ -60,7 +60,8 @@ export function browserNotifications(): SystemNotifications {
     show: (app, { tag, title, body }, onClick) => {
       if (typeof Notification === 'undefined') return
       const key = `${app}:${tag}`
-      if (Notification.permission === 'granted') display(key, { title, body, onClick })
+      if (Notification.permission === 'granted')
+        display(key, { title, body, onClick })
       else if (Notification.permission === 'default') {
         pending.set(key, { title, body, onClick })
         askOnGesture()
