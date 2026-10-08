@@ -135,6 +135,7 @@ export function EmbeddedApps(): ReactElement | null {
         [hiddenSpec.app]: {
           key: (frame?.key ?? 0) + 1,
           src: step.src,
+          spaceId,
           resourceId: hiddenResource,
           path: '',
           dialect: null,
@@ -147,6 +148,7 @@ export function EmbeddedApps(): ReactElement | null {
         ...next,
         [hiddenSpec.app]: {
           ...frame,
+          spaceId,
           resourceId: hiddenResource,
           path: '',
           pending: loadMessage(hiddenResource, '')
@@ -180,6 +182,7 @@ export function EmbeddedApps(): ReactElement | null {
           [shown.app]: {
             key: (frame?.key ?? 0) + 1,
             src: step.src,
+            spaceId: shown.spaceId,
             resourceId: shown.resourceId,
             path: shown.path,
             dialect: null,
@@ -194,6 +197,7 @@ export function EmbeddedApps(): ReactElement | null {
             ...next,
             [shown.app]: {
               ...frame,
+              spaceId: shown.spaceId,
               resourceId: shown.resourceId,
               path: shown.path,
               pending: loadMessage(shown.resourceId, shown.path)
@@ -346,6 +350,12 @@ export function EmbeddedApps(): ReactElement | null {
               }}
               onPath={report => {
                 onPath(app, report)
+              }}
+              onOpen={() => {
+                const current = committed.current.frames[app]
+                if (current) {
+                  void navigate(tabPath(current.spaceId, app) + current.path)
+                }
               }}
               onBadges={reported => {
                 if (reported === null) badges.reset(app)

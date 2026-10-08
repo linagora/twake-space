@@ -310,12 +310,11 @@ describe('EmbeddedAppFrame', () => {
       await renderFrame()
 
       postFromFrame(ring)
-      expect(notifications.show).toHaveBeenCalledWith('mail', {
-        kind: 'show',
-        tag: 'call',
-        title: 'Alice',
-        body: 'Incoming call'
-      })
+      expect(notifications.show).toHaveBeenCalledWith(
+        'mail',
+        { tag: 'call', title: 'Alice', body: 'Incoming call' },
+        expect.any(Function)
+      )
 
       postFromFrame({ type: 'twake-embed:notification-close', tag: 'call' })
       expect(notifications.close).toHaveBeenCalledWith('mail', 'call')

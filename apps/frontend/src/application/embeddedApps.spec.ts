@@ -110,6 +110,7 @@ describe('reconcile', () => {
   const frame = (over: Partial<FrameState> = {}): FrameState => ({
     key: 1,
     src: 'https://tasks.test/embed/projects/p1',
+    spaceId: 'a1',
     resourceId: 'p1',
     path: '',
     dialect: 'embed',
@@ -258,6 +259,7 @@ describe('reconcileHidden', () => {
   const frame = (over: Partial<FrameState> = {}): FrameState => ({
     key: 1,
     src: 'https://tasks.test/embed/projects/p1',
+    spaceId: 'a1',
     resourceId: 'p1',
     path: '/kept',
     dialect: 'embed',

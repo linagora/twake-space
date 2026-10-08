@@ -3,6 +3,7 @@ import type { SystemNotifications } from '@/application/notifications'
 interface Pending {
   title: string
   body: string
+  onClick: () => void
 }
 
 // The browser asks for the permission on a user gesture only: the first
@@ -12,11 +13,12 @@ export function browserNotifications(): SystemNotifications {
   const pending = new Map<string, Pending>()
   let asking = false
 
-  const display = (key: string, { title, body }: Pending) => {
+  const display = (key: string, { title, body, onClick }: Pending) => {
     shown.get(key)?.close()
     const notification = new Notification(title, { tag: key, body })
     notification.onclick = () => {
       window.focus()
+      onClick()
       notification.close()
     }
     notification.onclose = () => {
@@ -55,12 +57,12 @@ export function browserNotifications(): SystemNotifications {
   }
 
   return {
-    show: (app, { tag, title, body }) => {
+    show: (app, { tag, title, body }, onClick) => {
       if (typeof Notification === 'undefined') return
       const key = `${app}:${tag}`
-      if (Notification.permission === 'granted') display(key, { title, body })
+      if (Notification.permission === 'granted') display(key, { title, body, onClick })
       else if (Notification.permission === 'default') {
-        pending.set(key, { title, body })
+        pending.set(key, { title, body, onClick })
         askOnGesture()
       }
     },

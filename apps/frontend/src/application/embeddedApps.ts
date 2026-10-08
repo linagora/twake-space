@@ -137,6 +137,8 @@ export interface FrameState {
   // Changes to replace the iframe element
   key: number
   src: string
+  // The space of the resource, which a floating frame keeps
+  spaceId: string
   resourceId: string
   path: string
   dialect: EmbedPath['dialect'] | null

@@ -71,7 +71,8 @@ export function EmbeddedAppFrame({
   frameRef,
   onPath,
   onBadges,
-  onFloat
+  onFloat,
+  onOpen
 }: {
   // Names the frame `twake-embed-<app>`, and its overlay `<that>:overlay`
   app: string
@@ -91,6 +92,8 @@ export function EmbeddedAppFrame({
   // snapshot, or null when the frame's document is gone
   onBadges: (badges: readonly Badge[] | null) => void
   onFloat?: (floats: boolean) => void
+  // A click on one of its system notifications: show the app
+  onOpen?: () => void
 }): ReactElement {
   const { t } = useI18n()
   const { signIn } = useSession()
@@ -100,9 +103,11 @@ export function EmbeddedAppFrame({
 
   const report = useRef(onPath)
   const reportBadges = useRef(onBadges)
+  const open = useRef(onOpen)
   useEffect(() => {
     report.current = onPath
     reportBadges.current = onBadges
+    open.current = onOpen
   })
   // A frame replaced or removed takes its counts with it
   useEffect(
@@ -166,7 +171,10 @@ export function EmbeddedAppFrame({
         }
         const notification = parseAppNotification(event.data)
         if (notification?.kind === 'show') {
-          notifications.show(app, notification)
+          const { tag, title, body } = notification
+          notifications.show(app, { tag, title, body }, () => {
+            open.current?.()
+          })
           return
         }
         if (notification?.kind === 'close') {
