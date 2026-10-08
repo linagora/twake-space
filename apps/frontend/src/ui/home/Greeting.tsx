@@ -12,16 +12,7 @@ function greetingKey(hour: number): 'morning' | 'afternoon' | 'evening' {
   return 'evening'
 }
 
-// `level` is the greeting's heading level: the page may already have an h1.
-export function Greeting({
-  title,
-  level,
-  hideTitleOnMobile = false
-}: {
-  title?: ReactNode
-  level: 'h1' | 'h2'
-  hideTitleOnMobile?: boolean
-}): ReactElement {
+export function useGreeting(): { date: string; greeting: string } {
   const { t, lang } = useI18n()
   const { user } = useSession()
   const { settings } = useCommonSettings()
@@ -38,35 +29,38 @@ export function Greeting({
     (settings.displayName ?? user.name)?.split(' ')[0] ??
     user.email?.split('@')[0] ??
     ''
+  return {
+    date: new Intl.DateTimeFormat(lang, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      timeZone
+    }).format(now),
+    greeting: t(`home.${greetingKey(hour)}`, { name })
+  }
+}
+
+export function Greeting({ title }: { title: ReactNode }): ReactElement {
+  const { date, greeting } = useGreeting()
 
   return (
     <>
       <div className="u-flex u-flex-wrap u-flex-items-center u-flex-justify-between">
-        {title !== undefined && (
-          <Typography
-            variant="h3"
-            component="p"
-            className={hideTitleOnMobile ? 'u-dn-m' : undefined}
-          >
-            {title}
-          </Typography>
-        )}
+        {/* Below lg the mobile bar already shows the app name */}
+        <Typography variant="h3" component="p" className="u-dn-m">
+          {title}
+        </Typography>
         <Typography
           variant="subtitle1"
           component="p"
           className="u-flex u-flex-items-center u-ml-auto"
         >
           <Icon icon={Calendar} className="u-mr-half" />
-          {new Intl.DateTimeFormat(lang, {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            timeZone
-          }).format(now)}
+          {date}
         </Typography>
       </div>
-      <Typography variant="h2" component={level} className="u-mt-1 u-mb-1-half">
-        {t(`home.${greetingKey(hour)}`, { name })}
+      <Typography variant="h2" component="h1" className="u-mt-1 u-mb-1-half">
+        {greeting}
       </Typography>
     </>
   )

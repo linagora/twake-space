@@ -101,13 +101,18 @@ export function ScrollPanel({
   )
 }
 
-// `src` replaces the default artwork; `action` sits in the bottom right corner.
+// `src` replaces the default artwork. The shade under `date` and `title` keeps
+// white text readable on any banner an admin uploads.
 export function SpaceCover({
   src,
-  action
+  action,
+  date,
+  title
 }: {
   src?: string | undefined
   action?: ReactNode
+  date: ReactNode
+  title: ReactNode
 }): ReactElement {
   return (
     <Box
@@ -115,7 +120,7 @@ export function SpaceCover({
         position: 'relative',
         overflow: 'hidden',
         flex: 'none',
-        height: { xs: 120, md: 211 },
+        height: { xs: 132, md: 168 },
         borderRadius: '8px',
         bgcolor: 'primary.dark',
         containerType: 'size'
@@ -150,8 +155,46 @@ export function SpaceCover({
           }}
         />
       )}
+      <Box
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
+          px: { xs: 2, md: 3 },
+          pb: { xs: 1.5, md: 2.5 },
+          color: 'common.white',
+          background:
+            'linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0.15) 60%, transparent)'
+        }}
+      >
+        <Typography variant="body2" sx={{ color: 'inherit', opacity: 0.85 }}>
+          {date}
+        </Typography>
+        <Typography
+          variant="h3"
+          component="h2"
+          sx={{ color: 'inherit', fontSize: { xs: 24, md: 32 } }}
+        >
+          {title}
+        </Typography>
+      </Box>
       {action && (
-        <Box sx={{ position: 'absolute', right: 0, bottom: 0 }}>{action}</Box>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            '& .MuiIconButton-root': {
+              color: 'common.white',
+              bgcolor: 'rgba(0,0,0,0.4)',
+              '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' }
+            }
+          }}
+        >
+          {action}
+        </Box>
       )}
     </Box>
   )
