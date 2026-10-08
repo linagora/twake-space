@@ -166,6 +166,8 @@
       "calendar": "Calendario ed eventi condivisi"
     },
     "dangerZone": "Zona pericolosa",
+    "apiTokensHint": "Token per script, integrazioni e agenti IA",
+    "manage": "Gestisci",
     "deleteHint": "Elimina definitivamente tutte le chat, i file e le attività"
   },
   "tasks": {

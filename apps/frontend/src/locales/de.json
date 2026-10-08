@@ -166,6 +166,8 @@
       "calendar": "Gemeinsamer Kalender und Termine"
     },
     "dangerZone": "Gefahrenzone",
+    "apiTokensHint": "Tokens für Skripte, Integrationen und KI-Agenten",
+    "manage": "Verwalten",
     "deleteHint": "Entfernt alle Chats, Dateien und Aufgaben endgültig"
   },
   "tasks": {

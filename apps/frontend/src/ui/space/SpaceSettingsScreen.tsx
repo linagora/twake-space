@@ -1,6 +1,7 @@
 import {
   CrossCircleOutline,
   Icon,
+  Key,
   List as ListIcon,
   Pen,
   PersonAdd,
@@ -208,6 +209,23 @@ function Settings({ space }: { space: Space }): ReactElement {
 
       <Section title={t('settings.dangerZone')}>
         <List className="u-maw-7">
+          <ListItem gutters="disabled">
+            <ListItemIcon>
+              <Icon icon={Key} />
+            </ListItemIcon>
+            <ListItemText
+              primary={t('apiTokens.title')}
+              secondary={t('settings.apiTokensHint')}
+            />
+            <Button
+              component={RouterLink}
+              to="/settings/api-tokens"
+              variant="outlined"
+              className="u-flex-none u-ml-1"
+            >
+              {t('settings.manage')}
+            </Button>
+          </ListItem>
           <ListItem gutters="disabled">
             <ListItemIcon className="u-error">
               <Icon icon={Trash} />

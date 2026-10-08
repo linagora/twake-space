@@ -166,6 +166,8 @@
       "calendar": "Agenda et événements partagés"
     },
     "dangerZone": "Zone de danger",
+    "apiTokensHint": "Jetons pour les scripts, intégrations et agents IA",
+    "manage": "Gérer",
     "deleteHint": "Supprime définitivement tous les messages, fichiers et tâches"
   },
   "tasks": {

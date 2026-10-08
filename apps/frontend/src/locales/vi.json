@@ -166,6 +166,8 @@
       "calendar": "Lịch và sự kiện dùng chung"
     },
     "dangerZone": "Vùng nguy hiểm",
+    "apiTokensHint": "Token cho các tập lệnh, tích hợp và tác nhân AI",
+    "manage": "Quản lý",
     "deleteHint": "Xóa vĩnh viễn mọi cuộc trò chuyện, tệp và công việc"
   },
   "tasks": {
