@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { fakeSettings } from '@/testing/fakeSettings'
 import { fakeSpaces } from '@/testing/fakeSpaces'
-import { renderWithProviders } from '@/testing/renderWithProviders'
+import { renderRoute, renderWithProviders } from '@/testing/renderWithProviders'
 import { HomeScreen } from '@/ui/home/HomeScreen'
 
 describe('HomeScreen', () => {
@@ -119,9 +119,9 @@ describe('HomeScreen', () => {
     ).toBeInTheDocument()
   })
 
-  it('creates a space with the description, color and apps picked, and shows its card', async () => {
+  it('creates a space with the description, color and apps picked, and opens it', async () => {
     const spaces = fakeSpaces()
-    renderWithProviders(<HomeScreen />, { spaces })
+    const { router } = renderRoute('/', { spaces })
 
     fireEvent.click(
       await screen.findByRole('button', { name: 'Create a space' })
@@ -151,7 +151,9 @@ describe('HomeScreen', () => {
     fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Calendar' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
 
-    await screen.findByRole('link', { name: 'Launch' })
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/spaces/space-1')
+    })
     expect(spaces.create).toHaveBeenCalledWith({
       name: 'Launch',
       description: 'Ship it',
