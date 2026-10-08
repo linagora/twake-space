@@ -351,6 +351,9 @@ export function EmbeddedApps(): ReactElement | null {
                 if (reported === null) badges.reset(app)
                 else badges.replace(app, reported)
               }}
+              onMetadata={reported => {
+                badges.metadata(app, reported)
+              }}
             />
           </KeptAlive>
         )

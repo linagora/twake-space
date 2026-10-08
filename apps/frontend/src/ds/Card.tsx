@@ -3,6 +3,7 @@ import {
   Box,
   Card,
   CardActionArea,
+  Skeleton,
   Typography
 } from '@linagora/twake-mui'
 import type { ReactElement, ReactNode } from 'react'
@@ -171,18 +172,45 @@ const GREY_BUTTONS = {
   }
 }
 
-export function Tile({ children }: { children: ReactNode }): ReactElement {
+// The space home's tiles, the figures narrow beside a wide one.
+export function TileRow({ children }: { children: ReactNode }): ReactElement {
+  return (
+    <Box
+      component="ul"
+      sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 3,
+        m: 0,
+        p: 0,
+        listStyle: 'none'
+      }}
+    >
+      {children}
+    </Box>
+  )
+}
+
+export function Tile({
+  wide = false,
+  children
+}: {
+  wide?: boolean
+  children: ReactNode
+}): ReactElement {
   return (
     <Card
       component="li"
       sx={{
+        flex: wide ? '3 1 360px' : '1 1 140px',
         display: 'flex',
         alignItems: 'center',
+        justifyContent: wide ? 'flex-start' : 'center',
         flexWrap: 'wrap',
         gap: 2,
         minHeight: 83,
         py: 1.5,
-        pl: 3.5,
+        pl: wide ? 3.5 : 1.5,
         pr: 1.5,
         borderRadius: RADIUS,
         ...GREY_BUTTONS
@@ -193,6 +221,7 @@ export function Tile({ children }: { children: ReactNode }): ReactElement {
   )
 }
 
+// A null value is still loading.
 export function TileNumber({
   value,
   label
@@ -202,10 +231,11 @@ export function TileNumber({
 }): ReactElement {
   return (
     <Box
+      aria-busy={value === null ? true : undefined}
       sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
     >
       <Typography component="span" sx={{ fontSize: 32, fontWeight: 700 }}>
-        {value}
+        {value ?? <Skeleton width={56} />}
       </Typography>
       <Typography component="span" variant="caption" color="textSecondary">
         {label}

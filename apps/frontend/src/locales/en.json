@@ -10,6 +10,11 @@
   "spaceHome": {
     "users": "Space user |||| Space users",
     "manageUsers": "Manage users",
+    "figures": {
+      "tasks": "Tasks completed",
+      "files": "Shared files",
+      "events": "Upcoming events"
+    },
     "app": {
       "calendar": {
         "name": "Calendar",

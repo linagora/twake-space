@@ -10,6 +10,11 @@
   "spaceHome": {
     "users": "Thành viên",
     "manageUsers": "Quản lý thành viên",
+    "figures": {
+      "tasks": "Công việc đã hoàn thành",
+      "files": "Tệp được chia sẻ",
+      "events": "Sự kiện sắp tới"
+    },
     "app": {
       "calendar": {
         "name": "Lịch",

@@ -54,12 +54,18 @@ export function spaceCount(
   space: Pick<Space, 'resources'>,
   app: EmbeddedApp
 ): number | null {
-  const id = space.resources.find(
-    r => r.kind === EMBEDDED_APPS[app].resource
-  )?.id
-  return id === undefined || id === null
-    ? null
-    : (snapshots[app].get(id) ?? null)
+  const id = spaceResourceId(space, app)
+  return id === null ? null : (snapshots[app].get(id) ?? null)
+}
+
+export function spaceResourceId(
+  space: Pick<Space, 'resources'>,
+  app: EmbeddedApp
+): string | null {
+  return (
+    space.resources.find(r => r.kind === EMBEDDED_APPS[app].resource)?.id ??
+    null
+  )
 }
 
 // What the tabs of the space show: its ready embedded tabs, with a count.
