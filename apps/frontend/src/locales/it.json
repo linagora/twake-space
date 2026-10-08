@@ -396,7 +396,21 @@
     "minimize": "Riduci a icona",
     "maximize": "Ingrandisci",
     "restore": "Ripristina",
-    "leave": "Esci dalla riunione"
+    "leave": "Esci dalla riunione",
+    "schedule": "Pianifica una riunione",
+    "meetingTitle": "Titolo",
+    "date": "Data",
+    "time": "Ora di inizio",
+    "duration": "Dura %{minutes} minuti",
+    "description": "Descrizione",
+    "scheduleAction": "Pianifica",
+    "scheduled": "Riunione pianificata. Apparirà nel feed quando il calendario l'avrà creata.",
+    "refusal": {
+      "cannotSchedule": "Solo editor e amministratori possono pianificare una riunione.",
+      "noCalendar": "Il calendario dello spazio non è ancora pronto.",
+      "unavailable": "Il calendario non è raggiungibile. Riprova tra poco.",
+      "failed": "Impossibile pianificare la riunione. Riprova."
+    }
   },
   "assistant": {
     "title": "Chiedi a Twake AI",

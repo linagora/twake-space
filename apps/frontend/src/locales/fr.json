@@ -396,7 +396,21 @@
     "minimize": "Réduire",
     "maximize": "Agrandir",
     "restore": "Restaurer",
-    "leave": "Quitter la réunion"
+    "leave": "Quitter la réunion",
+    "schedule": "Planifier une réunion",
+    "meetingTitle": "Titre",
+    "date": "Date",
+    "time": "Heure de début",
+    "duration": "Dure %{minutes} minutes",
+    "description": "Description",
+    "scheduleAction": "Planifier",
+    "scheduled": "Réunion planifiée. Elle apparaît dans le fil dès que l'agenda l'a créée.",
+    "refusal": {
+      "cannotSchedule": "Seuls les éditeurs et les administrateurs peuvent planifier une réunion.",
+      "noCalendar": "L'agenda de l'espace n'est pas encore prêt.",
+      "unavailable": "L'agenda est injoignable. Réessayez dans un instant.",
+      "failed": "La réunion n'a pas pu être planifiée. Réessayez."
+    }
   },
   "assistant": {
     "title": "Demander à Twake AI",

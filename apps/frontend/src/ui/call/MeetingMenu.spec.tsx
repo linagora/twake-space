@@ -1,7 +1,8 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import { useLocation } from 'react-router'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { MeetingsService } from '@/application/meetings'
 import type { Space } from '@/application/spaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { CallWindow } from '@/ui/call/CallWindow'
@@ -21,6 +22,12 @@ const space: Space = {
   members: [],
   groups: [],
   resources: [{ kind: 'matrix_space', id: '!s:acme' }]
+}
+
+const withCalendar: Space = {
+  ...space,
+  apps: ['chat', 'calendar'],
+  resources: [...space.resources, { kind: 'calendar', id: 'cal-1' }]
 }
 
 function Address() {
@@ -133,6 +140,62 @@ describe('MeetingMenu', () => {
       screen.getByText('This is not a Twake Meet link or code.')
     ).toBeInTheDocument()
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
+  })
+
+  it('schedules a meeting in the space, retrying with the same UID', async () => {
+    const schedule = vi
+      .fn<MeetingsService['schedule']>()
+      .mockRejectedValueOnce({ status: 503, code: 'unavailable' })
+      .mockResolvedValueOnce(undefined)
+    renderWithProviders(<MeetingMenu space={withCalendar} />, {
+      meetings: { schedule },
+      path: '/spaces/a1'
+    })
+
+    await choose('Schedule a meeting')
+    const dialog = screen.getByRole('dialog', { name: 'Schedule a meeting' })
+    expect(within(dialog).getByLabelText('Title')).toHaveValue('Roadmap')
+    fireEvent.change(within(dialog).getByLabelText('Date'), {
+      target: { value: '2026-10-14' }
+    })
+    fireEvent.change(within(dialog).getByLabelText('Start time'), {
+      target: { value: '10:00' }
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Schedule' }))
+
+    expect(
+      await within(dialog).findByText(
+        'The calendar cannot be reached. Try again in a moment.'
+      )
+    ).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Schedule' }))
+
+    expect(
+      await screen.findByText(
+        'Meeting scheduled. It shows in the feed once the calendar has created it.'
+      )
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    const [first, second] = schedule.mock.calls
+    expect(first?.[0]).toBe('a1')
+    expect(first?.[1].title).toBe('Roadmap')
+    expect(first?.[1].start).toMatch(/^2026-10-14T10:00:00[+-]\d\d:\d\d$/)
+    expect(first?.[1].end).toMatch(/^2026-10-14T10:30:00[+-]\d\d:\d\d$/)
+    expect(second?.[1].uid).toBe(first?.[1].uid)
+  })
+
+  it('offers scheduling to editors and admins only', async () => {
+    renderMenu(null, { ...withCalendar, role: 'viewer' })
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Video meeting' })
+    )
+
+    expect(
+      within(screen.getByRole('menu')).queryByRole('menuitem', {
+        name: 'Schedule a meeting'
+      })
+    ).not.toBeInTheDocument()
   })
 
   it('keeps the room loaded while minimized, and leaves it on close', async () => {
