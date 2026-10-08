@@ -31,6 +31,7 @@ import {
   ChevronDownIcon,
   EmojiIcon,
   MoreVertIcon,
+  SidePanelIcon,
   Videocam
 } from '@/ds/icons'
 import type { SpaceTokens } from '@/ds/theme'
@@ -251,6 +252,66 @@ export function FeedLayout({
       </Box>
       {/* Sending a message brings the person back to the newest items. */}
       <Box onSubmitCapture={toEnd}>{composer}</Box>
+    </Box>
+  )
+}
+
+/** The feed, and a panel beside it that comes and goes. */
+export function FeedWithSide({
+  side,
+  children
+}: {
+  side: ReactNode
+  children: ReactNode
+}): ReactElement {
+  return (
+    <Box
+      sx={{
+        position: 'relative',
+        display: 'flex',
+        flex: '1 1 auto',
+        minHeight: 0
+      }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: '1 1 auto',
+          minWidth: 0
+        }}
+      >
+        {children}
+      </Box>
+      {side}
+    </Box>
+  )
+}
+
+/** The button of the members panel, beside the filter. */
+export function FeedToolbar({
+  panelLabel,
+  panelOpen,
+  onPanel,
+  children
+}: {
+  panelLabel: string
+  panelOpen: boolean
+  onPanel: () => void
+  children: ReactNode
+}): ReactElement {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <IconButton
+        size="small"
+        aria-label={panelLabel}
+        aria-pressed={panelOpen}
+        onClick={onPanel}
+        sx={{ width: 34, height: 32, borderRadius: 100, color: 'text.primary' }}
+      >
+        <Icon icon={SidePanelIcon} size={20} />
+      </IconButton>
+      {children}
     </Box>
   )
 }
