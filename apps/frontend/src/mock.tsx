@@ -9,6 +9,7 @@ import { memorySpaces } from '@/adapters/memory/memorySpaces'
 import { memoryTokens } from '@/adapters/memory/memoryTokens'
 import {
   seedFeed,
+  seedFeedReads,
   seedOrganization,
   seedSpaces,
   seedTokens,
@@ -46,7 +47,8 @@ const services = {
   live: { subscribe: () => () => undefined },
   feed: memoryFeed(seedFeed, {
     me: { id: 'uuid-alice', name: seedUser.name },
-    roles: Object.fromEntries(seedSpaces.map(space => [space.id, space.role]))
+    roles: Object.fromEntries(seedSpaces.map(space => [space.id, space.role])),
+    readAt: seedFeedReads
   }),
   meetings: { schedule: () => Promise.resolve() },
   feedback: null,
