@@ -114,7 +114,7 @@ export function PeopleDialog({
       <DialogContent>
         <Stack spacing={1.5}>
           <WriteError error={write.error} />
-          {isAdmin && <AddRow space={space} write={write} />}
+          {isAdmin && <AddPeopleRow space={space} write={write} />}
           {rows.length === 0 ? (
             <Typography color="textSecondary">
               {t('members.noMembers')}
@@ -168,7 +168,7 @@ export function PeopleDialog({
   )
 }
 
-function AddRow({
+export function AddPeopleRow({
   space,
   write
 }: {

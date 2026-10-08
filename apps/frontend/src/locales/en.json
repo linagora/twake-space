@@ -53,7 +53,8 @@
     "linkCopied": "Link copied",
     "invite": "Invite people",
     "managePeople": "Manage people",
-    "members": "Members"
+    "members": "Members",
+    "manage": "Manage space"
   },
   "roles": {
     "viewer": "Viewer",
@@ -133,6 +134,31 @@
     "preparing": "%{app} is being prepared for this space.",
     "stalled": "%{app} is not ready yet. Try again later, and tell your administrator if it stays this way.",
     "checkAgain": "Check again"
+  },
+  "settings": {
+    "adminsOnly": "Only the admins of a space manage it.",
+    "edit": "Edit",
+    "personalization": "Personalization",
+    "description": "Description",
+    "descriptionHint": "Describe what this space is for",
+    "members": "Members",
+    "membersHint": "Manage who has access to this space",
+    "addMembers": "Add members",
+    "all": "All",
+    "you": "You",
+    "noOne": "No one has this role.",
+    "apps": "Space apps",
+    "appsCount": "%{on} of %{total} enabled",
+    "appHint": {
+      "feed": "Announcements and updates",
+      "chat": "Real-time conversations",
+      "tasks": "Boards and to-dos",
+      "drive": "Shared drive for the space",
+      "mail": "Space mailbox",
+      "calendar": "Shared calendar and events"
+    },
+    "dangerZone": "Danger zone",
+    "deleteHint": "Permanently remove all chats, files and tasks"
   },
   "tasks": {
     "notSetUp": "Tasks is not set up for TwakeSpace."

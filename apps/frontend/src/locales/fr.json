@@ -53,7 +53,8 @@
     "linkCopied": "Lien copié",
     "invite": "Inviter des personnes",
     "managePeople": "Gérer les personnes",
-    "members": "Membres"
+    "members": "Membres",
+    "manage": "Gérer l’espace"
   },
   "roles": {
     "viewer": "Lecteur",
@@ -133,6 +134,31 @@
     "preparing": "%{app} est en cours de préparation pour cet espace.",
     "stalled": "%{app} n'est pas encore prêt. Réessayez plus tard, et prévenez votre administrateur si cela persiste.",
     "checkAgain": "Vérifier à nouveau"
+  },
+  "settings": {
+    "adminsOnly": "Seuls les administrateurs d’un espace le gèrent.",
+    "edit": "Modifier",
+    "personalization": "Personnalisation",
+    "description": "Description",
+    "descriptionHint": "Décrivez à quoi sert cet espace",
+    "members": "Membres",
+    "membersHint": "Gérez qui a accès à cet espace",
+    "addMembers": "Ajouter des membres",
+    "all": "Tous",
+    "you": "Vous",
+    "noOne": "Personne n’a ce rôle.",
+    "apps": "Applications de l’espace",
+    "appsCount": "%{on} sur %{total} activées",
+    "appHint": {
+      "feed": "Annonces et nouveautés",
+      "chat": "Conversations en temps réel",
+      "tasks": "Tableaux et tâches",
+      "drive": "Espace de fichiers partagé",
+      "mail": "Boîte mail de l’espace",
+      "calendar": "Agenda et événements partagés"
+    },
+    "dangerZone": "Zone de danger",
+    "deleteHint": "Supprime définitivement tous les messages, fichiers et tâches"
   },
   "tasks": {
     "notSetUp": "Tâches n'est pas configuré pour TwakeSpace."
