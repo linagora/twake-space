@@ -194,7 +194,21 @@ export function SidebarSearch({
   )
 }
 
-// Phones get the bottom bar only; the section stays on wide screens.
+// The mockup's count badge: 16px high, the label small type.
+const sidebarBadge = {
+  '& .MuiBadge-badge': {
+    minWidth: 16,
+    height: 16,
+    px: '4.5px',
+    fontSize: 11,
+    fontWeight: 500,
+    lineHeight: '16px',
+    letterSpacing: '0.5px'
+  }
+}
+
+// Phones get the bottom bar only; the section stays on wide screens. Sections
+// sit 16px apart.
 export function SidebarSection({
   label,
   children
@@ -220,7 +234,12 @@ export function SidebarSection({
           {label}
         </ListSubheader>
       }
-      sx={{ display: { xs: 'none', lg: 'block' }, py: 0 }}
+      sx={{
+        display: { xs: 'none', lg: 'block' },
+        py: 0,
+        mb: 2,
+        ...sidebarBadge
+      }}
     >
       {children}
     </List>

@@ -6,6 +6,7 @@ import {
   Skeleton,
   Typography
 } from '@linagora/twake-mui'
+import { Icon, Pin } from '@linagora/twake-icons'
 import { Children, type ReactElement, type ReactNode } from 'react'
 
 const RADIUS = '20px'
@@ -29,19 +30,22 @@ export function CardGrid({ children }: { children: ReactNode }): ReactElement {
 }
 
 // `link` is the space's name as a link; it stretches over the whole card.
-// `menu` sits above that stretch so it keeps its own click.
+// `menu` sits above that stretch so it keeps its own click. `pinned` marks
+// a card shown among the pinned ones with the mockup's pin, before the menu.
 export function SpaceCard({
   avatar,
   link,
   description,
   members,
-  menu
+  menu,
+  pinned = false
 }: {
   avatar: ReactNode
   link: ReactNode
   description?: string
   members?: ReactNode
   menu?: ReactNode
+  pinned?: boolean
 }): ReactElement {
   return (
     <Card
@@ -75,6 +79,15 @@ export function SpaceCard({
         >
           {link}
         </Typography>
+        {pinned && (
+          <Box
+            component="span"
+            aria-hidden
+            sx={{ display: 'flex', color: 'text.secondary' }}
+          >
+            <Icon icon={Pin} size={16} />
+          </Box>
+        )}
         {/* The menu button keeps its 48px target but takes the row's 24px,
             its icon near the corner as in the mockup */}
         {menu && (
