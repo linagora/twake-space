@@ -10,6 +10,11 @@
   "spaceHome": {
     "users": "Thành viên",
     "manageUsers": "Quản lý thành viên",
+    "banner": {
+      "edit": "Đổi ảnh bìa",
+      "invalid": "Hãy chọn ảnh PNG, JPEG, WebP hoặc GIF tối đa 5 MB.",
+      "failed": "Không thể lưu ảnh bìa."
+    },
     "figures": {
       "tasks": "Công việc đã hoàn thành",
       "files": "Tệp được chia sẻ",

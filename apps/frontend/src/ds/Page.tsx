@@ -101,7 +101,14 @@ export function ScrollPanel({
   )
 }
 
-export function SpaceCover(): ReactElement {
+// `src` replaces the default artwork; `action` sits in the bottom right corner.
+export function SpaceCover({
+  src,
+  action
+}: {
+  src?: string | undefined
+  action?: ReactNode
+}): ReactElement {
   return (
     <Box
       sx={{
@@ -114,20 +121,38 @@ export function SpaceCover(): ReactElement {
         containerType: 'size'
       }}
     >
-      {/* The artwork is portrait; turned, it spans the banner's width. */}
-      <Box
-        component="img"
-        src={coverArt}
-        alt=""
-        sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          height: '100cqw',
-          maxWidth: 'none',
-          transform: 'translate(-50%, -50%) rotate(-90deg)'
-        }}
-      />
+      {src ? (
+        <Box
+          component="img"
+          src={src}
+          alt=""
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
+        />
+      ) : (
+        // The artwork is portrait; turned, it spans the banner's width.
+        <Box
+          component="img"
+          src={coverArt}
+          alt=""
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            height: '100cqw',
+            maxWidth: 'none',
+            transform: 'translate(-50%, -50%) rotate(-90deg)'
+          }}
+        />
+      )}
+      {action && (
+        <Box sx={{ position: 'absolute', right: 0, bottom: 0 }}>{action}</Box>
+      )}
     </Box>
   )
 }

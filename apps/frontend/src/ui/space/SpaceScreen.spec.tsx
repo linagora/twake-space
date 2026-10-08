@@ -217,6 +217,62 @@ describe('SpaceScreen', () => {
     expect(document.querySelector('main img')).toBeNull()
   })
 
+  it('shows the banner an admin uploaded', async () => {
+    const spaces = renderAt('/spaces/a1/home', {
+      ...roadmap,
+      banner: '2026-10-08T08:00:00.000Z'
+    })
+
+    await waitFor(() => {
+      expect(document.querySelector('main img')).toHaveAttribute(
+        'src',
+        expect.stringMatching(/^data:image\/png;base64,/)
+      )
+    })
+    expect(spaces.banner).toHaveBeenCalledWith('a1')
+  })
+
+  it('lets an admin upload a banner', async () => {
+    const spaces = renderAt('/spaces/a1/home', { ...roadmap, role: 'admin' })
+    await screen.findByRole('button', { name: 'Change the banner' })
+    const image = new File(['png'], 'cover.png', { type: 'image/png' })
+
+    fireEvent.change(screen.getByTestId('banner-file'), {
+      target: { files: [image] }
+    })
+
+    await waitFor(() => {
+      expect(spaces.setBanner).toHaveBeenCalledWith('a1', image)
+    })
+  })
+
+  it('refuses a banner that is no image the backend takes', async () => {
+    const spaces = renderAt('/spaces/a1/home', { ...roadmap, role: 'admin' })
+    await screen.findByRole('button', { name: 'Change the banner' })
+
+    fireEvent.change(screen.getByTestId('banner-file'), {
+      target: {
+        files: [new File(['<svg/>'], 'cover.svg', { type: 'image/svg+xml' })]
+      }
+    })
+
+    expect(
+      await screen.findByText(
+        'Pick a PNG, JPEG, WebP or GIF image of 5 MB at most.'
+      )
+    ).toBeInTheDocument()
+    expect(spaces.setBanner).not.toHaveBeenCalled()
+  })
+
+  it('leaves the banner to admins', async () => {
+    renderAt('/spaces/a1/home')
+
+    expect(await screen.findByText('Space users')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Change the banner' })
+    ).not.toBeInTheDocument()
+  })
+
   it("counts the space's members, and lets an admin manage them", async () => {
     const members = [
       {

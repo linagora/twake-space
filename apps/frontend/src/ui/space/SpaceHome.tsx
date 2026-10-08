@@ -29,9 +29,11 @@ import { ScrollPanel, SpaceCover } from '@/ds/Page'
 import { Greeting } from '@/ui/home/Greeting'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useBadges, useMetadata } from '@/ui/space/Badges'
+import { BannerButton } from '@/ui/space/BannerButton'
 import { PeopleDialog } from '@/ui/space/PeopleDialog'
 import { useCommonSettings } from '@/ui/settings/useCommonSettings'
 import { AppIcon } from '@/ui/spaces/AppPicker'
+import { useBanner } from '@/ui/spaces/queries'
 
 // In the mockup's order
 const CARDS: readonly SpaceApp[] = [
@@ -82,6 +84,7 @@ export function SpaceHome({
   const { t, lang } = useI18n()
   const badges = useBadges()
   const metadata = useMetadata()
+  const banner = useBanner(space)
   const [managing, setManaging] = useState(false)
   const stateOf = (app: SpaceApp) => tabs.find(item => item.tab === app)?.state
   // The wait starts over for another space, or an app that gets ready
@@ -122,7 +125,10 @@ export function SpaceHome({
 
   return (
     <ScrollPanel>
-      <SpaceCover />
+      <SpaceCover
+        src={banner}
+        action={space.role === 'admin' && <BannerButton spaceId={space.id} />}
+      />
       <div>
         <Greeting title={space.name} level="h2" />
       </div>

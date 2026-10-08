@@ -49,6 +49,43 @@ export function useSpaces(
   })
 }
 
+// Apart from SPACES and kept as long as its version, so that no write to the
+// space fetches the image again. A data URL, unlike an object URL, needs no
+// revoking.
+export function useBanner(space: Space): string | undefined {
+  const { spaces } = useServices()
+  const { data } = useQuery({
+    queryKey: ['banners', space.id, space.banner],
+    queryFn: async () => dataUrl(await spaces.banner(space.id)),
+    enabled: space.banner !== null,
+    staleTime: Infinity
+  })
+  return space.banner === null ? undefined : data
+}
+
+function dataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      resolve(reader.result as string)
+    }
+    reader.onerror = () => {
+      reject(reader.error ?? new Error('could not read the banner'))
+    }
+    reader.readAsDataURL(blob)
+  })
+}
+
+export function useSetBanner(id: string): UseMutationResult<void, Error, Blob> {
+  const { spaces } = useServices()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: image => spaces.setBanner(id, image),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: [...SPACES, id] })
+  })
+}
+
 export function useSpaceApps(): UseQueryResult<SpaceApp[]> {
   const { spaces } = useServices()
   return useQuery({
