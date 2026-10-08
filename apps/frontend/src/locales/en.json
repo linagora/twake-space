@@ -141,7 +141,9 @@
     "mailOff": "Mail is off: your organization's mail domain is not validated yet.",
     "preparing": "%{app} is being prepared for this space.",
     "stalled": "%{app} is not ready yet. Try again later, and tell your administrator if it stays this way.",
-    "checkAgain": "Check again"
+    "checkAgain": "Check again",
+    "fullPage": "Full page",
+    "leaveFullPage": "Leave full page"
   },
   "settings": {
     "adminsOnly": "Only the admins of a space manage it.",

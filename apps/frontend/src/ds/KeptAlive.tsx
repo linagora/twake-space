@@ -47,7 +47,7 @@ export function KeptAliveStack({
   children: ReactNode
 } & Pick<
   HTMLAttributes<HTMLDivElement>,
-  'role' | 'id' | 'aria-labelledby'
+  'role' | 'id' | 'aria-label' | 'aria-labelledby'
 >): ReactElement {
   return (
     <Box

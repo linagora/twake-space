@@ -1,5 +1,20 @@
-import { Alert, Button, Link, Tab, Tabs, Typography } from '@linagora/twake-mui'
-import { useEffect, useState, type ReactElement } from 'react'
+import { Expand, Icon, Narrow } from '@linagora/twake-icons'
+import {
+  Alert,
+  Button,
+  IconButton,
+  Link,
+  Tab,
+  Tabs,
+  Typography
+} from '@linagora/twake-mui'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement
+} from 'react'
 import {
   Navigate,
   Link as RouterLink,
@@ -13,13 +28,20 @@ import { isRefusal } from '@/application/spaces'
 import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
 import { CountedLabel } from '@/ds/CountedLabel'
-import { LoadingRows, Page, SpaceHeader, TabPanel } from '@/ds/Page'
+import {
+  CompactSpaceHeader,
+  LoadingRows,
+  Page,
+  SpaceHeader,
+  TabPanel
+} from '@/ds/Page'
 import { useSpaceTabTag } from '@/ui/feedback/useSpaceTabTag'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useBadges } from '@/ui/space/Badges'
 import { useAppUrls } from '@/ui/space/useAppUrls'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 import { FeedSearch } from '@/ui/space/FeedSearch'
+import { useFillPage } from '@/ui/space/FillPage'
 import { SpaceActions } from '@/ui/space/SpaceActions'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
@@ -63,6 +85,45 @@ export function SpaceScreen(): ReactElement {
   // Once the feed scrolls, the cover stays folded until another space opens.
   const [foldedIn, setFoldedIn] = useState<string | null>(null)
 
+  // The page given to the open tab: until the person takes it back, another
+  // space opens, or this one leaves or fails
+  const fillPage = useFillPage()
+  const { leave } = fillPage
+  const filled = fillPage.space === spaceId
+  useLayoutEffect(() => leave, [spaceId, leave])
+  useLayoutEffect(() => {
+    if (space.isError) leave()
+  }, [space.isError, leave])
+  // Escape gives it back, from TwakeSpace: inside an app's frame, the keys
+  // are the app's, and the way back is the first stop out of the frame
+  const focusNext = useRef<'fill' | 'leave' | null>(null)
+  useEffect(() => {
+    if (!filled) return
+    const listening = new AbortController()
+    window.addEventListener(
+      'keydown',
+      event => {
+        if (event.key !== 'Escape' || event.defaultPrevented) return
+        focusNext.current = 'fill'
+        leave()
+      },
+      { signal: listening.signal }
+    )
+    return () => {
+      listening.abort()
+    }
+  }, [filled, leave])
+  // The focus follows the person's own moves only: onto the way back, then
+  // back onto the button that gave the page
+  const fillButton = useRef<HTMLButtonElement>(null)
+  const leaveButton = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const next = focusNext.current
+    if (next === null) return
+    focusNext.current = null
+    ;(next === 'leave' ? leaveButton : fillButton).current?.focus()
+  }, [filled])
+
   if (space.isPending) {
     return (
       <Page>
@@ -99,68 +160,112 @@ export function SpaceScreen(): ReactElement {
   const embeddedUrl = embedded ? appUrls[embedded.app] : null
   const framed = embedded !== null && embeddedUrl !== null
 
+  // The children keep their places whether the tab has the page or not, so
+  // that the panel is not mounted again
   return (
-    <Page fill={!framed}>
-      <FeedSearch key={spaceId} space={space.data} />
-      <SpaceHeader
-        avatar={
-          <NameAvatar
-            name={space.data.name}
-            color={space.data.color}
-            size="m"
-          />
-        }
-        title={space.data.name}
-        actions={<SpaceActions space={space.data} />}
-        cover={current.tab === 'feed' && foldedIn !== spaceId}
-        tabs={
-          <Tabs
-            narrowed
-            variant="scrollable"
-            scrollButtons={false}
-            value={current.tab}
-            onChange={(_event, value: string) => {
-              void navigate(`/spaces/${spaceId}/${value}`)
-            }}
-          >
-            {tabs.map(item => {
-              const app = embeddedApp(item.tab)
-              const count = app ? tabCount(badges, space.data, app.app) : 0
-              const name = t(`tabs.${item.tab}`)
-              return (
-                <Tab
-                  key={item.tab}
-                  value={item.tab}
-                  label={
-                    <CountedLabel label={name} count={badgeLabel(count)} />
-                  }
-                  aria-label={
-                    count > 0
-                      ? t('tabs.withCount', { app: name, smart_count: count })
-                      : undefined
-                  }
-                  disabled={item.state === 'off'}
-                  id={`tab-${item.tab}`}
-                  aria-controls={`panel-${item.tab}`}
-                />
-              )
-            })}
-          </Tabs>
-        }
-      />
-      {!space.data.chat && (
+    <Page fill={!framed} compact={filled}>
+      {!filled && <FeedSearch key={spaceId} space={space.data} />}
+      {filled ? (
+        <CompactSpaceHeader
+          back={
+            <Button
+              ref={leaveButton}
+              variant="text"
+              size="small"
+              startIcon={<Icon icon={Narrow} />}
+              onClick={() => {
+                focusNext.current = 'fill'
+                leave()
+              }}
+            >
+              {t('space.leaveFullPage')}
+            </Button>
+          }
+          avatar={
+            <NameAvatar
+              name={space.data.name}
+              color={space.data.color}
+              size="xs"
+            />
+          }
+          title={space.data.name}
+          tab={label}
+        />
+      ) : (
+        <SpaceHeader
+          avatar={
+            <NameAvatar
+              name={space.data.name}
+              color={space.data.color}
+              size="m"
+            />
+          }
+          title={space.data.name}
+          actions={
+            <>
+              <IconButton
+                ref={fillButton}
+                aria-label={t('space.fullPage')}
+                onClick={() => {
+                  focusNext.current = 'leave'
+                  fillPage.fill(spaceId)
+                }}
+              >
+                <Icon icon={Expand} />
+              </IconButton>
+              <SpaceActions space={space.data} />
+            </>
+          }
+          cover={current.tab === 'feed' && foldedIn !== spaceId}
+          tabs={
+            <Tabs
+              narrowed
+              variant="scrollable"
+              scrollButtons={false}
+              value={current.tab}
+              onChange={(_event, value: string) => {
+                void navigate(`/spaces/${spaceId}/${value}`)
+              }}
+            >
+              {tabs.map(item => {
+                const app = embeddedApp(item.tab)
+                const count = app ? tabCount(badges, space.data, app.app) : 0
+                const name = t(`tabs.${item.tab}`)
+                return (
+                  <Tab
+                    key={item.tab}
+                    value={item.tab}
+                    label={
+                      <CountedLabel label={name} count={badgeLabel(count)} />
+                    }
+                    aria-label={
+                      count > 0
+                        ? t('tabs.withCount', { app: name, smart_count: count })
+                        : undefined
+                    }
+                    disabled={item.state === 'off'}
+                    id={`tab-${item.tab}`}
+                    aria-controls={`panel-${item.tab}`}
+                  />
+                )
+              })}
+            </Tabs>
+          }
+        />
+      )}
+      {!filled && !space.data.chat && (
         <Alert severity="info" className="u-mb-1">
           {t('space.chatOff')}
         </Alert>
       )}
-      {!space.data.mail && (
+      {!filled && !space.data.mail && (
         <Alert severity="info" className="u-mb-1">
           {t('space.mailOff')}
         </Alert>
       )}
       {/* A framed tab's panel is the frame itself, under the shell */}
       {!framed && (
-        <TabPanel tab={current.tab}>
+        <TabPanel tab={current.tab} label={filled ? label : undefined}>
           {current.state === 'preparing' && (
             <Typography>{t('space.preparing', { app: label })}</Typography>
           )}

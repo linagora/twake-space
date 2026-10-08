@@ -141,7 +141,9 @@
     "mailOff": "Mail è disattivato: il dominio mail della tua organizzazione non è ancora convalidato.",
     "preparing": "%{app} è in preparazione per questo spazio.",
     "stalled": "%{app} non è ancora pronto. Riprova più tardi e avvisa l'amministratore se resta così.",
-    "checkAgain": "Controlla di nuovo"
+    "checkAgain": "Controlla di nuovo",
+    "fullPage": "Pagina intera",
+    "leaveFullPage": "Esci dalla pagina intera"
   },
   "settings": {
     "adminsOnly": "Solo gli amministratori di uno spazio lo gestiscono.",

@@ -141,7 +141,9 @@
     "mailOff": "Le mail est désactivé : le domaine mail de votre organisation n'est pas encore validé.",
     "preparing": "%{app} est en cours de préparation pour cet espace.",
     "stalled": "%{app} n'est pas encore prêt. Réessayez plus tard, et prévenez votre administrateur si cela persiste.",
-    "checkAgain": "Vérifier à nouveau"
+    "checkAgain": "Vérifier à nouveau",
+    "fullPage": "Pleine page",
+    "leaveFullPage": "Quitter la pleine page"
   },
   "settings": {
     "adminsOnly": "Seuls les administrateurs d’un espace le gèrent.",

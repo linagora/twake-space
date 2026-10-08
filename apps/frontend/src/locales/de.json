@@ -141,7 +141,9 @@
     "mailOff": "Mail ist aus: Die Mail-Domain deiner Organisation ist noch nicht bestätigt.",
     "preparing": "%{app} wird für diesen Space vorbereitet.",
     "stalled": "%{app} ist noch nicht bereit. Versuche es später erneut und wende dich an deine Administration, wenn es so bleibt.",
-    "checkAgain": "Erneut prüfen"
+    "checkAgain": "Erneut prüfen",
+    "fullPage": "Ganze Seite",
+    "leaveFullPage": "Ganze Seite verlassen"
   },
   "settings": {
     "adminsOnly": "Nur die Administratoren eines Spaces verwalten ihn.",
