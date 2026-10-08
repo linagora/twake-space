@@ -81,7 +81,11 @@ export function ShareLinkButton({ id }: { id: string }): ReactElement {
   const { share, notice } = useShareLink(id)
   return (
     <>
-      <IconButton aria-label={t('spaceMenu.shareLink')} onClick={share}>
+      <IconButton
+        size="small"
+        aria-label={t('spaceMenu.shareLink')}
+        onClick={share}
+      >
         <Icon icon={Link} />
       </IconButton>
       {notice}
@@ -137,6 +141,7 @@ export function SpaceMenu({
   return (
     <>
       <IconButton
+        size="small"
         aria-label={t('spaceMenu.open', { name: space.name })}
         aria-haspopup="menu"
         aria-expanded={anchor !== null}

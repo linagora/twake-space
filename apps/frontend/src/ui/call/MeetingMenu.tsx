@@ -35,6 +35,7 @@ export function MeetingMenu({ space }: { space: Space }): ReactElement | null {
   return (
     <>
       <IconButton
+        size="small"
         aria-label={t('call.menu')}
         aria-haspopup="menu"
         aria-expanded={anchor !== null}
