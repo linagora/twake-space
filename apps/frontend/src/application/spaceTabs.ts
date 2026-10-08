@@ -6,8 +6,7 @@ export const TABS = [
   'tasks',
   'drive',
   'mail',
-  'calendar',
-  'members'
+  'calendar'
 ] as const
 
 export type Tab = (typeof TABS)[number]
@@ -17,8 +16,8 @@ export type TabState = 'off' | 'preparing' | 'stalled' | 'ready'
 /** How long an app may take to prepare a new space's resource. */
 export const PREPARING_MS = 2 * 60_000
 
-// The feed and the members are TwakeSpace's own, with no app resource.
-const RESOURCE: Record<Exclude<Tab, 'feed' | 'members'>, ResourceKind> = {
+// The feed is TwakeSpace's own, with no app resource.
+const RESOURCE: Record<Exclude<Tab, 'feed'>, ResourceKind> = {
   chat: 'matrix_space',
   tasks: 'project',
   drive: 'drive',
@@ -39,7 +38,7 @@ export function spaceTabs(
   const waiting =
     now < Date.parse(space.createdAt) + PREPARING_MS ? 'preparing' : 'stalled'
   return TABS.flatMap((tab): { tab: Tab; state: TabState }[] => {
-    if (tab === 'feed' || tab === 'members') return [{ tab, state: 'ready' }]
+    if (tab === 'feed') return [{ tab, state: 'ready' }]
     const resource = space.resources.find(r => r.kind === RESOURCE[tab])
     if (!resource || !space.apps.includes(tab)) return []
     if (!isOn(space, tab)) return [{ tab, state: 'off' }]
@@ -52,9 +51,7 @@ export function spaceTabs(
 
 /** The tab a card about an object in this container opens, if the space shows it. */
 export function containerTab(space: Space, kind: ResourceKind): Tab | null {
-  const tab = TABS.find(
-    t => t !== 'feed' && t !== 'members' && RESOURCE[t] === kind
-  )
+  const tab = TABS.find(t => t !== 'feed' && RESOURCE[t] === kind)
   // Preparing or stalled, the tab is shown all the same.
   const shown = spaceTabs(space, Date.now()).some(
     item => item.tab === tab && item.state !== 'off'

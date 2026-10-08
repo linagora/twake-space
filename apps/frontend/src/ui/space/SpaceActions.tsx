@@ -4,7 +4,7 @@ import { useState, type ReactElement } from 'react'
 
 import type { Space } from '@/application/spaces'
 import { useI18n } from '@/ui/i18n/useI18n'
-import { AddToSpaceDialog } from '@/ui/space/AddToSpaceDialog'
+import { PeopleDialog } from '@/ui/space/PeopleDialog'
 import { ShareLinkButton, SpaceMenu } from '@/ui/space/SpaceMenu'
 
 // The header's actions: invite (admins), share the link, and the rest in
@@ -27,8 +27,7 @@ export function SpaceActions({ space }: { space: Space }): ReactElement {
       <ShareLinkButton id={space.id} />
       <SpaceMenu space={space} />
       {inviting && (
-        <AddToSpaceDialog
-          kind="people"
+        <PeopleDialog
           space={space}
           onClose={() => {
             setInviting(false)

@@ -1,12 +1,4 @@
-import {
-  Dots,
-  Icon,
-  Link,
-  People,
-  Pen,
-  PersonAdd,
-  Trash
-} from '@linagora/twake-icons'
+import { Dots, Icon, Link, People, Pen, Trash } from '@linagora/twake-icons'
 import {
   Alert,
   Button,
@@ -33,7 +25,7 @@ import type {
 import { DialogHeader } from '@/ds/Dialog'
 import { MenuEntry } from '@/ds/Menu'
 import { useI18n } from '@/ui/i18n/useI18n'
-import { AddToSpaceDialog } from '@/ui/space/AddToSpaceDialog'
+import { PeopleDialog } from '@/ui/space/PeopleDialog'
 import { WriteError } from '@/ui/space/WriteError'
 import { AppPicker } from '@/ui/spaces/AppPicker'
 import {
@@ -96,9 +88,8 @@ export function SpaceMenu({
   space: Pick<SpaceSummary, 'id' | 'name' | 'role'>
 }): ReactElement {
   const { t } = useI18n()
-  const navigate = useNavigate()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-  const [dialog, setDialog] = useState<'invite' | 'edit' | 'delete' | null>(
+  const [dialog, setDialog] = useState<'people' | 'edit' | 'delete' | null>(
     null
   )
   const { share, notice } = useShareLink(space.id)
@@ -106,7 +97,7 @@ export function SpaceMenu({
   const close = (): void => {
     setAnchor(null)
   }
-  const open = (which: 'invite' | 'edit' | 'delete') => () => {
+  const open = (which: 'people' | 'edit' | 'delete') => () => {
     close()
     setDialog(which)
   }
@@ -147,17 +138,12 @@ export function SpaceMenu({
           close()
           share()
         })}
-        {isAdmin &&
-          item('invite', PersonAdd, t('spaceMenu.invite'), open('invite'))}
         <Divider />
         {item(
           'people',
           People,
           t(isAdmin ? 'spaceMenu.managePeople' : 'spaceMenu.members'),
-          () => {
-            close()
-            void navigate(`/spaces/${space.id}/members`)
-          }
+          open('people')
         )}
         {isAdmin && item('edit', Pen, t('spaceActions.edit'), open('edit'))}
         {isAdmin && <Divider />}
@@ -165,15 +151,9 @@ export function SpaceMenu({
           item('delete', Trash, t('spaceActions.delete'), open('delete'), true)}
       </Menu>
       {notice}
-      {dialog === 'invite' && (
+      {dialog === 'people' && (
         <WithSpace spaceId={space.id} onClose={closeDialog}>
-          {full => (
-            <AddToSpaceDialog
-              kind="people"
-              space={full}
-              onClose={closeDialog}
-            />
-          )}
+          {full => <PeopleDialog space={full} onClose={closeDialog} />}
         </WithSpace>
       )}
       {dialog === 'edit' && (

@@ -356,12 +356,12 @@ describe('EmbeddedApps', () => {
   it('writes the path of a hidden frame once its tab shows again', async () => {
     renderAt('/spaces/a1/tasks')
     await screen.findByTitle('Tasks')
-    fireEvent.click(screen.getByRole('tab', { name: 'Members' }))
-    await screen.findByRole('tab', { name: 'Members', selected: true })
+    fireEvent.click(screen.getByRole('tab', { name: 'Feed' }))
+    await screen.findByRole('tab', { name: 'Feed', selected: true })
 
     await waitFor(() => {
       postFromFrame(embedPath('p1', '/boards/b9', false))
-      expect(path()).toHaveTextContent('/spaces/a1/members')
+      expect(path()).toHaveTextContent('/spaces/a1/feed')
     })
     fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }))
 
@@ -452,8 +452,8 @@ describe('EmbeddedApps', () => {
     expect(getComputedStyle(chat).position).not.toBe('fixed')
 
     post(fillPage(true))
-    fireEvent.click(screen.getByRole('tab', { name: 'Members' }))
-    await screen.findByRole('tab', { name: 'Members', selected: true })
+    fireEvent.click(screen.getByRole('tab', { name: 'Feed' }))
+    await screen.findByRole('tab', { name: 'Feed', selected: true })
     expect(getComputedStyle(chat).position).not.toBe('fixed')
 
     fireEvent.click(screen.getByRole('tab', { name: 'Chat' }))

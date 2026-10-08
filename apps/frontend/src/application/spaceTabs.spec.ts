@@ -36,8 +36,7 @@ describe('spaceTabs', () => {
       { tab: 'tasks', state: 'ready' },
       { tab: 'drive', state: 'preparing' },
       { tab: 'mail', state: 'ready' },
-      { tab: 'calendar', state: 'ready' },
-      { tab: 'members', state: 'ready' }
+      { tab: 'calendar', state: 'ready' }
     ])
   })
 
@@ -64,8 +63,7 @@ describe('spaceTabs', () => {
 
     expect(tabs).toEqual([
       { tab: 'feed', state: 'ready' },
-      { tab: 'drive', state: 'preparing' },
-      { tab: 'members', state: 'ready' }
+      { tab: 'drive', state: 'preparing' }
     ])
   })
 
@@ -80,13 +78,7 @@ describe('spaceTabs', () => {
       SOON
     )
 
-    expect(tabs.map(t => t.tab)).toEqual([
-      'feed',
-      'tasks',
-      'mail',
-      'calendar',
-      'members'
-    ])
+    expect(tabs.map(t => t.tab)).toEqual(['feed', 'tasks', 'mail', 'calendar'])
   })
 
   it('says a resource still missing after a while is not ready', () => {

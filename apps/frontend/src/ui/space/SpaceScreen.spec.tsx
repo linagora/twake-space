@@ -71,7 +71,7 @@ function isHidden(element: HTMLElement): boolean {
 // What cozy-external-bridge sends through comlink for `bridge.method(arg)`.
 describe('SpaceScreen', () => {
   it("shows the space's name with its actions", async () => {
-    renderAt('/spaces/a1/members')
+    renderAt('/spaces/a1/feed')
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Roadmap' })
@@ -165,8 +165,8 @@ describe('SpaceScreen', () => {
       'https://alice-drive.twake.test/embed/sharings/sharing-1'
     )
 
-    openTab('Members')
-    await screen.findByRole('tab', { name: 'Members', selected: true })
+    openTab('Feed')
+    await screen.findByRole('tab', { name: 'Feed', selected: true })
     expect(screen.getByTitle('Drive')).toBe(frame)
     expect(isHidden(frame)).toBe(true)
   })
@@ -191,18 +191,6 @@ describe('SpaceScreen', () => {
     expect(
       await screen.findByRole('textbox', { name: 'Text message' })
     ).toBeInTheDocument()
-  })
-
-  it("lists the space's people on the Members tab", async () => {
-    renderAt('/spaces/a1/members', {
-      ...roadmap,
-      groups: [{ id: 'g-1', name: 'Designers', role: 'viewer' }]
-    })
-
-    expect(
-      await screen.findByRole('tab', { name: 'Members', selected: true })
-    ).toBeInTheDocument()
-    expect(screen.getByText('Designers')).toBeInTheDocument()
   })
 
   it('shows a resource without an id as being prepared', async () => {
@@ -254,9 +242,9 @@ describe('SpaceScreen', () => {
     renderAt('/spaces/a1/mail')
     const frame = await screen.findByTitle('Mail')
 
-    openTab('Members')
+    openTab('Feed')
     expect(
-      await screen.findByRole('tab', { name: 'Members', selected: true })
+      await screen.findByRole('tab', { name: 'Feed', selected: true })
     ).toBeInTheDocument()
     expect(screen.getByTitle('Mail')).toBe(frame)
     expect(isHidden(frame)).toBe(true)
@@ -281,8 +269,8 @@ describe('SpaceScreen', () => {
   })
 
   it('mounts the frame of every ready tab up front, hidden', async () => {
-    renderAt('/spaces/a1/members')
-    await screen.findByRole('tab', { name: 'Members', selected: true })
+    renderAt('/spaces/a1/feed')
+    await screen.findByRole('tab', { name: 'Feed', selected: true })
 
     const mail = await screen.findByTitle('Mail')
     const tasks = await screen.findByTitle('Tasks')

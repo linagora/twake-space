@@ -230,9 +230,10 @@ describe('FeedPanel', () => {
     expect(
       await screen.findByRole('heading', { name: 'Set up Roadmap' })
     ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Invite members' }))
     expect(
-      screen.getByRole('link', { name: 'Invite members' })
-    ).toHaveAttribute('href', '/spaces/a1/members')
+      await screen.findByRole('dialog', { name: 'Manage people' })
+    ).toBeInTheDocument()
   })
 
   it('says so when a category is empty', async () => {

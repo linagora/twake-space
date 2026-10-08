@@ -5,7 +5,7 @@ import type { Space } from '@/application/spaces'
 import { fakeDirectory } from '@/testing/fakeDirectory'
 import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
-import { MembersPanel } from '@/ui/space/MembersPanel'
+import { PeopleDialog } from '@/ui/space/PeopleDialog'
 
 const space: Space = {
   id: 'a1',
@@ -40,9 +40,19 @@ const space: Space = {
 
 const admin: Space = { ...space, role: 'admin' }
 
-describe('MembersPanel', () => {
+const noop = () => undefined
+
+async function type(text: string) {
+  const field = await screen.findByRole('combobox', {
+    name: 'Add people or groups'
+  })
+  field.focus()
+  fireEvent.change(field, { target: { value: text } })
+}
+
+describe('PeopleDialog', () => {
   it('lists the direct members with their roles', async () => {
-    renderWithProviders(<MembersPanel space={space} />)
+    renderWithProviders(<PeopleDialog space={space} onClose={noop} />)
 
     const list = await screen.findByRole('list', { name: 'Members' })
     const items = within(list).getAllByRole('listitem')
@@ -54,31 +64,35 @@ describe('MembersPanel', () => {
   })
 
   it('names a member without a display name by their username', async () => {
-    renderWithProviders(<MembersPanel space={space} />)
+    renderWithProviders(<PeopleDialog space={space} onClose={noop} />)
 
     const list = await screen.findByRole('list', { name: 'Members' })
     expect(within(list).getAllByRole('listitem')[1]).toHaveTextContent('alice')
   })
 
   it('lists the linked groups with their roles', async () => {
-    renderWithProviders(<MembersPanel space={space} />)
+    renderWithProviders(<PeopleDialog space={space} onClose={noop} />)
 
     const list = await screen.findByRole('list', { name: 'Groups' })
     expect(within(list).getByRole('listitem')).toHaveTextContent('Designers')
     expect(within(list).getByRole('listitem')).toHaveTextContent('Viewer')
   })
 
-  it('shows a viewer no actions', async () => {
-    renderWithProviders(<MembersPanel space={space} />)
+  it('shows a viewer no way to add or change anyone', async () => {
+    renderWithProviders(<PeopleDialog space={space} onClose={noop} />)
 
-    await screen.findByRole('list', { name: 'Members' })
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    await screen.findByRole('dialog', { name: 'Members' })
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /^(Remove|Unlink)/ })
+    ).not.toBeInTheDocument()
   })
 
   it("lets an admin change a member's or a group's role", async () => {
     const spaces = fakeSpaces()
-    renderWithProviders(<MembersPanel space={admin} />, { spaces })
+    renderWithProviders(<PeopleDialog space={admin} onClose={noop} />, {
+      spaces
+    })
 
     fireEvent.change(await screen.findByLabelText('Role of alice'), {
       target: { value: 'viewer' }
@@ -97,7 +111,9 @@ describe('MembersPanel', () => {
 
   it('lets an admin remove a member and unlink a group', async () => {
     const spaces = fakeSpaces()
-    renderWithProviders(<MembersPanel space={admin} />, { spaces })
+    renderWithProviders(<PeopleDialog space={admin} onClose={noop} />, {
+      spaces
+    })
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remove alice' }))
     fireEvent.click(screen.getByRole('button', { name: 'Unlink Designers' }))
@@ -110,101 +126,72 @@ describe('MembersPanel', () => {
     })
   })
 
-  it('lets an admin add people from the organization with a role', async () => {
-    const spaces = fakeSpaces()
-    const directory = fakeDirectory([
-      { username: 'alice', email: 'alice@acme.test', displayName: 'Alice' },
-      { username: 'bob', email: 'bob@acme.test', displayName: 'Bob' }
-    ])
-    renderWithProviders(<MembersPanel space={admin} />, { spaces, directory })
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Add people' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Add people' })
-    expect(within(dialog).queryByLabelText('Alice')).not.toBeInTheDocument()
-    fireEvent.click(await within(dialog).findByLabelText('Bob'))
-    fireEvent.change(within(dialog).getByLabelText('Role'), {
-      target: { value: 'editor' }
-    })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
-
-    await waitFor(() => {
-      expect(spaces.addMembers).toHaveBeenCalledWith('a1', ['bob'], 'editor')
-    })
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
-  })
-
-  it('lets an admin link organization groups with a role', async () => {
+  it('lets an admin pick people and groups as they type, then add them with a role', async () => {
     const spaces = fakeSpaces()
     const directory = fakeDirectory(
-      [],
+      [
+        { username: 'alice', email: 'alice@acme.test', displayName: 'Alice' },
+        { username: 'bob', email: 'bob@acme.test', displayName: 'Bob' }
+      ],
       [
         { id: 'g-1', name: 'Designers' },
         { id: 'g-2', name: 'Sales' }
       ]
     )
-    renderWithProviders(<MembersPanel space={admin} />, { spaces, directory })
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Link groups' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Link groups' })
-    fireEvent.click(await within(dialog).findByLabelText('Sales'))
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
-
-    await waitFor(() => {
-      expect(spaces.linkGroups).toHaveBeenCalledWith('a1', ['g-2'], 'viewer')
-    })
-  })
-
-  it('searches the organization as the admin types', async () => {
-    const directory = fakeDirectory()
-    renderWithProviders(<MembersPanel space={admin} />, { directory })
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Add people' }))
-    fireEvent.change(await screen.findByLabelText('Search'), {
-      target: { value: 'bo' }
+    renderWithProviders(<PeopleDialog space={admin} onClose={noop} />, {
+      spaces,
+      directory
     })
 
+    await type('bo')
     await waitFor(() => {
       expect(directory.people).toHaveBeenLastCalledWith('bo', 1)
+    })
+    expect(directory.groups).toHaveBeenLastCalledWith('bo', 1)
+    expect(
+      screen.queryByRole('option', { name: /Alice/ })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('option', { name: 'Designers' })
+    ).not.toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('option', { name: /Bob/ }))
+    await type('sa')
+    fireEvent.click(await screen.findByRole('option', { name: 'Sales' }))
+    fireEvent.change(screen.getByLabelText('Role'), {
+      target: { value: 'editor' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    await waitFor(() => {
+      expect(spaces.addMembers).toHaveBeenCalledWith('a1', ['bob'], 'editor')
+    })
+    await waitFor(() => {
+      expect(spaces.linkGroups).toHaveBeenCalledWith('a1', ['g-2'], 'editor')
     })
   })
 
   it('says when a search matches no one', async () => {
-    renderWithProviders(<MembersPanel space={admin} />, {
+    renderWithProviders(<PeopleDialog space={admin} onClose={noop} />, {
       directory: fakeDirectory()
     })
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Add people' }))
-    fireEvent.change(await screen.findByLabelText('Search'), {
-      target: { value: 'zzzz' }
-    })
+    await type('zzzz')
 
     expect(await screen.findByText('No one matches.')).toBeInTheDocument()
   })
 
-  it('says when a search matches no group', async () => {
-    renderWithProviders(<MembersPanel space={admin} />, {
-      directory: fakeDirectory()
-    })
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Link groups' }))
-    fireEvent.change(await screen.findByLabelText('Search'), {
-      target: { value: 'zzzz' }
-    })
-
-    expect(await screen.findByText('No group matches.')).toBeInTheDocument()
-  })
-
-  it('does not say no one matches while searching', async () => {
+  it('says when the organization could not be searched', async () => {
     const directory = fakeDirectory()
-    vi.mocked(directory.people).mockReturnValue(new Promise(() => undefined))
-    renderWithProviders(<MembersPanel space={admin} />, { directory })
+    vi.mocked(directory.people).mockRejectedValue(
+      Object.assign(new Error('refused'), { status: 403, code: 'FORBIDDEN' })
+    )
+    renderWithProviders(<PeopleDialog space={admin} onClose={noop} />, {
+      directory
+    })
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Add people' }))
-    await screen.findByRole('dialog', { name: 'Add people' })
-
-    expect(screen.queryByText('No one matches.')).not.toBeInTheDocument()
+    expect(
+      await screen.findByText('The organization could not be searched.')
+    ).toBeInTheDocument()
   })
 
   it('says why removing the last admin was refused', async () => {
@@ -212,7 +199,9 @@ describe('MembersPanel', () => {
     vi.mocked(spaces.removeMember).mockRejectedValue(
       Object.assign(new Error('refused'), { status: 409, code: 'LAST_ADMIN' })
     )
-    renderWithProviders(<MembersPanel space={admin} />, { spaces })
+    renderWithProviders(<PeopleDialog space={admin} onClose={noop} />, {
+      spaces
+    })
 
     fireEvent.click(
       await screen.findByRole('button', { name: 'Remove Carol DANVERS' })
@@ -230,7 +219,9 @@ describe('MembersPanel', () => {
     vi.mocked(spaces.removeMember).mockRejectedValue(
       Object.assign(new Error('refused'), { status: 409, code: 'SOMETHING' })
     )
-    renderWithProviders(<MembersPanel space={admin} />, { spaces })
+    renderWithProviders(<PeopleDialog space={admin} onClose={noop} />, {
+      spaces
+    })
 
     fireEvent.click(
       await screen.findByRole('button', { name: 'Remove Carol DANVERS' })
@@ -243,7 +234,10 @@ describe('MembersPanel', () => {
 
   it('says when there are no direct members or no linked groups', async () => {
     renderWithProviders(
-      <MembersPanel space={{ ...space, members: [], groups: [] }} />
+      <PeopleDialog
+        space={{ ...space, members: [], groups: [] }}
+        onClose={noop}
+      />
     )
 
     expect(await screen.findByText('No direct members.')).toBeInTheDocument()

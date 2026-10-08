@@ -19,7 +19,6 @@ import { useI18n } from '@/ui/i18n/useI18n'
 import { useBadges } from '@/ui/space/Badges'
 import { useAppUrls } from '@/ui/space/useAppUrls'
 import { FeedPanel } from '@/ui/space/FeedPanel'
-import { MembersPanel } from '@/ui/space/MembersPanel'
 import { SpaceActions } from '@/ui/space/SpaceActions'
 import { useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
@@ -179,7 +178,6 @@ export function SpaceScreen(): ReactElement {
             </Alert>
           )}
           {current.tab === 'feed' && <FeedPanel space={space.data} />}
-          {current.tab === 'members' && <MembersPanel space={space.data} />}
           {embedded && embeddedUrl === null && (
             <Typography>{t(`${embedded.app}.notSetUp`)}</Typography>
           )}
