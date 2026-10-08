@@ -3,7 +3,6 @@ import {
   IconButton,
   ListItem,
   ListItemText,
-  Nav,
   NavIcon,
   NavItem,
   NavText,
@@ -18,6 +17,7 @@ import {
   AppFrame,
   NavAvatar,
   SidebarHeader,
+  SidebarNav,
   SidebarSearch,
   SidebarSection
 } from '@/ds/AppFrame'
@@ -72,6 +72,7 @@ export function AppShell(): ReactElement {
               action={
                 <>
                   <IconButton
+                    size="small"
                     aria-label={t('shell.searchSpaces')}
                     aria-pressed={query !== null}
                     onClick={() => {
@@ -81,12 +82,14 @@ export function AppShell(): ReactElement {
                     <Icon icon={FilterListIcon} size={24} />
                   </IconButton>
                   <IconButton
+                    size="medium"
+                    color="primary"
                     aria-label={t('spaces.create')}
                     onClick={() => {
                       setCreating(true)
                     }}
                   >
-                    <Icon icon={Plus} />
+                    <Icon icon={Plus} size={24} />
                   </IconButton>
                 </>
               }
@@ -168,14 +171,14 @@ function AppNav(): ReactElement {
   const { t } = useI18n()
 
   return (
-    <Nav>
+    <SidebarNav>
       <NavItem>
         <RouteNavLink to="/" end>
           <NavIcon icon={Cube} />
           <NavText>{t('shell.allSpaces')}</NavText>
         </RouteNavLink>
       </NavItem>
-    </Nav>
+    </SidebarNav>
   )
 }
 

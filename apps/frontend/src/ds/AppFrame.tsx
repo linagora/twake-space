@@ -5,6 +5,7 @@ import {
   Layout,
   List,
   ListSubheader,
+  Nav,
   nameToColor,
   Sidebar,
   Typography,
@@ -151,16 +152,31 @@ export function SidebarHeader({
         alignItems: 'center',
         justifyContent: 'space-between',
         pt: 2,
-        pl: 3,
-        pr: 2
+        px: 2
       }}
     >
       <Typography variant="h3" component="p">
         {title}
       </Typography>
-      <Box sx={{ display: 'flex', gap: 0.5 }}>{action}</Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        {action}
+      </Box>
     </Box>
   )
+}
+
+// 16px from the header and the section around it, on wide screens; below lg
+// Nav keeps the bottom bar's own margins.
+const SpacedNav = styled(Nav)(({ theme }) => ({
+  [theme.breakpoints.up('lg')]: { margin: theme.spacing(2, 0) }
+}))
+
+export function SidebarNav({
+  children
+}: {
+  children: ReactNode
+}): ReactElement {
+  return <SpacedNav>{children}</SpacedNav>
 }
 
 // Under the header, on wide screens like the list it filters.
@@ -192,9 +208,11 @@ export function SidebarSection({
           component="div"
           sx={{
             bgcolor: 'transparent',
-            px: 3,
+            px: 2,
+            py: 0,
+            mb: 2,
             typography: 'caption',
-            lineHeight: '32px'
+            color: 'text.secondary'
           }}
         >
           {label}
