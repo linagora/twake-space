@@ -1,7 +1,6 @@
 import {
   Calendar,
   CheckList,
-  Dots,
   Icon,
   Link,
   Mail,
@@ -13,7 +12,7 @@ import {
   Drive,
   type IconProps
 } from '@linagora/twake-icons'
-import { Alert, Button, IconButton, Menu } from '@linagora/twake-mui'
+import { Alert, Button, Menu } from '@linagora/twake-mui'
 import { useMutation } from '@tanstack/react-query'
 import { Fragment, useEffect, useRef, useState, type ReactElement } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router'
@@ -49,6 +48,7 @@ import {
   FeedFooter,
   FeedHeader,
   FeedLayout,
+  FeedMoreButton,
   FeedNewMark,
   FeedRow,
   FeedTitle,
@@ -480,16 +480,7 @@ function ItemMenu({
   }
   return (
     <>
-      <IconButton
-        size="small"
-        aria-label={t('feed.more')}
-        aria-haspopup="menu"
-        onClick={event => {
-          setAnchor(event.currentTarget)
-        }}
-      >
-        <Icon icon={Dots} size={16} />
-      </IconButton>
+      <FeedMoreButton label={t('feed.more')} onClick={setAnchor} />
       <Menu anchorEl={anchor} open={anchor !== null} onClose={close}>
         <MenuEntry
           icon={<Icon icon={Pen} />}

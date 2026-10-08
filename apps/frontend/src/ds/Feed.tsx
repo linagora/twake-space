@@ -1,4 +1,4 @@
-import { Down, Icon, Plus, Send, type IconProps } from '@linagora/twake-icons'
+import { Down, Icon, Send, type IconProps } from '@linagora/twake-icons'
 import {
   Avatar,
   Box,
@@ -10,6 +10,7 @@ import {
   Menu,
   MenuItem,
   TextField,
+  Tooltip,
   Typography
 } from '@linagora/twake-mui'
 import {
@@ -25,7 +26,7 @@ import {
   type ReactNode
 } from 'react'
 
-import { ChevronDownIcon } from '@/ds/icons'
+import { AddReactionIcon, ChevronDownIcon, MoreVertIcon } from '@/ds/icons'
 import type { SpaceTokens } from '@/ds/theme'
 
 // How close to the newest item still counts as being there, and how close to
@@ -34,6 +35,8 @@ const AT_END = 32
 const NEAR_TOP = 200
 // The height of the fade at the top of the list.
 const FADE = 32
+// The width of a bubble, the avatar beside it left out.
+const BUBBLE_WIDTH = 600
 
 const RevealContext = createContext<(row: HTMLElement) => void>(() => undefined)
 
@@ -274,7 +277,7 @@ export function FeedNewMark({ label }: { label: string }): ReactElement {
 }
 
 // A `focused` row takes the focus once, and the feed brings it into view. It
-// stands out while it keeps the focus.
+// stands out while it keeps the focus. The bubble's tail points at the avatar.
 export function FeedRow({
   avatar,
   label,
@@ -305,7 +308,7 @@ export function FeedRow({
         display: 'flex',
         alignItems: 'flex-end',
         gap: 1,
-        maxWidth: 660,
+        maxWidth: BUBBLE_WIDTH + 44,
         outline: 'none',
         '&:focus > :last-child': { bgcolor: 'action.selected' }
       }}
@@ -319,14 +322,41 @@ export function FeedRow({
           bgcolor: 'background.default',
           borderRadius: '16px',
           px: 2,
-          py: 1.25,
+          py: 1,
           display: 'flex',
-          flexDirection: 'column',
-          gap: 0.5
+          flexDirection: 'column'
         }}
       >
+        <BubbleTail />
         {children}
       </Box>
+    </Box>
+  )
+}
+
+// The mockup's bubble tail, mirrored: its point is at the bottom left.
+function BubbleTail(): ReactElement {
+  return (
+    <Box
+      component="svg"
+      aria-hidden
+      viewBox="0 0 14.676 18.3449"
+      sx={{
+        position: 'absolute',
+        left: -7,
+        bottom: 0,
+        width: 14.676,
+        height: 18.3449,
+        transform: 'scaleX(-1)',
+        fill: 'inherit',
+        color: 'background.default',
+        pointerEvents: 'none'
+      }}
+    >
+      <path
+        fill="currentColor"
+        d="M14.676 18.3449C8.56098 12.23 7.33798 7.33798 7.33798 0L0 14.676C4.40279 18.1003 11.007 18.3449 14.676 18.3449Z"
+      />
     </Box>
   )
 }
@@ -356,6 +386,7 @@ export function AppAvatar({
   )
 }
 
+/** Who acted, in blue, and what they did; the menu sits at the end. */
 export function FeedHeader({
   who,
   what,
@@ -367,18 +398,33 @@ export function FeedHeader({
 }): ReactElement {
   return (
     <Box
-      sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 20 }}
+      sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 16 }}
     >
       <Typography
         variant="caption"
-        sx={{ color: 'secondary.main', fontWeight: 500, letterSpacing: 0.5 }}
+        sx={theme => ({
+          // The mockup's blue on both pages: the dark scheme greys secondary.
+          color: theme.palette.secondary.main,
+          ...theme.applyStyles('dark', { color: theme.palette.primary.light }),
+          fontWeight: 500,
+          lineHeight: '16px',
+          letterSpacing: 0.5
+        })}
+        noWrap
       >
         {who}
       </Typography>
       <Typography
         variant="caption"
         color="textSecondary"
-        sx={{ fontWeight: 500, flex: '1 1 auto', minWidth: 0 }}
+        sx={{
+          fontSize: 11,
+          fontWeight: 500,
+          lineHeight: '16px',
+          letterSpacing: 0.5,
+          flex: '1 1 auto',
+          minWidth: 0
+        }}
         noWrap
       >
         {what}
@@ -388,11 +434,36 @@ export function FeedHeader({
   )
 }
 
+/** The three dots at the end of a header, 16px like the mockup's. */
+export const FeedMoreButton = ({
+  label,
+  onClick
+}: {
+  label: string
+  onClick: (anchor: HTMLElement) => void
+}): ReactElement => (
+  <IconButton
+    aria-label={label}
+    aria-haspopup="menu"
+    onClick={event => {
+      onClick(event.currentTarget)
+    }}
+    sx={{ width: 16, height: 16, p: 0, color: 'text.secondary' }}
+  >
+    <Icon icon={MoreVertIcon} size={16} />
+  </IconButton>
+)
+
 export function FeedTitle({ children }: { children: ReactNode }): ReactElement {
   return (
     <Typography
       variant="body2"
-      sx={{ fontWeight: 600, letterSpacing: 0.25, overflowWrap: 'anywhere' }}
+      sx={{
+        fontWeight: 600,
+        lineHeight: '20px',
+        letterSpacing: 0.25,
+        overflowWrap: 'anywhere'
+      }}
     >
       {children}
     </Typography>
@@ -408,7 +479,12 @@ export function FeedDetail({
     <Typography
       variant="caption"
       color="textSecondary"
-      sx={{ fontWeight: 500 }}
+      sx={{
+        fontWeight: 500,
+        lineHeight: '16px',
+        letterSpacing: 0.4,
+        pt: '5px'
+      }}
     >
       {children}
     </Typography>
@@ -422,6 +498,7 @@ export function FeedBody({ children }: { children: ReactNode }): ReactElement {
         fontSize: 15,
         lineHeight: '20px',
         letterSpacing: -0.15,
+        py: '2px',
         whiteSpace: 'pre-wrap',
         overflowWrap: 'anywhere'
       }}
@@ -444,16 +521,34 @@ export function FeedFooter({
       sx={{
         display: 'flex',
         alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: 0.5,
+        justifyContent: 'space-between',
+        gap: 1,
         mt: 0.5
       }}
     >
-      {children}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 0.5,
+          minWidth: 0
+        }}
+      >
+        {children}
+      </Box>
       <Typography
         variant="caption"
         color="textSecondary"
-        sx={{ fontWeight: 500, ml: 'auto' }}
+        sx={{
+          flex: '0 0 auto',
+          fontWeight: 500,
+          lineHeight: '16px',
+          letterSpacing: 0.4,
+          pl: 1,
+          py: 0.5,
+          alignSelf: 'flex-end'
+        }}
       >
         {time}
       </Typography>
@@ -466,7 +561,7 @@ export function FeedAction({
   children,
   ...action
 }: {
-  icon: IconProps['icon']
+  icon?: IconProps['icon']
   children: ReactNode
 } & (
   { component: React.ElementType; to: string } | { onClick: () => void }
@@ -475,14 +570,17 @@ export function FeedAction({
     <Button
       size="small"
       variant="text"
-      startIcon={<Icon icon={icon} size={16} />}
+      startIcon={icon && <Icon icon={icon} size={16} />}
       sx={{
         borderRadius: 100,
         px: 1,
         py: 0.5,
         minHeight: 0,
         fontSize: 11,
-        fontWeight: 500
+        fontWeight: 500,
+        lineHeight: '16px',
+        letterSpacing: 0.5,
+        '& .MuiButton-startIcon': { mr: 0.5, ml: 0 }
       }}
       {...action}
     >
@@ -527,11 +625,28 @@ export function ReactionChip({
       <Box
         component="span"
         aria-hidden
-        sx={{ fontSize: 16, lineHeight: '20px' }}
+        sx={{
+          fontSize: 16,
+          lineHeight: '20px',
+          width: 20,
+          textAlign: 'center'
+        }}
       >
         {emoji}
       </Box>
-      <Typography component="span" variant="body2" color="textSecondary">
+      <Typography
+        component="span"
+        sx={theme => ({
+          fontSize: 14,
+          fontWeight: 500,
+          lineHeight: '20px',
+          letterSpacing: 0.25,
+          color: theme.space.reactionCount.light,
+          ...theme.applyStyles('dark', {
+            color: theme.space.reactionCount.dark
+          })
+        })}
+      >
         {count}
       </Typography>
     </Box>
@@ -550,16 +665,26 @@ export function ReactionPicker({
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   return (
     <>
-      <IconButton
-        size="small"
-        aria-label={label}
-        aria-haspopup="menu"
-        onClick={event => {
-          setAnchor(event.currentTarget)
-        }}
-      >
-        <Icon icon={Plus} size={16} />
-      </IconButton>
+      <Tooltip title={label}>
+        <IconButton
+          size="small"
+          aria-label={label}
+          aria-haspopup="menu"
+          onClick={event => {
+            setAnchor(event.currentTarget)
+          }}
+          sx={{
+            width: 28,
+            height: 28,
+            p: 0.5,
+            border: 1,
+            borderColor: 'divider',
+            color: 'text.secondary'
+          }}
+        >
+          <Icon icon={AddReactionIcon} size={20} />
+        </IconButton>
+      </Tooltip>
       <Menu
         anchorEl={anchor}
         open={anchor !== null}

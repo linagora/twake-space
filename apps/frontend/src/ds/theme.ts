@@ -34,6 +34,8 @@ export interface SpaceTokens {
   page: { light: PageBackground; dark: PageBackground }
   // The mockup's elevation 3, of the menus that open over the feed
   menuShadow: string
+  // The count beside a reaction
+  reactionCount: { light: string; dark: string }
   // The color of each app that sends feed cards: its avatar, and the band of
   // a calendar day
   appColors: Record<'tasks' | 'mail' | 'calendar' | 'drive', string>
@@ -55,6 +57,7 @@ export const spaceThemeOptions = {
       calendar: '#f67e35',
       drive: '#5c9ce6'
     },
+    reactionCount: { light: '#69666a', dark: '#c9c5ca' },
     menuShadow:
       '0px 1px 3px 0px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15)',
     page: {
