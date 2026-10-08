@@ -17,8 +17,8 @@ import type { ReactElement, ReactNode } from 'react'
 // Layout hands `sx` to a plain div, so it is styled here instead. The page
 // behind the panels is the mockups' soft gradient, lit from each corner.
 const Frame = styled(Layout, {
-  shouldForwardProp: prop => prop !== 'belowBar'
-})<{ belowBar: boolean }>(({ theme, belowBar }) => ({
+  shouldForwardProp: prop => prop !== 'belowBar' && prop !== 'alone'
+})<{ belowBar: boolean; alone: boolean }>(({ theme, belowBar, alone }) => ({
   '--topBarHeight': belowBar ? TWAKE_BAR_HEIGHT : '0px',
   height: 'calc(100dvh - var(--topBarHeight))',
   backgroundColor: '#e2eaf9',
@@ -39,7 +39,7 @@ const Frame = styled(Layout, {
     height: 'auto',
     minHeight: 'calc(100dvh - var(--topBarHeight))',
     flexDirection: 'column',
-    paddingBottom: 'var(--sidebarHeight)'
+    paddingBottom: alone ? 0 : 'var(--sidebarHeight)'
   }
 }))
 
@@ -84,41 +84,49 @@ const TopBar = styled('div')({
 
 // `bare` swaps the content's white panel for the dashboard's frosted one,
 // which continues the sidebar. `aside` is a panel beside the content.
+// `alone` gives the whole page to the content, its aside kept: no top bar,
+// no sidebar, no margin. The content keeps its place in the tree, so the
+// frames it holds are not loaded again.
 export function AppFrame({
   topBar,
   sidebar,
   bare = false,
   aside,
+  alone = false,
   children
 }: {
   topBar?: ReactNode
   sidebar: ReactNode
   bare?: boolean
   aside?: ReactNode
+  alone?: boolean
   children: ReactNode
 }): ReactElement {
   const margin = aside ? '12px 8px 12px 0' : '12px 12px 12px 0'
+  const barShown = Boolean(topBar) && !alone
   return (
     <>
-      {topBar && <TopBar>{topBar}</TopBar>}
-      <Frame withTopBar={false} belowBar={Boolean(topBar)}>
-        <GlassSidebar>{sidebar}</GlassSidebar>
+      {barShown && <TopBar>{topBar}</TopBar>}
+      <Frame withTopBar={false} belowBar={barShown} alone={alone}>
+        {!alone && <GlassSidebar>{sidebar}</GlassSidebar>}
         {/* Content's own 100% height ignores its margins and scrolls the page */}
         <Content
           role={undefined}
           sx={theme => ({
             height: 'auto',
             position: 'relative',
-            [theme.breakpoints.up('lg')]: bare
-              ? {
-                  m: margin,
-                  borderRadius: '0 16px 16px 0',
-                  bgcolor: theme.alpha(
-                    theme.vars.palette.background.paper,
-                    0.45
-                  )
-                }
-              : { m: margin, borderRadius: '0 16px 16px 0' }
+            [theme.breakpoints.up('lg')]: alone
+              ? { m: 0, borderRadius: 0 }
+              : bare
+                ? {
+                    m: margin,
+                    borderRadius: '0 16px 16px 0',
+                    bgcolor: theme.alpha(
+                      theme.vars.palette.background.paper,
+                      0.45
+                    )
+                  }
+                : { m: margin, borderRadius: '0 16px 16px 0' }
           })}
         >
           {children}

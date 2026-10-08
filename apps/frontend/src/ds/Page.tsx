@@ -13,12 +13,15 @@ import type { ReactElement, ReactNode } from 'react'
 import coverArt from '@/assets/space-cover.png'
 
 // `fill` off leaves the rest of the content to what follows the page: the
-// frame of an embedded app, under the tabs.
+// frame of an embedded app, under the tabs. `compact` keeps a narrow edge,
+// on a page given to the content.
 export function Page({
   fill = true,
+  compact = false,
   children
 }: {
   fill?: boolean
+  compact?: boolean
   children: ReactNode
 }): ReactElement {
   return (
@@ -29,9 +32,9 @@ export function Page({
         flexDirection: 'column',
         flex: fill ? '1 1 auto' : '0 0 auto',
         minHeight: 0,
-        px: { xs: 2, lg: 3 },
-        pt: 2,
-        pb: fill ? 2 : 0
+        px: compact ? 1 : { xs: 2, lg: 3 },
+        pt: compact ? 1 : 2,
+        pb: fill ? (compact ? 1 : 2) : 0
       }}
     >
       {children}
@@ -153,6 +156,43 @@ export function SpaceHeader({
         )}
       </Box>
       <Divider />
+    </Box>
+  )
+}
+
+// The space's header while its content has the page: one line, the way back
+// first, so that it is the first stop of the keyboard on its way out of a
+// frame.
+export function CompactSpaceHeader({
+  back,
+  avatar,
+  title,
+  tab
+}: {
+  back: ReactNode
+  avatar: ReactNode
+  title: ReactNode
+  tab: ReactNode
+}): ReactElement {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        minWidth: 0,
+        minHeight: 40,
+        mb: 1
+      }}
+    >
+      {back}
+      {avatar}
+      <Typography variant="h6" component="h1" noWrap>
+        {title}
+      </Typography>
+      <Typography variant="body2" color="textSecondary" noWrap>
+        {tab}
+      </Typography>
     </Box>
   )
 }
