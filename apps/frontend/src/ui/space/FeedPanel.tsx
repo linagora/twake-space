@@ -42,6 +42,7 @@ import {
   DateTile,
   EventSummary,
   FeedAction,
+  FeedAttachment,
   FeedBody,
   FeedCentered,
   FeedComposer,
@@ -726,20 +727,31 @@ function Summary({ card }: { card: FeedCard }): ReactElement {
   )
 }
 
+// A file just added has the card of the mockup's added files; one updated
+// has the line of its shared files.
 function FileDetails({ card }: { card: FeedCard }): ReactElement {
   const { t } = useI18n()
   const extension = fileExtension(card.object.title)
+  const icon = getFileTypeIcon(card.object.title)
   return (
     <>
-      <FeedFile
-        icon={getFileTypeIcon(card.object.title)}
-        name={card.object.title}
-        detail={
-          <FeedDetail>
-            {[extension, t('feed.fromDrive')].filter(Boolean).join(' · ')}
-          </FeedDetail>
-        }
-      />
+      {cardAction(card) === 'created' ? (
+        <FeedAttachment
+          icon={icon}
+          name={card.object.title}
+          detail={extension ?? t('feed.fromDrive')}
+        />
+      ) : (
+        <FeedFile
+          icon={icon}
+          name={card.object.title}
+          detail={
+            <FeedDetail>
+              {[extension, t('feed.fromDrive')].filter(Boolean).join(' · ')}
+            </FeedDetail>
+          }
+        />
+      )}
       {card.preview && <FeedDetail>{card.preview}</FeedDetail>}
     </>
   )

@@ -508,6 +508,65 @@ export function FeedFile({
   )
 }
 
+/** A file as a card: the icon of its type over its name. */
+export function FeedAttachment({
+  icon,
+  name,
+  detail
+}: {
+  icon: IconProps['icon']
+  name: string
+  detail: ReactNode
+}): ReactElement {
+  return (
+    <Box
+      sx={{
+        width: 183,
+        maxWidth: '100%',
+        mt: 0.5,
+        border: 1,
+        borderColor: 'border.disabled',
+        borderRadius: '10px',
+        overflow: 'hidden'
+      }}
+    >
+      <Box
+        sx={{
+          height: 94,
+          pt: '17px',
+          display: 'flex',
+          justifyContent: 'center',
+          bgcolor: 'background.default',
+          borderBottom: 1,
+          borderColor: 'border.disabled'
+        }}
+      >
+        <Icon icon={icon} size={60} />
+      </Box>
+      <Box sx={{ p: 1.5, bgcolor: 'background.paper' }}>
+        <Typography
+          variant="body2"
+          noWrap
+          title={name}
+          sx={{ fontWeight: 500, lineHeight: '18.4px', letterSpacing: 0.25 }}
+        >
+          {name}
+        </Typography>
+        <Typography
+          sx={theme => ({
+            fontSize: 11,
+            lineHeight: '16px',
+            color: theme.space.fileMeta.light,
+            ...theme.applyStyles('dark', { color: theme.space.fileMeta.dark })
+          })}
+        >
+          {detail}
+        </Typography>
+      </Box>
+    </Box>
+  )
+}
+
 export function FeedDetail({
   children
 }: {
