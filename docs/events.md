@@ -25,7 +25,8 @@ flowchart LR
   Q --> R[Router]
   R -->|dedupe + handler, one transaction| PG[(Postgres)]
   R -->|RejectedEventError| DLQ["twake-space.dlx → twake-space.dlq"]
-  PG -->|pg_notify live| SSE[GET /stream]
+  R -->|after commit| L[twake-space.live exchange]
+  L -->|one queue per replica| SSE[GET /stream]
   MX[Synapse] -->|app service transactions| PG
   SSE --> B[Browser]
   B -->|feed routes| PG
@@ -225,8 +226,9 @@ sequenceDiagram
   K->>BE: activity event
   BE->>PG: insert activity_events
   BE->>PG: upsert feed_cards (space, object type, object id)
-  BE->>PG: pg_notify live, feed added or changed
-  PG-->>FE: event: feed (GET /stream)
+  BE->>K: after commit, live: feed added or changed
+  K-->>BE: every replica
+  BE-->>FE: event: feed (GET /stream)
   FE->>BE: GET /spaces/:spaceId/feed/items/:itemId
 ```
 
@@ -264,7 +266,7 @@ flowchart LR
   MM[Matrix message m.mentions] --> NU[notifyUsers]
   NR --> NU
   NU -->|per user settings| N[(notifications)]
-  N -->|pg_notify notification| SSE[GET /stream]
+  N -->|live: notification| SSE[GET /stream]
 ```
 
 ### From activity events
@@ -297,18 +299,20 @@ A new `m.room.message` notifies each user in `m.mentions.user_ids` who is on the
 ```mermaid
 sequenceDiagram
   participant H as Event handler (transaction)
-  participant PG as Postgres
+  participant K as twake-space.live exchange
   participant R as Every replica
   participant FE as Browser
-  H->>PG: pg_notify('live', {event, users, data})
-  Note over PG: delivered on commit
-  PG-->>R: LISTEN live
-  R->>FE: event: spaces / notification, data: JSON
+  H->>H: tell(tx, event, users, data)
+  Note over H: published once the transaction commits
+  H->>K: live.update {event, users, data}
+  K-->>R: one exclusive queue per replica
+  R->>FE: event: spaces / notification / feed, data: JSON
   FE->>FE: spaces: invalidate the spaces queries
 ```
 
-- Handlers call `pg_notify` on the `live` channel inside their transaction, so replicas only hear about committed changes. One notify carries up to 100 users, to stay under the payload limit.
-- Every replica listens and writes the event to each open stream of the listed users.
+- Handlers call `tell` inside their transaction. The message is published to RabbitMQ only after the commit, so replicas only hear about committed changes, and never about a rolled back one.
+- Every replica consumes from its own exclusive queue on the live exchange and writes the event to each open stream of the listed users. The queue lives as long as the replica's connection, so a message published while a replica is disconnected is lost; its browsers catch up when their stream reopens.
+- A revoked session goes over the same exchange, so every replica closes that session's streams. Every minute, each replica also closes the streams of sessions revoked meanwhile, for a revocation it missed.
 - `GET /stream` needs a session. It is `text/event-stream`, sends a heartbeat comment every 25 seconds, and closes when the session expires, when the session is revoked, or when the server stops.
 - The frontend reads it with `fetch` (EventSource cannot send the bearer token) and reconnects with a backoff from 1 to 30 seconds.
 - On `spaces`, the frontend invalidates its spaces queries. On a reconnect it invalidates every query, since events sent while the stream was closed are lost.

@@ -9,7 +9,7 @@ import { postgresAuthStore } from './store.ts'
 
 export type { Identity } from './oidc.ts'
 export type { Authorize, Caller } from './routes.ts'
-export { listenForRevocations } from './store.ts'
+export { scheduleRevocationSweep } from './store.ts'
 
 export async function setUpAuth(
   app: HttpServer,

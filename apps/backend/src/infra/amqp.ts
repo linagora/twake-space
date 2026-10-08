@@ -181,7 +181,8 @@ export async function startConsumer(
   config: Config,
   logger: Logger,
   handle: Handle,
-  stats: ConsumerStats
+  stats: ConsumerStats,
+  beforeConsuming: (client: RabbitMQClient) => Promise<void>
 ): Promise<RabbitMQClient> {
   const client = new RabbitMQClient({
     url: config.AMQP_URL,
@@ -197,6 +198,7 @@ export async function startConsumer(
     }
   })
   await client.init()
+  await beforeConsuming(client)
   const { exchange, routingKey, queue, options } = subscription(config.amqp)
   await client.subscribe(
     exchange,

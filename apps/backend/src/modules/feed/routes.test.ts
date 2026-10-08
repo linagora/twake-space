@@ -12,7 +12,7 @@ import { createServer } from '../../infra/http.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
 import type { TokenCaller } from '../tokens/authenticator.ts'
-import { listenForLive } from '../live/notify.ts'
+import { listenInMemory } from '../live/testing.ts'
 import { spaceMembers, spaces } from '../spaces/schema.ts'
 import { registerFeedRoutes } from './routes.ts'
 import {
@@ -35,7 +35,7 @@ const live = vi.fn()
 let testDb: TestDb
 beforeAll(async () => {
   testDb = await createTestDb()
-  await listenForLive(testDb.sql, { send: live })
+  await listenInMemory({ send: live, closeSession: vi.fn() })
 })
 afterAll(() => testDb.drop())
 

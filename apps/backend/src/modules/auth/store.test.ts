@@ -1,6 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { pino } from 'pino'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
-import { listenForRevocations, postgresAuthStore } from './store.ts'
+import { listenInMemory } from '../live/testing.ts'
+import { postgresAuthStore, scheduleRevocationSweep } from './store.ts'
 
 let testDb: TestDb
 beforeAll(async () => {
@@ -18,16 +20,35 @@ describe('revoke', () => {
     expect(await store.isRevoked('session-2')).toBe(false)
   })
 
-  it('tells every listener which session was revoked', async () => {
-    let notify: (sessionId: string) => void = () => undefined
-    const revoked = new Promise<string>(resolve => (notify = resolve))
-    await listenForRevocations(testDb.sql, notify)
+  it('closes the streams of the revoked session', async () => {
+    const closeSession = vi.fn()
+    await listenInMemory({ send: vi.fn(), closeSession })
 
     await postgresAuthStore(testDb.db).revoke(
       'session-3',
       new Date(Date.now() + 60_000)
     )
 
-    await expect(revoked).resolves.toBe('session-3')
+    await vi.waitFor(() => {
+      expect(closeSession).toHaveBeenCalledWith('session-3')
+    })
+  })
+
+  it('closes the streams of a session revoked while the message was lost', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval'] })
+    const closeSession = vi.fn()
+    const stop = scheduleRevocationSweep(
+      testDb.db,
+      { sessions: () => ['session-1', 'session-open'], closeSession },
+      pino({ level: 'silent' })
+    )
+
+    await vi.advanceTimersByTimeAsync(60_000)
+    stop()
+    vi.useRealTimers()
+
+    await vi.waitFor(() => {
+      expect(closeSession.mock.calls).toEqual([['session-1']])
+    })
   })
 })

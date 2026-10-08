@@ -35,7 +35,7 @@ flowchart LR
   auth --> spaces & tokens & notifications & directory["organizations/<br>directory routes"] & live
   feed --> notifications
   auth --> feed
-  spaces & notifications & feed -- "pg_notify" --> live["live/<br>SSE /stream"]
+  spaces & notifications & feed -- "after commit,<br>over RabbitMQ" --> live["live/<br>SSE /stream"]
 ```
 
 - `src/main.ts` is the only place that wires things. It loads the config, runs the migrations, builds the event routes, registers every module's routes on one Fastify server, starts the metrics server, then the RabbitMQ consumer and the background jobs. It also handles SIGTERM and SIGINT.
@@ -51,7 +51,7 @@ What each module owns:
 - `organizations`: organizations (domain, chat and mail availability), homeservers, the chat control plane client, and the directory search routes `GET /organization/members` and `GET /organization/groups`.
 - `feed`: activity cards from app events, members' posts and reactions under `/spaces/:spaceId/feed`, chat messages and reactions from Matrix transactions, the retention purge, and `/metrics`.
 - `notifications`: per user notifications and settings, under `/notifications`.
-- `live`: the Server-Sent Events stream at `GET /stream`, fed by Postgres `NOTIFY` so every replica hears committed changes.
+- `live`: the Server-Sent Events stream at `GET /stream`, fed by the RabbitMQ live exchange, where every replica has its own queue and hears each committed change.
 
 Modules import each other's schemas and helpers directly. There is no module registry.
 
@@ -121,7 +121,7 @@ API tokens:
 Session revocation:
 
 - The SSO calls `POST /auth/backchannel-logout`. The backend stores the session id as revoked for 24 hours and refuses its access tokens.
-- Revocation is also sent with `pg_notify`, so every replica closes that session's live streams.
+- Revocation is also sent on the live exchange, so every replica closes that session's live streams. A sweep every minute catches a revocation a replica missed.
 
 Some routes do not use `authorize`:
 
@@ -143,7 +143,7 @@ A new scope is a new value in the `token_scope` enum in `modules/tokens/schema.t
 1. Write a `Handler<CloudEvent>` or `Handler<PlatformEvent>` in the module. Parse the payload with `parseOrDrop`, and write through the `tx` it receives.
 2. Export it in a map from event type or routing key to handler, like `spacePlatformRoutes` or `resourceActivityRoutes`.
 3. Add the map to the `routes` lookup in `main.ts`.
-4. To push a change to open streams, call `tell` or `tellSpaceMembers` from `modules/live/notify.ts` inside the same transaction.
+4. To push a change to open streams, call `tell` or `tellSpaceMembers` from `modules/live/notify.ts` inside the same transaction. It publishes after the commit. Tests receive it with `listenInMemory` from `modules/live/testing.ts`.
 
 ## Add a module
 

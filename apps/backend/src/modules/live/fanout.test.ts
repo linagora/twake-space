@@ -6,7 +6,7 @@ import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { notifyRecipients } from '../notifications/recipients.ts'
 import { spacePlatformRoutes } from '../spaces/events.ts'
 import { resourceActivityRoutes } from '../spaces/resources.ts'
-import { listenForLive } from './notify.ts'
+import { listenInMemory } from './testing.ts'
 
 const SPACE_ID = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
 const ALICE = '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
@@ -29,7 +29,7 @@ let testDb: TestDb
 const send = vi.fn()
 beforeAll(async () => {
   testDb = await createTestDb()
-  await listenForLive(testDb.sql, { send })
+  await listenInMemory({ send, closeSession: vi.fn() })
 })
 afterAll(() => testDb.drop())
 

@@ -1,4 +1,5 @@
-export type LiveEvent = 'notification' | 'spaces' | 'feed'
+export const LIVE_EVENTS = ['notification', 'spaces', 'feed'] as const
+export type LiveEvent = (typeof LIVE_EVENTS)[number]
 
 export interface Stream {
   sessionId: string
@@ -34,6 +35,9 @@ export function createStreams() {
     },
     send(userId: string, event: LiveEvent, data: object) {
       for (const stream of byPerson.get(userId) ?? []) stream.send(event, data)
+    },
+    sessions() {
+      return [...new Set(all().map(stream => stream.sessionId))]
     },
     closeSession(sessionId: string) {
       for (const stream of all()) {
