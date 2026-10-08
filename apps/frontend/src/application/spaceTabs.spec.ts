@@ -153,13 +153,40 @@ describe('itemPlace', () => {
   }
 
   it("opens a card in its container's tab", () => {
-    expect(itemPlace(space, card)).toEqual({ tab: 'tasks', feedItem: null })
+    expect(itemPlace(space, card)).toEqual({
+      tab: 'tasks',
+      path: '/spaces/a1/tasks',
+      feedItem: null
+    })
+  })
+
+  it('opens an event in its preview in the Calendar tab', () => {
+    const event: FeedCard = {
+      ...card,
+      type: 'com.twake.calendar.event.created.v1',
+      object: {
+        type: 'event',
+        id: 'uid/1@acme',
+        title: 'Roadmap review',
+        container: { kind: 'calendar', id: 'cal-1' }
+      }
+    }
+    expect(itemPlace(space, event)).toEqual({
+      tab: 'calendar',
+      path: '/spaces/a1/calendar/events/uid%2F1%40acme',
+      feedItem: null
+    })
   })
 
   it('opens a post, or a card with no tab, in the feed at the item', () => {
-    expect(itemPlace(space, post)).toEqual({ tab: 'feed', feedItem: 'post-1' })
+    expect(itemPlace(space, post)).toEqual({
+      tab: 'feed',
+      path: '/spaces/a1/feed',
+      feedItem: 'post-1'
+    })
     expect(itemPlace({ ...space, apps: ['chat'] }, card)).toEqual({
       tab: 'feed',
+      path: '/spaces/a1/feed',
       feedItem: 'card-1'
     })
   })

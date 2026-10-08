@@ -323,6 +323,7 @@ sequenceDiagram
 - Each filter (all, messages, files, activities, events) is its own paged query, with no `category` for all.
 - A `feed` live event updates every loaded filter of the space: an added item goes on top of the filters that show it, a changed one is replaced where it is loaded, and a removed one, or one the backend no longer finds, is dropped.
 - A card's title opens the space's tab for its container: `project` -> Tasks, `drive` -> Drive, `mailbox` -> Mail, `calendar` -> Calendar, `matrix_space` -> Chat. With no container, or a tab the space does not show, the title is plain text.
+- An event card opens its event: the Calendar tab at `/events/<object id>`, which the frame shows below its embed route, `/embed/calendars/<id>/events/<uid>`. Calendar opens the event's preview there, and reports its path back to the bare route once the preview closes.
 
 ## Retention
 

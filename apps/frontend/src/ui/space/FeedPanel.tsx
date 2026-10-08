@@ -34,7 +34,7 @@ import {
 } from '@/application/feed'
 import { meetRoomUrl } from '@/application/meet'
 import type { ResourceKind, Space } from '@/application/spaces'
-import { containerTab } from '@/application/spaceTabs'
+import { itemPlace } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
 import {
   AppAvatar,
@@ -727,9 +727,8 @@ function Card({
   const appName = isApp(app) ? t(`feed.apps.${app}`) : null
   // A card reaches the space's feed only when its container is one of the
   // space's resources, so the container's tab shows it.
-  const { container } = card.object
-  const tab = container && containerTab(space, container.kind)
-  const open = tab && OPEN[tab]
+  const place = itemPlace(space, card)
+  const open = OPEN[place.tab]
   const label = [actor ?? appName, card.object.title].filter(Boolean).join(': ')
 
   return (
@@ -760,11 +759,11 @@ function Card({
       )}
       <FeedFooter time={time(card.time)}>
         <Reactions item={card} spaceId={space.id} myId={myId} />
-        {tab && open && (
+        {open && (
           <FeedAction
             icon={app === 'drive' ? FolderIcon : OpenInNewIcon}
             component={RouterLink}
-            to={`/spaces/${space.id}/${tab}`}
+            to={place.path}
           >
             {t(open)}
           </FeedAction>

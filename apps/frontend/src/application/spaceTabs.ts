@@ -77,13 +77,19 @@ export function containerTab(space: Space, kind: ResourceKind): Tab | null {
 
 /**
  * Where a feed item opens: a card in its container's tab, anything else in
- * the feed, at the item.
+ * the feed, at the item. An event opens in Calendar's preview of it.
  */
 export function itemPlace(
   space: Space,
   item: FeedItem
-): { tab: Tab; feedItem: string | null } {
+): { tab: Tab; path: string; feedItem: string | null } {
   const container = item.kind === 'card' ? item.object.container : null
   const tab = container && containerTab(space, container.kind)
-  return tab ? { tab, feedItem: null } : { tab: 'feed', feedItem: item.id }
+  const base = `/spaces/${space.id}/${tab ?? 'feed'}`
+  if (!tab) return { tab: 'feed', path: base, feedItem: item.id }
+  const below =
+    tab === 'calendar' && item.kind === 'card'
+      ? `/events/${encodeURIComponent(item.object.id)}`
+      : ''
+  return { tab, path: base + below, feedItem: null }
 }
