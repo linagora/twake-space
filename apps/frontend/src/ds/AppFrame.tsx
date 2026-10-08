@@ -131,8 +131,7 @@ export function AppFrame({
   )
 }
 
-// The header's two buttons as the mockup sizes them: the filter hugs its
-// 24px icon and the add button is a 48px target.
+// The filter hugs its icon; the add button keeps a 48px target.
 export const SidebarFilterButton = styled(IconButton)(({ theme }) => ({
   padding: theme.spacing(0.5),
   color: theme.vars.palette.text.secondary
@@ -194,7 +193,6 @@ export function SidebarSearch({
   )
 }
 
-// The mockup's count badge: 16px high, the label small type.
 const sidebarBadge = {
   '& .MuiBadge-badge': {
     minWidth: 16,

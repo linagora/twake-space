@@ -96,7 +96,6 @@ export function SpaceCard({
               position: 'relative',
               zIndex: 1,
               m: -1.5,
-              // The mockup's more_horiz: dots of 1.33px in a 16px box
               '& svg': { width: 10.667, height: 'auto' }
             }}
           >

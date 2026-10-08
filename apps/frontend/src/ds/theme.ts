@@ -36,7 +36,6 @@ export interface SpaceTokens {
 
 export const spaceThemeOptions = {
   typography: {
-    // The mockup's subtitle3: subtitle2 at 12px, on lines of 18.4px
     subtitle3: {
       fontSize: 12,
       fontWeight: 600,
