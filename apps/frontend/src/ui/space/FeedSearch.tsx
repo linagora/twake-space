@@ -74,7 +74,7 @@ export function FeedSearch({ space }: { space: Space }): ReactElement {
           setInput('')
           const place = itemPlace(space, item)
           void navigate(
-            `/spaces/${space.id}/${place.tab}`,
+            place.path,
             place.feedItem ? { state: { feedItem: place.feedItem } } : {}
           )
         }}

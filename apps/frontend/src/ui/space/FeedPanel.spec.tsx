@@ -189,6 +189,9 @@ describe('FeedPanel', () => {
     ).toBeInTheDocument()
     expect(within(eventCard).getByText(/Moved from/)).toBeInTheDocument()
     expect(within(eventCard).getByText(/Room 4/)).toBeInTheDocument()
+    expect(
+      within(eventCard).getByRole('link', { name: 'View event' })
+    ).toHaveAttribute('href', '/spaces/a1/calendar/events/e-1')
   })
 
   describe('a Drive file', () => {
