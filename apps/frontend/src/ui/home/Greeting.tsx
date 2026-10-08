@@ -18,7 +18,7 @@ export function Greeting({
   level,
   hideTitleOnMobile = false
 }: {
-  title: ReactNode
+  title?: ReactNode
   level: 'h1' | 'h2'
   hideTitleOnMobile?: boolean
 }): ReactElement {
@@ -42,17 +42,19 @@ export function Greeting({
   return (
     <>
       <div className="u-flex u-flex-wrap u-flex-items-center u-flex-justify-between">
-        <Typography
-          variant="h3"
-          component="p"
-          className={hideTitleOnMobile ? 'u-dn-m' : undefined}
-        >
-          {title}
-        </Typography>
+        {title !== undefined && (
+          <Typography
+            variant="h3"
+            component="p"
+            className={hideTitleOnMobile ? 'u-dn-m' : undefined}
+          >
+            {title}
+          </Typography>
+        )}
         <Typography
           variant="subtitle1"
           component="p"
-          className="u-flex u-flex-items-center"
+          className="u-flex u-flex-items-center u-ml-auto"
         >
           <Icon icon={Calendar} className="u-mr-half" />
           {new Intl.DateTimeFormat(lang, {

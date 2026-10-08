@@ -1,4 +1,4 @@
-import { Expand, Home, Icon, Narrow } from '@linagora/twake-icons'
+import { Expand, Icon, Narrow } from '@linagora/twake-icons'
 import {
   Alert,
   Button,
@@ -28,6 +28,7 @@ import { isRefusal } from '@/application/spaces'
 import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
 import { CountedLabel } from '@/ds/CountedLabel'
+import { Home } from '@/ds/icons'
 import {
   CompactSpaceHeader,
   LoadingRows,
