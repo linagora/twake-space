@@ -12,6 +12,12 @@ export function browserNotifications(): SystemNotifications {
   const shown = new Map<string, Notification>()
   const pending = new Map<string, Pending>()
   let asking = false
+  const listeners = new Set<() => void>()
+  const changed = () => {
+    listeners.forEach(listener => {
+      listener()
+    })
+  }
 
   const display = (key: string, { title, body, onClick }: Pending) => {
     shown.get(key)?.close()
@@ -27,27 +33,31 @@ export function browserNotifications(): SystemNotifications {
     shown.set(key, notification)
   }
 
+  let gesture: AbortController | null = null
+  const ask = () => {
+    gesture?.abort()
+    gesture = null
+    // What waited is over (closed before the click): nothing to ask for
+    if (pending.size === 0) {
+      asking = false
+      return
+    }
+    void Notification.requestPermission().then(permission => {
+      asking = false
+      if (permission === 'granted') {
+        pending.forEach((notification, key) => {
+          display(key, notification)
+        })
+      }
+      pending.clear()
+      changed()
+    })
+  }
+
   const askOnGesture = () => {
     if (asking) return
     asking = true
-    const gesture = new AbortController()
-    const ask = () => {
-      gesture.abort()
-      // What waited is over (closed before the click): nothing to ask for
-      if (pending.size === 0) {
-        asking = false
-        return
-      }
-      void Notification.requestPermission().then(permission => {
-        asking = false
-        if (permission === 'granted') {
-          pending.forEach((notification, key) => {
-            display(key, notification)
-          })
-        }
-        pending.clear()
-      })
-    }
+    gesture = new AbortController()
     for (const type of ['click', 'keydown']) {
       window.addEventListener(type, ask, {
         capture: true,
@@ -65,13 +75,22 @@ export function browserNotifications(): SystemNotifications {
       else if (Notification.permission === 'default') {
         pending.set(key, { title, body, onClick })
         askOnGesture()
+        changed()
       }
     },
     close: (app, tag) => {
       const key = `${app}:${tag}`
-      pending.delete(key)
+      if (pending.delete(key)) changed()
       shown.get(key)?.close()
       shown.delete(key)
-    }
+    },
+    isWaiting: () => pending.size > 0,
+    subscribe: listener => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    allow: ask
   }
 }

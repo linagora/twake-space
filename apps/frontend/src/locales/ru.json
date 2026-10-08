@@ -62,7 +62,12 @@
     "spaceWithCount": "%{name}, новых: %{smart_count}",
     "searchSpaces": "Поиск по вашим пространствам",
     "spaceName": "Название пространства",
-    "noSpaceFound": "Пространства не найдены"
+    "noSpaceFound": "Пространства не найдены",
+    "notificationPermission": {
+      "message": "Разрешить уведомления о звонках и приложениях?",
+      "allow": "Разрешить",
+      "dismiss": "Не сейчас"
+    }
   },
   "spotSpace": {
     "title": "SpotSpace",

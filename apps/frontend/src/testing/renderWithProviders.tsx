@@ -60,7 +60,13 @@ function withProviders(
     live = fakeLive(),
     feed = fakeFeed(),
     meetings = { schedule: () => Promise.resolve() },
-    notifications = { show: () => undefined, close: () => undefined },
+    notifications = {
+      show: () => undefined,
+      close: () => undefined,
+      isWaiting: () => false,
+      subscribe: () => () => undefined,
+      allow: () => undefined
+    },
     feedback = null,
     tasksUrl = 'https://tasks.test/',
     mailUrl = 'https://mail.test/',

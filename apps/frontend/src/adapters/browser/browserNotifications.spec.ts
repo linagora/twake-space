@@ -71,4 +71,22 @@ describe('browserNotifications', () => {
     expect(focus).toHaveBeenCalled()
     expect(onClick).toHaveBeenCalledOnce()
   })
+
+  it('says a notification waits, and asks from a click of the page', async () => {
+    const { shown, requestPermission } = stubNotifications('granted')
+    const notifications = browserNotifications()
+    const listener = vi.fn()
+    notifications.subscribe(listener)
+
+    notifications.show('chat', { tag: 't', title: 'Alice', body: '' }, vi.fn())
+    expect(notifications.isWaiting()).toBe(true)
+    expect(listener).toHaveBeenCalled()
+
+    notifications.allow()
+    await Promise.resolve()
+
+    expect(requestPermission).toHaveBeenCalledOnce()
+    expect(shown).toEqual(['Alice'])
+    expect(notifications.isWaiting()).toBe(false)
+  })
 })

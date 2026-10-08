@@ -62,7 +62,12 @@
     "spaceWithCount": "%{name}, %{smart_count} new",
     "searchSpaces": "Search your spaces",
     "spaceName": "Space name",
-    "noSpaceFound": "No space found"
+    "noSpaceFound": "No space found",
+    "notificationPermission": {
+      "message": "Allow the notifications of calls and apps?",
+      "allow": "Allow",
+      "dismiss": "Not now"
+    }
   },
   "spotSpace": {
     "title": "SpotSpace",

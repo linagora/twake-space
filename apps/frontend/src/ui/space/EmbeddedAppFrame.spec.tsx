@@ -13,7 +13,13 @@ import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
 const MAIL = 'https://mail.test'
 const EMBED = '/embed/team-mailboxes/m%2F1'
 
-let notifications = { show: vi.fn(), close: vi.fn() }
+let notifications = {
+  isWaiting: () => false,
+  subscribe: () => () => undefined,
+  allow: vi.fn(),
+  show: vi.fn(),
+  close: vi.fn()
+}
 let onBadges = vi.fn<(badges: readonly Badge[] | null) => void>()
 let unmountFrame: () => void = () => undefined
 
@@ -28,7 +34,13 @@ async function renderFrame(
   meetUrl: string | null = 'https://meet.test'
 ) {
   const onPath = vi.fn<(report: EmbedPath) => void>()
-  notifications = { show: vi.fn(), close: vi.fn() }
+  notifications = {
+    isWaiting: () => false,
+    subscribe: () => () => undefined,
+    allow: vi.fn(),
+    show: vi.fn(),
+    close: vi.fn()
+  }
   onBadges = vi.fn<(badges: readonly Badge[] | null) => void>()
   const { unmount } = renderWithProviders(
     <>
