@@ -2,6 +2,7 @@ import {
   Avatar,
   Box,
   Content,
+  IconButton,
   Layout,
   List,
   ListSubheader,
@@ -130,6 +131,17 @@ export function AppFrame({
   )
 }
 
+// The header's two buttons as the mockup sizes them: the filter hugs its
+// 24px icon and the add button is a 48px target.
+export const SidebarFilterButton = styled(IconButton)(({ theme }) => ({
+  padding: theme.spacing(0.5),
+  color: theme.vars.palette.text.secondary
+}))
+
+export const SidebarAddButton = styled(IconButton)(({ theme }) => ({
+  padding: theme.spacing(1.5)
+}))
+
 export function SidebarHeader({
   title,
   action
@@ -150,9 +162,7 @@ export function SidebarHeader({
       <Typography variant="h3" component="p">
         {title}
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        {action}
-      </Box>
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>{action}</Box>
     </Box>
   )
 }
