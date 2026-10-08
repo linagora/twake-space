@@ -48,6 +48,7 @@ const services = {
     me: { id: 'uuid-alice', name: seedUser.name },
     roles: Object.fromEntries(seedSpaces.map(space => [space.id, space.role]))
   }),
+  meetings: { schedule: () => Promise.resolve() },
   feedback: null,
   apiUrl: new URL('/api/', window.location.origin).href,
   tasksUrl: window.TASKS_URL ?? null,

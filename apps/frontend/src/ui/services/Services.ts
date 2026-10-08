@@ -4,6 +4,7 @@ import type { DirectoryService } from '@/application/directory'
 import type { FeedbackService } from '@/application/feedback'
 import type { FeedService } from '@/application/feed'
 import type { LiveService } from '@/application/live'
+import type { MeetingsService } from '@/application/meetings'
 import type { SettingsService } from '@/application/settings'
 import type { SpacesService } from '@/application/spaces'
 import type { TokensService } from '@/application/tokens'
@@ -15,6 +16,7 @@ export interface Services {
   directory: DirectoryService
   live: LiveService
   feed: FeedService
+  meetings: MeetingsService
   // Null without a Sentry DSN
   feedback: FeedbackService | null
   // The backend's base URL, shown to API token users
