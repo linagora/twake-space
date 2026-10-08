@@ -36,6 +36,19 @@ export function useFeed(spaceId: string, filter: FeedFilter) {
   })
 }
 
+// Read once per visit, so the new items' mark stays where the visit found it.
+// The feed waits for it: a failure opens the feed with no mark at once.
+export function useFeedReadAt(spaceId: string) {
+  const { feed } = useServices()
+  return useQuery({
+    queryKey: ['feedRead', spaceId],
+    queryFn: () => feed.readAt(spaceId),
+    staleTime: Infinity,
+    gcTime: 0,
+    retry: false
+  })
+}
+
 // Kept apart from `feedKey`: live changes write into every query under it.
 export function useFeedSearch(spaceId: string, q: string, limit: number) {
   const { feed } = useServices()

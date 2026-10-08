@@ -11,7 +11,8 @@ import { createPortal } from 'react-dom'
 import {
   helloMessage,
   parseAppMessage,
-  type Badge
+  type Badge,
+  type Metadata
 } from '@linagora/twake-embed'
 import {
   OverlayFrame,
@@ -21,16 +22,19 @@ import {
 } from '@linagora/twake-mui'
 
 import { parseAppNotification } from '@/application/appNotifications'
+import { badgesOf } from '@/application/metadata'
 import {
   isLoginRequired,
   legacyEmbedPath,
   parseEmbedPath,
   type EmbedPath
 } from '@/application/embeddedApps'
+import { meetRoomUrl } from '@/application/meet'
 import { EmbedFrame } from '@/ds/EmbedFrame'
 import { FloatingWindow, type WindowBody } from '@/ds/FloatingWindow'
-import { useServices } from '@/ui/services/Services'
+import { useCall } from '@/ui/call/CallContext'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
 
 // Downloads too: a sandboxed frame without it cannot save a file
@@ -52,12 +56,17 @@ const ALLOW = 'clipboard-read; clipboard-write; fullscreen'
 //   time, forgotten when the frame's document reloads or the frame goes,
 // - the system notifications it asks for (`twake-embed:notification`, and
 //   `-close` for one tag), which the browser refuses to the frame itself,
+// - the same for its metadata (`twake-embed:metadata`): the figures of the
+//   space home, and maybe its counts under `badge`. Once a document sends
+//   its counts there, its badges are left aside,
 // - an overlay over the whole page, on the app's origin, for its docked
 //   windows and dialogs: an empty page the app renders into, shown within
 //   the region the app reports (`twake-embed:overlay-region`),
 // - with `canFillPage`, a floating window while the app asks for the page
 //   (`twake-embed:fill-page`): Chat during a call, on whichever tab or page
-//   TwakeSpace shows, which stays usable.
+//   TwakeSpace shows, which stays usable,
+// - its call window for a Meet room the app holds a link to
+//   (`twake-embed:pip`): a room of this Meet only, anything else is dropped.
 // The frame's `src` is set once: the host moves it with messages.
 export function EmbeddedAppFrame({
   app,
@@ -71,6 +80,7 @@ export function EmbeddedAppFrame({
   frameRef,
   onPath,
   onBadges,
+  onMetadata,
   onFloat,
   onOpen
 }: {
@@ -91,6 +101,7 @@ export function EmbeddedAppFrame({
   // The app's counts, already checked to come from the frame: its whole
   // snapshot, or null when the frame's document is gone
   onBadges: (badges: readonly Badge[] | null) => void
+  onMetadata: (metadata: readonly Metadata[]) => void
   onFloat?: (floats: boolean) => void
   // A click on one of its system notifications: show the app
   // with the resource it is about, when the app said it
@@ -98,16 +109,20 @@ export function EmbeddedAppFrame({
 }): ReactElement {
   const { t } = useI18n()
   const { signIn } = useSession()
-  const { notifications } = useServices()
+  const { meetUrl, notifications } = useServices()
+  const { join } = useCall()
   const origin = new URL(appUrl).origin
   const name = `twake-embed-${app}`
 
   const report = useRef(onPath)
   const reportBadges = useRef(onBadges)
+  const reportMetadata = useRef(onMetadata)
+  const countsInMetadata = useRef(false)
   const open = useRef(onOpen)
   useEffect(() => {
     report.current = onPath
     reportBadges.current = onBadges
+    reportMetadata.current = onMetadata
     open.current = onOpen
   })
   // A frame replaced or removed takes its counts with it
@@ -192,7 +207,21 @@ export function EmbeddedAppFrame({
           return
         }
         if (message?.type === 'twake-embed:badges') {
-          reportBadges.current(message.badges)
+          if (!countsInMetadata.current) reportBadges.current(message.badges)
+          return
+        }
+        if (message?.type === 'twake-embed:metadata') {
+          if (message.metadata.some(({ name }) => name === 'badge')) {
+            countsInMetadata.current = true
+            reportBadges.current(badgesOf(message.metadata))
+          }
+          reportMetadata.current(message.metadata)
+          return
+        }
+        if (message?.type === 'twake-embed:pip') {
+          const room =
+            meetUrl === null ? null : meetRoomUrl(message.url, meetUrl)
+          if (room !== null) join({ url: room })
           return
         }
         const path = parseEmbedPath(event.data, embedPath)
@@ -233,7 +262,7 @@ export function EmbeddedAppFrame({
     return () => {
       listening.abort()
     }
-  }, [app, embedPath, frameRef, notifications, origin, signIn])
+  }, [app, embedPath, frameRef, join, meetUrl, notifications, origin, signIn])
 
   return (
     <>
@@ -251,6 +280,7 @@ export function EmbeddedAppFrame({
           setRegion(null)
           setAsksPage(false)
           // The new document reports its counts again, on its greeting
+          countsInMetadata.current = false
           reportBadges.current(null)
           setLoads(n => n + 1)
         }}

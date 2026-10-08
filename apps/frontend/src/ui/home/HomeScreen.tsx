@@ -1,4 +1,4 @@
-import { Calendar, Icon, Plus } from '@linagora/twake-icons'
+import { Icon, Plus } from '@linagora/twake-icons'
 import { Alert, Button, Chip, Typography } from '@linagora/twake-mui'
 import { useId, useState, type ReactElement } from 'react'
 import { Link as RouterLink } from 'react-router'
@@ -8,68 +8,26 @@ import { NameAvatar } from '@/ds/AppFrame'
 import { CardGrid, CreateCard, MemberAvatars, SpaceCard } from '@/ds/Card'
 import { LoadingRows, Page, TileEmpty } from '@/ds/Page'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
+import { Greeting } from '@/ui/home/Greeting'
 import { SpaceMenu } from '@/ui/space/SpaceMenu'
 import { useI18n } from '@/ui/i18n/useI18n'
-import { useSession } from '@/ui/session/SessionGate'
-import { useCommonSettings } from '@/ui/settings/useCommonSettings'
 import { useSpaceList } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
-function greetingKey(hour: number): 'morning' | 'afternoon' | 'evening' {
-  if (hour < 12) return 'morning'
-  if (hour < 18) return 'afternoon'
-  return 'evening'
-}
-
 export function HomeScreen(): ReactElement {
-  const { t, lang } = useI18n()
-  const { user } = useSession()
+  const { t } = useI18n()
   const spaces = useSpaceList()
   const [creating, setCreating] = useState(false)
   const allId = useId()
   useDocumentTitle(null)
-  const { settings } = useCommonSettings()
-  const timeZone = settings.timezone ?? undefined
-  const now = new Date()
-  const hour = Number(
-    new Intl.DateTimeFormat('en', {
-      hour: 'numeric',
-      hourCycle: 'h23',
-      timeZone
-    }).format(now)
-  )
-  const name =
-    (settings.displayName ?? user.name)?.split(' ')[0] ??
-    user.email?.split('@')[0] ??
-    ''
   const startCreating = (): void => {
     setCreating(true)
   }
 
   return (
     <Page>
-      <div className="u-flex u-flex-wrap u-flex-items-center u-flex-justify-between">
-        {/* Below lg the mobile bar already shows the app name */}
-        <Typography variant="h3" component="p" className="u-dn-m">
-          {t('app.name')}
-        </Typography>
-        <Typography
-          variant="subtitle1"
-          component="p"
-          className="u-flex u-flex-items-center"
-        >
-          <Icon icon={Calendar} className="u-mr-half" />
-          {new Intl.DateTimeFormat(lang, {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            timeZone
-          }).format(now)}
-        </Typography>
-      </div>
-      <Typography variant="h2" component="h1" className="u-mt-1 u-mb-1-half">
-        {t(`home.${greetingKey(hour)}`, { name })}
-      </Typography>
+      {/* Below lg the mobile bar already shows the app name */}
+      <Greeting title={t('app.name')} level="h1" hideTitleOnMobile />
       {spaces.isPending && (
         <LoadingRows count={4} label={t('spaces.loading')} />
       )}

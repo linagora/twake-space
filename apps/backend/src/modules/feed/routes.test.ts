@@ -19,7 +19,8 @@ import {
   activityEvents,
   feedCards,
   feedItemReactions,
-  feedPosts
+  feedPosts,
+  feedReads
 } from './schema.ts'
 
 const DESIGN = '3b9e2c71-5d4a-4f0e-9c8b-1a2d6e7f8091'
@@ -43,6 +44,7 @@ beforeEach(async () => {
   const { db } = testDb
   await db.delete(feedItemReactions)
   await db.delete(feedPosts)
+  await db.delete(feedReads)
   await db.delete(feedCards)
   await db.delete(activityEvents)
   await db.delete(spaceMembers)
@@ -404,6 +406,58 @@ describe('with an API token', () => {
 
     expect(posted.statusCode).toBe(403)
     expect(reacted.statusCode).toBe(403)
+  })
+
+  it('has no read marker', async () => {
+    const call = bot({ userId: ALICE })
+
+    const read = await call('GET', `/spaces/${DESIGN}/feed/read`, 'tws_bot')
+
+    expect(read.statusCode).toBe(403)
+  })
+})
+
+describe('/spaces/:spaceId/feed/read', () => {
+  it('is null until the member marks a time, then moves forward only', async () => {
+    const send = setUp()
+    const url = `/spaces/${DESIGN}/feed/read`
+
+    const before = await send('GET', url)
+    const marked = await send('PUT', url, 'alice', {
+      readAt: '2026-10-05T10:00:00.000Z'
+    })
+    await send('PUT', url, 'alice', { readAt: '2026-10-05T09:00:00.000Z' })
+    const after = await send('GET', url)
+    const bobs = await send('GET', url, 'bob')
+
+    expect(before.json()).toEqual({ readAt: null })
+    expect(marked.statusCode).toBe(204)
+    expect(after.json()).toEqual({ readAt: '2026-10-05T10:00:00.000Z' })
+    expect(bobs.json()).toEqual({ readAt: null })
+  })
+
+  it('takes a time to come as now', async () => {
+    const send = setUp()
+    const url = `/spaces/${DESIGN}/feed/read`
+
+    await send('PUT', url, 'alice', { readAt: '2999-01-01T00:00:00.000Z' })
+    const read = await send('GET', url)
+
+    const { readAt } = read.json<{ readAt: string }>()
+    expect(Date.parse(readAt)).toBeLessThanOrEqual(Date.now())
+  })
+
+  it('refuses a bad time, and someone outside the space', async () => {
+    const send = setUp()
+    const url = `/spaces/${DESIGN}/feed/read`
+
+    const bad = await send('PUT', url, 'alice', { readAt: 'yesterday' })
+    const outside = await send('PUT', url, 'dan', {
+      readAt: '2026-10-05T10:00:00.000Z'
+    })
+
+    expect(bad.statusCode).toBe(400)
+    expect(outside.statusCode).toBe(404)
   })
 })
 

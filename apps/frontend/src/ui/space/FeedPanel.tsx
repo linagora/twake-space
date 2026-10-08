@@ -25,13 +25,14 @@ import {
   MenuItem
 } from '@linagora/twake-mui'
 import { useMutation } from '@tanstack/react-query'
-import { useEffect, useState, type ReactElement } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactElement } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router'
 
 import {
   cardAction,
   cardApp,
   FEED_CATEGORIES,
+  firstUnread,
   toEventState,
   type Actor,
   type FeedCard,
@@ -57,6 +58,7 @@ import {
   FeedFooter,
   FeedHeader,
   FeedLayout,
+  FeedNewMark,
   FeedRow,
   FeedTitle,
   ReactionChip,
@@ -70,7 +72,7 @@ import { ConnectionDetailsDialog } from '@/ui/call/ConnectionDetailsDialog'
 import { useI18n, type TranslationKey } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
-import { useFeed, useFeedCache } from '@/ui/space/feedQueries'
+import { useFeed, useFeedCache, useFeedReadAt } from '@/ui/space/feedQueries'
 import { PeopleDialog } from '@/ui/space/PeopleDialog'
 
 const FILTERS: FeedFilter[] = ['all', ...FEED_CATEGORIES]
@@ -87,13 +89,11 @@ function feedItemOf(state: unknown): string | null {
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '👀', '🙏']
 
-export function FeedPanel({
-  space,
-  onScrolledAway
-}: {
-  space: Space
-  onScrolledAway?: () => void
-}): ReactElement {
+// How many pages the feed loads back to the first new item, before it opens
+// on the oldest one it has.
+const MARK_PAGES = 5
+
+export function FeedPanel({ space }: { space: Space }): ReactElement {
   const { t } = useI18n()
   const location = useLocation()
   const target = feedItemOf(location.state)
@@ -105,6 +105,11 @@ export function FeedPanel({
     setFilter('all')
   }
   const feed = useFeed(space.id, filter)
+  const readAt = useFeedReadAt(space.id)
+  const { feed: feedService } = useServices()
+  const { mutate: markRead } = useMutation({
+    mutationFn: (time: string) => feedService.markRead(space.id, time)
+  })
   const myId = useSession().user.id
   // Held here: the setup prompt goes away with the feed's first item.
   const [inviting, setInviting] = useState(false)
@@ -117,21 +122,74 @@ export function FeedPanel({
     !items.some(item => item.id === target)
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = feed
   const pages = feed.data?.pages.length ?? 0
+  const since = readAt.data ?? null
+  const oldest = items[0]
+  // The feed opens on the first new item: load back to it, within reason.
+  const reachingMark =
+    since !== null &&
+    oldest !== undefined &&
+    Date.parse(oldest.time) > Date.parse(since) &&
+    hasNextPage &&
+    !feed.isFetchNextPageError &&
+    pages < MARK_PAGES
   // An older target is on a page not loaded yet. Each page that comes in
   // asks for the next: a quick answer never shows a page as fetching.
   useEffect(() => {
-    if (targetMissing && hasNextPage && !isFetchingNextPage) {
+    if ((targetMissing || reachingMark) && hasNextPage && !isFetchingNextPage) {
       void fetchNextPage()
     }
-  }, [targetMissing, hasNextPage, isFetchingNextPage, fetchNextPage, pages])
+  }, [
+    targetMissing,
+    reachingMark,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    pages
+  ])
+
+  const ready = feed.isSuccess && !readAt.isPending && !reachingMark
+  // Placed once per load: the items that come in later are not marked new.
+  const [mark, setMark] = useState<{
+    filter: FeedFilter
+    id: string | null
+  } | null>(null)
+  if (ready && mark?.filter !== filter) {
+    setMark({ filter, id: firstUnread(items, since)?.id ?? null })
+  }
+  const markId = ready && mark?.filter === filter ? mark.id : null
+
+  // Seen once the person reaches the newest item. A filter leaves other
+  // categories unseen.
+  const [atEnd, setAtEnd] = useState(false)
+  const newest = items.at(-1)?.time
+  const marked = useRef<string | null>(null)
+  useEffect(() => {
+    if (!ready || !atEnd || filter !== 'all' || newest === undefined) return
+    if (marked.current && Date.parse(marked.current) >= Date.parse(newest)) {
+      return
+    }
+    marked.current = newest
+    markRead(newest, {
+      onError: () => {
+        marked.current = null
+      }
+    })
+  }, [ready, atEnd, filter, newest, markRead])
 
   return (
     <FeedLayout
       toolbar={<FilterMenu filter={filter} onChange={setFilter} />}
       composer={space.role !== 'viewer' && <Composer space={space} />}
-      onScrolledAway={onScrolledAway}
+      placeKey={ready ? filter : null}
+      latestLabel={t('feed.latest')}
+      onAtEndChange={setAtEnd}
+      onNearTop={() => {
+        if (ready && hasNextPage && !isFetchingNextPage) void fetchNextPage()
+      }}
     >
-      {feed.isPending && <LoadingRows count={3} label={t('feed.loading')} />}
+      {!ready && !feed.isError && (
+        <LoadingRows count={3} label={t('feed.loading')} />
+      )}
       {feed.isError && !feed.isFetchNextPageError && (
         <Alert severity="error">{t('feed.loadFailed')}</Alert>
       )}
@@ -151,7 +209,7 @@ export function FeedPanel({
       {feed.isFetchNextPageError && (
         <Alert severity="error">{t('feed.loadOlderFailed')}</Alert>
       )}
-      {feed.isSuccess &&
+      {ready &&
         items.length === 0 &&
         (filter === 'all' ? (
           <Setup
@@ -163,16 +221,20 @@ export function FeedPanel({
         ) : (
           <Alert severity="info">{t('feed.empty')}</Alert>
         ))}
-      {items.map(item => (
-        <Item
-          // Mounted again on every visit, to take the focus again.
-          key={item.id === target ? `${item.id}:${location.key}` : item.id}
-          item={item}
-          space={space}
-          myId={myId}
-          focused={item.id === target}
-        />
-      ))}
+      {ready &&
+        items.map(item => (
+          <Fragment key={item.id}>
+            {item.id === markId && <FeedNewMark label={t('feed.new')} />}
+            <Item
+              // Mounted again on every visit, to take the focus again.
+              key={item.id === target ? location.key : undefined}
+              item={item}
+              space={space}
+              myId={myId}
+              focused={item.id === target}
+            />
+          </Fragment>
+        ))}
       {inviting && (
         <PeopleDialog
           space={space}

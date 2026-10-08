@@ -7,6 +7,42 @@
     "afternoon": "Guten Tag, %{name}",
     "evening": "Guten Abend, %{name}"
   },
+  "spaceHome": {
+    "users": "Mitglied des Space |||| Mitglieder des Space",
+    "manageUsers": "Mitglieder verwalten",
+    "figures": {
+      "tasks": "Erledigte Aufgaben",
+      "files": "Geteilte Dateien",
+      "events": "Anstehende Termine"
+    },
+    "app": {
+      "calendar": {
+        "name": "Kalender",
+        "description": "Ein Dienst, um Besprechungen zu organisieren und die Arbeitszeit zu planen",
+        "open": "Kalender öffnen"
+      },
+      "mail": {
+        "name": "Team-Postfach",
+        "description": "Sichere Firmen-E-Mail auf der Domain des Unternehmens",
+        "open": "Postfach öffnen"
+      },
+      "chat": {
+        "name": "Chats",
+        "description": "Chats und Kanäle für den schnellen Austausch mit Kollegen",
+        "open": "Chat öffnen"
+      },
+      "drive": {
+        "name": "Space-Dateien",
+        "description": "Gemeinsamer Cloud-Speicher für die Dateien und Dokumente des Teams",
+        "open": "Dateien öffnen"
+      },
+      "tasks": {
+        "name": "Aufgaben",
+        "description": "Boards, um die Arbeit des Teams zu planen und zu verfolgen",
+        "open": "Aufgaben öffnen"
+      }
+    }
+  },
   "shell": {
     "yourSpaces": "Ihre Spaces",
     "title": "Space",
@@ -99,6 +135,7 @@
     }
   },
   "tabs": {
+    "home": "Start",
     "feed": "Feed",
     "chat": "Chat",
     "tasks": "Aufgaben",
@@ -246,6 +283,8 @@
       "task": "Aufgabe erstellen"
     },
     "loadOlder": "Ältere laden",
+    "new": "Neu",
+    "latest": "Zu den neuesten",
     "loadOlderFailed": "Ältere Einträge konnten nicht geladen werden.",
     "filter": "Filtern nach",
     "filters": {

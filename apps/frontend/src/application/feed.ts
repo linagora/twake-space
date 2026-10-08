@@ -77,6 +77,10 @@ export interface FeedService {
     }
   ) => Promise<FeedPage>
   item: (spaceId: string, itemId: string) => Promise<FeedItem>
+  /** The time of the newest item the user has seen, null before a first visit. */
+  readAt: (spaceId: string) => Promise<string | null>
+  /** Keeps the later of the stored time and this one. */
+  markRead: (spaceId: string, readAt: string) => Promise<void>
   /** Editors and admins only: a viewer is refused with `cannot_post`. */
   post: (spaceId: string, body: string) => Promise<FeedItem>
   edit: (spaceId: string, postId: string, body: string) => Promise<FeedItem>
@@ -112,6 +116,16 @@ export function toFeedChange(data: unknown): FeedChange | null {
 
 export function shows(item: FeedItem, filter: FeedFilter): boolean {
   return filter === 'all' || item.category === filter
+}
+
+/** The oldest item newer than `readAt`, among items oldest first. */
+export function firstUnread(
+  items: FeedItem[],
+  readAt: string | null
+): FeedItem | null {
+  if (readAt === null) return null
+  const read = Date.parse(readAt)
+  return items.find(item => Date.parse(item.time) > read) ?? null
 }
 
 /** What a search matches an item on, as the backend does. */

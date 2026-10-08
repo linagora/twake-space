@@ -20,6 +20,7 @@ import {
   feedCards,
   feedItemReactions,
   feedPosts,
+  feedReads,
   type Actor,
   type feedCategory
 } from './schema.ts'
@@ -228,6 +229,7 @@ export async function forgetActor(
       .set({ authorId: null })
       .where(eq(feedPosts.authorId, uuid))
     await tx.delete(feedItemReactions).where(eq(feedItemReactions.userId, uuid))
+    await tx.delete(feedReads).where(eq(feedReads.userId, uuid))
   }
   // An actor sent by email only keeps a null id, so the email matches it too.
   await tx

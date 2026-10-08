@@ -2,6 +2,7 @@ import type { FeedItem } from '@/application/feed'
 import type { ResourceKind, Space } from '@/application/spaces'
 
 export const TABS = [
+  'home',
   'feed',
   'chat',
   'tasks',
@@ -17,8 +18,14 @@ export type TabState = 'off' | 'preparing' | 'stalled' | 'ready'
 /** How long an app may take to prepare a new space's resource. */
 export const PREPARING_MS = 2 * 60_000
 
-// The feed is TwakeSpace's own, with no app resource.
-const RESOURCE: Record<Exclude<Tab, 'feed'>, ResourceKind> = {
+// The home and the feed are TwakeSpace's own, with no app resource.
+type OwnTab = 'home' | 'feed'
+
+function isOwn(tab: Tab): tab is OwnTab {
+  return tab === 'home' || tab === 'feed'
+}
+
+const RESOURCE: Record<Exclude<Tab, OwnTab>, ResourceKind> = {
   chat: 'matrix_space',
   tasks: 'project',
   drive: 'drive',
@@ -39,7 +46,7 @@ export function spaceTabs(
   const waiting =
     now < Date.parse(space.createdAt) + PREPARING_MS ? 'preparing' : 'stalled'
   return TABS.flatMap((tab): { tab: Tab; state: TabState }[] => {
-    if (tab === 'feed') return [{ tab, state: 'ready' }]
+    if (isOwn(tab)) return [{ tab, state: 'ready' }]
     const resource = space.resources.find(r => r.kind === RESOURCE[tab])
     if (!resource || !space.apps.includes(tab)) return []
     if (!isOn(space, tab)) return [{ tab, state: 'off' }]
@@ -60,7 +67,7 @@ export function isTabReady(space: Space, tab: Tab): boolean {
 
 /** The tab a card about an object in this container opens, if the space shows it. */
 export function containerTab(space: Space, kind: ResourceKind): Tab | null {
-  const tab = TABS.find(t => t !== 'feed' && RESOURCE[t] === kind)
+  const tab = TABS.find(t => !isOwn(t) && RESOURCE[t] === kind)
   // Preparing or stalled, the tab is shown all the same.
   const shown = spaceTabs(space, Date.now()).some(
     item => item.tab === tab && item.state !== 'off'

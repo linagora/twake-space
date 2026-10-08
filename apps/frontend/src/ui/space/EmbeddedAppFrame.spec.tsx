@@ -7,6 +7,7 @@ import type { EmbedPath } from '@/application/embeddedApps'
 import type { SessionService } from '@/application/session'
 import { fakeSession } from '@/testing/fakeSession'
 import { renderWithProviders } from '@/testing/renderWithProviders'
+import { useCall } from '@/ui/call/CallContext'
 import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
 
 const MAIL = 'https://mail.test'
@@ -16,23 +17,36 @@ let notifications = { show: vi.fn(), close: vi.fn() }
 let onBadges = vi.fn<(badges: readonly Badge[] | null) => void>()
 let unmountFrame: () => void = () => undefined
 
-async function renderFrame(session: SessionService = fakeSession()) {
+// The room of the call window, as the app asked for it
+function CallProbe() {
+  const { call } = useCall()
+  return <output data-testid="call">{call?.url ?? ''}</output>
+}
+
+async function renderFrame(
+  session: SessionService = fakeSession(),
+  meetUrl: string | null = 'https://meet.test'
+) {
   const onPath = vi.fn<(report: EmbedPath) => void>()
   notifications = { show: vi.fn(), close: vi.fn() }
   onBadges = vi.fn<(badges: readonly Badge[] | null) => void>()
   const { unmount } = renderWithProviders(
-    <EmbeddedAppFrame
-      app="mail"
-      appUrl={`${MAIL}/`}
-      embedPath={EMBED}
-      src={`${MAIL}${EMBED}`}
-      title="Mail"
-      overlayPath="/embed/overlay.html"
-      frameRef={createRef()}
-      onPath={onPath}
-      onBadges={onBadges}
-    />,
-    { session, notifications }
+    <>
+      <EmbeddedAppFrame
+        app="mail"
+        appUrl={`${MAIL}/`}
+        embedPath={EMBED}
+        src={`${MAIL}${EMBED}`}
+        title="Mail"
+        overlayPath="/embed/overlay.html"
+        frameRef={createRef()}
+        onPath={onPath}
+        onBadges={onBadges}
+        onMetadata={vi.fn()}
+      />
+      <CallProbe />
+    </>,
+    { session, meetUrl, notifications }
   )
   unmountFrame = unmount
   await screen.findByTitle('Mail')
@@ -331,6 +345,30 @@ describe('EmbeddedAppFrame', () => {
       )
       expect(notifications.show).not.toHaveBeenCalled()
       expect(notifications.close).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('a call the app asks to open', () => {
+    const room = 'https://meet.test/abc-defg-hij'
+
+    it('opens a room of this Meet in the call window', async () => {
+      await renderFrame()
+      postFromFrame({ type: 'twake-embed:pip', url: room })
+      expect(screen.getByTestId('call')).toHaveTextContent(room)
+    })
+
+    it('drops anything that is not a room of this Meet', async () => {
+      await renderFrame()
+      postFromFrame({ type: 'twake-embed:pip', url: 'https://evil.test/x' })
+      postFromFrame({ type: 'twake-embed:pip', url: room }, 'https://evil.test')
+      postFromFrame({ type: 'twake-embed:pip', url: 'javascript:alert(1)' })
+      expect(screen.getByTestId('call')).toHaveTextContent('')
+    })
+
+    it('opens nothing without a Meet', async () => {
+      await renderFrame(fakeSession(), null)
+      postFromFrame({ type: 'twake-embed:pip', url: room })
+      expect(screen.getByTestId('call')).toHaveTextContent('')
     })
   })
 

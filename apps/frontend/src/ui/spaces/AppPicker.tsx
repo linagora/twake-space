@@ -6,12 +6,20 @@ import type { SpaceApp } from '@/application/spaces'
 import tasksTile from '@/assets/tasks.svg'
 import { useI18n } from '@/ui/i18n/useI18n'
 
-export const APP_ICONS: Record<SpaceApp, ReactElement> = {
-  drive: <Icon icon={Drive} size={24} />,
-  chat: <Icon icon={Chat} size={24} />,
-  tasks: <img src={tasksTile} alt="" width={24} height={24} />,
-  calendar: <Icon icon={CalendarApp} size={24} />,
-  mail: <Icon icon={Mail} size={24} />
+const ICONS = { drive: Drive, chat: Chat, calendar: CalendarApp, mail: Mail }
+
+export function AppIcon({
+  app,
+  size = 24
+}: {
+  app: SpaceApp
+  size?: number
+}): ReactElement {
+  return app === 'tasks' ? (
+    <img src={tasksTile} alt="" width={size} height={size} />
+  ) : (
+    <Icon icon={ICONS[app]} size={size} />
+  )
 }
 
 // A new space has the first column on and the second one off.
@@ -56,7 +64,7 @@ export function AppPicker({
               }
               label={
                 <span className="u-flex u-flex-items-center u-ml-half">
-                  {APP_ICONS[app]}
+                  <AppIcon app={app} />
                   <span className="u-ml-half">
                     {t(`createSpace.app.${app}`)}
                   </span>

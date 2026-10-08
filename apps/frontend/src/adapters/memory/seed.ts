@@ -231,6 +231,11 @@ export const seedFeed: Record<string, FeedItem[]> = {
   'design-sprint': []
 }
 
+// Alice last saw Roadmap before its last 8 items.
+export const seedFeedReads: Record<string, string> = {
+  roadmap: iso(START + 15 * HOUR)
+}
+
 export const seedTokens: Record<TokenOwner, ApiToken[]> = {
   personal: [
     {

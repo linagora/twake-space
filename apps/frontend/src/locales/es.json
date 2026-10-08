@@ -7,6 +7,42 @@
     "afternoon": "Buenas tardes, %{name}",
     "evening": "Buenas noches, %{name}"
   },
+  "spaceHome": {
+    "users": "Miembro del espacio |||| Miembros del espacio",
+    "manageUsers": "Gestionar miembros",
+    "figures": {
+      "tasks": "Tareas completadas",
+      "files": "Archivos compartidos",
+      "events": "Próximos eventos"
+    },
+    "app": {
+      "calendar": {
+        "name": "Calendario",
+        "description": "Un servicio para organizar reuniones y gestionar el tiempo de trabajo",
+        "open": "Abrir el calendario"
+      },
+      "mail": {
+        "name": "Buzón del equipo",
+        "description": "Correo corporativo seguro en el dominio de la empresa",
+        "open": "Abrir el buzón"
+      },
+      "chat": {
+        "name": "Chats",
+        "description": "Chats y canales para comunicarse rápidamente con los compañeros",
+        "open": "Abrir el chat"
+      },
+      "drive": {
+        "name": "Archivos del espacio",
+        "description": "Almacenamiento en la nube del equipo para organizar archivos y documentos",
+        "open": "Abrir los archivos"
+      },
+      "tasks": {
+        "name": "Tareas",
+        "description": "Tableros para planificar el trabajo del equipo y seguirlo",
+        "open": "Abrir las tareas"
+      }
+    }
+  },
   "shell": {
     "yourSpaces": "Tus espacios",
     "title": "Espacio",
@@ -99,6 +135,7 @@
     }
   },
   "tabs": {
+    "home": "Inicio",
     "feed": "Novedades",
     "chat": "Chat",
     "tasks": "Tareas",
@@ -246,6 +283,8 @@
       "task": "Crear una tarea"
     },
     "loadOlder": "Cargar anteriores",
+    "new": "Nuevo",
+    "latest": "Ir a lo más reciente",
     "loadOlderFailed": "No se pudieron cargar las entradas anteriores.",
     "filter": "Filtrar por",
     "filters": {

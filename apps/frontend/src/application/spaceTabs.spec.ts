@@ -37,6 +37,7 @@ const space: Space = {
 describe('spaceTabs', () => {
   it("gives each tab its app's resource state", () => {
     expect(spaceTabs(space, SOON)).toEqual([
+      { tab: 'home', state: 'ready' },
       { tab: 'feed', state: 'ready' },
       { tab: 'chat', state: 'ready' },
       { tab: 'tasks', state: 'ready' },
@@ -49,10 +50,10 @@ describe('spaceTabs', () => {
   it('prepares Chat until the homeserver is known', () => {
     const states = spaceTabs({ ...space, homeserverUrl: null }, SOON)
 
-    expect(states.slice(0, 2)).toEqual([
-      { tab: 'feed', state: 'ready' },
-      { tab: 'chat', state: 'preparing' }
-    ])
+    expect(states.find(t => t.tab === 'chat')).toEqual({
+      tab: 'chat',
+      state: 'preparing'
+    })
   })
 
   it('turns Chat off without chat, and Mail off without mail', () => {
@@ -64,10 +65,11 @@ describe('spaceTabs', () => {
     ])
   })
 
-  it('leaves out the apps the space does not use, never the feed', () => {
+  it('leaves out the apps the space does not use, never the home or the feed', () => {
     const tabs = spaceTabs({ ...space, apps: ['drive'] }, SOON)
 
     expect(tabs).toEqual([
+      { tab: 'home', state: 'ready' },
       { tab: 'feed', state: 'ready' },
       { tab: 'drive', state: 'preparing' }
     ])
@@ -84,7 +86,13 @@ describe('spaceTabs', () => {
       SOON
     )
 
-    expect(tabs.map(t => t.tab)).toEqual(['feed', 'tasks', 'mail', 'calendar'])
+    expect(tabs.map(t => t.tab)).toEqual([
+      'home',
+      'feed',
+      'tasks',
+      'mail',
+      'calendar'
+    ])
   })
 
   it('says a resource still missing after a while is not ready', () => {

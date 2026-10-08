@@ -23,6 +23,11 @@ export function httpFeed(api: KyInstance): FeedService {
         .json<FeedPage>(),
     item: (spaceId, itemId) =>
       api.get(feed(spaceId, 'items', itemId)).json<FeedItem>(),
+    readAt: async spaceId =>
+      (await api.get(feed(spaceId, 'read')).json<{ readAt: string | null }>())
+        .readAt,
+    markRead: (spaceId, readAt) =>
+      send(api.put(feed(spaceId, 'read'), { json: { readAt } })),
     post: (spaceId, body) =>
       api.post(feed(spaceId, 'posts'), { json: { body } }).json<FeedItem>(),
     edit: (spaceId, postId, body) =>

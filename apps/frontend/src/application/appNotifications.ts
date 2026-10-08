@@ -9,9 +9,10 @@ export type AppNotification =
     }
   | { kind: 'close'; tag: string }
 
-// Mirrors the `twake-embed:notification` messages of @linagora/twake-embed
-// (linagora/twake-libs#21), with its bounds. To be replaced by
-// `parseAppMessage` once Space moves to that release.
+// Mirrors the `twake-embed:notification` messages of @linagora/twake-embed,
+// with its bounds and their `resourceId` (linagora/twake-libs#24). To be
+// replaced by `parseAppMessage` once Space moves to the release that has it:
+// 3.4.0 drops the resourceId.
 const MAX_TAG = 256
 const MAX_TITLE = 256
 const MAX_BODY = 1000

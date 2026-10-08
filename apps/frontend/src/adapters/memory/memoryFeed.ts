@@ -21,16 +21,20 @@ export function memoryFeed(
   {
     me,
     roles,
+    readAt = {},
     pageSize = 10
   }: {
     me: { id: string; name: string | null }
     roles: Record<string, SpaceRole>
+    /** By space id: the time of the newest item seen. */
+    readAt?: Record<string, string>
     pageSize?: number
   }
 ): FeedService {
   const spaces = new Map(
     Object.entries(seed).map(([id, items]) => [id, structuredClone(items)])
   )
+  const reads = new Map(Object.entries(readAt))
   const itemsOf = (spaceId: string) => {
     const items = spaces.get(spaceId) ?? []
     spaces.set(spaceId, items)
@@ -66,6 +70,14 @@ export function memoryFeed(
         items: structuredClone(page),
         next: start + limit < items.length ? (page.at(-1)?.id ?? null) : null
       })
+    },
+    readAt: spaceId => Promise.resolve(reads.get(spaceId) ?? null),
+    markRead: (spaceId, readAt) => {
+      const stored = reads.get(spaceId)
+      if (!stored || Date.parse(readAt) > Date.parse(stored)) {
+        reads.set(spaceId, readAt)
+      }
+      return Promise.resolve()
     },
     item: (spaceId, itemId) => {
       const item = find(spaceId, itemId)
