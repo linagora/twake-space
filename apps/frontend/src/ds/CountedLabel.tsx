@@ -1,10 +1,18 @@
 import { Badge, badgeClasses, styled } from '@linagora/twake-mui'
 import type { ReactElement, ReactNode } from 'react'
 
+// A tab lays its content out in a column, so the label and its count share a
+// row of their own, the count at the label's top right corner.
+const Row = styled('span')({
+  display: 'inline-flex',
+  alignItems: 'flex-start'
+})
+
 // The badge sits after the label instead of over its corner, which the
-// scrollable tabs would clip.
+// scrollable tabs would clip. It is no taller than the label's line, so a
+// count never changes the height of the row.
 const Count = styled(Badge)(({ theme }) => ({
-  marginLeft: theme.spacing(1.5),
+  marginLeft: theme.spacing(0.5),
   [`& .${badgeClasses.badge}`]: {
     position: 'static',
     transform: 'none'
@@ -21,9 +29,9 @@ export function CountedLabel({
   count: string | null
 }): ReactElement {
   return (
-    <>
+    <Row>
       {label}
       {count !== null && <Count color="primary" badgeContent={count} />}
-    </>
+    </Row>
   )
 }
