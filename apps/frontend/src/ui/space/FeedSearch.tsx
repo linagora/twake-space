@@ -119,7 +119,11 @@ function Result({ item }: { item: FeedItem }): ReactElement {
   return (
     <>
       <ListItemAvatar>
-        {isApp(app) ? (
+        {item.kind === 'card' &&
+        item.actor?.type === 'user' &&
+        item.actor.name ? (
+          <NameAvatar name={item.actor.name} size="m" />
+        ) : isApp(app) ? (
           <AppAvatar icon={APPS[app].icon} app={app} label={appName ?? ''} />
         ) : (
           <NameAvatar name={actor ?? '?'} size="m" />
