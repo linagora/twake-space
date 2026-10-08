@@ -124,6 +124,8 @@ location /api/ {
     proxy_set_header Host \$proxy_host;
     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto \$scheme;
+    # Above the 5 MB the backend takes for a space banner
+    client_max_body_size 6m;
 }
 EOF
 fi

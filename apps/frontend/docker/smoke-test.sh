@@ -77,6 +77,8 @@ expect 'CSP: frame-ancestors from the environment' "$csp" "*frame-ancestors 'sel
 expect 'CSP on the SPA fallback too' "$(header /spaces/42 Content-Security-Policy)" "$csp"
 expect 'CSP on assets too' "$(header "$script" Content-Security-Policy)" "$csp"
 expect '/api/ goes to API_UPSTREAM without the prefix' "$(body "$BASE/api/healthz")" 'ok'
+# The upstream here is this nginx, whose own limit would refuse a large body.
+expect '/api/ takes a 5 MB banner' "$(docker exec "$NAME" grep -c 'client_max_body_size 6m;' /tmp/nginx/api.conf)" '1'
 expect 'X-Content-Type-Options' "$(header / X-Content-Type-Options)" 'nosniff'
 expect 'Referrer-Policy' "$(header / Referrer-Policy)" 'same-origin'
 expect 'no nginx version disclosed' "$(header / Server)" 'nginx'
