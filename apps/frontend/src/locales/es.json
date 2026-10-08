@@ -324,7 +324,16 @@
     "deletedUser": "Usuario eliminado",
     "someone": "Alguien",
     "fromDrive": "Desde Drive",
-    "emoji": "Añadir un emoji"
+    "emoji": "Añadir un emoji",
+    "members": {
+      "title": "Miembros del espacio",
+      "show": "Mostrar los miembros",
+      "hide": "Ocultar los miembros",
+      "search": "Buscar por nombre",
+      "add": "Añadir un miembro",
+      "count": "%{smart_count} miembro |||| %{smart_count} miembros",
+      "none": "Ningún miembro encontrado."
+    }
   },
   "embed": {
     "overlay": "Ventanas de %{app}"

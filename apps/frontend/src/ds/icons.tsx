@@ -107,3 +107,21 @@ export function EmojiIcon(props: SVGAttributes<SVGSVGElement>): ReactElement {
     </svg>
   )
 }
+
+// The mockup's collapse menu: a window with a narrow column on its left, the
+// button that shows and hides the members panel.
+export function SidePanelIcon(
+  props: SVGAttributes<SVGSVGElement>
+): ReactElement {
+  return (
+    <svg viewBox="0 0 20 20" {...props}>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        d="M6.5 3h7A3.5 3.5 0 0 1 17 6.5v7a3.5 3.5 0 0 1-3.5 3.5h-7A3.5 3.5 0 0 1 3 13.5v-7A3.5 3.5 0 0 1 6.5 3ZM8.5 3v14M5.6 7.5h.01M5.6 10h.01"
+      />
+    </svg>
+  )
+}

@@ -324,7 +324,16 @@
     "deletedUser": "Gelöschter Benutzer",
     "someone": "Jemand",
     "fromDrive": "Aus Drive",
-    "emoji": "Emoji hinzufügen"
+    "emoji": "Emoji hinzufügen",
+    "members": {
+      "title": "Mitglieder des Bereichs",
+      "show": "Mitglieder anzeigen",
+      "hide": "Mitglieder ausblenden",
+      "search": "Nach Namen suchen",
+      "add": "Mitglied hinzufügen",
+      "count": "%{smart_count} Mitglied |||| %{smart_count} Mitglieder",
+      "none": "Kein Mitglied gefunden."
+    }
   },
   "embed": {
     "overlay": "Fenster von %{app}"

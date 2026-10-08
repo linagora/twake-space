@@ -324,7 +324,16 @@
     "deletedUser": "Người dùng đã xóa",
     "someone": "Ai đó",
     "fromDrive": "Từ Drive",
-    "emoji": "Thêm biểu tượng cảm xúc"
+    "emoji": "Thêm biểu tượng cảm xúc",
+    "members": {
+      "title": "Thành viên không gian",
+      "show": "Hiện thành viên",
+      "hide": "Ẩn thành viên",
+      "search": "Tìm theo tên",
+      "add": "Thêm thành viên",
+      "count": "%{smart_count} thành viên",
+      "none": "Không tìm thấy thành viên."
+    }
   },
   "embed": {
     "overlay": "Cửa sổ của %{app}"
