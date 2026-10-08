@@ -1,5 +1,10 @@
 import type { MemoryOrganization } from '@/adapters/memory/memoryDirectory'
-import type { FeedItem } from '@/application/feed'
+import type {
+  FeedCard,
+  FeedItem,
+  FeedObject,
+  FeedPost
+} from '@/application/feed'
 import type { User } from '@/application/session'
 import type { Member, Space, SpaceApp, SpaceRole } from '@/application/spaces'
 import type { ApiToken, TokenOwner } from '@/application/tokens'
@@ -51,6 +56,7 @@ const designers = (role: SpaceRole) => ({
 
 const ROADMAP_ROOM = `!roadmap:${DOMAIN}`
 const DESIGN_ROOM = `!design-sprint:${DOMAIN}`
+const SHOWCASE_ROOM = `!showcase:${DOMAIN}`
 
 const ALL_APPS: SpaceApp[] = ['chat', 'tasks', 'drive', 'mail', 'calendar']
 
@@ -108,6 +114,35 @@ export const seedSpaces: Space[] = [
     ]
   },
   {
+    id: 'showcase',
+    name: 'B2B Admin Panel',
+    role: 'admin',
+    createdAt: '2026-09-02T08:00:00.000Z',
+    color: '#f9a825',
+    description: 'One feed item of every kind the contract allows.',
+    banner: null,
+    pinnedAt: null,
+    openedAt: null,
+    apps: ALL_APPS,
+    chat: true,
+    mail: true,
+    homeserverUrl: HOMESERVER,
+    members: [
+      member('alice', 'admin'),
+      member('bob', 'editor'),
+      member('carol', 'editor'),
+      member('dave', 'viewer')
+    ],
+    groups: [],
+    resources: [
+      { kind: 'matrix_space', id: SHOWCASE_ROOM },
+      { kind: 'project', id: 'project-showcase' },
+      { kind: 'drive', id: 'drive-showcase' },
+      { kind: 'mailbox', id: `showcase@${DOMAIN}` },
+      { kind: 'calendar', id: 'calendar-showcase' }
+    ]
+  },
+  {
     id: 'handover',
     name: 'Handover',
     role: 'viewer',
@@ -139,6 +174,11 @@ const PEOPLE = ['alice', 'bob', 'carol', 'dave']
 const TASK_ACTIONS = ['created', 'assigned', 'moved', 'completed']
 
 const iso = (ms: number) => new Date(ms).toISOString()
+// A calendar day as the local date it falls on, `YYYY-MM-DD`.
+const isoDate = (ms: number) =>
+  new Date(ms - new Date(ms).getTimezoneOffset() * MINUTE)
+    .toISOString()
+    .slice(0, 10)
 
 function roadmapFeed(): FeedItem[] {
   return Array.from({ length: 24 }, (_, i): FeedItem => {
@@ -235,8 +275,304 @@ function roadmapFeed(): FeedItem[] {
   })
 }
 
+const MINUTE = 60_000
+
+// One item of every kind the activity contract allows, in the order the
+// feed shows them (oldest first), the newest a minute ago, so each time
+// reads as an hour of the day. Apps send no state beyond a calendar
+// event's, so the other cards carry a title and a preview only.
+export function showcaseFeed(now: number): FeedItem[] {
+  const person = (username: string) => ({
+    type: 'user' as const,
+    id: `uuid-${username}`,
+    name: member(username, 'editor').displayName
+  })
+  const heart = (n: number) => ({
+    key: '😍',
+    userIds: ['uuid-bob', 'uuid-carol', 'uuid-dave'].slice(0, n)
+  })
+  const card = (
+    app: string,
+    object: string,
+    action: string,
+    actor: FeedCard['actor'],
+    title: string,
+    container: FeedObject['container'],
+    extra: Partial<Pick<FeedCard, 'preview' | 'state' | 'reactions'>> = {}
+  ): FeedCard => {
+    const category = {
+      tasks: 'activities',
+      mail: 'messages',
+      calendar: 'events',
+      drive: 'files'
+    }[app] as FeedCard['category']
+    return {
+      id: `${app}-${action}-${title.toLowerCase().replaceAll(/\W+/g, '-')}`,
+      kind: 'card',
+      category,
+      time: '',
+      updatedAt: '',
+      reactions: [],
+      type: `com.twake.${app}.${object}.${action}.v1`,
+      actor,
+      object: {
+        type: object,
+        id: `${object}-${title.toLowerCase().replaceAll(/\W+/g, '-')}`,
+        title,
+        container
+      },
+      preview: null,
+      state: {},
+      ...extra
+    }
+  }
+  const project = { kind: 'project', id: 'project-showcase' } as const
+  const drive = { kind: 'drive', id: 'drive-showcase' } as const
+  const mailbox = { kind: 'mailbox', id: `showcase@${DOMAIN}` } as const
+  const calendar = { kind: 'calendar', id: 'calendar-showcase' } as const
+  // 9 o'clock, a number of days from now, in the time zone of the browser.
+  const nine = (days: number) => {
+    const date = new Date(now)
+    date.setDate(date.getDate() + days)
+    return date.setHours(9, 0, 0, 0)
+  }
+  const event = (
+    start: number,
+    state: Record<string, unknown> = {}
+  ): Record<string, unknown> => ({
+    start: iso(start),
+    end: iso(start + 60 * MINUTE),
+    allDay: false,
+    location: null,
+    ...state
+  })
+  const file = (action: string, title: string, actor: string, hearts = 0) =>
+    card('drive', 'file', action, person(actor), title, drive, {
+      reactions: hearts ? [heart(hearts)] : []
+    })
+  const task = (
+    action: string,
+    title: string,
+    actor: FeedCard['actor'],
+    preview: string | null = null
+  ) => card('tasks', 'task', action, actor, title, project, { preview })
+  const items: FeedItem[] = [
+    file('created', 'Long_filename_2026_39399.pdf', 'bob', 2),
+    file('updated', 'Waterfall_Krka.png', 'bob'),
+    file('created', 'Budget_2027.xlsx', 'carol'),
+    file(
+      'created',
+      'The Future of Technology: Trends, Challenges, and Opportunities.pptx',
+      'carol',
+      2
+    ),
+    file('updated', 'Project brief.docx', 'dave'),
+    file('created', 'Kickoff_notes.txt', 'alice'),
+    task('created', 'Draft the launch plan', person('bob')),
+    task('updated', 'Update landing page CTA', person('carol'), 'New wording'),
+    task(
+      'assigned',
+      'Update landing page CTA',
+      person('alice'),
+      'Following the client feedback'
+    ),
+    task('unassigned', 'Review the pricing table', person('bob')),
+    task('moved', 'Landing page view', person('carol'), 'In progress'),
+    task('completed', 'Fix the sign-in redirect', person('dave')),
+    task('reopened', 'Fix the sign-in redirect', person('dave')),
+    task('deleted', 'Old onboarding survey', person('alice')),
+    task('restored', 'Old onboarding survey', person('alice')),
+    task('created', 'Sync the CRM contacts', {
+      type: 'token',
+      id: 'token-zapier',
+      name: 'Zapier'
+    }),
+    task('completed', 'Archive the 2025 contracts', {
+      type: 'deleted_user'
+    }),
+    task('assigned', 'Prepare the board slides', {
+      type: 'user',
+      id: null,
+      name: null
+    }),
+    card(
+      'mail',
+      'message',
+      'received',
+      null,
+      'Feedback on the landing page draft',
+      mailbox,
+      {
+        preview:
+          'This is looking great! A couple of small notes on the hero copy and pricing table before we send it to the client.'
+      }
+    ),
+    card(
+      'mail',
+      'message',
+      'sent',
+      person('bob'),
+      'Re: Feedback on the landing page draft',
+      mailbox,
+      { preview: 'Thanks, the notes are in. Sending the new version today.' }
+    ),
+    card(
+      'calendar',
+      'event',
+      'created',
+      person('carol'),
+      'Design Sprint Planning',
+      calendar,
+      {
+        state: event(nine(1), {
+          location: 'Room 4',
+          meeting: { room: 'abc-defg-hij' },
+          rsvp: { accepted: 2, declined: 0, tentative: 1, pending: 1 }
+        })
+      }
+    ),
+    card(
+      'calendar',
+      'event',
+      'updated',
+      person('carol'),
+      'Team lunch',
+      calendar,
+      { state: event(nine(2), { location: 'Le Petit Bistro' }) }
+    ),
+    card(
+      'calendar',
+      'event',
+      'rescheduled',
+      person('bob'),
+      'Design review',
+      calendar,
+      {
+        state: event(nine(1) + 60 * MINUTE, {
+          previous: {
+            start: iso(nine(1)),
+            end: iso(nine(1) + 60 * MINUTE)
+          }
+        })
+      }
+    ),
+    card(
+      'calendar',
+      'event',
+      'accepted',
+      person('dave'),
+      'Roadmap review',
+      calendar,
+      {
+        state: event(nine(3), {
+          rsvp: { accepted: 3, declined: 0, tentative: 0, pending: 1 }
+        })
+      }
+    ),
+    card(
+      'calendar',
+      'event',
+      'declined',
+      person('alice'),
+      'Budget meeting',
+      calendar,
+      {
+        state: event(nine(4), {
+          rsvp: { accepted: 1, declined: 2, tentative: 0, pending: 1 }
+        })
+      }
+    ),
+    card(
+      'calendar',
+      'event',
+      'proposed',
+      person('bob'),
+      'Quarterly planning',
+      calendar,
+      {
+        state: event(nine(5), {
+          proposed: {
+            start: iso(nine(5) + 120 * MINUTE),
+            end: iso(nine(5) + 180 * MINUTE),
+            by: 'Bob Durand'
+          }
+        })
+      }
+    ),
+    card(
+      'calendar',
+      'event',
+      'created',
+      person('carol'),
+      'Company offsite',
+      calendar,
+      {
+        state: {
+          start: isoDate(nine(20)),
+          end: isoDate(nine(21)),
+          allDay: true,
+          location: 'Lyon'
+        }
+      }
+    )
+  ]
+  const posts: FeedPost[] = [
+    {
+      id: 'post-plain',
+      kind: 'post',
+      category: 'messages',
+      author: person('bob'),
+      body: 'Update: the release notes are ready for review.',
+      editedAt: null,
+      reactions: [],
+      time: '',
+      updatedAt: ''
+    },
+    {
+      id: 'post-edited',
+      kind: 'post',
+      category: 'messages',
+      author: person('carol'),
+      body: 'Standup moves to 10:15 from Monday.\nPlease update your calendars.',
+      editedAt: iso(now - 10 * MINUTE),
+      reactions: [
+        { key: '👍', userIds: ['uuid-alice', 'uuid-bob'] },
+        { key: '🎉', userIds: ['uuid-dave'] },
+        { key: '👀', userIds: ['uuid-alice'] }
+      ],
+      time: '',
+      updatedAt: ''
+    },
+    {
+      id: 'post-mine',
+      kind: 'post',
+      category: 'messages',
+      author: person('alice'),
+      body: 'Thanks all, I am merging the landing page today. A long message follows so the bubble wraps on a narrow screen: the hero copy, the pricing table, the footer links and the cookie banner all changed.',
+      editedAt: null,
+      reactions: [],
+      time: '',
+      updatedAt: ''
+    }
+  ]
+  // Posts come last, among the cards, one after the other.
+  const all = [
+    ...items.slice(0, 6),
+    posts[0],
+    ...items.slice(6, 18),
+    posts[1],
+    ...items.slice(18),
+    posts[2]
+  ].filter((item): item is FeedItem => item !== undefined)
+  return all.map((item, i) => {
+    const time = iso(now - (all.length - i) * MINUTE)
+    return { ...item, time, updatedAt: time }
+  })
+}
+
 export const seedFeed: Record<string, FeedItem[]> = {
   roadmap: roadmapFeed(),
+  showcase: showcaseFeed(Date.now()),
   'design-sprint': []
 }
 
