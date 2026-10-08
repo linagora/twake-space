@@ -1,8 +1,13 @@
 import { Button } from '@linagora/twake-mui'
-import { useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { Link as RouterLink } from 'react-router'
 
 import { badgeLabel, tabCount } from '@/application/badges'
+import {
+  HOME_FIGURES,
+  homeFigure,
+  type HomeFigure
+} from '@/application/metadata'
 import type { Space, SpaceApp } from '@/application/spaces'
 import type { Tab, TabState } from '@/application/spaceTabs'
 import chatArt from '@/assets/home-chat.svg'
@@ -17,12 +22,13 @@ import {
   MemberAvatars,
   Tile,
   TileGrid,
-  TileNumber
+  TileNumber,
+  TileRow
 } from '@/ds/Card'
 import { ScrollPanel, SpaceCover } from '@/ds/Page'
 import { Greeting } from '@/ui/home/Greeting'
 import { useI18n } from '@/ui/i18n/useI18n'
-import { useBadges } from '@/ui/space/Badges'
+import { useBadges, useMetadata } from '@/ui/space/Badges'
 import { PeopleDialog } from '@/ui/space/PeopleDialog'
 import { useCommonSettings } from '@/ui/settings/useCommonSettings'
 import { AppIcon } from '@/ui/spaces/AppPicker'
@@ -35,6 +41,13 @@ const CARDS: readonly SpaceApp[] = [
   'drive',
   'tasks'
 ]
+
+const FIGURES: readonly HomeFigure[] = ['tasks', 'files', 'events']
+
+// How long the home waits for an app's figure before it gives up on it
+const FIGURE_WAIT_MS = 10_000
+
+const NO_FIGURE = '–'
 
 const ART: Record<Exclude<SpaceApp, 'calendar'>, string> = {
   mail: mailArt,
@@ -66,12 +79,44 @@ export function SpaceHome({
   space: Space
   tabs: { tab: Tab; state: TabState }[]
 }): ReactElement {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const badges = useBadges()
+  const metadata = useMetadata()
   const [managing, setManaging] = useState(false)
+  const stateOf = (app: SpaceApp) => tabs.find(item => item.tab === app)?.state
+  // The wait starts over for another space, or an app that gets ready
+  const waiting = [
+    space.id,
+    ...FIGURES.filter(figure => stateOf(HOME_FIGURES[figure].app) === 'ready')
+  ].join()
+  const [waited, setWaited] = useState<string | null>(null)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setWaited(waiting)
+    }, FIGURE_WAIT_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [waiting])
   const apps = CARDS.flatMap(app => {
-    const state = tabs.find(item => item.tab === app)?.state
+    const state = stateOf(app)
     return state ? [{ app, state }] : []
+  })
+  // A placeholder while the app may still report the figure
+  const shown = (figure: HomeFigure, state: TabState) => {
+    if (state === 'preparing') return null
+    const value = state === 'ready' ? homeFigure(metadata, space, figure) : null
+    if (value === undefined) return waited === waiting ? NO_FIGURE : null
+    if (value === null) return NO_FIGURE
+    return figure === 'tasks'
+      ? new Intl.NumberFormat(lang, { style: 'percent' }).format(value / 100)
+      : value
+  }
+  const figures = FIGURES.flatMap(figure => {
+    const state = stateOf(HOME_FIGURES[figure].app)
+    return state === undefined || state === 'off'
+      ? []
+      : [{ figure, shown: shown(figure, state) }]
   })
   const members = space.members.length
 
@@ -81,8 +126,16 @@ export function SpaceHome({
       <div>
         <Greeting title={space.name} level="h2" />
       </div>
-      <TileGrid min={360}>
-        <Tile>
+      <TileRow>
+        {figures.map(({ figure, shown }) => (
+          <Tile key={figure}>
+            <TileNumber
+              value={shown}
+              label={t(`spaceHome.figures.${figure}`)}
+            />
+          </Tile>
+        ))}
+        <Tile wide>
           <TileNumber
             value={members}
             label={t('spaceHome.users', { smart_count: members })}
@@ -113,7 +166,7 @@ export function SpaceHome({
             </Button>
           )}
         </Tile>
-      </TileGrid>
+      </TileRow>
       <TileGrid min={320}>
         {apps.map(({ app, state }) => {
           const name = t(`spaceHome.app.${app}.name`)

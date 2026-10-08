@@ -481,6 +481,132 @@ describe('SpaceScreen', () => {
     })
   })
 
+  describe('figures on the home', () => {
+    function postMetadata(title: string, origin: string, data: unknown): void {
+      const element = screen.getByTitle(title)
+      if (!(element instanceof HTMLIFrameElement)) throw new Error('no frame')
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            data,
+            origin,
+            source: element.contentWindow
+          })
+        )
+      })
+    }
+
+    function figure(label: string): HTMLElement {
+      const element = screen.getByText(label).parentElement
+      if (element === null) throw new Error('no tile')
+      return element
+    }
+
+    it('waits for the apps, then shows what they report', async () => {
+      renderAt('/spaces/a1/home')
+      await screen.findByTitle('Tasks')
+
+      expect(figure('Tasks completed')).toHaveAttribute('aria-busy', 'true')
+      expect(figure('Upcoming events')).toHaveAttribute('aria-busy', 'true')
+      // The space's drive is still being prepared
+      expect(figure('Shared files')).toHaveAttribute('aria-busy', 'true')
+
+      postMetadata('Tasks', 'https://tasks.test', {
+        type: 'twake-embed:metadata',
+        metadata: [
+          { resourceId: 'project-1', name: 'tasks.done', value: 21 },
+          { resourceId: 'project-1', name: 'tasks.total', value: 25 },
+          { resourceId: 'project-1', name: 'badge', value: 2 }
+        ]
+      })
+      postMetadata('Calendar', 'https://calendar.test', {
+        type: 'twake-embed:metadata',
+        metadata: [{ resourceId: 'cal-1', name: 'events.upcoming', value: 3 }]
+      })
+
+      expect(figure('Tasks completed')).toHaveTextContent('84%Tasks completed')
+      expect(figure('Upcoming events')).toHaveTextContent('3Upcoming events')
+      expect(
+        screen.getByRole('tab', { name: 'Tasks, 2 new' })
+      ).toBeInTheDocument()
+    })
+
+    it('shows no figure when the app does not report one in time', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      try {
+        renderAt('/spaces/a1/home')
+        await screen.findByTitle('Tasks')
+
+        act(() => {
+          vi.advanceTimersByTime(10_000)
+        })
+
+        expect(figure('Tasks completed')).toHaveTextContent('–Tasks completed')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('shows no share of an empty project', async () => {
+      renderAt('/spaces/a1/home')
+      await screen.findByTitle('Tasks')
+
+      postMetadata('Tasks', 'https://tasks.test', {
+        type: 'twake-embed:metadata',
+        metadata: [
+          { resourceId: 'project-1', name: 'tasks.done', value: 0 },
+          { resourceId: 'project-1', name: 'tasks.total', value: 0 }
+        ]
+      })
+
+      expect(figure('Tasks completed')).toHaveTextContent('–Tasks completed')
+    })
+
+    it('takes the counts from the metadata of an app that sends both', async () => {
+      renderAt('/spaces/a1/home')
+      await screen.findByTitle('Tasks')
+
+      postMetadata('Tasks', 'https://tasks.test', {
+        type: 'twake-embed:metadata',
+        metadata: [{ resourceId: 'project-1', name: 'badge', value: 2 }]
+      })
+      postMetadata('Tasks', 'https://tasks.test', {
+        type: 'twake-embed:badges',
+        badges: [{ resourceId: 'project-1', count: 5 }]
+      })
+
+      expect(
+        screen.getByRole('tab', { name: 'Tasks, 2 new' })
+      ).toBeInTheDocument()
+    })
+
+    it('keeps the badges of an app whose metadata has no counts', async () => {
+      renderAt('/spaces/a1/home')
+      await screen.findByTitle('Tasks')
+
+      postMetadata('Tasks', 'https://tasks.test', {
+        type: 'twake-embed:badges',
+        badges: [{ resourceId: 'project-1', count: 5 }]
+      })
+      postMetadata('Tasks', 'https://tasks.test', {
+        type: 'twake-embed:metadata',
+        metadata: [{ resourceId: 'project-1', name: 'tasks.total', value: 0 }]
+      })
+
+      expect(
+        screen.getByRole('tab', { name: 'Tasks, 5 new' })
+      ).toBeInTheDocument()
+    })
+
+    it('has no figure for an app the space has not', async () => {
+      renderAt('/spaces/a1/home', { ...roadmap, apps: ['chat', 'mail'] })
+      await screen.findByRole('heading', { level: 2 })
+
+      expect(screen.queryByText('Tasks completed')).not.toBeInTheDocument()
+      expect(screen.queryByText('Upcoming events')).not.toBeInTheDocument()
+    })
+  })
+
   describe('search', () => {
     const items: FeedItem[] = [
       {
