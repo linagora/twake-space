@@ -55,7 +55,7 @@ export const EMBEDDED_APPS: Record<EmbeddedApp, EmbeddedAppSpec> = {
     app: 'drive',
     resource: 'drive',
     embedPath: id => `/#/embed/sharings/${encodeURIComponent(id)}`,
-    overlayPath: null
+    overlayPath: '/embed/overlay.html'
   },
   mail: {
     app: 'mail',
