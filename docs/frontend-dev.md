@@ -56,7 +56,7 @@ ESLint enforces these boundaries, and a few more rules: named exports only, UI f
 
 - `spaces`: list, read and create spaces. A space admin also renames a space, changes its apps or deletes it, and adds, changes and removes its members and linked groups.
 - `directory`: search the organization's people and groups, 20 per page, to pick new members from.
-- `feed`: read a space's feed by filter and page, post, edit and delete your own posts, and react.
+- `feed`: read a space's feed by filter and page, post, edit and delete your own posts, and react. It also reads and moves the time of the newest item you have seen, where the feed opens next time.
 - `tokens`: list, create, rename and revoke your personal API tokens, and the organization's when you are an owner or admin of it. The API tokens page (`/settings/api-tokens`) uses it.
 - `live`: the backend's live updates. `useLiveUpdates` refreshes the spaces queries when a space changes, and applies `feed` events to the feeds already loaded.
 - `tasksUrl`: where the Tasks tab embeds Twake Tasks, or null.

@@ -246,6 +246,8 @@
       "task": "Aufgabe erstellen"
     },
     "loadOlder": "Ältere laden",
+    "new": "Neu",
+    "latest": "Zu den neuesten",
     "loadOlderFailed": "Ältere Einträge konnten nicht geladen werden.",
     "filter": "Filtern nach",
     "filters": {

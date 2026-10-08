@@ -108,16 +108,22 @@ function renderFeed(
   {
     space = roadmap,
     pageSize,
+    readAt,
     live = fakeLive()
   }: {
     space?: Space
     pageSize?: number
+    readAt?: string
     live?: ReturnType<typeof fakeLive>
   } = {}
 ) {
   const feed = fakeFeed(
     { a1: items },
-    { roles: { a1: space.role }, ...(pageSize && { pageSize }) }
+    {
+      roles: { a1: space.role },
+      ...(pageSize && { pageSize }),
+      ...(readAt && { readAt: { a1: readAt } })
+    }
   )
   renderWithProviders(<LiveFeed space={space} />, { feed, live })
   return { feed, live }
@@ -275,6 +281,38 @@ describe('FeedPanel', () => {
     expect(
       screen.queryByRole('button', { name: 'Load older' })
     ).not.toBeInTheDocument()
+  })
+
+  it('marks where the new items start, loading back to it', async () => {
+    renderFeed(
+      Array.from({ length: 6 }, (_, i) => post(i + 1)),
+      { pageSize: 2, readAt: at(2) }
+    )
+
+    const mark = await screen.findByRole('separator', { name: 'New' })
+    expect(mark.nextElementSibling).toHaveTextContent('Message 3')
+    expect(screen.getByText('Message 2')).toBeInTheDocument()
+  })
+
+  it('marks no new items on a first visit, or once all are seen', async () => {
+    renderFeed([post(1), post(2)], { readAt: at(2) })
+    await screen.findByText('Message 2')
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument()
+  })
+
+  it('remembers the newest item seen, in the whole feed only', async () => {
+    const { feed } = renderFeed([post(1), post(5), event], { readAt: at(1) })
+    await screen.findByText('Message 5')
+
+    await waitFor(() => {
+      expect(feed.markRead).toHaveBeenCalledWith('a1', at(5))
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Filter by' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Events' }))
+    await waitFor(() => {
+      expect(articles()).toEqual(['Someone: Roadmap review'])
+    })
+    expect(feed.markRead).toHaveBeenCalledTimes(1)
   })
 
   it('invites the team to a new space', async () => {

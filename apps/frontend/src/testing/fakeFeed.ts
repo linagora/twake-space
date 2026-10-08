@@ -9,17 +9,25 @@ export function fakeFeed(
   feeds: Record<string, FeedItem[]> = {},
   {
     roles = {},
+    readAt,
     pageSize
-  }: { roles?: Record<string, SpaceRole>; pageSize?: number } = {}
+  }: {
+    roles?: Record<string, SpaceRole>
+    readAt?: Record<string, string>
+    pageSize?: number
+  } = {}
 ): FeedService {
   const feed = memoryFeed(feeds, {
     me: { id: 'u-me', name: 'Me' },
     roles,
+    ...(readAt && { readAt }),
     ...(pageSize && { pageSize })
   })
   return {
     list: vi.fn(feed.list),
     item: vi.fn(feed.item),
+    readAt: vi.fn(feed.readAt),
+    markRead: vi.fn(feed.markRead),
     post: vi.fn(feed.post),
     edit: vi.fn(feed.edit),
     remove: vi.fn(feed.remove),

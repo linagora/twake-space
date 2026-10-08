@@ -82,7 +82,7 @@ export function SpaceScreen(): ReactElement {
       ? tab
       : null
   useSpaceTabTag(readyTab)
-  // Once the feed scrolls, the cover stays folded until another space opens.
+  // The cover folds as the feed scrolls down, and comes back at its start.
   const [foldedIn, setFoldedIn] = useState<string | null>(null)
 
   // The page given to the open tab: until the person takes it back, another
@@ -289,9 +289,13 @@ export function SpaceScreen(): ReactElement {
           )}
           {current.tab === 'feed' && (
             <FeedPanel
+              key={spaceId}
               space={space.data}
               onScrolledAway={() => {
                 setFoldedIn(spaceId)
+              }}
+              onReachedStart={() => {
+                setFoldedIn(null)
               }}
             />
           )}

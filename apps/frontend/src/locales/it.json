@@ -246,6 +246,8 @@
       "task": "Crea un'attività"
     },
     "loadOlder": "Carica precedenti",
+    "new": "Nuovo",
+    "latest": "Vai ai più recenti",
     "loadOlderFailed": "Impossibile caricare le voci precedenti.",
     "filter": "Filtra per",
     "filters": {

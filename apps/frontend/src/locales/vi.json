@@ -246,6 +246,8 @@
       "task": "Tạo công việc"
     },
     "loadOlder": "Tải cũ hơn",
+    "new": "Mới",
+    "latest": "Đến mới nhất",
     "loadOlderFailed": "Không thể tải các mục cũ hơn.",
     "filter": "Lọc theo",
     "filters": {
