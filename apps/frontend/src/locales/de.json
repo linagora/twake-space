@@ -14,6 +14,8 @@
       "edit": "Banner ändern",
       "uploading": "Banner wird hochgeladen…",
       "invalid": "Wählen Sie ein PNG-, JPEG-, WebP- oder GIF-Bild mit höchstens 5 MB.",
+      "tooLarge": "Der Server hat das Bild abgelehnt, weil es zu groß ist.",
+      "unsupported": "Der Server hat diesen Bildtyp abgelehnt.",
       "failed": "Das Banner konnte nicht gespeichert werden."
     },
     "figures": {
