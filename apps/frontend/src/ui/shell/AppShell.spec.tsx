@@ -120,6 +120,18 @@ describe('AppShell', () => {
     expect(createSdk).not.toHaveBeenCalled()
   })
 
+  it('fills the window when there is no platform bar to leave room for', async () => {
+    renderRoute('/', { spaces: spaces() })
+
+    const frame = (await screen.findByRole('navigation')).closest(
+      'aside'
+    )?.parentElement
+    expect(frame).toBeTruthy()
+    expect(
+      getComputedStyle(frame as Element).getPropertyValue('--topBarHeight')
+    ).toBe('0px')
+  })
+
   it('lists the pinned and recent spaces in the sidebar and marks the current one', async () => {
     renderRoute('/spaces/space-2/feed', { spaces: spaces() })
 
