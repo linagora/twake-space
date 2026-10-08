@@ -21,7 +21,7 @@ import type { Space, SpaceRole, SpacesService } from '@/application/spaces'
 import { DialogHeader } from '@/ds/Dialog'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
-import { RoleSelect } from '@/ui/space/RoleSelect'
+import { RoleMenu } from '@/ui/space/RoleMenu'
 import { WriteError } from '@/ui/space/WriteError'
 import { useSpaceWrite } from '@/ui/spaces/queries'
 
@@ -233,7 +233,7 @@ function AddRow({
             <TextField {...params} label={t('members.add')} />
           )}
         />
-        <RoleSelect label={t('members.role')} value={role} onChange={setRole} />
+        <RoleMenu label={t('members.role')} value={role} onChange={setRole} />
         <Button
           type="submit"
           className="u-flex-none"
@@ -295,7 +295,7 @@ function Section({
               >
                 {admin ? (
                   <>
-                    <RoleSelect
+                    <RoleMenu
                       label={t('members.roleOf', { name: row.primary })}
                       value={row.role}
                       onChange={role => {

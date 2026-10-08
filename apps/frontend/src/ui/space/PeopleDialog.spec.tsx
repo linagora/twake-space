@@ -50,6 +50,14 @@ async function type(text: string) {
   fireEvent.change(field, { target: { value: text } })
 }
 
+async function pickRole(button: string, role: string) {
+  fireEvent.click(await screen.findByRole('button', { name: button }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: role }))
+  await waitFor(() => {
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+}
+
 describe('PeopleDialog', () => {
   it('lists the direct members with their roles', async () => {
     renderWithProviders(<PeopleDialog space={space} onClose={noop} />)
@@ -94,12 +102,8 @@ describe('PeopleDialog', () => {
       spaces
     })
 
-    fireEvent.change(await screen.findByLabelText('Role of alice'), {
-      target: { value: 'viewer' }
-    })
-    fireEvent.change(screen.getByLabelText('Role of Designers'), {
-      target: { value: 'admin' }
-    })
+    await pickRole('Role of alice', 'Viewer')
+    await pickRole('Role of Designers', 'Admin')
 
     await waitFor(() => {
       expect(spaces.setMemberRole).toHaveBeenCalledWith('a1', 'u-2', 'viewer')
@@ -157,9 +161,7 @@ describe('PeopleDialog', () => {
     fireEvent.click(await screen.findByRole('option', { name: /Bob/ }))
     await type('sa')
     fireEvent.click(await screen.findByRole('option', { name: 'Sales' }))
-    fireEvent.change(screen.getByLabelText('Role'), {
-      target: { value: 'editor' }
-    })
+    await pickRole('Role', 'Editor')
     fireEvent.click(screen.getByRole('button', { name: 'Add' }))
 
     await waitFor(() => {
