@@ -2,6 +2,7 @@ import { TwakeMuiThemeProvider } from '@linagora/twake-mui'
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import type { ReactElement, ReactNode } from 'react'
 
+import { spaceThemeOptions } from '@/ds/theme'
 import { I18nProvider } from '@/ui/i18n/I18nProvider'
 import type { SupportedLanguage } from '@/ui/i18n/languages'
 import { ServicesContext, type Services } from '@/ui/services/Services'
@@ -22,7 +23,7 @@ export function AppProviders({
   children
 }: AppProvidersProps): ReactElement {
   return (
-    <TwakeMuiThemeProvider>
+    <TwakeMuiThemeProvider themeOptions={spaceThemeOptions}>
       <I18nProvider lang={lang}>
         <QueryClientProvider client={queryClient}>
           <ServicesContext value={services}>
