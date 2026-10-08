@@ -69,6 +69,12 @@
       "dismiss": "Später"
     }
   },
+  "spotSpace": {
+    "title": "SpotSpace",
+    "placeholder": "Zu einem Space wechseln",
+    "move": "Bewegen",
+    "open": "Öffnen"
+  },
   "search": {
     "placeholder": "Suchen",
     "searching": "Suche läuft…",

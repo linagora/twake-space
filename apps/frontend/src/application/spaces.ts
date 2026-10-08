@@ -131,6 +131,25 @@ export function nameMatches(name: string, query: string): boolean {
 }
 
 /**
+ * SpotSpace's order: the spaces whose name holds the query, those with news
+ * first, then the last opened, the never opened last in the list's order.
+ */
+export function rankSpaces(
+  spaces: SpaceSummary[],
+  totals: ReadonlyMap<string, number>,
+  query: string
+): SpaceSummary[] {
+  const hasNews = (space: SpaceSummary) => (totals.get(space.id) ?? 0) > 0
+  return spaces
+    .filter(space => nameMatches(space.name, query))
+    .sort(
+      (a, b) =>
+        Number(hasNews(b)) - Number(hasNews(a)) ||
+        (b.openedAt ?? '').localeCompare(a.openedAt ?? '')
+    )
+}
+
+/**
  * Every write but create and the person's own marks needs the caller to be an
  * admin of the space.
  */

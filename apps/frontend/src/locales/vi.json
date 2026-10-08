@@ -69,6 +69,12 @@
       "dismiss": "Để sau"
     }
   },
+  "spotSpace": {
+    "title": "SpotSpace",
+    "placeholder": "Đi tới một không gian",
+    "move": "Di chuyển",
+    "open": "Mở"
+  },
   "search": {
     "placeholder": "Tìm kiếm",
     "searching": "Đang tìm…",

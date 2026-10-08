@@ -1,6 +1,14 @@
 import { Button } from '@linagora/twake-mui'
-import { useEffect, useState, type ReactElement } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement
+} from 'react'
 
+import spaceIcon from '@/assets/space.svg'
+import workplaceLogo from '@/assets/twake-workplace.svg'
 import { useI18n } from '@/ui/i18n/useI18n'
 
 const SLOW_AFTER_MS = 3000
@@ -8,13 +16,6 @@ const SLOW_AFTER_MS = 3000
 // rather than as a failure.
 const TIMEOUT_AFTER_MS = 8000
 const DESTINATION_KEY = 'twake-space:sign-in-destination'
-
-// The cube of assets/space.svg, one path per face so each can light in turn.
-const FACES = [
-  'M45.2051 23.4491C45.2482 23.424 45.284 23.3879 45.3089 23.3447C45.3337 23.3014 45.3468 23.2523 45.3468 23.2024C45.3468 23.1524 45.3337 23.1034 45.3089 23.0601C45.284 23.0168 45.2482 22.9808 45.2051 22.9556L34.2962 16.6177C33.5982 16.2131 32.8057 16 31.9989 16C31.1921 16 30.3996 16.2131 29.7016 16.6177L18.7948 22.9556C18.7517 22.9808 18.7159 23.0168 18.6911 23.0601C18.6662 23.1034 18.6531 23.1524 18.6531 23.2024C18.6531 23.2523 18.6662 23.3014 18.6911 23.3447C18.7159 23.3879 18.7517 23.424 18.7948 23.4491L31.8564 31.1327C31.9003 31.1585 31.9504 31.1722 32.0014 31.1722C32.0524 31.1722 32.1024 31.1585 32.1464 31.1327L45.2051 23.4491Z',
-  'M17.5721 25.3925C17.5285 25.3674 17.4791 25.3542 17.4288 25.3542C17.3785 25.3543 17.3291 25.3677 17.2856 25.393C17.2421 25.4183 17.2061 25.4546 17.1811 25.4983C17.1562 25.542 17.1432 25.5915 17.1436 25.6418V38.0613C17.1446 38.6598 17.3024 39.2475 17.6011 39.7662C17.8998 40.2848 18.3291 40.7162 18.8463 41.0174L30.428 47.9617C30.4714 47.9868 30.5206 48 30.5707 48C30.6209 48 30.6701 47.9868 30.7135 47.9618C30.757 47.9368 30.793 47.9007 30.8181 47.8573C30.8432 47.814 30.8565 47.7647 30.8565 47.7146V33.3053C30.8565 33.2552 30.8432 33.206 30.8182 33.1626C30.7931 33.1193 30.757 33.0832 30.7137 33.0582L17.5721 25.3925Z',
-  'M33.142 33.3553V47.711C33.142 47.7612 33.1553 47.8104 33.1804 47.8538C33.2055 47.8972 33.2415 47.9332 33.285 47.9582C33.3284 47.9833 33.3776 47.9964 33.4278 47.9964C33.4779 47.9964 33.5271 47.9832 33.5705 47.9582L45.1515 41.0138C45.6683 40.713 46.0974 40.2822 46.3962 39.7643C46.695 39.2463 46.8532 38.6592 46.8549 38.0613V25.6418C46.8548 25.5917 46.8414 25.5426 46.8163 25.4993C46.7911 25.456 46.7551 25.4201 46.7117 25.3951C46.6683 25.3702 46.6191 25.357 46.569 25.3571C46.5189 25.3571 46.4698 25.3703 46.4264 25.3954L33.2848 33.1089C33.2416 33.1339 33.2056 33.1698 33.1805 33.213C33.1555 33.2563 33.1422 33.3053 33.142 33.3553Z'
-]
 
 type Destination = 'space' | 'home'
 
@@ -42,11 +43,8 @@ export function forgetDestination(): void {
   }
 }
 
-// Picks the mark's animation up where the static screen's left it.
-function keepPhase(mark: SVGSVGElement | null): void {
-  const elapsed = Math.round(performance.now() % 2000)
-  mark?.style.setProperty('--splash-delay', `-${String(elapsed)}ms`)
-}
+const growAnimation = (icon: Element | null): Animation | undefined =>
+  icon && 'getAnimations' in icon ? icon.getAnimations()[0] : undefined
 
 export interface SignInScreenProps {
   failed?: boolean
@@ -54,8 +52,6 @@ export interface SignInScreenProps {
   onSignIn: () => void
 }
 
-// The markup and the .splash styles live in index.html too, so the screen is
-// already painted before any script runs and does not move when React mounts.
 export function SignInScreen({
   failed = false,
   leaving = false,
@@ -64,6 +60,19 @@ export function SignInScreen({
   const { t } = useI18n()
   const [destination] = useState(readDestination)
   const [waited, setWaited] = useState<'short' | 'slow' | 'timeout'>('short')
+  const icon = useRef<HTMLSpanElement>(null)
+
+  // index.html draws this screen before any script runs: carry on from the
+  // same point of its animation so the icon does not jump.
+  useLayoutEffect(() => {
+    const page = document.getElementById('splash')
+    const time = growAnimation(
+      page?.querySelector('.splash-icon') ?? null
+    )?.currentTime
+    const mine = growAnimation(icon.current)
+    if (mine && typeof time === 'number') mine.currentTime = time
+    page?.remove()
+  }, [])
 
   useEffect(() => {
     if (failed || leaving) return
@@ -87,48 +96,20 @@ export function SignInScreen({
   if (waited === 'slow') status = t('session.slow')
 
   return (
-    <main
+    <div
       className={leaving ? 'splash splash-leaving' : 'splash'}
       aria-busy={!stuck}
       inert={leaving}
       aria-hidden={leaving || undefined}
     >
-      <svg
-        ref={keepPhase}
-        className="splash-mark"
-        viewBox="0 0 64 64"
-        fill="none"
-        aria-hidden="true"
-      >
-        <defs>
-          <linearGradient
-            id="splash-gradient"
-            x1="22.2948"
-            y1="45.1273"
-            x2="47.0456"
-            y2="19.7877"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop offset="0.229502" stopColor="#3D74FE" />
-            <stop offset="1" stopColor="#91CFFF" />
-          </linearGradient>
-        </defs>
-        <rect width="64" height="64" rx="18" fill="#143CA1" fillOpacity="0.1" />
-        {FACES.map(face => (
-          <path
-            key={face}
-            className={stuck ? undefined : 'splash-face'}
-            fill="url(#splash-gradient)"
-            d={face}
-          />
-        ))}
-      </svg>
-      <h1 className="splash-name">{t('app.name')}</h1>
+      <span ref={icon} className="splash-icon" aria-hidden="true">
+        <img src={spaceIcon} alt="" />
+      </span>
       {stuck ? (
         <>
-          <h2 className="splash-title">
+          <h1 className="splash-title">
             {t(timedOut ? 'session.timeout' : 'session.failed')}
-          </h2>
+          </h1>
           <p className="splash-hint">
             {t(timedOut ? 'session.timeoutHint' : 'session.failedHint')}
           </p>
@@ -151,6 +132,12 @@ export function SignInScreen({
           {status}
         </p>
       )}
-    </main>
+      <img
+        className="splash-workplace"
+        src={workplaceLogo}
+        alt=""
+        aria-hidden="true"
+      />
+    </div>
   )
 }

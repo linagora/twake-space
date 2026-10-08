@@ -69,6 +69,12 @@
       "dismiss": "Non ora"
     }
   },
+  "spotSpace": {
+    "title": "SpotSpace",
+    "placeholder": "Vai a uno spazio",
+    "move": "Spostarsi",
+    "open": "Apri"
+  },
   "search": {
     "placeholder": "Cerca",
     "searching": "Ricerca in corso…",

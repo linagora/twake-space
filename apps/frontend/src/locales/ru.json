@@ -69,6 +69,12 @@
       "dismiss": "Не сейчас"
     }
   },
+  "spotSpace": {
+    "title": "SpotSpace",
+    "placeholder": "Перейти в пространство",
+    "move": "Перемещение",
+    "open": "Открыть"
+  },
   "search": {
     "placeholder": "Поиск",
     "searching": "Поиск…",

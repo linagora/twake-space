@@ -31,7 +31,9 @@ describe('NotificationPermissionPrompt', () => {
   it('offers to allow the notifications while one waits', async () => {
     const notifications = waitingNotifications()
     renderWithProviders(<NotificationPermissionPrompt />, { notifications })
-    await screen.findByRole('main')
+    await act(async () => {
+      await Promise.resolve()
+    })
     expect(screen.queryByRole('button', { name: 'Allow' })).toBeNull()
 
     act(() => {

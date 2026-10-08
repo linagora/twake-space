@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { pinnedAndRecent, type SpaceSummary } from '@/application/spaces'
+import {
+  pinnedAndRecent,
+  rankSpaces,
+  type SpaceSummary
+} from '@/application/spaces'
 
 const space = (
   id: string,
@@ -41,5 +45,27 @@ describe('pinnedAndRecent', () => {
     ])
 
     expect(ids(recent)).toEqual(['d6', 'd5', 'd4', 'd3', 'd2'])
+  })
+})
+
+describe('rankSpaces', () => {
+  const spaces = [
+    space('never'),
+    space('old', { openedAt: day(1) }),
+    space('new', { openedAt: day(3) }),
+    space('news', { openedAt: day(2) })
+  ]
+
+  it('puts the spaces with news first, then the last opened', () => {
+    expect(ids(rankSpaces(spaces, new Map([['news', 2]]), ''))).toEqual([
+      'news',
+      'new',
+      'old',
+      'never'
+    ])
+  })
+
+  it('keeps only the names that hold the query', () => {
+    expect(ids(rankSpaces(spaces, new Map(), 'NEW'))).toEqual(['new', 'news'])
   })
 })
