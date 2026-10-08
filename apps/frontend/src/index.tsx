@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/react'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import { browserNotifications } from '@/adapters/browser/browserNotifications'
 import { backend } from '@/adapters/http/backend'
 import { httpDirectory } from '@/adapters/http/httpDirectory'
 import { httpFeed } from '@/adapters/http/httpFeed'
@@ -34,6 +35,7 @@ const services = {
   live: liveStream(api),
   feed: httpFeed(api),
   meetings: httpMeetings(api),
+  notifications: browserNotifications(),
   feedback,
   apiUrl,
   tasksUrl: window.TASKS_URL ?? null,

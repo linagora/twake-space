@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 
 import { memoryDirectory } from '@/adapters/memory/memoryDirectory'
 import { memoryFeed } from '@/adapters/memory/memoryFeed'
+import { memoryNotifications } from '@/adapters/memory/memoryNotifications'
 import { memorySpaces } from '@/adapters/memory/memorySpaces'
 import { memoryTokens } from '@/adapters/memory/memoryTokens'
 import {
@@ -51,6 +52,7 @@ const services = {
     readAt: seedFeedReads
   }),
   meetings: { schedule: () => Promise.resolve() },
+  notifications: memoryNotifications(),
   feedback: null,
   apiUrl: new URL('/api/', window.location.origin).href,
   tasksUrl: window.TASKS_URL ?? null,

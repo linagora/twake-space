@@ -7,6 +7,7 @@ import {
   pathBelow,
   reconcile,
   reconcileHidden,
+  spaceOfResource,
   type FrameState,
   type ShownApp
 } from '@/application/embeddedApps'
@@ -110,6 +111,7 @@ describe('reconcile', () => {
   const frame = (over: Partial<FrameState> = {}): FrameState => ({
     key: 1,
     src: 'https://tasks.test/embed/projects/p1',
+    spaceId: 'a1',
     resourceId: 'p1',
     path: '',
     dialect: 'embed',
@@ -258,6 +260,7 @@ describe('reconcileHidden', () => {
   const frame = (over: Partial<FrameState> = {}): FrameState => ({
     key: 1,
     src: 'https://tasks.test/embed/projects/p1',
+    spaceId: 'a1',
     resourceId: 'p1',
     path: '/kept',
     dialect: 'embed',
@@ -314,5 +317,21 @@ describe('the Calendar tab', () => {
       embedUrl('https://calendar.test/', calendar.embedPath('6ac4ce5f'), '')
     ).toBe('https://calendar.test/embed/calendars/6ac4ce5f')
     expect(calendar.overlayPath).toBe('/embed/overlay.html')
+  })
+})
+
+describe('spaceOfResource', () => {
+  const spaces = [
+    { id: 'a1', resources: [{ kind: 'mailbox' as const, id: 'team@acme' }] },
+    { id: 'b2', resources: [{ kind: 'mailbox' as const, id: 'other@acme' }] }
+  ]
+
+  it('finds the space whose resource for the app it is', () => {
+    expect(spaceOfResource(spaces, 'mail', 'other@acme')).toBe('b2')
+  })
+
+  it('finds none for an unknown resource, or another app', () => {
+    expect(spaceOfResource(spaces, 'mail', 'nobody@acme')).toBeNull()
+    expect(spaceOfResource(spaces, 'chat', 'team@acme')).toBeNull()
   })
 })

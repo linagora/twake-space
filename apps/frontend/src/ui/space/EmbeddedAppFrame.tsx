@@ -21,6 +21,7 @@ import {
   type OverlayRegion
 } from '@linagora/twake-mui'
 
+import { parseAppNotification } from '@/application/appNotifications'
 import { badgesOf } from '@/application/metadata'
 import {
   isLoginRequired,
@@ -53,6 +54,8 @@ const ALLOW = 'clipboard-read; clipboard-write; fullscreen'
 //   where TwakeSpace is,
 // - its counts for the tabs (`twake-embed:badges`), the whole snapshot each
 //   time, forgotten when the frame's document reloads or the frame goes,
+// - the system notifications it asks for (`twake-embed:notification`, and
+//   `-close` for one tag), which the browser refuses to the frame itself,
 // - the same for its metadata (`twake-embed:metadata`): the figures of the
 //   space home, and maybe its counts under `badge`. Once a document sends
 //   its counts there, its badges are left aside,
@@ -78,7 +81,8 @@ export function EmbeddedAppFrame({
   onPath,
   onBadges,
   onMetadata,
-  onFloat
+  onFloat,
+  onOpen
 }: {
   // Names the frame `twake-embed-<app>`, and its overlay `<that>:overlay`
   app: string
@@ -99,10 +103,13 @@ export function EmbeddedAppFrame({
   onBadges: (badges: readonly Badge[] | null) => void
   onMetadata: (metadata: readonly Metadata[]) => void
   onFloat?: (floats: boolean) => void
+  // A click on one of its system notifications: show the app
+  // with the resource it is about, when the app said it
+  onOpen?: (resourceId: string | null) => void
 }): ReactElement {
   const { t } = useI18n()
   const { signIn } = useSession()
-  const { meetUrl } = useServices()
+  const { meetUrl, notifications } = useServices()
   const { join } = useCall()
   const origin = new URL(appUrl).origin
   const name = `twake-embed-${app}`
@@ -111,10 +118,12 @@ export function EmbeddedAppFrame({
   const reportBadges = useRef(onBadges)
   const reportMetadata = useRef(onMetadata)
   const countsInMetadata = useRef(false)
+  const open = useRef(onOpen)
   useEffect(() => {
     report.current = onPath
     reportBadges.current = onBadges
     reportMetadata.current = onMetadata
+    open.current = onOpen
   })
   // A frame replaced or removed takes its counts with it
   useEffect(
@@ -174,6 +183,18 @@ export function EmbeddedAppFrame({
         const reported = parseOverlayRegionMessage(event.data)
         if (reported !== null) {
           setRegion(reported)
+          return
+        }
+        const notification = parseAppNotification(event.data)
+        if (notification?.kind === 'show') {
+          const { tag, title, body, resourceId } = notification
+          notifications.show(app, { tag, title, body }, () => {
+            open.current?.(resourceId)
+          })
+          return
+        }
+        if (notification?.kind === 'close') {
+          notifications.close(app, notification.tag)
           return
         }
         const message = parseAppMessage(event.data)
@@ -241,7 +262,7 @@ export function EmbeddedAppFrame({
     return () => {
       listening.abort()
     }
-  }, [embedPath, frameRef, join, meetUrl, origin, signIn])
+  }, [app, embedPath, frameRef, join, meetUrl, notifications, origin, signIn])
 
   return (
     <>

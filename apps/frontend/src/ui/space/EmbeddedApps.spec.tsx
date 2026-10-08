@@ -51,6 +51,8 @@ const other: Space = {
 
 const CHAT = 'https://chat.test'
 
+const notifications = { show: vi.fn(), close: vi.fn() }
+
 function Path() {
   const { pathname, search } = useLocation()
   return <output aria-label="path">{pathname + search}</output>
@@ -78,7 +80,7 @@ function renderAt(
     fqdn: 'alice.twake.test'
   }
 ) {
-  const spaces = fakeSpaces()
+  const spaces = fakeSpaces([roadmap, other])
   vi.mocked(spaces.get).mockImplementation(id => {
     const space = [roadmap, other].find(item => item.id === id)
     return space
@@ -102,6 +104,7 @@ function renderAt(
     {
       path,
       spaces,
+      notifications,
       tasksUrl,
       driveUrlTemplate: drive.template,
       session: fakeSession(() =>
@@ -417,7 +420,7 @@ describe('EmbeddedApps', () => {
     )
     expect(frame).toHaveAttribute(
       'allow',
-      'clipboard-read; clipboard-write; fullscreen; camera; microphone; display-capture'
+      'clipboard-read; clipboard-write; fullscreen; camera; microphone; display-capture; autoplay'
     )
     expect(screen.getByTitle('Chat windows')).toHaveAttribute(
       'src',
@@ -705,6 +708,67 @@ describe('EmbeddedApps', () => {
       await act(() => Promise.resolve())
       // Nothing was pushed: the only entry is still the first
       expect(path()).toHaveTextContent('/spaces/a1/tasks')
+    })
+
+    it("opens the app's tab of its space, at its path, on a click on its notification", async () => {
+      renderAt('/spaces/a1/tasks')
+      await screen.findByTitle('Mail')
+      postFromFrame(embedPath('roadmap@acme', '/inbox', false), MAIL, 'Mail')
+      notifications.show.mockClear()
+      await waitFor(() => {
+        postFromFrame(
+          {
+            type: 'twake-embed:notification',
+            tag: 't',
+            title: 'Alice',
+            body: ''
+          },
+          MAIL,
+          'Mail'
+        )
+        expect(notifications.show).toHaveBeenCalled()
+      })
+      const onClick = notifications.show.mock.lastCall?.[2] as () => void
+
+      go('/')
+      await screen.findByText('Home')
+      act(() => {
+        onClick()
+      })
+      await waitFor(() => {
+        expect(path()).toHaveTextContent('/spaces/a1/mail/inbox')
+      })
+    })
+
+    it('opens the space of the resource a notification is about, on a click', async () => {
+      renderAt('/spaces/a1/tasks')
+      await screen.findByTitle('Mail')
+      postFromFrame(embedPath('roadmap@acme', '/inbox', false), MAIL, 'Mail')
+      notifications.show.mockClear()
+      await waitFor(() => {
+        postFromFrame(
+          {
+            type: 'twake-embed:notification',
+            tag: 't',
+            title: 'Alice',
+            body: '',
+            resourceId: 'other@acme'
+          },
+          MAIL,
+          'Mail'
+        )
+        expect(notifications.show).toHaveBeenCalled()
+      })
+      const onClick = notifications.show.mock.lastCall?.[2] as () => void
+
+      go('/')
+      await screen.findByText('Home')
+      act(() => {
+        onClick()
+      })
+      await waitFor(() => {
+        expect(path()).toHaveTextContent('/spaces/b2/mail')
+      })
     })
   })
 })
