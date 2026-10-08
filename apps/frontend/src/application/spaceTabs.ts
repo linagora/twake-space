@@ -50,6 +50,14 @@ export function spaceTabs(
   })
 }
 
+// Whether a tab is ready does not depend on the time, only preparing and
+// stalled do.
+export function isTabReady(space: Space, tab: Tab): boolean {
+  return spaceTabs(space, 0).some(
+    item => item.tab === tab && item.state === 'ready'
+  )
+}
+
 /** The tab a card about an object in this container opens, if the space shows it. */
 export function containerTab(space: Space, kind: ResourceKind): Tab | null {
   const tab = TABS.find(t => t !== 'feed' && RESOURCE[t] === kind)

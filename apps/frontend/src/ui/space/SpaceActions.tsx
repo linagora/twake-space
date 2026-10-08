@@ -25,7 +25,7 @@ export function SpaceActions({ space }: { space: Space }): ReactElement {
           <Icon icon={PersonAdd} />
         </IconButton>
       )}
-      <MeetingMenu />
+      <MeetingMenu space={space} />
       <ShareLinkButton id={space.id} />
       <SpaceMenu space={space} />
       {inviting && (

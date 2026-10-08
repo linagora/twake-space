@@ -27,7 +27,7 @@ import {
   type FrameState,
   type ShownApp
 } from '@/application/embeddedApps'
-import { spaceTabs } from '@/application/spaceTabs'
+import { isTabReady, spaceTabs } from '@/application/spaceTabs'
 import { KeptAlive, KeptAliveStack } from '@/ds/KeptAlive'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useBadgeActions } from '@/ui/space/Badges'
@@ -59,14 +59,10 @@ export function EmbeddedApps(): ReactElement | null {
 
   const spec = embeddedApp(match?.params.tab)
   const appUrl = spec ? appUrls[spec.app] : null
-  // Whether a tab is ready does not depend on the time, only preparing and
-  // stalled do
   const ready =
     spec !== null &&
     space.data !== undefined &&
-    spaceTabs(space.data, 0).some(
-      item => item.tab === spec.app && item.state === 'ready'
-    )
+    isTabReady(space.data, spec.app)
   const resourceId = ready
     ? (space.data.resources.find(r => r.kind === spec.resource)?.id ?? null)
     : null
@@ -258,6 +254,23 @@ export function EmbeddedApps(): ReactElement | null {
       return
     }
     const current = committed.current.shown
+    // A frame whose path changed while it booted was never told: on its first
+    // report the address wins (e.g. Start an instant meeting from the feed)
+    if (
+      frame.dialect === null &&
+      dialect === 'embed' &&
+      current?.app === app &&
+      current.path !== frame.path
+    ) {
+      setFrames(prev =>
+        withFrame(prev, app, {
+          dialect,
+          path: current.path,
+          pending: navigateMessage(frame.resourceId, current.path)
+        })
+      )
+      return
+    }
     const { here: from } = committed.current
     const to =
       current?.app === app ? tabPath(current.spaceId, app) + report.path : null

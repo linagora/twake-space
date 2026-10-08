@@ -1,28 +1,56 @@
 import { fireEvent, screen, within } from '@testing-library/react'
+import { useLocation } from 'react-router'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import type { Space } from '@/application/spaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
-import { CallProvider } from '@/ui/call/CallContext'
 import { CallWindow } from '@/ui/call/CallWindow'
 import { MeetingMenu } from '@/ui/call/MeetingMenu'
 
-function renderMenu(meetUrl: string | null = 'https://meet.test') {
+const space: Space = {
+  id: 'a1',
+  name: 'Roadmap',
+  role: 'editor',
+  createdAt: '2026-10-01T08:00:00.000Z',
+  color: null,
+  description: '',
+  apps: ['chat'],
+  chat: true,
+  mail: false,
+  homeserverUrl: 'https://matrix.test',
+  members: [],
+  groups: [],
+  resources: [{ kind: 'matrix_space', id: '!s:acme' }]
+}
+
+function Address() {
+  const { pathname, search } = useLocation()
+  return <output aria-label="address">{pathname + search}</output>
+}
+
+function renderMenu(
+  meetUrl: string | null = 'https://meet.test',
+  target: Space = space
+) {
   renderWithProviders(
-    <CallProvider>
-      <MeetingMenu />
+    <>
+      <MeetingMenu space={target} />
       <CallWindow />
-    </CallProvider>,
-    { meetUrl }
+      <Address />
+    </>,
+    { meetUrl, path: '/spaces/a1' }
+  )
+}
+
+async function choose(entry: string) {
+  fireEvent.click(await screen.findByRole('button', { name: 'Video meeting' }))
+  fireEvent.click(
+    within(screen.getByRole('menu')).getByRole('menuitem', { name: entry })
   )
 }
 
 async function join(link: string) {
-  fireEvent.click(await screen.findByRole('button', { name: 'Video meeting' }))
-  fireEvent.click(
-    within(screen.getByRole('menu')).getByRole('menuitem', {
-      name: 'Join a meeting'
-    })
-  )
+  await choose('Join a meeting')
   const dialog = screen.getByRole('dialog', { name: 'Join a meeting' })
   fireEvent.change(within(dialog).getByLabelText('Meeting link'), {
     target: { value: link }
@@ -37,12 +65,45 @@ describe('MeetingMenu', () => {
     localStorage.clear()
   })
 
-  it('is not shown without Meet', () => {
-    renderMenu(null)
+  it('is not shown without Meet nor a conversation', () => {
+    renderMenu(null, { ...space, chat: false })
 
     expect(
       screen.queryByRole('button', { name: 'Video meeting' })
     ).not.toBeInTheDocument()
+  })
+
+  it("starts a call in the space's conversation", async () => {
+    renderMenu()
+
+    await choose('Start an instant meeting')
+
+    expect(screen.getByRole('status', { name: 'address' })).toHaveTextContent(
+      '/spaces/a1/chat?call=start'
+    )
+  })
+
+  it("leaves the Meet room for the conversation's call", async () => {
+    renderMenu()
+    await join('abcdefghij')
+
+    await choose('Start an instant meeting')
+
+    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+  })
+
+  it('offers the conversation call alone without Meet', async () => {
+    renderMenu(null)
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Video meeting' })
+    )
+
+    expect(
+      within(screen.getByRole('menu'))
+        .getAllByRole('menuitem')
+        .map(item => item.textContent)
+    ).toEqual(['Start an instant meeting'])
   })
 
   it('opens a pasted room in the call window', async () => {

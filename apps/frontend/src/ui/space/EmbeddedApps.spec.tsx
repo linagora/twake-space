@@ -91,6 +91,7 @@ function renderAt(
       <Path />
       <Go to="/spaces/b2/tasks" />
       <Go to="/spaces/a1/tasks" />
+      <Go to="/spaces/a1/mail?view=x" />
       <Go to="/" />
       <Go to={-1} />
     </>,
@@ -620,6 +621,27 @@ describe('EmbeddedApps', () => {
           MAIL
         )
       })
+    })
+
+    it('brings a frame shown while it booted to the address, not the address to it', async () => {
+      renderAt('/spaces/a1/feed')
+      await screen.findByTitle('Mail')
+      const post = spyOnFrame('Mail')
+
+      go('/spaces/a1/mail?view=x')
+      postFromFrame(embedPath('roadmap@acme', '', true), MAIL, 'Mail')
+
+      await waitFor(() => {
+        expect(post).toHaveBeenCalledWith(
+          {
+            type: 'twake-embed:navigate',
+            resourceId: 'roadmap@acme',
+            path: '?view=x'
+          },
+          MAIL
+        )
+      })
+      expect(path()).toHaveTextContent('/spaces/a1/mail?view=x')
     })
 
     it('never writes the address for a hidden frame, and keeps its path for later', async () => {
