@@ -26,9 +26,12 @@ import {
   parseEmbedPath,
   type EmbedPath
 } from '@/application/embeddedApps'
+import { meetRoomUrl } from '@/application/meet'
 import { EmbedFrame } from '@/ds/EmbedFrame'
 import { FloatingWindow, type WindowBody } from '@/ds/FloatingWindow'
+import { useCall } from '@/ui/call/CallContext'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
 
 // Downloads too: a sandboxed frame without it cannot save a file
@@ -53,7 +56,9 @@ const ALLOW = 'clipboard-read; clipboard-write; fullscreen'
 //   the region the app reports (`twake-embed:overlay-region`),
 // - with `canFillPage`, a floating window while the app asks for the page
 //   (`twake-embed:fill-page`): Chat during a call, on whichever tab or page
-//   TwakeSpace shows, which stays usable.
+//   TwakeSpace shows, which stays usable,
+// - its call window for a Meet room the app holds a link to
+//   (`twake-embed:pip`): a room of this Meet only, anything else is dropped.
 // The frame's `src` is set once: the host moves it with messages.
 export function EmbeddedAppFrame({
   app,
@@ -90,6 +95,8 @@ export function EmbeddedAppFrame({
 }): ReactElement {
   const { t } = useI18n()
   const { signIn } = useSession()
+  const { meetUrl } = useServices()
+  const { join } = useCall()
   const origin = new URL(appUrl).origin
   const name = `twake-embed-${app}`
 
@@ -172,6 +179,12 @@ export function EmbeddedAppFrame({
           reportBadges.current(message.badges)
           return
         }
+        if (message?.type === 'twake-embed:pip') {
+          const room =
+            meetUrl === null ? null : meetRoomUrl(message.url, meetUrl)
+          if (room !== null) join({ url: room })
+          return
+        }
         const path = parseEmbedPath(event.data, embedPath)
         if (path !== null) report.current(path)
       },
@@ -210,7 +223,7 @@ export function EmbeddedAppFrame({
     return () => {
       listening.abort()
     }
-  }, [embedPath, frameRef, origin, signIn])
+  }, [embedPath, frameRef, join, meetUrl, origin, signIn])
 
   return (
     <>
