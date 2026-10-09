@@ -149,6 +149,14 @@ function postFromFrame(data: unknown, origin = TASKS, title = 'Tasks') {
   })
 }
 
+async function overlayOnceReady(title: string): Promise<HTMLElement> {
+  const origin = new URL(frame(title).src).origin
+  return waitFor(() => {
+    postFromFrame({ type: 'twake-embed:ready' }, origin, title)
+    return screen.getByTitle(`${title} windows`)
+  })
+}
+
 function fillPage(fill: boolean, origin = CHAT) {
   postFromFrame({ type: 'twake-embed:fill-page', fill }, origin, 'Chat')
 }
@@ -431,7 +439,7 @@ describe('EmbeddedApps', () => {
       'allow',
       'clipboard-read; clipboard-write; fullscreen; camera; microphone; display-capture; autoplay'
     )
-    expect(screen.getByTitle('Chat windows')).toHaveAttribute(
+    expect(await overlayOnceReady('Chat')).toHaveAttribute(
       'src',
       'https://chat.test/embed/overlay.html'
     )
@@ -544,7 +552,7 @@ describe('EmbeddedApps', () => {
       'src',
       'https://calendar.test/embed/calendars/cal-1'
     )
-    expect(screen.getByTitle('Calendar windows')).toHaveAttribute(
+    expect(await overlayOnceReady('Calendar')).toHaveAttribute(
       'src',
       'https://calendar.test/embed/overlay.html'
     )
@@ -557,7 +565,7 @@ describe('EmbeddedApps', () => {
       'src',
       'https://alice-drive.twake.test/#/embed/sharings/s%2F1/folder/f1'
     )
-    expect(screen.getByTitle('Drive windows')).toHaveAttribute(
+    expect(await overlayOnceReady('Drive')).toHaveAttribute(
       'src',
       'https://alice-drive.twake.test/embed/overlay.html'
     )

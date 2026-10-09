@@ -133,6 +133,11 @@ export function EmbeddedAppFrame({
   )
 
   const [region, setRegion] = useState<OverlayRegion | null>(null)
+  // The overlay loads once the app runs in its frame, signed in: an app on a
+  // cozy-stack signs in there, and an overlay loaded earlier holds the
+  // stack's error page, which the app would then draw its dialogs on. Once
+  // loaded it stays, as the app holds on to its document.
+  const [overlayed, setOverlayed] = useState(false)
 
   const [asksPage, setAsksPage] = useState(false)
   const floats = canFillPage && asksPage
@@ -197,6 +202,7 @@ export function EmbeddedAppFrame({
           return
         }
         if (message?.type === 'twake-embed:ready') {
+          setOverlayed(true)
           setLoads(n => n + 1)
           return
         }
@@ -283,7 +289,7 @@ export function EmbeddedAppFrame({
           setLoads(n => n + 1)
         }}
       />
-      {overlayPath !== null && (
+      {overlayPath !== null && overlayed && (
         <AppOverlay
           name={`${name}:overlay`}
           src={new URL(overlayPath, appUrl).href}

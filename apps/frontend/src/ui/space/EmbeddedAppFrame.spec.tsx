@@ -91,6 +91,14 @@ function region(value: unknown) {
   return { type: 'twake-embed:overlay-region', region: value }
 }
 
+// The app runs in its frame: the overlay is loaded from then on
+async function appReady() {
+  await waitFor(() => {
+    postFromFrame({ type: 'twake-embed:ready' })
+    expect(screen.getByTitle('Mail windows')).toBeInTheDocument()
+  })
+}
+
 let calls = 0
 
 // What cozy-external-bridge sends through comlink for `bridge.method(arg)`.
@@ -115,6 +123,7 @@ function reportedBadges(): (readonly Badge[])[] {
 describe('EmbeddedAppFrame', () => {
   it('frames the app in a sandbox, named for its overlay', async () => {
     await renderFrame()
+    await appReady()
 
     expect(frame()).toHaveAttribute('src', `${MAIL}${EMBED}`)
     expect(frame()).toHaveAttribute('name', 'twake-embed-mail')
@@ -257,6 +266,7 @@ describe('EmbeddedAppFrame', () => {
     root.id = 'root'
     document.body.appendChild(root)
     await renderFrame()
+    await appReady()
 
     await waitFor(() => {
       postFromFrame(region('full'))
@@ -268,8 +278,22 @@ describe('EmbeddedAppFrame', () => {
     root.remove()
   })
 
+  it('loads the overlay once the app runs in its frame, and keeps it', async () => {
+    await renderFrame()
+
+    expect(screen.queryByTitle('Mail windows')).toBe(null)
+
+    await appReady()
+    const loaded = overlay()
+    fireEvent.load(frame())
+    postFromFrame({ type: 'twake-embed:ready' })
+
+    expect(overlay()).toBe(loaded)
+  })
+
   it('shows nothing of the overlay until the app draws there', async () => {
     await renderFrame()
+    await appReady()
 
     expect(overlay().style.clipPath).toBe('inset(0 0 100% 0)')
     expect(overlay()).toHaveAttribute('aria-hidden', 'true')
@@ -278,6 +302,7 @@ describe('EmbeddedAppFrame', () => {
 
   it('shows the region the app draws in, then the whole page', async () => {
     await renderFrame()
+    await appReady()
 
     await waitFor(() => {
       postFromFrame(region([{ x: 600, y: 300, width: 400, height: 500 }]))
@@ -294,6 +319,7 @@ describe('EmbeddedAppFrame', () => {
 
   it("takes a region only from the app's frame", async () => {
     await renderFrame()
+    await appReady()
     await waitFor(() => {
       bridgeCall('updateHistory', `${MAIL}${EMBED}`)
     })
@@ -314,6 +340,7 @@ describe('EmbeddedAppFrame', () => {
 
   it('shows nothing of the overlay once the frame loads again', async () => {
     await renderFrame()
+    await appReady()
     await waitFor(() => {
       postFromFrame(region('full'))
       expect(overlay().style.clipPath).toBe('none')
