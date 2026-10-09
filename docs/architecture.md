@@ -17,7 +17,7 @@ flowchart LR
   subgraph browser[Browser]
     fe[Twake Space frontend]
     frames["App frames<br>Chat, Tasks, Drive, Mail, Calendar"]
-    call[Meet call window]
+    meet[Meet call window]
     bar[Platform top bar]
     assistant[Twake Assistant frame]
   end
@@ -34,7 +34,7 @@ flowchart LR
 
   fe -->|HTTP, SSE| be
   fe <-->|twake-embed messages| frames
-  fe --> call
+  fe --> meet
   fe --> bar
   fe --> assistant
   bar & assistant --> platform
