@@ -1,13 +1,11 @@
 import type { ReactElement, SVGAttributes } from 'react'
 
-// twake-icons' Home paints its own greys, so it cannot follow a selected tab.
+// twake-icons' home.svg in the 24px frame of the mockup's tab. Its Home
+// component still draws an older house in fixed greys.
 export function Home(props: SVGAttributes<SVGSVGElement>): ReactElement {
   return (
-    <svg viewBox="0 0 48 48" {...props}>
-      <path
-        fillRule="evenodd"
-        d="M6.001 21v26h36V21l4.292 4.293a1 1 0 0 0 1.414 0l.086-.086a1 1 0 0 0 0-1.414L38 14V4a1 1 0 0 0-1-1h-5a1 1 0 0 0-1 1v3L24.707.707a1 1 0 0 0-1.414 0L.207 23.793a1 1 0 0 0 0 1.414l.087.086a1 1 0 0 0 1.414 0L6 21ZM14 33h8v14h-8z"
-      />
+    <svg viewBox="-2 -3 24 24" {...props}>
+      <path d="m10 2.69 5 4.5V15h-2V9H7v6H5V7.19l5-4.5ZM10 0 0 9h3v8h6v-6h2v6h6V9h3L10 0Z" />
     </svg>
   )
 }
