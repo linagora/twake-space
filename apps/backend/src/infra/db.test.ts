@@ -1,7 +1,7 @@
+import { randomBytes } from 'node:crypto'
 import { readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { randomBytes } from 'node:crypto'
 import { createDb, migrateDb, postgresRefusal } from './db.ts'
 import { createTestDb, type TestDb } from './testing.ts'
 
@@ -32,7 +32,7 @@ describe('migrateDb', () => {
 
 describe('postgresRefusal', () => {
   it('refuses a key too long for its index, as it fails on every retry', async () => {
-    await testDb.sql`create temporary table keys (key text primary key)`
+    await testDb.sql`create table keys (key text primary key)`
     const key = randomBytes(8000).toString('base64')
 
     const error: unknown = await testDb.sql`insert into keys values (${key})`

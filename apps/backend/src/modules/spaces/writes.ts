@@ -274,10 +274,11 @@ export function registerSpaceWriteRoutes(
     }
   )
 
-  // The body is read before authorize runs, so only this route takes 5 MB.
+  // Authorized on request, before the body is read, so an unknown caller cannot
+  // make us read 5 MB.
   app.put(
     '/spaces/:id/banner',
-    { ...writeSpace, bodyLimit: BANNER_LIMIT },
+    { onRequest: authorize('space:write'), bodyLimit: BANNER_LIMIT },
     refusing(async (request, reply) => {
       const { id } = parse(spaceParams, request.params)
       const image = request.body

@@ -591,6 +591,20 @@ describe('space writes', () => {
     expect(elsewhere.statusCode).toBe(413)
   })
 
+  it('refuses an unknown caller before reading the banner', async () => {
+    const write = setUp(ldapRest().directory)
+
+    const response = await write(
+      'PUT',
+      `/spaces/${DESIGN}/banner`,
+      Buffer.alloc(6 * 1024 * 1024),
+      'nobody',
+      'image/png'
+    )
+
+    expect(response.statusCode).toBe(401)
+  })
+
   it('deletes the banner with the space', async () => {
     const { directory } = ldapRest()
     await testDb.db.insert(spaceBanners).values({
