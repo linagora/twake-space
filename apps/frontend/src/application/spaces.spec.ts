@@ -18,6 +18,7 @@ const space = (
   members: [],
   pinnedAt: null,
   openedAt: null,
+  manages: false,
   ...marks
 })
 

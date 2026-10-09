@@ -19,6 +19,7 @@ const roadmap: Space = {
   description: '',
   pinnedAt: null,
   openedAt: null,
+  manages: false,
   apps: ['chat', 'tasks', 'mail', 'calendar'],
   chat: true,
   mail: true,

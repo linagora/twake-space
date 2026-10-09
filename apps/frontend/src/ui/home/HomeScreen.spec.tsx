@@ -100,6 +100,7 @@ describe('HomeScreen', () => {
         description: '',
         pinnedAt: null,
         openedAt: null,
+        manages: true,
         members: []
       },
       {
@@ -110,6 +111,7 @@ describe('HomeScreen', () => {
         description: '',
         pinnedAt: null,
         openedAt: null,
+        manages: false,
         members: []
       }
     ])
@@ -135,6 +137,7 @@ describe('HomeScreen', () => {
         description: '',
         pinnedAt: null,
         openedAt: null,
+        manages: true,
         members: []
       },
       {
@@ -145,6 +148,7 @@ describe('HomeScreen', () => {
         description: '',
         pinnedAt: '2026-10-01T08:00:00.000Z',
         openedAt: null,
+        manages: false,
         members: []
       }
     ])
@@ -171,6 +175,7 @@ describe('HomeScreen', () => {
           description: '',
           pinnedAt: null,
           openedAt: null,
+          manages: true,
           members: []
         }
       ])

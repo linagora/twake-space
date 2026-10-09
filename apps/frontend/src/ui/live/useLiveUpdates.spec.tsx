@@ -26,6 +26,7 @@ describe('useLiveUpdates', () => {
         description: '',
         pinnedAt: null,
         openedAt: null,
+        manages: false,
         members: []
       }
     ])

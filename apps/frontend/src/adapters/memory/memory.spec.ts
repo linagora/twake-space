@@ -16,6 +16,7 @@ const roadmap: Space = {
   description: '',
   pinnedAt: null,
   openedAt: null,
+  manages: true,
   apps: ['chat'],
   chat: true,
   mail: true,
@@ -90,8 +91,9 @@ describe('memorySpaces', () => {
       name: 'Roadmap 2027',
       apps: ['calendar']
     })
+    await spaces.setState('roadmap', 'trashed')
     await spaces.remove('roadmap')
-    expect(await spaces.list()).toEqual([])
+    expect(await spaces.shelved('trashed')).toEqual([])
   })
 
   it('adds, changes and removes members', async () => {
@@ -154,6 +156,7 @@ describe('memorySpaces', () => {
         description: '',
         pinnedAt: null,
         openedAt: null,
+        manages: true,
         members: [
           {
             id: 'u-alice',
@@ -173,6 +176,27 @@ describe('memorySpaces', () => {
       apps: ['tasks']
     })
     await expect(spaces.get('nowhere')).rejects.toMatchObject({ status: 404 })
+  })
+
+  it('archives, bins, restores and deletes for good, like the backend', async () => {
+    const spaces = memorySpaces([roadmap], { people, groups })
+    const ids = (list: { id: string }[]) => list.map(space => space.id)
+
+    await spaces.setState('roadmap', 'archived')
+    expect(await spaces.list()).toEqual([])
+    expect(ids(await spaces.shelved('archived'))).toEqual(['roadmap'])
+    await expect(spaces.remove('roadmap')).rejects.toMatchObject({
+      status: 409
+    })
+
+    await spaces.setState('roadmap', 'trashed')
+    expect(ids(await spaces.shelved('trashed'))).toEqual(['roadmap'])
+    await spaces.setState('roadmap', 'active')
+    expect(ids(await spaces.list())).toEqual(['roadmap'])
+
+    await spaces.setState('roadmap', 'trashed')
+    await spaces.emptyBin()
+    expect(await spaces.shelved('trashed')).toEqual([])
   })
 })
 

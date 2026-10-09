@@ -13,6 +13,8 @@ import { useEffect } from 'react'
 
 import type {
   NewSpace,
+  ShelfState,
+  ShelvedSpace,
   Space,
   SpaceApp,
   SpaceChange,
@@ -151,6 +153,40 @@ export function useDeleteSpace(id: string): UseMutationResult<void> {
       queryClient.removeQueries({ queryKey: [...SPACES, id] })
       return queryClient.invalidateQueries({ queryKey: SPACES })
     }
+  })
+}
+
+// Under SPACES, so that live updates read them again too.
+export function useShelved(state: ShelfState): UseQueryResult<ShelvedSpace[]> {
+  const { spaces } = useServices()
+  return useQuery({
+    queryKey: [...SPACES, 'shelved', state],
+    queryFn: () => spaces.shelved(state)
+  })
+}
+
+export function useSetState(
+  id: string
+): UseMutationResult<void, Error, ShelfState | 'active'> {
+  const { spaces } = useServices()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: state => spaces.setState(id, state),
+    onSuccess: () => {
+      // Out of reach once archived or in the Bin.
+      queryClient.removeQueries({ queryKey: [...SPACES, id] })
+      return queryClient.invalidateQueries({ queryKey: SPACES })
+    }
+  })
+}
+
+export function useEmptyBin(): UseMutationResult<void> {
+  const { spaces } = useServices()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => spaces.emptyBin(),
+    // A failure halfway still deleted some.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: SPACES })
   })
 }
 
