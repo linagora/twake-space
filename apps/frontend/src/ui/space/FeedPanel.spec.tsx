@@ -179,7 +179,7 @@ describe('FeedPanel', () => {
     expect(within(mailCard).getByText('New email received')).toBeInTheDocument()
     expect(
       within(mailCard).getByRole('link', { name: 'Open in Mail' })
-    ).toHaveAttribute('href', '/spaces/a1/mail')
+    ).toHaveAttribute('href', '/spaces/a1/mail/email/m-1')
 
     const eventCard = screen.getByRole('article', {
       name: 'Someone: Roadmap review'
