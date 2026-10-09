@@ -82,14 +82,29 @@ function setUp() {
         : token === 'tws_harness'
           ? aTokenCaller({
               organizationId: 'acme',
+              technical: true,
               scopes: ['notifications:write']
             })
           : token === 'tws_elsewhere'
             ? aTokenCaller({
                 organizationId: 'other',
+                technical: true,
                 scopes: ['notifications:write']
               })
-            : null
+            : token === 'tws_member'
+              ? aTokenCaller({
+                  organizationId: 'acme',
+                  userId: BOB,
+                  scopes: ['notifications:write']
+                })
+              : token === 'tws_org'
+                ? aTokenCaller({
+                    organizationId: 'acme',
+                    userId: null,
+                    role: 'admin',
+                    scopes: ['notifications:write']
+                  })
+                : null
   )
   registerNotificationRoutes(app, {
     db: testDb.db,
@@ -360,6 +375,20 @@ describe('POST /notifications/suggestions', () => {
       )
       expect(response.statusCode).toBe(403)
     }
+  })
+
+  it("is only for a technical account's token", async () => {
+    const send = setUp()
+    for (const token of ['tws_member', 'tws_org']) {
+      const response = await send(
+        'POST',
+        '/notifications/suggestions',
+        suggestion,
+        token
+      )
+      expect(response.statusCode).toBe(403)
+    }
+    expect(await testDb.db.select().from(notifications)).toHaveLength(0)
   })
 
   it('refuses an unknown user, another homeserver and another organization with 404', async () => {

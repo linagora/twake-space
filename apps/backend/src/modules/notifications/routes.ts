@@ -85,8 +85,9 @@ export function registerNotificationRoutes(
     { preHandler: deps.authorize('notifications:write') },
     async (request, reply) => {
       const caller = request.caller
-      // authorize lets sessions in; only an API token may push suggestions.
-      if (caller?.kind !== 'token') {
+      // authorize lets sessions in; only a technical account's token may push
+      // suggestions, or a member could pose as a colleague's assistant.
+      if (caller?.kind !== 'token' || !caller.technical) {
         return reply.code(403).send({ error: 'insufficient_scope' })
       }
       const body = suggestionBody.safeParse(request.body)

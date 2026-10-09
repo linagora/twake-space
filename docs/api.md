@@ -23,7 +23,7 @@ This gives two kinds of caller.
 - A session caller holds an OIDC access token. Its user id is the `uuid` claim and its organization is the `org_id` claim.
 - A token caller holds an API token. An account token acts for one account (a person or a technical account). An organization token acts for no account and carries its own space role (`viewer`, `editor` or `admin`). Either one covers every space of the organization or a list of spaces.
 
-API token scopes are `space:read`, `space:write`, `members:write`, `feed:read`, `tokens:write` and `notifications:write`.
+API token scopes are `space:read`, `space:write`, `members:write`, `feed:read`, `tokens:write` and `notifications:write`. Only a technical account's token gets `notifications:write`.
 
 `authorize(scope)` decides who gets in.
 
@@ -252,7 +252,7 @@ Returns whether each notification type is on. A type the user never chose is on,
 
 ### POST /notifications/suggestions
 
-For the user's assistant (Twake Harness), through an API token of a technical account with the `notifications:write` scope. A session gets `403 insufficient_scope`.
+For the user's assistant (Twake Harness), through an API token of a technical account with the `notifications:write` scope. A session, a person's token or an organization token gets `403 insufficient_scope`.
 
 - Body: `matrixUserId` (`@localpart:server`), `externalId` (1 to 128 characters, one suggestion per user and `externalId`), `text` (1 to 500), `pendingCallId` (1 to 64), `matrixRoomId` (optional).
 - The user is the member of the token's organization whose username (or e-mail, per `MATRIX_LOCALPART`) is the localpart, on the organization's homeserver. `404 {"error":"unknown_user"}` when there is none, or when the user is in another organization.
@@ -398,6 +398,7 @@ Refusals:
 
 - `400 invalid_request` when the body fails, the expiry is in the past, the organization's policy refuses the expiry, or a listed space is not one the owner reaches (a member space for an account, any organization space for the organization).
 - `403 forbidden` with `"more rights than the token creating it"` when a token caller asks for a scope it lacks, a space it does not cover, or a later expiry than its own.
+- `403 forbidden` with `"notifications:write is for technical accounts"` when a person's token or an organization token asks for that scope.
 
 Answers `201`. The `token` value appears only in this response.
 
