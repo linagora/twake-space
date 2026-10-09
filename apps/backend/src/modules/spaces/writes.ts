@@ -1,12 +1,12 @@
 import { LdapRestError } from '@linagora/ldap-rest-client'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import type { Db } from '../../infra/db.ts'
+import type { Db, Tx } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import type { SpaceDirectory, SpaceRole } from '../../infra/ldap-rest.ts'
 import type { Authorize, Caller } from '../auth/index.ts'
-import { tellSpaceMembers } from '../live/notify.ts'
+import { tell, tellSpaceMembers } from '../live/notify.ts'
 import {
   createSpace,
   deleteSpace,
@@ -16,13 +16,16 @@ import {
   upsertGroups,
   upsertMembers
 } from './events.ts'
-import { reachableSpaces } from './routes.ts'
+import { managedSpaces, reachableSpaces } from './routes.ts'
 import {
+  organizationMembers,
   spaceBanners,
   spaceMembers,
   spaceRole,
   spaceSettings,
-  spaceTab
+  spaceState,
+  spaceTab,
+  spaces
 } from './schema.ts'
 
 const role = z.enum(spaceRole.enumValues)
@@ -97,6 +100,31 @@ function refusing(route: Route): Route {
   }
 }
 
+// The organization's owners and admins manage the space without being in it.
+async function tellMembersAndManagers(tx: Tx, orgId: string, spaceId: string) {
+  const people = await tx
+    .select({ userId: spaceMembers.userId })
+    .from(spaceMembers)
+    .where(eq(spaceMembers.spaceId, spaceId))
+    .union(
+      tx
+        .select({ userId: organizationMembers.userId })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, orgId),
+            inArray(organizationMembers.role, ['owner', 'admin'])
+          )
+        )
+    )
+  tell(
+    tx,
+    'spaces',
+    people.map(p => p.userId),
+    { spaceId }
+  )
+}
+
 export function registerSpaceWriteRoutes(
   app: HttpServer,
   deps: { db: Db; authorize: Authorize; directory: SpaceDirectory }
@@ -115,6 +143,43 @@ export function registerSpaceWriteRoutes(
     if (space.role !== 'admin') throw new Refusal(403, 'not_space_admin')
     const actor = await actorOf(caller)
     return { orgId: caller.organizationId, actor: actor?.email ?? null }
+  }
+
+  // A member who does not manage the space is told so; anyone else learns
+  // nothing of it.
+  async function managed(request: FastifyRequest, spaceId: string) {
+    const caller = callerOf(request)
+    const [space] = await managedSpaces(db, caller, eq(spaces.spaceId, spaceId))
+    if (space) return { orgId: caller.organizationId, state: space.state }
+    const [reached] = await reachableSpaces(db, caller, spaceId)
+    throw reached
+      ? new Refusal(403, 'not_space_manager')
+      : new Refusal(404, 'not_found')
+  }
+
+  // Deletes the space through ldap-rest, then its copy. One ldap-rest no
+  // longer knows is deleted all the same, or it would stay in the Bin for
+  // good should its deletion event be lost.
+  async function deleteForGood(
+    request: FastifyRequest,
+    orgId: string,
+    id: string,
+    actor: string | null
+  ) {
+    try {
+      await ldapRest(() => directory.delete(orgId, id, actor))
+    } catch (error) {
+      if (!(error instanceof Refusal && error.status === 404)) throw error
+    }
+    const at = new Date()
+    // The deletion tells the members; the organization's managers have the
+    // Bin open too.
+    await copy(request, () =>
+      db.transaction(async tx => {
+        await deleteSpace(tx, id, at, actor ?? `token:${orgId}`)
+        await tellMembersAndManagers(tx, orgId, id)
+      })
+    )
   }
 
   async function memberOf(spaceId: string, userId: string) {
@@ -306,17 +371,53 @@ export function registerSpaceWriteRoutes(
     })
   )
 
+  app.put(
+    '/spaces/:id/state',
+    writeSpace,
+    refusing(async (request, reply) => {
+      const { id } = parse(spaceParams, request.params)
+      const { state } = parse(
+        z.object({ state: z.enum(spaceState.enumValues) }),
+        request.body
+      )
+      const { orgId } = await managed(request, id)
+      await db.transaction(async tx => {
+        await tx.update(spaces).set({ state }).where(eq(spaces.spaceId, id))
+        await tellMembersAndManagers(tx, orgId, id)
+      })
+      return reply.code(204).send()
+    })
+  )
+
+  // Only from the Bin, so that no space is lost in one step.
+  app.delete(
+    '/spaces/bin',
+    writeSpace,
+    refusing(async (request, reply) => {
+      const caller = callerOf(request)
+      const binned = await managedSpaces(
+        db,
+        caller,
+        eq(spaces.state, 'trashed')
+      )
+      const actor = (await actorOf(caller))?.email ?? null
+      // One by one: a failure leaves the rest in the Bin for the next try.
+      for (const { id } of binned) {
+        await deleteForGood(request, caller.organizationId, id, actor)
+      }
+      return reply.code(204).send()
+    })
+  )
+
   app.delete(
     '/spaces/:id',
     writeSpace,
     refusing(async (request, reply) => {
       const { id } = parse(spaceParams, request.params)
-      const { orgId, actor } = await administered(request, id)
-      await ldapRest(() => directory.delete(orgId, id, actor))
-      const at = new Date()
-      await copy(request, () =>
-        db.transaction(tx => deleteSpace(tx, id, at, actor ?? `token:${orgId}`))
-      )
+      const { orgId, state } = await managed(request, id)
+      if (state !== 'trashed') throw new Refusal(409, 'not_in_bin')
+      const actor = (await actorOf(callerOf(request)))?.email ?? null
+      await deleteForGood(request, orgId, id, actor)
       return reply.code(204).send()
     })
   )

@@ -14,6 +14,7 @@ import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
 import type { TokenCaller } from '../tokens/authenticator.ts'
 import { spacePlatformRoutes } from './events.ts'
 import {
+  organizationMembers,
   spaceBanners,
   spaceGroups,
   spaceMembers,
@@ -65,6 +66,7 @@ beforeEach(async () => {
     spaceSettings,
     spaceBanners,
     spaces,
+    organizationMembers,
     lastChanges
   ]) {
     await db.delete(table)
@@ -139,7 +141,9 @@ function setUp(
         ? anIdentity({ userId: ALICE })
         : token === 'bob'
           ? anIdentity({ userId: BOB, email: 'bob@example.com' })
-          : null,
+          : token === 'carol'
+            ? anIdentity({ userId: CAROL, email: 'carol@example.com' })
+            : null,
     token => (token === 'tws_bot' ? tokenCaller : null)
   )
   registerSpaceWriteRoutes(app, { db: testDb.db, authorize, directory })
@@ -160,6 +164,17 @@ function setUp(
       ...(payload && { payload })
     })
 }
+
+const stateOf = (spaceId: string, state: 'archived' | 'trashed') =>
+  testDb.db.update(spaces).set({ state }).where(eq(spaces.spaceId, spaceId))
+
+const readState = async (spaceId = DESIGN) =>
+  (
+    await testDb.db
+      .select({ state: spaces.state })
+      .from(spaces)
+      .where(eq(spaces.spaceId, spaceId))
+  )[0]?.state
 
 const members = (spaceId = DESIGN) =>
   testDb.db
@@ -521,6 +536,7 @@ describe('space writes', () => {
     await testDb.db
       .insert(spaceSettings)
       .values({ spaceId: DESIGN, description: 'x', apps: ['drive'] })
+    await stateOf(DESIGN, 'trashed')
 
     const response = await setUp(directory)('DELETE', `/spaces/${DESIGN}`)
 
@@ -579,6 +595,7 @@ describe('space writes', () => {
       contentType: 'image/png',
       image: Buffer.from('png')
     })
+    await stateOf(DESIGN, 'trashed')
 
     await setUp(directory)('DELETE', `/spaces/${DESIGN}`)
 
@@ -609,3 +626,220 @@ describe('space writes', () => {
 function fail(): never {
   throw new Error('no handler')
 }
+
+describe('archives and the bin', () => {
+  const OTHER = '1679091c-5a88-4faf-afb5-e6087eb1b2dc'
+  const moveTo = (
+    write: ReturnType<typeof setUp>,
+    state: string,
+    token = 'alice'
+  ) => write('PUT', `/spaces/${DESIGN}/state`, { state }, token)
+
+  it('archives a space, moves it to the Bin and restores it, as its admin', async () => {
+    const write = setUp(ldapRest().directory)
+
+    expect((await moveTo(write, 'archived')).statusCode).toBe(204)
+    expect(await readState()).toBe('archived')
+    await moveTo(write, 'trashed')
+    expect(await readState()).toBe('trashed')
+    await moveTo(write, 'active')
+    expect(await readState()).toBe('active')
+  })
+
+  it('refuses a member who does not manage the space', async () => {
+    const response = await moveTo(
+      setUp(ldapRest().directory),
+      'archived',
+      'bob'
+    )
+
+    expect(response.statusCode).toBe(403)
+    expect(response.json()).toEqual({ error: 'not_space_manager' })
+  })
+
+  it('lets the person who created the space manage it', async () => {
+    await testDb.db
+      .update(spaces)
+      .set({ createdBy: 'bob@example.com' })
+      .where(eq(spaces.spaceId, DESIGN))
+
+    const response = await moveTo(
+      setUp(ldapRest().directory),
+      'archived',
+      'bob'
+    )
+
+    expect(response.statusCode).toBe(204)
+  })
+
+  it("lets the organization's admins restore a space they are not in", async () => {
+    await testDb.db.insert(organizationMembers).values({
+      organizationId: 'org-1',
+      userId: CAROL,
+      email: 'carol@example.com',
+      role: 'admin'
+    })
+    await stateOf(DESIGN, 'trashed')
+
+    const response = await moveTo(
+      setUp(ldapRest().directory),
+      'active',
+      'carol'
+    )
+
+    expect(response.statusCode).toBe(204)
+    expect(await readState()).toBe('active')
+  })
+
+  it.each([
+    // An admin token restores, then empties the Bin of the space.
+    ['admin', 204, undefined],
+    // An editor token manages nothing: the space stays in the Bin.
+    ['editor', 404, 'trashed']
+  ] as const)(
+    'lets an organization token acting as %s manage spaces, or not',
+    async (role, restoreStatus, left) => {
+      const write = setUp(
+        ldapRest().directory,
+        aTokenCaller({ userId: null, role, scopes: ['space:write'] })
+      )
+      await stateOf(DESIGN, 'trashed')
+
+      const restore = await write(
+        'PUT',
+        `/spaces/${DESIGN}/state`,
+        { state: 'active' },
+        'tws_bot'
+      )
+      await stateOf(DESIGN, 'trashed')
+      const empty = await write('DELETE', '/spaces/bin', undefined, 'tws_bot')
+
+      expect(restore.statusCode).toBe(restoreStatus)
+      expect(empty.statusCode).toBe(204)
+      expect(await readState()).toBe(left)
+    }
+  )
+
+  it('needs the space:write scope', async () => {
+    const write = setUp(
+      ldapRest().directory,
+      aTokenCaller({ userId: null, role: 'admin', scopes: ['space:read'] })
+    )
+
+    const responses = await Promise.all([
+      write('PUT', `/spaces/${DESIGN}/state`, { state: 'archived' }, 'tws_bot'),
+      write('DELETE', '/spaces/bin', undefined, 'tws_bot')
+    ])
+
+    expect(responses.map(r => r.statusCode)).toEqual([403, 403])
+  })
+
+  it('answers 404 to someone with nothing to do with the space', async () => {
+    await stateOf(DESIGN, 'trashed')
+
+    const response = await moveTo(
+      setUp(ldapRest().directory),
+      'active',
+      'carol'
+    )
+
+    expect(response.statusCode).toBe(404)
+  })
+
+  it('deletes for good only from the Bin', async () => {
+    const { calls, directory } = ldapRest()
+
+    const response = await setUp(directory)('DELETE', `/spaces/${DESIGN}`)
+
+    expect(response.statusCode).toBe(409)
+    expect(response.json()).toEqual({ error: 'not_in_bin' })
+    expect(calls).toEqual([])
+  })
+
+  it('empties the Bin of the spaces the caller manages', async () => {
+    const { calls, directory } = ldapRest()
+    await testDb.db.insert(spaces).values([
+      { spaceId: CREATED, organizationId: 'org-1', name: 'Launch' },
+      { spaceId: OTHER, organizationId: 'org-1', name: 'Elsewhere' }
+    ])
+    await testDb.db.insert(spaceMembers).values({
+      spaceId: CREATED,
+      userId: ALICE,
+      username: 'alice',
+      email: 'alice@example.com',
+      role: 'admin'
+    })
+    for (const id of [DESIGN, CREATED, OTHER]) await stateOf(id, 'trashed')
+
+    const response = await setUp(directory)('DELETE', '/spaces/bin')
+
+    expect(response.statusCode).toBe(204)
+    expect(calls.map(([name, , id]) => [name, id])).toEqual([
+      ['delete', DESIGN],
+      ['delete', CREATED]
+    ])
+    expect(await readState(OTHER)).toBe('trashed')
+    expect(await readState(DESIGN)).toBeUndefined()
+  })
+
+  it('counts a space ldap-rest no longer knows as deleted', async () => {
+    const { directory } = ldapRest(
+      new NotFoundError('space not found', 'SPACE_NOT_FOUND')
+    )
+    await stateOf(DESIGN, 'trashed')
+
+    const one = await setUp(directory)('DELETE', `/spaces/${DESIGN}`)
+
+    expect(one.statusCode).toBe(204)
+    expect(await readState()).toBeUndefined()
+  })
+
+  it('stops emptying the Bin at the first failure, the rest kept', async () => {
+    const { calls, directory } = ldapRest(new Error('ldap-rest is down'))
+    await testDb.db
+      .insert(spaces)
+      .values({ spaceId: CREATED, organizationId: 'org-1', name: 'Launch' })
+    await testDb.db.insert(spaceMembers).values({
+      spaceId: CREATED,
+      userId: ALICE,
+      username: 'alice',
+      email: 'alice@example.com',
+      role: 'admin'
+    })
+    for (const id of [DESIGN, CREATED]) await stateOf(id, 'trashed')
+
+    const response = await setUp(directory)('DELETE', '/spaces/bin')
+
+    expect(response.statusCode).toBe(500)
+    expect(calls).toHaveLength(1)
+    expect(await readState(DESIGN)).toBe('trashed')
+    expect(await readState(CREATED)).toBe('trashed')
+  })
+
+  it("gives no say over another organization's space created by the same address", async () => {
+    await testDb.db
+      .update(spaces)
+      .set({ createdBy: 'carol@example.com' })
+      .where(eq(spaces.spaceId, DESIGN))
+    // Carol's address in another organization, under her own account
+    await testDb.db.insert(organizationMembers).values({
+      organizationId: 'org-2',
+      userId: CAROL,
+      email: 'carol@example.com',
+      role: 'member'
+    })
+    const write = setUp(
+      ldapRest().directory,
+      aTokenCaller({ userId: CAROL, scopes: ['space:write'] })
+    )
+
+    const response = await write(
+      'PUT',
+      `/spaces/${DESIGN}/state`,
+      { state: 'archived' },
+      'tws_bot'
+    )
+
+    expect(response.statusCode).toBe(404)
+  })
+})
