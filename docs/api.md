@@ -1,6 +1,6 @@
 # HTTP API
 
-Every route the backend serves. The space write routes of [#87](https://github.com/linagora/twake-space/pull/87) aren't merged yet, and have their own section at the end.
+Every route the backend serves. The routes that change a space through ldap-rest have their own section, [Space writes](#space-writes).
 
 ## Servers
 
@@ -16,7 +16,7 @@ Request logging skips every path under `/health/`.
 Every route behind `authorize` reads `Authorization: Bearer <token>`. The token's prefix picks how it is checked.
 
 - A token starting with `tws_` is an API token. Its SHA-256 hash is looked up among tokens that are not revoked and not expired, and its `lastUsedAt` is stamped (at most once a minute). An account token also needs its account to still be in the organization in ldap-rest, as a member or as a technical account (checked at most every 5 minutes per account and replica).
-- Any other token is an OIDC access token. The backend introspects it and fetches userinfo in parallel. It refuses a token that is inactive, expired, missing the configured audience, or whose userinfo lacks `sub`, `uuid`, `email` or `sid`. A valid identity is cached for 60 seconds (never past the token's expiry), and its session id is checked against revoked sessions on every request. A refused token is remembered for 60 seconds too (up to 10,000 of them per replica), so sending it again costs no provider call. A provider error is not a refusal and is never remembered.
+- Any other token is an OIDC access token. The backend introspects it and fetches userinfo in parallel. It refuses a token that is inactive, expired or without an expiry, missing the configured audience, whose userinfo lacks `sub`, `uuid`, `email` or `sid`, whose `uuid` is not a UUID or `email` not an address, or whose `sub` differs between introspection and userinfo. A valid identity is cached for 60 seconds (never past the token's expiry), and its session id is checked against revoked sessions on every request. A refused token is remembered for 60 seconds too (up to 10,000 of them per replica), so sending it again costs no provider call. A provider error is not a refusal and is never remembered.
 
 This gives two kinds of caller.
 
@@ -56,8 +56,9 @@ The refusals look like this.
 ## Errors
 
 - Error bodies are JSON with an `error` code, sometimes with a human `message`: `{"error":"invalid_request","message":"..."}`.
-- `400 invalid_request` means the query or body failed its schema. The token routes and `PUT /notifications/settings` add a `message`.
+- `400 invalid_request` means the query or body failed its schema. The token routes, `PUT /notifications/settings` and `POST /notifications/suggestions` add a `message`, and so does every token route `403 forbidden`.
 - `404 not_found` covers both a resource that does not exist and one the caller cannot reach. A malformed id in the path also answers 404 on the read routes.
+- Errors Fastify raises itself keep Fastify's shape, `{"statusCode":400,"code":"...","error":"Bad Request","message":"..."}`: a body that is not valid JSON (400), an unsupported content type (415), a body over the limit (413, 1 MiB except on the banner route) and an unknown route (404).
 - Any other thrown error, including an ldap-rest failure on the directory routes, answers `500 {"error":"internal"}`. The error itself goes to the log only.
 - The Matrix transaction route uses Matrix error bodies instead: `{"errcode":"M_FORBIDDEN","error":"..."}`. It checks the `hs_token` before reading the body.
 
@@ -67,10 +68,11 @@ The refusals look like this.
 
 - Caller: session, or token with `space:read`.
 - Returns the spaces the caller reaches, sorted by name, with the role it acts with in each, the avatar color picked at creation (null when none was), the description (empty when none was) and the people who are members of it, sorted by username.
+- A member's `workplaceFqdn` is their Twake Workplace address from ldap-rest, where their avatar lives, or null when they have none or ldap-rest fails. It is cached for 10 minutes.
 - A session caller or an account token reaches the spaces its account is a member of. An organization token reaches every space of the organization and acts with its own role. A token that covers a list of spaces reaches only those.
 - `pinnedAt` is when the caller's account pinned the space and `openedAt` when it last opened it, both null when it did not. They are null for an organization token.
 - `manages` tells whether the caller manages the space: it is its admin, an owner or admin of the organization, or the person who created it. An organization token manages the spaces it covers when its role is `admin`.
-- Only active spaces are listed, and `GET /spaces/:id` answers 404 for the others. `?state=archived` or `?state=trashed` lists instead the archived spaces, or those in the Bin, that the caller manages, member or not. There, `role` is null when the caller is not a member. Any other `state` answers `400 {"error":"invalid_request"}`.
+- Only active spaces are listed, and `GET /spaces/:id` answers 404 for the others. `?state=archived` or `?state=trashed` lists instead the archived spaces, or those in the Bin, that the caller manages, member or not. There, `role` is null when the caller's account is not a member (an organization token keeps its own role), `manages` is always true, and `pinnedAt` and `openedAt` are always null. Any other `state` answers `400 {"error":"invalid_request"}`.
 
 ```json
 {
@@ -85,7 +87,12 @@ The refusals look like this.
       "openedAt": null,
       "manages": true,
       "members": [
-        { "id": "<uuid>", "username": "jdoe", "displayName": "Jane Doe" }
+        {
+          "id": "<uuid>",
+          "username": "jdoe",
+          "displayName": "Jane Doe",
+          "workplaceFqdn": "jdoe.twake.example.com"
+        }
       ]
     }
   ]
@@ -106,10 +113,11 @@ The refusals look like this.
 - Caller: session, or token with `space:read`.
 - Path: `id` is a UUID.
 - `404 {"error":"not_found"}` when `id` is not a UUID or the caller does not reach the space.
-- `description`, `color` and `apps` are what was picked at creation. `apps` lists the tabs the space shows when this deployment provides their app. A space created outside twake-space has an empty description, no color and every tab.
+- `description` and `color` are what was picked at creation. `apps` is the tabs picked at creation or since, as stored: the client hides the tabs whose app this deployment or the organization does not provide. A space created outside twake-space has an empty description, no color and every tab.
 - `chat` and `mail` are the organization's chat and mail availability, false when the organization is unknown. `homeserverUrl` is the organization's Matrix homeserver, or null.
 - `createdAt` is when the backend learned of the space.
-- `pinnedAt`, `openedAt` and `manages` are as in `GET /spaces`.
+- `banner` is when the banner image last changed, or null without one. It changes with the image, so a client knows to read [the banner](#get-spacesidbanner) again.
+- `pinnedAt`, `openedAt`, `manages` and each member's `displayName` and `workplaceFqdn` are as in `GET /spaces`.
 - `resources` lists the kind (`drive`, `mailbox`, `calendar`, `matrix_space`, `project`) of each app this deployment provides, set by `SPACE_APPS` in [Deploying](deploy.md#configuration). A kind whose `id` is null is still being prepared by its app.
 
 ```json
@@ -121,15 +129,21 @@ The refusals look like this.
   "color": "#46a2ff",
   "description": "Brand and product design",
   "apps": ["chat", "tasks", "drive"],
+  "pinnedAt": null,
+  "openedAt": "2026-10-08T09:00:00.000Z",
+  "manages": false,
   "chat": true,
   "mail": false,
   "homeserverUrl": "https://matrix.example.com",
+  "banner": "2026-10-08T09:30:00.000Z",
   "members": [
     {
       "id": "<uuid>",
       "username": "jdoe",
       "email": "jdoe@example.com",
-      "role": "admin"
+      "displayName": "Jane Doe",
+      "role": "admin",
+      "workplaceFqdn": "jdoe.twake.example.com"
     }
   ],
   "groups": [{ "id": "<uuid>", "name": "Sales", "role": "viewer" }],
@@ -140,10 +154,16 @@ The refusals look like this.
 }
 ```
 
+### GET /spaces/:id/banner
+
+- Caller: session, or token with `space:read`.
+- Answers the banner image as stored, with its `Content-Type`, `Cache-Control: private, no-cache` and `X-Content-Type-Options: nosniff`.
+- `404 {"error":"not_found"}` when `id` is not a UUID, the caller does not reach the space, or the space has no banner.
+
 ### PUT /spaces/:id/pin, DELETE /spaces/:id/pin
 
 - Caller: session.
-- Pins the space for the caller, or unpins it. Answers `204`, or `404 {"error":"not_found"}` when the caller is not a member.
+- Pins the space for the caller, or unpins it. Answers `204`, or `404 {"error":"not_found"}` when the caller is not a member or the space is archived or in the Bin.
 
 ### PUT /spaces/:id/opened
 
@@ -181,6 +201,24 @@ A group's `name` is its display name, or its `cn` when it has none.
 
 ```json
 { "groups": [{ "id": "<id>", "name": "Sales" }], "hasNextPage": true }
+```
+
+## Settings
+
+### GET /settings
+
+- Caller: session only.
+- Returns the caller's Twake Workplace settings, as the last `user.settings.updated` event for their email brought them ([Events](events.md#user-settings)). Each value is null when not set.
+- `theme` is `light`, `dark` or `auto`. `avatar` is an `http` or `https` URL.
+
+```json
+{
+  "language": "fr",
+  "timezone": "Europe/Paris",
+  "theme": "auto",
+  "avatar": null,
+  "displayName": "Jane Doe"
+}
 ```
 
 ## Notifications
@@ -258,7 +296,7 @@ Returns whether each notification type is on. A type the user never chose is on,
 For the user's assistant (Twake Harness), through an API token of a technical account with the `notifications:write` scope. A session, a person's token or an organization token gets `403 insufficient_scope`.
 
 - Body: `matrixUserId` (`@localpart:server`), `externalId` (1 to 128 characters, one suggestion per user and `externalId`), `text` (1 to 500), `pendingCallId` (1 to 64), `matrixRoomId` (optional).
-- The user is the member of the token's organization whose username (or e-mail, per `MATRIX_LOCALPART`) is the localpart, on the organization's homeserver. `404 {"error":"unknown_user"}` when there is none, or when the user is in another organization.
+- The user is the space member of the token's organization whose username (or the part of their e-mail before `@`, per `MATRIX_LOCALPART`) is the localpart, case-insensitively, and the server name must be the organization's homeserver. `404 {"error":"unknown_user"}` when there is none, when two members share the localpart, or when the user is in another organization.
 - Creates an `assistant_suggestion` notification and sends a `notification` live event. Answers `201 {"id":"<uuid>"}`.
 - The same `externalId` again answers `200` with the existing `id`. When the user turned `assistant_suggestion` off, nothing is created and it answers `200 {"id":null}`.
 - `400 {"error":"invalid_request","message":"..."}` when the body fails.
@@ -267,14 +305,14 @@ For the user's assistant (Twake Harness), through an API token of a technical ac
 
 A space's feed holds cards and posts. A card shows the activity on one object (a file, a calendar event, a task): the apps' later events about the object change the card instead of adding one. Members post and react.
 
-The two GET routes also take an API token holding `feed:read`, on a space the token reaches. The other feed routes are for session callers only, and the caller must be a member of the space. Otherwise, or when the space or item does not exist: `404 {"error":"not_found"}`. A failed query, path or body: `400 {"error":"invalid_request"}`.
+`GET /spaces/:spaceId/feed` and `GET /spaces/:spaceId/feed/items/:itemId` also take an API token holding `feed:read`, on a space the token reaches. The other feed routes are for session callers only, and the caller must be a member of the space. Otherwise, when the space or item does not exist, or when an id in the path is not a UUID: `404 {"error":"not_found"}`. A failed query or body, or a malformed reaction key: `400 {"error":"invalid_request"}`.
 
 A feed item:
 
 - `id`, `kind` (`card` or `post`), `category` (`messages`, `files`, `activities` or `events`; a post is a message), `time`, `updatedAt`, and `reactions`, a list of `{key, userIds}` in the order they were first added.
-- A card adds `type` (the activity event type), `actor`, `object` (`{type, id, title, container}`, where `container` is `{kind, id}` or `null`), `preview` (a string or `null`) and `state` (an object the app sends, such as a calendar event's time). `time` is the object's first event, so the card keeps its place; everything else comes from its latest event.
+- A card adds `type` (the activity event type), `actor` (`null` when the event names no one), `object` (`{type, id, title, container}`, where `container` is `{kind, id}` or `null`), `preview` (a string or `null`) and `state` (an object the app sends, such as a calendar event's time). `time` is the object's first event, so the card keeps its place; everything else comes from its latest event.
 - A post adds `author`, `body` (plain text) and `editedAt` (`null` until edited).
-- An actor or author is `{type: "user", id, name}` (`id` is `null` for someone outside the space, `name` is the member's display name or username), `{type: "token", id, name}`, or `{type: "deleted_user"}`.
+- An actor or author is `{type: "user", id, name}`, `{type: "token", id, name}`, or `{type: "deleted_user"}`. For a user, `id` is `null` when the app named them by email only and no member has it, and `name` is the member's display name or username, or `null` when they are not a member of the space.
 
 ```json
 {
@@ -299,8 +337,9 @@ A feed item:
 
 ### GET /spaces/:spaceId/feed
 
-- Query: `category` (optional), `limit` (1 to 50, default 20), `before` (the `next` of the previous page).
-- Answers `{"items": [...], "next": "<cursor>"}`, newest first by `time`. `next` is `null` on the last page.
+- Query: `category` (optional), `q` (optional, 1 to 200 characters once trimmed), `limit` (1 to 50, default 20), `before` (the `next` of the previous page).
+- `q` keeps the posts whose body, and the cards whose title or preview, contain it, ignoring case.
+- Answers `{"items": [...], "next": "<cursor>"}`, newest first by `time`. `next` is `null` on the last page. A `before` that is not a cursor answers 400.
 
 ### GET /spaces/:spaceId/feed/items/:itemId
 
@@ -313,7 +352,7 @@ Answers `{"readAt": "<time>"}`, the `time` of the newest item the caller has see
 ### PUT /spaces/:spaceId/feed/read
 
 - Body: `{"readAt": "<time>"}`, an ISO 8601 time.
-- Keeps the later of the stored time and this one, so a tab left on older items never moves it back. Answers `204`.
+- Keeps the later of the stored time and this one, so a tab left on older items never moves it back. A time in the future counts as now. Answers `204`.
 
 ### POST /spaces/:spaceId/feed/posts
 
@@ -364,10 +403,11 @@ The events carry no state; they tell the client what to reload.
 
 - `notification` with data `{}`, sent to each user who just got a new notification.
 - `spaces` with data `{"spaceId":"<uuid>"}`, sent when a space changes for the user. Who gets it depends on the change:
-  - every member, when the space is renamed, its groups change (a linked group renamed included), or a resource is provisioned;
+  - every member, when the space is renamed, its apps or banner change, its groups change (a linked group renamed included), or a resource is provisioned;
   - the added or updated members, when members are added or change role;
   - the removed members, when members are removed;
-  - the former members, when the space is deleted.
+  - every member and the organization's owners and admins, when the space is archived, moved to the Bin or restored;
+  - the former members, when the space is deleted, and the organization's owners and admins too when it is deleted from the Bin.
 - `feed` with data `{"spaceId":"<uuid>","itemId":"<uuid>","change":"added"}`, sent to every member when a feed item is `added`, `changed` (a later event, an edit, a reaction) or `removed`. The client reads an added or changed item with `GET /spaces/:spaceId/feed/items/:itemId`.
 
 ```
@@ -541,11 +581,11 @@ twake_space_parked_events 0
 
 ## Space writes
 
-[#87](https://github.com/linagora/twake-space/pull/87) adds these routes. It waits on a release of ldap-rest-client. Each one writes to ldap-rest first, then copies the change into the backend's own tables. When that copy fails, the route still answers success, and the event ldap-rest sends for the write brings the change.
+A route that changes what ldap-rest holds (the space, its name, members and groups) writes to ldap-rest first, then copies the change into the backend's own tables. When that copy fails, the route still answers success, and the event ldap-rest sends for the write brings the change. The apps, the banner and the state stay in twake-space and never reach ldap-rest.
 
 Shared rules:
 
-- `POST /spaces`, `PATCH /spaces/:id`, `PUT /spaces/:id/state` and the `DELETE` of a space or of the Bin need a session, or a token with `space:write`. The member and group routes need a session, or a token with `members:write`.
+- `POST /spaces`, `PATCH /spaces/:id`, `PUT /spaces/:id/banner`, `PUT /spaces/:id/state` and the `DELETE` of a space or of the Bin need a session, or a token with `space:write`. The member and group routes need a session, or a token with `members:write`.
 - Path ids are UUIDs. A malformed path or body answers `400 {"error":"invalid_request"}`, before any access check.
 - On an existing space, the caller must reach it (`404 {"error":"not_found"}`) and act as its `admin` (`403 {"error":"not_space_admin"}`), except for its state and its deletion, which need a manager. An organization token acts with its own role.
 - `role` is `viewer`, `editor` or `admin`. A space name is 1 to 255 characters, trimmed.
@@ -553,7 +593,7 @@ Shared rules:
 
 ### POST /spaces
 
-- Body: `{"name":"...","description":"...","color":"#46a2ff","apps":["chat","drive"]}`. Only `name` is required. `color` is a `#rrggbb` hex code. `apps` lists the app tabs the space shows, among `chat`, `tasks`, `drive`, `mail` and `calendar`; every one when left out. A `feed` in `apps` is accepted and left out, since every space has a feed.
+- Body: `{"name":"...","description":"...","color":"#46a2ff","apps":["chat","drive"]}`. Only `name` is required. `description` is up to 1000 characters, trimmed. `color` is a `#rrggbb` hex code, or null. `apps` lists the app tabs the space shows, among `chat`, `tasks`, `drive`, `mail` and `calendar`; every one when left out. A `feed` in `apps` is accepted and left out, since every space has a feed.
 - The caller becomes the space's admin. It needs an account found in ldap-rest; otherwise, and for an organization token, it gets `403 {"error":"needs_an_account"}`.
 - Answers `201`.
 
@@ -565,8 +605,14 @@ Shared rules:
 
 - Body: `{"name":"...","apps":["chat","drive"]}`, with at least one of the two.
 - `name` renames the space.
-- `apps` replaces the app tabs the space shows, among the same values as on creation. It stays in twake-space, so ldap-rest is not called for it.
+- `apps` replaces the app tabs the space shows, among `chat`, `tasks`, `drive`, `mail` and `calendar` (`feed` answers 400 here). It sends `spaces` on the live stream to the members.
 - Answers `204`.
+
+### PUT /spaces/:id/banner
+
+- Body: the image itself, `image/png`, `image/jpeg`, `image/webp` or `image/gif`, up to 5 MiB. The caller is checked before the body is read.
+- `415 {"error":"not_an_image"}` for an empty body or another content type, and `413` (in Fastify's shape) over 5 MiB.
+- Replaces the banner and sends `spaces` on the live stream to the members. Answers `204`.
 
 ### PUT /spaces/:id/state
 
@@ -593,11 +639,12 @@ Shared rules:
 
 - Body: `{"role":"..."}`.
 - `404 not_found` when `userId` is not a member of the space.
+- A person in the space only through a linked group is added as a direct member, and keeps the stronger of this role and their group's.
 - Answers `204`.
 
 ### DELETE /spaces/:id/members/:userId
 
-Removes the member. `404 not_found` when `userId` is not a member. Answers `204`.
+Removes the member. `404 not_found` when `userId` is not a member. A member ldap-rest no longer holds is removed from the copy all the same. Answers `204`.
 
 ### POST /spaces/:id/groups
 
@@ -614,9 +661,9 @@ Unlinks the group. Answers `204`.
 
 ## Open questions
 
-- @rezk2ll Which `code` values does ldap-rest send on a refused space write? The PR passes them through as the `error` code, so clients will match on them and they should be listed here.
+- @rezk2ll Which `code` values does ldap-rest send on a refused space write? The routes pass them through as the `error` code, so clients will match on them and they should be listed here.
 - @rezk2ll On `GET /notifications`, a `message_mention` has no activity event. Is `activity` then `null` or an object of nulls? The query left joins the activity event.
-- @rezk2ll The read routes answer 404 on a malformed path id, the PR #87 write routes answer 400. Is that difference intended?
+- @rezk2ll The read routes answer 404 on a malformed path id, the space write routes answer 400. Is that difference intended?
 - @rezk2ll `GET /organization/groups` returns group `id`s from ldap-rest, and `POST /spaces/:id/groups` requires `groupIds` to be UUIDs. Are ldap-rest group ids always UUIDs?
 - @rezk2ll On `/organization/tokens`, PATCH and DELETE answer 404 to a non admin while GET and POST answer 403. Is that intended?
 - @rezk2ll An ldap-rest failure on the directory routes answers `500 internal`. Should it map to `503 unavailable` like the auth check?
