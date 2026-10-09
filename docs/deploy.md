@@ -48,11 +48,12 @@ flowchart LR
 
 ## Images and CI
 
-Both images go to `ghcr.io/<repository owner>/twake-space-frontend` and `ghcr.io/<repository owner>/twake-space-backend`. The workflows run per app, triggered by changes under `apps/<app>/` and the shared root files.
+Both images go to `ghcr.io/<repository owner>/twake-space-frontend` and `ghcr.io/<repository owner>/twake-space-backend`. The workflows run per app, triggered by changes under `apps/<app>/`, the root `package.json`, lock file, `tsconfig.base.json` and `.dockerignore`, and the workflows themselves. Pull requests also watch `eslint.config.js`, `.prettierrc` and `.nvmrc`.
 
-- Pull request: runs the app's check (`npm audit`, then `npm run check`, which lints, checks formatting, typechecks, tests and builds) and builds the image without pushing. The backend tests run against a `postgres:18` container.
+- Pull request (and the merge queue): runs the app's check (`npm audit`, then `npm run check`, which lints, checks formatting, typechecks, tests and builds) and builds the image without pushing. The backend tests run against a `postgres:18` container.
 - Push to `main`: runs the check, then builds and pushes the image tagged `latest`.
-- Tag `frontend-vX.Y.Z` or `backend-vX.Y.Z`: verifies the tag (the commit is on `main`, the version is greater than the previous release, and it matches the app's `package.json`), runs the check, pushes the image tagged with the version and `latest`, then creates a GitHub release with generated notes.
+- Tag `frontend-vX.Y.Z` or `backend-vX.Y.Z` (a suffix such as `-rc.1` is accepted): verifies the tag (the commit is on `main`, the version is greater than the previous release, and it matches the app's `package.json`), runs the check, pushes the image tagged with the version and `latest`, then creates a GitHub release with generated notes.
+- A frontend tag also publishes the app's manifest on the registry's dev channel, next to the image push. See [Publish it on the registry](../README.md#publish-it-on-the-registry).
 
 The image build in CI runs `apps/<app>/docker/smoke-test.sh`. Both apps start their image as in production (read-only root filesystem, all capabilities dropped):
 
@@ -65,7 +66,7 @@ The frontend image builds the app with Node 24 and serves it from `nginxinc/ngin
 
 - Runs as uid 101 and listens on port 8080.
 - Supports a read-only root filesystem. It needs a writable `/tmp`, where the entrypoint script writes `/tmp/nginx` and nginx keeps its temporary files and pid.
-- Docker `HEALTHCHECK` fetches `http://127.0.0.1:8080/healthz`.
+- Docker `HEALTHCHECK` fetches `http://127.0.0.1:8080/healthz` every 30 seconds.
 
 ### Served paths
 
@@ -91,11 +92,15 @@ The entrypoint script `40-twake-space-runtime.sh` reads the environment at conta
 - `SENTRY_FEEDBACK_ENABLED`: `true` shows the shared feedback button of `@linagora/twake-feedback`, which opens Sentry's form, with an optional email and a screenshot of the tab. The button is draggable and snaps to the left or right edge; its position is remembered per browser, and `Shift+F10` on it opens a menu to move it without dragging. Anything else, or no `SENTRY_DSN`, keeps it off. It needs a Sentry of 24.4.2 or later. The screenshot uses the browser's tab sharing prompt: it is not offered on mobile.
 - `POSTHOG_KEY`, `POSTHOG_HOST`: written to `/.env.js`. See the open questions.
 
-`API_UPSTREAM` is optional and not written to `/.env.js`. It is the backend's bare origin, for example `http://twake-space-backend.ns.svc.cluster.local`. nginx then forwards `/api/<path>` to `<API_UPSTREAM>/<path>`, so the browser reaches the API on the page's own origin. Use the full service name: nginx does not apply the search domains. Without it, `/api/` answers 404.
+`API_UPSTREAM` is optional and not written to `/.env.js`. It is the backend's bare origin, for example `http://twake-space-backend.ns.svc.cluster.local`. nginx then forwards `/api/<path>` to `<API_UPSTREAM>/<path>`, so the browser reaches the API on the page's own origin. Without it, `/api/` answers 404.
+
+- Use the full service name: nginx does not apply the search domains. It resolves the name with the first `nameserver` of `/etc/resolv.conf` and keeps the answer 30 seconds.
+- A value that is not `http://` or `https://` plus a bare origin stops the container at start.
+- The proxy takes request bodies up to 6 MB, above the backend's 5 MiB banner limit, and sends `X-Forwarded-For` and `X-Forwarded-Proto`.
 
 ### Security headers
 
-The script also writes the security headers, sent on every path except `/healthz`.
+The script also writes the security headers, sent on every path except `/healthz` and `/api/`.
 
 - `Content-Security-Policy` has a fixed part: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'`. `style-src` allows inline styles because MUI injects its styles at runtime.
 - `connect-src` is `'self'` plus the origin of each of `API_URL`, `SSO_BASE_URL`, `HARNESS_URL`, `POSTHOG_HOST` and `SENTRY_DSN` that is an absolute `http` or `https` URL. The origin drops the user info, so the Sentry public key stays out of the header. `CSP_CONNECT_SRC` appends more sources. The platform top bar exchanges the SSO token on each person's own Twake Workplace (`https://<workplaceFqdn>/auth/token_exchange`), so `CSP_CONNECT_SRC` must allow them all, such as `https://*.twake.example.com`.
@@ -105,7 +110,7 @@ The script also writes the security headers, sent on every path except `/healthz
 - `Permissions-Policy` is `PERMISSIONS_POLICY`, by default `accelerometer=(), geolocation=(), gyroscope=(), magnetometer=(), payment=(), usb=()`.
 - `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin` are fixed.
 
-The CSP variables must not contain double quotes, backslashes, dollar signs, semicolons or commas, so they cannot add directives. `PERMISSIONS_POLICY` follows the same rule, commas allowed.
+The CSP variables must not contain double quotes, backslashes, dollar signs, semicolons or commas, so they cannot add directives. The check runs on each whole directive, so an app URL above with such a character stops the container too. `PERMISSIONS_POLICY` follows the same rule, commas allowed.
 
 ### Logs
 
@@ -159,9 +164,9 @@ The defaults match the platform. [Events](events.md#consuming-rabbitmq) lists th
 - `AMQP_ACTIVITY_EXCHANGE`: the exchange the apps publish their activity on, default `activity`.
 - `AMQP_TWAKE_SPACE_EXCHANGE`: the topic exchange Twake Space publishes its own messages on, default `twake-space`. The backend declares it as a durable topic exchange on its first publish.
 - `AMQP_LIVE_EXCHANGE`: the topic exchange replicas share live updates and session revocations on, default `twake-space.live`. The backend declares it, and each replica binds its own exclusive queue to it, named `<exchange>.replica.<uuid>`. The RabbitMQ user needs configure, write and read on both names.
-- `AMQP_EVENTS`: JSON that moves single events to another exchange or routing key, such as `{"dns.validated": {"exchange": "dns", "routingKey": "domain.dns.validated"}}`. An event the backend has no handler for, a routing key with `*` or `#`, two events on the same exchange and key, or an event on the activity exchange is a configuration error.
+- `AMQP_EVENTS`: JSON that moves single events to another exchange or routing key, such as `{"dns.validated": {"exchange": "dns", "routingKey": "domain.dns.validated"}}`. An event the backend has no handler for, a key other than `exchange` and `routingKey`, a routing key with `*` or `#`, two events on the same exchange and key, or an event on the activity exchange is a configuration error. An exchange an event moves to must exist, like the platform exchanges: the backend only checks it.
 
-RabbitMQ refuses to redeclare a queue with other arguments, and the queue name, the dead letter exchange, the first `space` event's binding and the delivery limit are arguments. Changing one of them means deleting the queue first, after it has drained. Bindings an older version or setting left on the queue stay until it is deleted.
+RabbitMQ refuses to redeclare a queue with other arguments, and the queue name, the dead letter exchange, the first `space` event's binding and the delivery limit are arguments, as are the client's fixed `x-overflow` and `x-dead-letter-strategy`. Changing one of them means deleting the queue first, after it has drained. Bindings an older version or setting left on the queue stay until it is deleted.
 
 ### Startup
 
@@ -176,7 +181,7 @@ The backend starts in this order. A failure at any step stops the process.
 7. Checks the exchanges other services own, declares its queue, bindings and dead letter queue, and starts consuming.
 8. Starts the background jobs and reports ready.
 
-On `SIGTERM` or `SIGINT` it reports not ready, stops the jobs and closes the RabbitMQ connection, after waiting up to 5 seconds for the message in its handler. A message still unacknowledged then is delivered again. After 5 seconds, so the load balancer has moved traffic away, it closes both servers and the Postgres pool, then flushes Sentry. It exits with code 1 when this fails or takes over 25 seconds, which fits the default 30 second grace period. A signal during startup exits at once.
+On `SIGTERM` or `SIGINT` it reports not ready, stops the jobs (waiting for a parked event retry still running) and closes the RabbitMQ connection, after waiting up to 5 seconds for the message in its handler. A message still unacknowledged then is delivered again. After 5 seconds, so the load balancer has moved traffic away, it closes both servers and the Postgres pool, then flushes Sentry. It exits with code 1 when this fails or takes over 25 seconds, which fits the default 30 second grace period. A signal during startup exits at once.
 
 ### Database migrations
 
@@ -186,10 +191,10 @@ Migrations run at every startup, from the `apps/backend/drizzle` folder shipped 
 
 On the API port:
 
-- `GET /health/live` answers `503 {"status":"unavailable"}` when the RabbitMQ connection is down or one message has been in its handler for over 5 minutes, `200 {"status":"ok"}` otherwise. Restarting the pod is the fix for both.
+- `GET /health/live` answers `503 {"status":"unavailable"}` when the RabbitMQ connection has been down for over 60 seconds, when the client failed to restore its subscription after a reconnect, or when one message has been in its handler for over 5 minutes, `200 {"status":"ok"}` otherwise. Restarting the pod is the fix for all three. A short broker restart does not restart pods.
 - `GET /health/ready` answers `200` when startup has finished and `select 1` succeeds on Postgres, `503 {"status":"unavailable"}` otherwise. It turns `503` as soon as shutdown starts.
 
-Health requests are not logged. The metrics port answers `/health/live` and `/health/ready` too, but its readiness is always `200`: probe the API port.
+Health requests are not logged. The metrics port answers `/health/live` and `/health/ready` too, but both always answer `200`: probe the API port.
 
 ### Metrics
 
@@ -208,13 +213,15 @@ Health requests are not logged. The metrics port answers `/health/live` and `/he
 ### PostgreSQL
 
 - Holds all state and the migrations.
-- Uses advisory locks so only one replica runs the hourly purge and the single installation homeserver setup at a time.
+- Uses advisory locks so only one replica at a time runs the migrations, the single installation homeserver setup, the hourly purge and the parked event retries (every 5 seconds).
 - The hourly purge deletes feed events, cards, posts, messages and reactions after 365 days, notifications after 90 days, and Matrix app service transactions after 7 days.
 
 ### RabbitMQ
 
 - The `space`, `b2b` and `admin-panel` exchanges must exist before the backend starts, or it stops. Their owners declare them; compose declares them locally. These and the names below are the defaults: see [RabbitMQ names](#rabbitmq-names).
-- The backend declares the `activity` exchange, its `twake-space` quorum queue with the bindings, the `twake-space.dlx` exchange and the `twake-space.dlq` queue. Its user needs configure, write and read permissions on those.
+- The backend declares the `activity` and `settings` exchanges, its `twake-space` quorum queue with the bindings, the `twake-space.dlx` exchange, the `twake-space.dlq` queue, and the `twake-space` and `twake-space.live` exchanges it publishes on, with one `twake-space.live.replica.<uuid>` queue per replica. Its user needs configure, write and read permissions on those.
+- Meeting requests are published on `twake-space` with publisher confirms and `mandatory`, with a 10 second timeout: they fail while no calendar consumer has a queue bound.
+- Live updates are published once, and dropped while the replica is disconnected.
 - The queue has a single active consumer, so only one replica consumes at a time. The others take over when it goes away.
 - An event the backend cannot process ends in `twake-space.dlq`. See [Events](events.md#consuming-rabbitmq).
 - A message that fails for over 25 minutes is logged as an error. RabbitMQ's `consumer_timeout` (30 minutes by default) then closes the channel and delivers it again. After 21 deliveries (about 10 hours of failures, less with restarts) RabbitMQ dead-letters it to `twake-space.dlq` and the queue moves on.
@@ -259,13 +266,12 @@ namespaces:
 
 ## Local stack
 
-`docker compose up` starts RabbitMQ (declaring the `space`, `b2b` and `admin-panel` exchanges) and Postgres. The RabbitMQ management UI is on `http://localhost:15672` (`guest` / `guest`). `docker compose --profile app up` also builds and runs both images. The frontend runs read-only with a tmpfs `/tmp`, as in production. Compose has no ldap-rest or SSO: see [Backend development](backend-dev.md#run-it).
+`docker compose up` starts RabbitMQ (declaring the `space`, `b2b` and `admin-panel` exchanges) and Postgres. The RabbitMQ management UI is on `http://localhost:15672` (`guest` / `guest`). `docker compose --profile app up` also builds and runs both images. The frontend runs read-only with a tmpfs `/tmp`, as in production. Compose gives it no environment, so the app stops at startup asking for `API_URL` until you add its [runtime configuration](#runtime-configuration). Compose has no ldap-rest or SSO: see [Backend development](backend-dev.md#run-it).
 
 ## Open questions
 
 - @rezk2ll The entrypoint writes `POSTHOG_KEY` and `POSTHOG_HOST` to `/.env.js` and adds `POSTHOG_HOST` to `connect-src`, but the frontend source does not read either. Is PostHog planned, or should the script drop them?
 - @rezk2ll `twake-space.dlq` has no length limit or TTL. Who watches it, and should it get a limit?
-- @rezk2ll Several replicas start together and each runs the migrations. Does the Drizzle migrator lock against concurrent runs, or should one replica (or a job) migrate first?
 - @rezk2ll CI builds the images without a `platforms` setting. Is an arm64 image needed?
 - @rezk2ll The app service registration only covers the `twakespace` user, and the backend joins no room. Which service makes that user a member of each space's Matrix room, or should the registration match the rooms instead?
-- @rezk2ll Both a push to `main` and a release tag move `latest`. Should deployments pin version tags only?
+- @rezk2ll Both a push to `main` and a release tag move `latest`, a pre-release tag included. Should deployments pin version tags only?

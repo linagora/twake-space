@@ -30,34 +30,37 @@ At startup the backend runs OIDC discovery against `OIDC_ISSUER`, so the issuer 
 flowchart LR
   rabbitmq[(RabbitMQ queue)] --> events["events/<br>parse, dedupe, route"]
   synapse[Synapse] -- "app service<br>transactions" --> feed
-  events --> spaces & organizations & feed
+  events --> spaces & organizations & feed & settings
   http["HTTP clients<br>frontend, API tokens"] --> auth["auth/ + tokens/<br>authorize"]
-  auth --> spaces & tokens & notifications & directory["organizations/<br>directory routes"] & live
+  auth --> spaces & tokens & notifications & directory["organizations/<br>directory routes"] & live & settings & meetings
   feed --> notifications
   auth --> feed
   spaces & notifications & feed -- "after commit,<br>over RabbitMQ" --> live["live/<br>SSE /stream"]
+  meetings -- "meeting request" --> exchange[(twake-space exchange)]
 ```
 
-- `src/main.ts` is the only place that wires things. It loads the config, runs the migrations, builds the event routes, registers every module's routes on one Fastify server, starts the metrics server, then the RabbitMQ consumer and the background jobs. It also handles SIGTERM and SIGINT.
-- `src/infra/` holds the adapters to the outside: `db.ts` (drizzle client, migrations), `http.ts` (Fastify server with health routes), `amqp.ts` (consumer, dead letter queue), `ldap-rest.ts` (the `Directory` interface), `matrix.ts` (Matrix client), `secrets.ts` (AES-256-GCM and hashing), `testing.ts` (test database).
-- `src/events/` turns RabbitMQ messages into handler calls. More below.
+- `src/main.ts` is the only place that wires things. It loads the config, runs the migrations, sets up the single installation homeserver, builds the event routes, registers every module's routes on one Fastify server, starts the metrics server, then the RabbitMQ consumer and the background jobs.
+- `src/infra/` holds the adapters to the outside: `db.ts` (drizzle client, migrations under an advisory lock, `afterCommit`), `http.ts` (Fastify server with health routes and the error handler), `amqp.ts` (consumer, dead letter queue, liveness), `lifecycle.ts` (SIGTERM and SIGINT, the shutdown deadline), `ldap-rest.ts` (the `Directory` interface for reads, `SpaceDirectory` for space writes), `matrix.ts` (Matrix client), `secrets.ts` (AES-256-GCM and hashing), `testing.ts` (test database).
+- `src/events/` turns RabbitMQ messages into handler calls, and `events/topology.ts` holds the exchanges, the queue and every platform event the queue binds. More below.
 - `src/modules/` holds one folder per feature. A module owns its `schema.ts` (its tables), its routes, and its event handlers.
 
 What each module owns:
 
 - `auth`: bearer authentication for sessions, the `authorize` pre-handler, back-channel logout and revoked sessions.
 - `tokens`: API tokens (account, organization and technical account tokens), the organization's token policy, the token audit log, and revoking tokens when accounts, spaces or organizations go away.
-- `spaces`: spaces, their members, linked groups, organization roles and app resources, all kept up to date from platform events. Serves `GET /spaces` and `GET /spaces/:id`.
+- `spaces`: spaces, their members, linked groups, organization roles and app resources, all kept up to date from platform events, plus what stays in twake-space: each space's settings (description, color, apps), banner and state (active, archived, in the Bin), and each person's pins and visits. Serves the read routes under `/spaces` (`routes.ts`) and the write routes, which go through ldap-rest first (`writes.ts`).
 - `organizations`: organizations (domain, chat and mail availability), homeservers, the chat control plane client, and the directory search routes `GET /organization/members` and `GET /organization/groups`.
 - `feed`: activity cards from app events, members' posts and reactions under `/spaces/:spaceId/feed`, chat messages and reactions from Matrix transactions, the retention purge, and `/metrics`.
-- `notifications`: per user notifications and settings, under `/notifications`.
+- `notifications`: per user notifications and settings, under `/notifications`, and the assistant's suggestions.
+- `settings`: each person's Twake Workplace settings from `user.settings.updated`, served at `GET /settings`.
+- `meetings`: `POST /spaces/:spaceId/meetings`, which publishes a meeting request for the calendar on the `twake-space` exchange.
 - `live`: the Server-Sent Events stream at `GET /stream`, fed by the RabbitMQ live exchange, where every replica has its own queue and hears each committed change.
 
 Modules import each other's schemas and helpers directly. There is no module registry.
 
 ## Events from RabbitMQ
 
-The consumer reads one queue, `twake-space`, bound to the `activity` exchange and to the platform exchanges (`space`, `b2b`, `admin-panel`). [Events](events.md#consuming-rabbitmq) lists the bindings.
+The consumer reads one queue, `twake-space`, bound to the `activity` exchange and to the platform exchanges (`space`, `b2b`, `admin-panel`, `settings`). [Events](events.md#consuming-rabbitmq) lists the bindings.
 
 ```mermaid
 flowchart LR
@@ -80,7 +83,7 @@ flowchart LR
 - The platform exchanges carry plain JSON. Those messages route by their routing key (for example `twake.space.created`) and dedupe on their message id.
 - A handler gets the event, a transaction and a logger. The dedupe row and the handler's writes commit together.
 - Throw `MalformedEventError` (or use `parseOrDrop`) for an event that can never be processed. Throw `RejectedEventError` for a well-formed event that contradicts the copy, so someone can look at it in the dead letter queue. Throw `NotYetKnownError` when the event needs a space or member that a late platform event may still bring. Any other error leaves the message unacknowledged, and it is retried after a growing delay.
-- A new platform routing key needs a binding in `infra/amqp.ts` too, or the queue never receives it.
+- A new platform event needs an entry in `PLATFORM_EVENTS` in `events/topology.ts`, with the exchange it comes on, or the queue never receives it. The binding follows from it.
 - Events can arrive out of order. `events/freshness.ts` (`fresh`) tells which objects an event may still change, using the `last_changes` table.
 
 ## Database and migrations
@@ -143,7 +146,7 @@ A new scope is a new value in the `token_scope` enum in `modules/tokens/schema.t
 1. Write a `Handler<CloudEvent>` or `Handler<PlatformEvent>` in the module. Parse the payload with `parseOrDrop`, and write through the `tx` it receives.
 2. Export it in a map from event type or routing key to handler, like `spacePlatformRoutes` or `resourceActivityRoutes`.
 3. Add the map to the `routes` lookup in `main.ts`.
-4. To push a change to open streams, call `tell` or `tellSpaceMembers` from `modules/live/notify.ts` inside the same transaction. It publishes after the commit. Tests receive it with `listenInMemory` from `modules/live/testing.ts`.
+4. To push a change to open streams, call `tell` or `tellSpaceMembers` from `modules/live/notify.ts` inside the same transaction. It publishes after the commit, through `afterCommit` from `infra/db.ts`. Tests receive it with `listenInMemory` from `modules/live/testing.ts`. Routes push the same way.
 
 ## Add a module
 
@@ -164,8 +167,4 @@ A new scope is a new value in the `token_scope` enum in `modules/tokens/schema.t
 npm run check -w @twake-space/backend
 ```
 
-It runs ESLint, Prettier, the type check, the tests and the build. CI runs the same command with a Postgres 18 container, so start `docker compose up -d` first.
-
-## Open questions
-
-- @rezk2ll The `feed:read` scope exists, but no route checks it yet. Which route is it for?
+It runs ESLint, Prettier, the type check, the tests and the build. CI runs `npm audit` and then the same command, with a Postgres 18 container, so start `docker compose up -d` first. `npm run format -w @twake-space/backend` fixes the formatting.

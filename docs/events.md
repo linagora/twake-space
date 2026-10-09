@@ -16,7 +16,7 @@ How events reach Twake Space, what the backend does with them, and how the resul
 ```mermaid
 flowchart LR
   subgraph RabbitMQ
-    P["space, b2b, admin-panel"]
+    P["space, b2b, admin-panel, settings"]
     A[activity]
     Q[twake-space queue]
   end
@@ -24,17 +24,20 @@ flowchart LR
   A --> Q
   Q --> R[Router]
   R -->|dedupe + handler, one transaction| PG[(Postgres)]
-  R -->|RejectedEventError| DLQ["twake-space.dlx → twake-space.dlq"]
+  R -->|NotYetKnownError| PE[(parked_events)]
+  PE -->|retried every 5 s| R
+  R -->|rejected, or waiting over 5 min| DLQ["twake-space.dlx → twake-space.dlq"]
   R -->|after commit| L[twake-space.live exchange]
   L -->|one queue per replica| SSE[GET /stream]
   MX[Synapse] -->|app service transactions| PG
   SSE --> B[Browser]
-  B -->|feed routes| PG
+  B -->|HTTP routes| PG
+  B -->|meeting request| M[twake-space exchange]
 ```
 
 ## Consuming RabbitMQ
 
-The backend consumes one queue, `twake-space`, through [@linagora/rabbitmq-client](https://github.com/linagora/rabbitmq-client/tree/v0.6.0). At startup it declares the queue and binds it to each platform event it handles, routing key equal to the event name:
+The backend consumes one queue, `twake-space`, through [@linagora/rabbitmq-client](https://github.com/linagora/rabbitmq-client/tree/v0.7.1). At startup it declares the queue and binds it to each platform event it handles, routing key equal to the event name:
 
 - `space`: `twake.space.created`, `twake.space.updated`, `twake.space.deleted`, `twake.space.member.added`, `twake.space.member.role.changed`, `twake.space.member.removed`, `twake.space.group.linked`, `twake.space.group.role.changed`, `twake.space.group.unlinked`
 - `b2b`: `b2b.group.updated`, `b2b.member.role.changed`, `b2b.member.disabled`, `domain.user.deleted`, `domain.organization.deleted`, `chat.deprovision`, `chat.deployment.completed`
@@ -45,12 +48,13 @@ The backend consumes one queue, `twake-space`, through [@linagora/rabbitmq-clien
 The queue:
 
 - Is a quorum queue with a single active consumer and a delivery limit of 20. Each replica consumes with prefetch 1, so messages are handled one at a time, in the order they were published.
-- Dead-letters to the `twake-space.dlx` exchange, which routes to the `twake-space.dlq` queue. The backend declares both.
+- Dead-letters to the `twake-space.dlx` exchange, which routes to the `twake-space.dlq` queue. The backend declares both. The dead letter routing key is the first platform event's, with `.dead` appended (`twake.space.created.dead`).
+- Has the client's other arguments, `x-overflow: reject-publish` and `x-dead-letter-strategy: at-least-once`.
 - Gets each message acknowledged only after its Postgres transaction commits.
 
 Startup fails when `space`, `b2b` or `admin-panel` is missing, since other services own them. The backend declares `activity` and `settings` itself, as durable topic exchanges: the apps declare `activity` the same way, and declaring `settings` lets the backend run on a platform without common settings.
 
-Every name above is a setting, listed in [Deploying](deploy.md#rabbitmq-names). The router, the handlers and the `parked_events` rows always see the default names: the consumer translates a renamed exchange or routing key back before routing.
+Every name above is a setting, listed in [Deploying](deploy.md#rabbitmq-names). The router and the handlers always see the default routing keys and the default `activity` name: the consumer translates them back before routing. A renamed platform exchange is kept as is, so `parked_events` rows and log lines show the deployment's name.
 
 Local `docker-compose.yml` runs RabbitMQ and declares the three exchanges the backend only checks.
 
@@ -66,9 +70,9 @@ Each message ends in one outcome:
 - processed: the handler ran.
 - duplicate: `processed_events` already holds `(consumer, source, id)`, so the handler did not run.
 - unrouted: no handler for the key. Logged at debug and acknowledged.
-- malformed: a CloudEvent that does not parse, a platform event without a message id, or a handler threw `MalformedEventError`. Logged and acknowledged. A body that is not JSON goes to the dead letter queue.
-- rejected: a handler threw `RejectedEventError`, or Postgres refused the event's data (an error of class 22 or 23, such as a NUL byte in a preview). The message is dead-lettered to `twake-space.dlq`. It carries RabbitMQ's `x-death` header but no reason: the `event rejected` log line has it.
-- parked: a handler threw `NotYetKnownError`, because the event is about a space or member the copy does not hold yet. The event goes to the `parked_events` table and is acknowledged. One replica retries parked events every 5 seconds. One still waiting after 5 minutes is published through `twake-space.dlx` to `twake-space.dlq`, with the headers `x-twake-space-exchange`, `x-twake-space-routing-key` and `x-twake-space-reason`.
+- malformed: a CloudEvent that does not parse, a platform event without a message id (nor a `request_id` in its body, which stands in for it), or a handler threw `MalformedEventError`. Logged and acknowledged. A body that is not JSON goes to the dead letter queue.
+- rejected: a handler threw `RejectedEventError`, or Postgres refused the event's data (an error of class 22, 23 or 54, such as a NUL byte in a preview or a key too long for its index). The message is dead-lettered to `twake-space.dlq`. It carries RabbitMQ's `x-death` header but no reason: the `event rejected` log line has it.
+- parked: a handler threw `NotYetKnownError`, because the event is about a space or member the copy does not hold yet. The event goes to the `parked_events` table and is acknowledged. One replica at a time (under an advisory lock) retries parked events, 5 seconds after its previous pass ended. One still waiting after 5 minutes is published through `twake-space.dlx` to `twake-space.dlq`, with its message id and the headers `x-twake-space-exchange`, `x-twake-space-routing-key` and `x-twake-space-reason`; the row stays when that publish fails. A retry that throws keeps the row for the next pass. Any other outcome of a retry, rejected included, deletes the row without a dead letter: only the log line tells.
 - failed: any other error, such as Postgres being down. The message stays unacknowledged and is retried in the process, 1 second after the first failure, doubling up to a minute. Nothing behind it is handled meanwhile. After 25 minutes of failures the backend logs an error, because RabbitMQ's `consumer_timeout` (30 minutes by default) then closes the channel and delivers the message again. Each such redelivery, like one after a restart, counts toward the delivery limit: once a message has been delivered 21 times (about 10 hours of failures), RabbitMQ sends it to `twake-space.dlq` and the queue moves on.
 
 The dedupe claim and the handler run in the same Postgres transaction, so a handler failure releases the claim.
@@ -96,7 +100,7 @@ Every platform handler is wrapped: when the body has an `organizationId` the cop
 
 ### Organization availability
 
-- `chat.deployment.completed`: sets chat available at `deployment.completedAt`, then refreshes the tenant's homeserver. A `status` other than `succeeded` is logged and ignored.
+- `chat.deployment.completed`: sets chat available at `deployment.completedAt`, then refreshes the tenant's homeserver. A missing `status` counts as success. Another `status` leaves chat as it is, but the homeserver is still refreshed.
 - `chat.deprovision`: sets chat unavailable at `timestamp`.
 - `dns.validated`: sets mail available to `mailDnsConfigurationValidated`. It has no time, so the last one handled wins.
 
@@ -122,7 +126,7 @@ The browser reads `GET /settings` once signed in and again each time the tab com
 
 - `twake.space.created`: inserts the space, its members and its linked groups, and keeps its `actor`, when it is an email, as the space's creator (`created_by`). A replayed creation sets the creator only if none is known, and never changes the space's state, so an archived space or one in the Bin stays there.
 - `twake.space.updated`: renames the space. A rename of a space not created yet is parked until the creation arrives, and a rename of a deleted space is dropped.
-- `twake.space.deleted`: removes the space, its members, groups and resources, records their keys in `last_changes`, and drops the space from API tokens.
+- `twake.space.deleted`: removes the space, its members, groups and resources, its settings, banner, pins and visits, records their keys in `last_changes`, and drops the space from API tokens.
 - `twake.space.member.added`, `twake.space.member.role.changed`: upsert members.
 - `twake.space.member.removed`: removes members, with their pins and visits of the space.
 - `twake.space.group.linked`, `twake.space.group.role.changed`: upsert linked groups.
@@ -130,12 +134,14 @@ The browser reads `GET /settings` once signed in and again each time the tab com
 - `b2b.group.updated`: renames the group in every space.
 - `b2b.member.role.changed`: upserts the person's organization role.
 - `b2b.member.disabled`: revokes the account's tokens in that organization.
-- `domain.user.deleted`: deletes the person's notifications and reactions, turns them into `deleted_user` on stored cards and posts, revokes their tokens, and removes them from every space and organization. Its time is `timestamp`, or `deletedAt` (ISO 8601 or LDAP generalized time) when it has none, as ldap-rest sends it. An unreadable `deletedAt` leaves it without a time.
+- `domain.user.deleted`: names the person by `uuid` or `internalEmail`. Deletes their notifications, reactions, pins and visits, turns them into `deleted_user` on stored cards and posts, revokes their tokens, removes them from every space and organization, and forgets them as the creator of their spaces, so whoever gets the address next does not manage them. Its time is `timestamp`, or `deletedAt` (ISO 8601 or LDAP generalized time) when it has none, as ldap-rest sends it. An unreadable `deletedAt` leaves it without a time.
 - `domain.organization.deleted`: revokes the organization's tokens.
 
 A person sent without a `uuid` (a deletion ldap-rest replays carries none) is matched in the copy by email, among space members and then among the organization roles (in the event's organization when it names one). `b2b.member.disabled` also falls back to the username, among space members only: organization roles hold no username.
 
 Upserts and removals of members, groups and names send a `spaces` live event to the members concerned.
+
+The [space write routes](api.md#space-writes) apply their change to the copy themselves, through the same functions, right after ldap-rest answers. The platform event ldap-rest sends for the same write is then older than the change in `last_changes`, and changes nothing.
 
 ## Meeting requests
 
@@ -180,7 +186,7 @@ Upserts and removals of members, groups and names send a `spaces` live event to 
 - It needs `twakeorg`, and rejects the event when that is not the space's organization.
 - A space the copy does not have was deleted after the app provisioned it, since the app provisions on the space's created event, which reaches the queue first. The event is logged and dropped, and the app's next sync removes the resource.
 - It upserts `space_resources`, so a new id replaces the old one, and sends a `spaces` live event to the space's members.
-- It parks an event for a space the copy does not hold yet, and ignores one for a space deleted after the event's `time`.
+- It ignores an event for a space deleted after the event's `time`.
 
 ### Activity that becomes a card
 
@@ -213,7 +219,7 @@ The actor stored on the card is one of:
 
 The space is the one whose resource of that kind has the container's id. An app publishes a resource's provisioned event before any activity on it, and both reach the same queue in that order, so a container no space has belongs to a person: the card is for personal notifications only. A container held only by another organization's space is rejected to the dead letter queue. A user actor with a uuid who is not a member may only mean the platform event that adds them has not arrived yet, so the event is parked. An actor sent by email only that no member has is kept as is: someone outside the space, such as an attendee replying to a team calendar event. A parked event is handled after the events that came after it in the queue. The copy holds the members a linked group brings, with their resolved role, so a space with linked groups checks its actors the same way.
 
-The card stores everything in `data` except `recipients`.
+The card stores everything in `data` except `recipients`. An event already stored under the same `source` and `id` is skipped, and one without a `time` is stored at the time it arrives.
 
 ## The feed
 
@@ -236,7 +242,7 @@ sequenceDiagram
 - A card exists per object: space, `object.type` and `object.id`. Its time is the object's first event, so later events change the card without moving it. It shows the latest event (by CloudEvent `time`) whatever order the events arrive in.
 - An event in no space makes no card. It exists for personal notifications only.
 - Posts are plain text, from editors and admins. Their authors edit and delete them. Every member reacts to cards and posts.
-- Each new or changed card, post or reaction sends a `feed` live event to the space's members.
+- Each new or changed card, post or reaction, and each deleted post, sends a `feed` live event to the space's members. Chat messages and reactions from Matrix send none.
 - Nothing is posted to Matrix: the poster that sent cards to the space's Matrix room is off.
 
 ## Matrix events back into Postgres
@@ -264,6 +270,7 @@ flowchart LR
 flowchart LR
   AE[Activity event data.recipients] --> NR[notifyRecipients]
   MM[Matrix message m.mentions] --> NU[notifyUsers]
+  AS[POST /notifications/suggestions] --> NU
   NR --> NU
   NU -->|per user settings| N[(notifications)]
   N -->|live: notification| SSE[GET /stream]
@@ -302,22 +309,24 @@ A new `m.room.message` notifies each user in `m.mentions.user_ids` who is on the
 
 ```mermaid
 sequenceDiagram
-  participant H as Event handler (transaction)
+  participant H as Event handler or route (transaction)
   participant K as twake-space.live exchange
   participant R as Every replica
   participant FE as Browser
   H->>H: tell(tx, event, users, data)
   Note over H: published once the transaction commits
   H->>K: live.update {event, users, data}
+  Note over K: back-channel logout publishes session.revoked {sessionId}
   K-->>R: one exclusive queue per replica
   R->>FE: event: spaces / notification / feed, data: JSON
   FE->>FE: spaces: invalidate the spaces queries
 ```
 
-- Handlers call `tell` inside their transaction. The message is published to RabbitMQ only after the commit, so replicas only hear about committed changes, and never about a rolled back one.
-- Every replica consumes from its own exclusive queue on the live exchange and writes the event to each open stream of the listed users. The queue lives as long as the replica's connection, so a message published while a replica is disconnected is lost; its browsers catch up when their stream reopens.
-- A revoked session goes over the same exchange, so every replica closes that session's streams. Every minute, each replica also closes the streams of sessions revoked meanwhile, for a revocation it missed.
-- `GET /stream` needs a session. It is `text/event-stream`, sends a heartbeat comment every 25 seconds, and closes when the session expires, when the session is revoked, or when the server stops.
+- Handlers and routes call `tell` inside their transaction. The message is published to RabbitMQ only after the commit, so replicas only hear about committed changes, and never about a rolled back one.
+- The data of each event is in the [HTTP API](api.md#get-stream): `spaces` carries `{spaceId}`, `notification` carries `{}`, and `feed` carries `{spaceId, itemId, change}`.
+- Every replica consumes from its own exclusive, auto-deleted queue on the live exchange, `twake-space.live.replica.<uuid>`, bound to `live.update` and `session.revoked`, and writes the event to each open stream of the listed users. The queue lives as long as the replica's connection, so a message published while a replica is disconnected is lost; its browsers catch up when their stream reopens. A replica that is disconnected itself publishes nothing, and a failed publish is not retried.
+- A revoked session goes over the same exchange, as `session.revoked`, so every replica closes that session's streams. Every minute, each replica also closes the streams of sessions revoked meanwhile, for a revocation it missed.
+- `GET /stream` needs a session. It is `text/event-stream`, sends a heartbeat comment every 25 seconds, and closes when the session expires, when the session is revoked, or when the server stops. A person keeps at most 10 streams per replica, and an eleventh closes the oldest.
 - The frontend reads it with `fetch` (EventSource cannot send the bearer token) and reconnects with a backoff from 1 to 30 seconds.
 - On `spaces`, the frontend invalidates its spaces queries. On `notification`, it reads the assistant suggestions again. On a reconnect it invalidates every query, since events sent while the stream was closed are lost.
 
@@ -348,7 +357,8 @@ The purge does not touch the copy, `processed_events` or `last_changes`, nor the
 ## Open questions
 
 - @rezk2ll In SaaS, which exchange carries `chat.deployment.completed`? The queue binds it on `b2b` for now (ADR 008 leaves it open).
-- @rezk2ll The frontend ignores the `notification` live event and has no notifications view yet. Is that planned under #90?
+- @rezk2ll The frontend only reads the assistant suggestions again on a `notification` live event, and has no notifications view yet. Is that planned under #90?
+- @rezk2ll The `assignment` notification type exists, but nothing creates one. Which app event should?
 - @rezk2ll `processed_events` and `last_changes` grow without a purge. Is that intended?
 - @rezk2ll A recipient `uuid` the copy does not hold is notified, because the copy has no full list of an organization's members. Should the backend check it against the directory instead, or should apps only name people of the event's organization?
 - @rezk2ll An actor outside the space (an email no member has) shows with no name. Should the card show their email, which the team calendar already shows to its members?
