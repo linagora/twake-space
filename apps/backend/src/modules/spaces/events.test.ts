@@ -425,6 +425,20 @@ describe('member events', () => {
     expect(await readMembers()).toMatchObject([{ username: 'asmith' }])
   })
 
+  it("forgets the pins and visits of a member who leaves, and no one else's", async () => {
+    await created({ members: [jdoe, asmith] })
+    await testDb.db.insert(spaceMarks).values([
+      { spaceId: SPACE_ID, userId: JDOE_ID, pinnedAt: new Date() },
+      { spaceId: SPACE_ID, userId: asmith.uuid, openedAt: new Date() }
+    ])
+
+    await member('twake.space.member.removed', [jdoe])
+
+    expect(
+      (await testDb.db.select().from(spaceMarks)).map(m => m.userId)
+    ).toEqual([asmith.uuid])
+  })
+
   it('finds a member sent without a uuid by their email', async () => {
     await created()
 

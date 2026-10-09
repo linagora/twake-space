@@ -359,12 +359,13 @@ async function removeMembers(
     )
   )
   for (const spaceId of new Set(removed.map(m => m.spaceId))) {
-    tell(
-      tx,
-      'spaces',
-      removed.filter(m => m.spaceId === spaceId).map(m => m.userId),
-      { spaceId }
-    )
+    const left = removed.filter(m => m.spaceId === spaceId).map(m => m.userId)
+    await tx
+      .delete(spaceMarks)
+      .where(
+        and(eq(spaceMarks.spaceId, spaceId), inArray(spaceMarks.userId, left))
+      )
+    tell(tx, 'spaces', left, { spaceId })
   }
 }
 
