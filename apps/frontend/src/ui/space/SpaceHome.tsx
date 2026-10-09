@@ -15,7 +15,6 @@ import chatArt from '@/assets/home-chat.svg'
 import driveArt from '@/assets/home-drive.svg'
 import mailArt from '@/assets/home-mail.svg'
 import tasksArt from '@/assets/home-tasks.svg'
-import { NameAvatar } from '@/ds/AppFrame'
 import {
   AppArt,
   AppCard,
@@ -148,20 +147,13 @@ export function SpaceHome({
             label={t('spaceHome.users', { smart_count: members })}
           />
           {members > 0 && (
-            <MemberAvatars>
-              {space.members.map(member => {
-                const name = member.displayName ?? member.username
-                return (
-                  <NameAvatar
-                    key={member.id}
-                    name={name}
-                    label={name}
-                    size="s"
-                    src={avatarUrl(member.workplaceFqdn)}
-                  />
-                )
-              })}
-            </MemberAvatars>
+            <MemberAvatars
+              members={space.members.map(member => ({
+                id: member.id,
+                name: member.displayName ?? member.username,
+                src: avatarUrl(member.workplaceFqdn)
+              }))}
+            />
           )}
           {space.role === 'admin' && (
             <Button

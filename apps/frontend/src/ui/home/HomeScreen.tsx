@@ -130,20 +130,13 @@ function SpaceItem({
       description={space.description}
       members={
         space.members.length > 0 && (
-          <MemberAvatars>
-            {space.members.map(member => {
-              const name = member.displayName ?? member.username
-              return (
-                <NameAvatar
-                  key={member.id}
-                  name={name}
-                  label={name}
-                  size="s"
-                  src={avatarUrl(member.workplaceFqdn)}
-                />
-              )
-            })}
-          </MemberAvatars>
+          <MemberAvatars
+            members={space.members.map(member => ({
+              id: member.id,
+              name: member.displayName ?? member.username,
+              src: avatarUrl(member.workplaceFqdn)
+            }))}
+          />
         )
       }
       menu={<SpaceMenu space={space} />}

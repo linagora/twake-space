@@ -4,10 +4,13 @@ import {
   Card,
   CardActionArea,
   Skeleton,
+  Tooltip,
   Typography
 } from '@linagora/twake-mui'
 import { Icon, Pin } from '@linagora/twake-icons'
-import { Children, type ReactElement, type ReactNode } from 'react'
+import { type ReactElement, type ReactNode } from 'react'
+
+import { NameAvatar } from '@/ds/AppFrame'
 
 const RADIUS = '20px'
 
@@ -124,18 +127,26 @@ export function SpaceCard({
   )
 }
 
+export interface AvatarMember {
+  id: string
+  name: string
+  src: string | null
+}
+
 // The first members of a space side by side, the rest counted. Each avatar
 // is 24px, with a ring of the card's color that cuts into the one before it.
+// Hovering or focusing the count lists the members it stands for; it sits
+// above a card's stretched link so the pointer reaches it.
 export function MemberAvatars({
-  children,
+  members,
   max = 5
 }: {
-  children: ReactNode
+  members: AvatarMember[]
   max?: number
 }): ReactElement {
-  const members = Children.toArray(children)
   const shown = members.length > max ? members.slice(0, max - 1) : members
-  const hidden = members.length - shown.length
+  const hidden = members.slice(shown.length)
+  const hiddenNames = hidden.map(member => member.name)
 
   return (
     <Box
@@ -149,18 +160,45 @@ export function MemberAvatars({
         }
       }}
     >
-      {shown}
-      {hidden > 0 && (
-        <Avatar
-          sx={{
-            bgcolor: 'background.paper',
-            color: 'text.secondary',
-            border: 1,
-            borderColor: 'divider'
-          }}
+      {shown.map(member => (
+        <NameAvatar
+          key={member.id}
+          name={member.name}
+          label={member.name}
+          size="s"
+          src={member.src}
+        />
+      ))}
+      {hidden.length > 0 && (
+        <Tooltip
+          title={
+            <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+              {hidden.map(member => (
+                <li key={member.id}>{member.name}</li>
+              ))}
+            </Box>
+          }
         >
-          +{hidden}
-        </Avatar>
+          <Box
+            component="span"
+            tabIndex={0}
+            aria-label={hiddenNames.join(', ')}
+            sx={{ position: 'relative', zIndex: 1, display: 'flex' }}
+          >
+            <Avatar
+              size="s"
+              aria-hidden
+              sx={{
+                bgcolor: 'background.paper',
+                color: 'text.secondary',
+                border: 1,
+                borderColor: 'divider'
+              }}
+            >
+              +{hidden.length}
+            </Avatar>
+          </Box>
+        </Tooltip>
       )}
     </Box>
   )
