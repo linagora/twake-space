@@ -57,6 +57,9 @@
     "recent": "Recientes",
     "noPinned": "Fija un espacio desde su menú",
     "noRecent": "Aquí aparecen los espacios que abres",
+    "shelves": "Archivados y papelera",
+    "archives": "Archivados",
+    "bin": "Papelera",
     "title": "Espacio",
     "allSpaces": "Todos los espacios",
     "spaceWithCount": "%{name}, %{smart_count} nuevo |||| %{name}, %{smart_count} nuevos",
@@ -119,6 +122,7 @@
     "shareLink": "Compartir enlace",
     "pin": "Fijar",
     "unpin": "Dejar de fijar",
+    "archive": "Archivar",
     "linkCopied": "Enlace copiado",
     "invite": "Invitar personas",
     "managePeople": "Gestionar personas",
@@ -142,6 +146,21 @@
     "pinned": "Fijados",
     "createHint": "Proyecto, departamento, grupo temático…",
     "createCard": "Crear un espacio nuevo"
+  },
+  "shelves": {
+    "archives": "Archivados",
+    "archivesIntro": "Los espacios archivados salen de las listas de sus miembros. Restaura uno para recuperarlo.",
+    "noArchives": "Ningún espacio archivado.",
+    "bin": "Papelera",
+    "binIntro": "Los espacios de la papelera siguen en Chat, Drive y las demás aplicaciones hasta que se eliminan definitivamente.",
+    "binIsEmpty": "La papelera está vacía.",
+    "emptyTheBin": "Vaciar la papelera",
+    "restore": "Restaurar",
+    "moveToBin": "Mover a la papelera",
+    "deleteForever": "Eliminar definitivamente",
+    "emptyTitle": "¿Vaciar la papelera?",
+    "emptyHint": "Cada espacio que contiene sale de todas las aplicaciones, con sus chats, archivos y tareas. No se puede deshacer.",
+    "moveFailed": "No se pudo mover el espacio."
   },
   "createSpace": {
     "name": "Nombre del espacio",
@@ -231,9 +250,12 @@
       "calendar": "Calendario y eventos compartidos"
     },
     "dangerZone": "Zona de peligro",
+    "archive": "Archivar",
+    "archiveSpace": "Archivar el espacio",
+    "archiveHint": "Ocultarlo de las listas de todos sus miembros. Podrás restaurarlo desde Archivados.",
     "apiTokensHint": "Tokens para scripts, integraciones y agentes de IA",
     "manage": "Gestionar",
-    "deleteHint": "Elimina definitivamente todos los chats, archivos y tareas"
+    "deleteHint": "Moverlo a la papelera. Podrás restaurarlo desde allí."
   },
   "tasks": {
     "notSetUp": "Tareas no está configurado para TwakeSpace."

@@ -57,6 +57,9 @@
     "recent": "Zuletzt geöffnet",
     "noPinned": "Heften Sie einen Space über sein Menü an",
     "noRecent": "Hier erscheinen die Spaces, die Sie öffnen",
+    "shelves": "Archiv und Papierkorb",
+    "archives": "Archiv",
+    "bin": "Papierkorb",
     "title": "Space",
     "allSpaces": "Alle Spaces",
     "spaceWithCount": "%{name}, %{smart_count} neu",
@@ -119,6 +122,7 @@
     "shareLink": "Link teilen",
     "pin": "Anheften",
     "unpin": "Nicht mehr anheften",
+    "archive": "Archivieren",
     "linkCopied": "Link kopiert",
     "invite": "Personen einladen",
     "managePeople": "Personen verwalten",
@@ -142,6 +146,21 @@
     "pinned": "Angeheftet",
     "createHint": "Projekt, Abteilung, Themengruppe…",
     "createCard": "Neuen Space erstellen"
+  },
+  "shelves": {
+    "archives": "Archiv",
+    "archivesIntro": "Archivierte Spaces verschwinden aus den Listen ihrer Mitglieder. Stellen Sie einen wieder her, um ihn zurückzuholen.",
+    "noArchives": "Kein archivierter Space.",
+    "bin": "Papierkorb",
+    "binIntro": "Spaces im Papierkorb bleiben in Chat, Drive und den anderen Apps, bis sie endgültig gelöscht werden.",
+    "binIsEmpty": "Der Papierkorb ist leer.",
+    "emptyTheBin": "Papierkorb leeren",
+    "restore": "Wiederherstellen",
+    "moveToBin": "In den Papierkorb",
+    "deleteForever": "Endgültig löschen",
+    "emptyTitle": "Papierkorb leeren?",
+    "emptyHint": "Jeder Space darin verschwindet aus allen Apps, mit seinen Chats, Dateien und Aufgaben. Dies kann nicht rückgängig gemacht werden.",
+    "moveFailed": "Der Space konnte nicht verschoben werden."
   },
   "createSpace": {
     "name": "Name des Bereichs",
@@ -231,9 +250,12 @@
       "calendar": "Gemeinsamer Kalender und Termine"
     },
     "dangerZone": "Gefahrenzone",
+    "archive": "Archivieren",
+    "archiveSpace": "Space archivieren",
+    "archiveHint": "Aus den Listen aller Mitglieder ausblenden. Sie können ihn im Archiv wiederherstellen.",
     "apiTokensHint": "Tokens für Skripte, Integrationen und KI-Agenten",
     "manage": "Verwalten",
-    "deleteHint": "Entfernt alle Chats, Dateien und Aufgaben endgültig"
+    "deleteHint": "In den Papierkorb verschieben. Sie können ihn dort wiederherstellen."
   },
   "tasks": {
     "notSetUp": "Aufgaben ist für TwakeSpace nicht eingerichtet."

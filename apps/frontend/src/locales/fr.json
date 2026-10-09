@@ -57,6 +57,9 @@
     "recent": "Récents",
     "noPinned": "Épinglez un espace depuis son menu",
     "noRecent": "Les espaces que vous ouvrez s’affichent ici",
+    "shelves": "Archives et corbeille",
+    "archives": "Archives",
+    "bin": "Corbeille",
     "title": "Espace",
     "allSpaces": "Tous les espaces",
     "spaceWithCount": "%{name}, %{smart_count} nouveau |||| %{name}, %{smart_count} nouveaux",
@@ -119,6 +122,7 @@
     "shareLink": "Partager le lien",
     "pin": "Épingler",
     "unpin": "Désépingler",
+    "archive": "Archiver",
     "linkCopied": "Lien copié",
     "invite": "Inviter des personnes",
     "managePeople": "Gérer les personnes",
@@ -142,6 +146,21 @@
     "pinned": "Épinglés",
     "createHint": "Projet, direction, groupe thématique…",
     "createCard": "Créer un espace"
+  },
+  "shelves": {
+    "archives": "Archives",
+    "archivesIntro": "Les espaces archivés quittent les listes de leurs membres. Restaurez-en un pour le faire revenir.",
+    "noArchives": "Aucun espace archivé.",
+    "bin": "Corbeille",
+    "binIntro": "Les espaces de la corbeille restent dans Chat, Drive et les autres applications jusqu’à leur suppression définitive.",
+    "binIsEmpty": "La corbeille est vide.",
+    "emptyTheBin": "Vider la corbeille",
+    "restore": "Restaurer",
+    "moveToBin": "Mettre à la corbeille",
+    "deleteForever": "Supprimer définitivement",
+    "emptyTitle": "Vider la corbeille ?",
+    "emptyHint": "Chaque espace qu’elle contient quitte toutes les applications, avec ses discussions, fichiers et tâches. C’est irréversible.",
+    "moveFailed": "L’espace n’a pas pu être déplacé."
   },
   "createSpace": {
     "name": "Nom de l'espace",
@@ -231,9 +250,12 @@
       "calendar": "Agenda et événements partagés"
     },
     "dangerZone": "Zone de danger",
+    "archive": "Archiver",
+    "archiveSpace": "Archiver l’espace",
+    "archiveHint": "Le masquer des listes de tous ses membres. Vous pourrez le restaurer depuis les Archives.",
     "apiTokensHint": "Jetons pour les scripts, intégrations et agents IA",
     "manage": "Gérer",
-    "deleteHint": "Supprime définitivement tous les messages, fichiers et tâches"
+    "deleteHint": "Le placer dans la corbeille. Vous pourrez l’y restaurer."
   },
   "tasks": {
     "notSetUp": "Tâches n'est pas configuré pour TwakeSpace."
