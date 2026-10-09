@@ -1,17 +1,18 @@
-import { Assistant, Icon, PersonAdd } from '@linagora/twake-icons'
+import { Assistant, Icon } from '@linagora/twake-icons'
 import { IconButton } from '@linagora/twake-mui'
 import { useState, type ReactElement } from 'react'
 
 import type { Space } from '@/application/spaces'
+import { GroupAddIcon } from '@/ds/icons'
 import { useAssistant } from '@/ui/assistant/AssistantPanel'
 import { MeetingMenu } from '@/ui/call/MeetingMenu'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { PeopleDialog } from '@/ui/space/PeopleDialog'
 import { ShareLinkButton, SpaceMenu } from '@/ui/space/SpaceMenu'
 
-// The header's actions: the assistant, invite (admins), video meetings,
-// share the link, and the rest in the menu. The mockup's call waits for its
-// app.
+// The header's actions, in the mockup's order: the assistant, video meetings,
+// invite (admins), share the link, and the rest in the menu. The mockup's
+// call waits for its app.
 export function SpaceActions({ space }: { space: Space }): ReactElement {
   const { t } = useI18n()
   const [inviting, setInviting] = useState(false)
@@ -28,6 +29,7 @@ export function SpaceActions({ space }: { space: Space }): ReactElement {
       >
         <Icon icon={Assistant} />
       </IconButton>
+      <MeetingMenu space={space} />
       {space.role === 'admin' && (
         <IconButton
           size="small"
@@ -36,10 +38,9 @@ export function SpaceActions({ space }: { space: Space }): ReactElement {
             setInviting(true)
           }}
         >
-          <Icon icon={PersonAdd} />
+          <Icon icon={GroupAddIcon} />
         </IconButton>
       )}
-      <MeetingMenu space={space} />
       <ShareLinkButton id={space.id} />
       <SpaceMenu space={space} />
       {inviting && (
