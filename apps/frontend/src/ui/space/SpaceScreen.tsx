@@ -1,4 +1,4 @@
-import { Expand, Icon, Narrow } from '@linagora/twake-icons'
+import { Icon } from '@linagora/twake-icons'
 import {
   Alert,
   Button,
@@ -28,7 +28,7 @@ import { isRefusal } from '@/application/spaces'
 import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
 import { CountedLabel } from '@/ds/CountedLabel'
-import { Home } from '@/ds/icons'
+import { CloseFullscreenIcon, Home, OpenInFullIcon } from '@/ds/icons'
 import {
   CompactSpaceHeader,
   LoadingRows,
@@ -173,7 +173,7 @@ export function SpaceScreen(): ReactElement {
               ref={leaveButton}
               variant="text"
               size="small"
-              startIcon={<Icon icon={Narrow} />}
+              startIcon={<Icon icon={CloseFullscreenIcon} />}
               onClick={() => {
                 focusNext.current = 'fill'
                 leave()
@@ -213,7 +213,7 @@ export function SpaceScreen(): ReactElement {
                   fillPage.fill(spaceId)
                 }}
               >
-                <Icon icon={Expand} />
+                <Icon icon={OpenInFullIcon} />
               </IconButton>
               <SpaceActions space={space.data} />
             </>

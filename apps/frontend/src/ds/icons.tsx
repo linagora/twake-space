@@ -70,6 +70,29 @@ export function VideocamSymbolIcon(
   )
 }
 
+// Material Symbols' open_in_full and close_fullscreen, at the weight of the
+// header's videocam: the content takes the page and gives it back. Twake's
+// Expand and Narrow read as a row's height.
+export function OpenInFullIcon(
+  props: SVGAttributes<SVGSVGElement>
+): ReactElement {
+  return (
+    <svg viewBox="0 -960 960 960" {...props}>
+      <path d="M105.87-105.87v-319.22h79.22v183.87l533.69-533.69H534.91v-79.79H854.7v319.79h-79.79v-183.87L241.22-185.09h183.87v79.22H105.87Z" />
+    </svg>
+  )
+}
+
+export function CloseFullscreenIcon(
+  props: SVGAttributes<SVGSVGElement>
+): ReactElement {
+  return (
+    <svg viewBox="0 -960 960 960" {...props}>
+      <path d="m121.43-65.87-55.56-55.56 279.35-279.35H145.87V-480H480v334.13h-79.22v-199.35L121.43-65.87ZM480-480v-334.7h79.78v199.35L839.13-894.7l55.57 55.57-279.35 279.35H814.7V-480H480Z" />
+    </svg>
+  )
+}
+
 // Material's group_add, as in the mockup's header: Twake's PersonAdd is one
 // filled person.
 export function GroupAddIcon(
