@@ -58,8 +58,8 @@ export function registerNotificationRoutes(
   async function userOfMatrixId(organizationId: string, matrixUserId: string) {
     const at = matrixUserId.indexOf(':')
     const name = matrixUserId.slice(1, at).toLowerCase()
-    const [member] = await db
-      .select({ userId: spaceMembers.userId })
+    const members = await db
+      .selectDistinct({ userId: spaceMembers.userId })
       .from(spaceMembers)
       .innerJoin(spaces, eq(spaces.spaceId, spaceMembers.spaceId))
       .innerJoin(
@@ -76,8 +76,10 @@ export function registerNotificationRoutes(
             : sql`lower(split_part(${spaceMembers.email}, '@', 1)) = ${name}`
         )
       )
-      .limit(1)
-    return member?.userId
+      .limit(2)
+    // Two members sharing a localpart (same e-mail name, other domains) is
+    // no answer: the suggestion could reach the wrong one.
+    return members.length === 1 ? members[0]?.userId : undefined
   }
 
   app.post(

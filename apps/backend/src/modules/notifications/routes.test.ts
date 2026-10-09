@@ -410,6 +410,43 @@ describe('POST /notifications/suggestions', () => {
     }
   })
 
+  it('finds a member of several spaces, and no one when two members share the name', async () => {
+    const SALES = '6a1f3c9e-2b7d-4e8a-b5c4-0d9e8f7a6b51'
+    const send = setUp()
+    await testDb.db
+      .insert(spaces)
+      .values({ spaceId: SALES, organizationId: 'acme', name: 'Sales' })
+    await testDb.db.insert(spaceMembers).values({
+      spaceId: SALES,
+      userId: ALICE,
+      username: 'alice',
+      email: 'alice@acme.example.com',
+      role: 'viewer'
+    })
+    const once = await send(
+      'POST',
+      '/notifications/suggestions',
+      suggestion,
+      'tws_harness'
+    )
+    await testDb.db.insert(spaceMembers).values({
+      spaceId: SALES,
+      userId: BOB,
+      username: 'Alice',
+      email: 'alice@other.example.com',
+      role: 'viewer'
+    })
+    const twice = await send(
+      'POST',
+      '/notifications/suggestions',
+      { ...suggestion, externalId: 'call-2' },
+      'tws_harness'
+    )
+
+    expect(once.statusCode).toBe(201)
+    expect(twice.statusCode).toBe(404)
+  })
+
   it('refuses a bad body with 400', async () => {
     const response = await setUp()(
       'POST',
