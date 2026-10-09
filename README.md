@@ -45,6 +45,7 @@ Every frontend release publishes the archive on the dev channel of the registry 
 
 ## Docs
 
+- [Architecture](docs/architecture.md): what Twake Space and each Twake app own, and how they talk.
 - [Frontend development](docs/frontend-dev.md): mock mode, code layout and lint rules, services, adding a feature.
 - [Backend development](docs/backend-dev.md): code layout, events, database, authentication, tests.
 - [HTTP API](docs/api.md): every route, who can call it, and its answers.
