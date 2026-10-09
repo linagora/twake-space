@@ -36,6 +36,7 @@ import {
   SpaceHeader,
   TabPanel
 } from '@/ds/Page'
+import { useAssistant } from '@/ui/assistant/AssistantPanel'
 import { useSpaceTabTag } from '@/ui/feedback/useSpaceTabTag'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useBadges } from '@/ui/space/Badges'
@@ -90,6 +91,7 @@ export function SpaceScreen(): ReactElement {
   // space opens, or this one leaves or fails
   const fillPage = useFillPage()
   const { leave } = fillPage
+  const assistant = useAssistant()
   const filled = fillPage.space === spaceId
   useLayoutEffect(() => leave, [spaceId, leave])
   useLayoutEffect(() => {
@@ -210,6 +212,8 @@ export function SpaceScreen(): ReactElement {
                 aria-label={t('space.fullPage')}
                 onClick={() => {
                   focusNext.current = 'leave'
+                  // The page given to the tab has no button to close the assistant with
+                  assistant.setOpen(false)
                   fillPage.fill(spaceId)
                 }}
               >
