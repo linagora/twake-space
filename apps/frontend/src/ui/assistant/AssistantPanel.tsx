@@ -101,14 +101,19 @@ export function AssistantPanel({
   useEffect(() => {
     if (!service) return
     const onMessage = (event: MessageEvent): void => {
-      if (event.origin !== service.origin) return
+      if (
+        event.origin !== service.origin ||
+        event.source !== frame.current?.contentWindow
+      ) {
+        return
+      }
       const message = parseAssistantMessage(event.data, service.intentId)
       if (message?.kind === 'ready') {
         const config: AssistantConfig = {
           answerActions: [{ name: 'post', label: postLabel }],
           ...(theme && { theme: { type: theme } })
         }
-        frame.current?.contentWindow?.postMessage(config, service.origin)
+        frame.current.contentWindow?.postMessage(config, service.origin)
       } else if (
         message?.kind === 'result' &&
         message.result.answerAction === 'post'

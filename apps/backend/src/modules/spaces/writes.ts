@@ -268,15 +268,17 @@ export function registerSpaceWriteRoutes(
 
   app.addContentTypeParser(
     BANNER_TYPES,
-    { parseAs: 'buffer', bodyLimit: BANNER_LIMIT },
+    { parseAs: 'buffer' },
     (_request, body, done) => {
       done(null, body)
     }
   )
 
+  // Authorized on request, before the body is read, so an unknown caller cannot
+  // make us read 5 MB.
   app.put(
     '/spaces/:id/banner',
-    writeSpace,
+    { onRequest: authorize('space:write'), bodyLimit: BANNER_LIMIT },
     refusing(async (request, reply) => {
       const { id } = parse(spaceParams, request.params)
       const image = request.body

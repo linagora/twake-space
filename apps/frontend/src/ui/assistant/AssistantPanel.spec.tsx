@@ -47,10 +47,15 @@ async function findFrame(): Promise<HTMLIFrameElement> {
   return frame
 }
 
-function receive(data: unknown, origin = ORIGIN): void {
+function receive(data: unknown, origin = ORIGIN, source = frameWindow()): void {
   act(() => {
-    window.dispatchEvent(new MessageEvent('message', { data, origin }))
+    window.dispatchEvent(new MessageEvent('message', { data, origin, source }))
   })
+}
+
+function frameWindow(): Window | null {
+  const frame = screen.queryByTitle('Ask Twake AI')
+  return frame instanceof HTMLIFrameElement ? frame.contentWindow : null
 }
 
 describe('AssistantPanel', () => {
@@ -91,6 +96,24 @@ describe('AssistantPanel', () => {
     await waitFor(() => {
       expect(feed.post).toHaveBeenCalledWith('a1', 'Hello all')
     })
+  })
+
+  it('ignores another window of the assistant origin', async () => {
+    const { feed, onClose } = renderPanel()
+    await findFrame()
+
+    receive(
+      {
+        type: 'intent-i1:result',
+        result: { answerAction: 'post', text: 'Hello all', format: 'markdown' }
+      },
+      ORIGIN,
+      window
+    )
+    receive({ type: 'intent-i1:cancel' }, ORIGIN, window)
+
+    expect(feed.post).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('says when the answer could not be posted', async () => {

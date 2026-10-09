@@ -2,15 +2,18 @@ import { z } from 'zod'
 
 export const ACTIVITY_EXCHANGE = 'activity'
 
+// Ids end up in primary keys, which Postgres caps at about 2.7 KB.
+const key = z.string().min(1).max(255)
+
 const cloudEvent = z.looseObject({
   specversion: z.literal('1.0'),
-  id: z.string().min(1),
-  source: z.string().min(1),
-  type: z.string().min(1),
+  id: key,
+  source: key,
+  type: key,
   time: z.iso.datetime({ offset: true }).optional(),
   subject: z.string().optional(),
   // A B2C user has no organization.
-  twakeorg: z.string().min(1).optional(),
+  twakeorg: key.optional(),
   // Left out for an action made with an organization token.
   twakeactor: z.email().optional(),
   data: z.looseObject({ object: z.looseObject({}).optional() })
@@ -19,7 +22,7 @@ const cloudEvent = z.looseObject({
 export type CloudEvent = z.infer<typeof cloudEvent>
 
 const requestId = z
-  .looseObject({ request_id: z.string().min(1) })
+  .looseObject({ request_id: key })
   .transform(body => body.request_id)
 
 export interface PlatformEvent {

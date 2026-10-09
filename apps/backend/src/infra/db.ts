@@ -54,11 +54,15 @@ export function afterCommit(tx: Tx, hook: () => void): void {
   hooks.push(hook)
 }
 
-// Postgres data exceptions (22) and integrity violations (23) fail the same way on
-// every retry.
+// Postgres data exceptions (22), integrity violations (23) and program limits
+// (54, as a key too long for its index) fail the same way on every retry.
 export function postgresRefusal(error: unknown): string | null {
   for (let e = error; e instanceof Error; e = e.cause) {
-    if ('code' in e && typeof e.code === 'string' && /^2[23]/.test(e.code)) {
+    if (
+      'code' in e &&
+      typeof e.code === 'string' &&
+      /^(2[23]|54)/.test(e.code)
+    ) {
       return `${e.code}: ${e.message}`
     }
   }
