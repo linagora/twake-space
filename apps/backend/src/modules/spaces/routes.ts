@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db } from '../../infra/db.ts'
@@ -7,29 +7,92 @@ import type { Authorize, Caller } from '../auth/index.ts'
 import { homeservers, organizations } from '../organizations/schema.ts'
 import { APP_KINDS, type SpaceApp } from './resources.ts'
 import {
+  organizationMembers,
   spaceBanners,
   spaceGroups,
   spaceMarks,
   spaceMembers,
   spaceResourceKind,
   spaceResources,
+  spaceRole,
   spaceSettings,
   spaceTab,
   spaces
 } from './schema.ts'
 import type { Workplaces } from './workplaces.ts'
 
-const spaceParams = z.object({ id: z.uuid() })
+type SpaceRole = (typeof spaceRole.enumValues)[number]
 
-// The spaces a caller reaches, with the role it acts with in each: its account's
-// membership, or an organization token's own role on every space it covers.
-export function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
-  const covered = and(
+const spaceParams = z.object({ id: z.uuid() })
+const listQuery = z.object({
+  state: z.enum(['archived', 'trashed']).optional()
+})
+
+const coveredBy = (caller: Caller) =>
+  and(
     eq(spaces.organizationId, caller.organizationId),
-    spaceId === undefined ? undefined : eq(spaces.spaceId, spaceId),
     caller.kind === 'token' && caller.spaceIds
       ? inArray(spaces.spaceId, caller.spaceIds)
       : undefined
+  )
+
+// The managers of a space: its admins, the organization's owners and admins,
+// and the person who created it. An organization token acting as an admin
+// manages the spaces it covers.
+export function managedBy(caller: Caller): SQL {
+  const { userId } = caller
+  if (userId === null) {
+    return caller.kind === 'token' && caller.role === 'admin'
+      ? sql`true`
+      : sql`false`
+  }
+  const email = caller.kind === 'session' ? caller.email.toLowerCase() : null
+  return sql`(exists (select 1 from ${spaceMembers}
+      where ${spaceMembers.spaceId} = ${spaces.spaceId}
+      and ${spaceMembers.userId} = ${userId} and ${spaceMembers.role} = 'admin')
+    or exists (select 1 from ${organizationMembers}
+      where ${organizationMembers.organizationId} = ${spaces.organizationId}
+      and ${organizationMembers.userId} = ${userId}
+      and ${organizationMembers.role} in ('owner', 'admin'))
+    or ${spaces.createdBy} = ${email}
+    or ${spaces.createdBy} in (select lower(${organizationMembers.email})
+      from ${organizationMembers}
+      where ${organizationMembers.organizationId} = ${spaces.organizationId}
+      and ${organizationMembers.userId} = ${userId}))`
+}
+
+// The spaces a caller manages, whatever their state, with its role in each
+// when it is a member.
+export function managedSpaces(db: Db, caller: Caller, where?: SQL) {
+  const { userId } = caller
+  return db
+    .select({
+      id: spaces.spaceId,
+      name: spaces.name,
+      state: spaces.state,
+      color: spaceSettings.color,
+      description: spaceSettings.description,
+      role:
+        userId === null
+          ? sql<SpaceRole | null>`${caller.kind === 'token' ? caller.role : null}`
+          : sql<SpaceRole | null>`(select ${spaceMembers.role} from ${spaceMembers}
+              where ${spaceMembers.spaceId} = ${spaces.spaceId}
+              and ${spaceMembers.userId} = ${userId})`
+    })
+    .from(spaces)
+    .leftJoin(spaceSettings, eq(spaceSettings.spaceId, spaces.spaceId))
+    .where(and(coveredBy(caller), managedBy(caller), where))
+    .orderBy(asc(spaces.name))
+}
+
+// The active spaces a caller reaches, with the role it acts with in each: its
+// account's membership, or an organization token's own role on every space it
+// covers.
+export function reachableSpaces(db: Db, caller: Caller, spaceId?: string) {
+  const covered = and(
+    coveredBy(caller),
+    eq(spaces.state, 'active'),
+    spaceId === undefined ? undefined : eq(spaces.spaceId, spaceId)
   )
   const fields = {
     id: spaces.spaceId,
@@ -95,54 +158,105 @@ export function registerSpaceRoutes(
   const { db, authorize, workplaces } = deps
   const provided = new Set(deps.apps.map(app => APP_KINDS[app]))
 
-  app.get('/spaces', { preHandler: authorize('space:read') }, async request => {
-    const caller = callerOf(request)
-    const reached = await reachableSpaces(db, caller)
-    // The home cards show who is in each space.
-    const members =
+  async function withManages<T extends { id: string }>(
+    caller: Caller,
+    reached: T[]
+  ) {
+    const managed =
       reached.length === 0
         ? []
         : await db
-            .select({
-              spaceId: spaceMembers.spaceId,
-              id: spaceMembers.userId,
-              username: spaceMembers.username,
-              displayName: spaceMembers.displayName
-            })
-            .from(spaceMembers)
+            .select({ id: spaces.spaceId })
+            .from(spaces)
             .where(
-              inArray(
-                spaceMembers.spaceId,
-                reached.map(space => space.id)
+              and(
+                inArray(
+                  spaces.spaceId,
+                  reached.map(space => space.id)
+                ),
+                managedBy(caller)
               )
             )
-            .orderBy(asc(spaceMembers.username))
-    const fqdns = await workplaces(
-      caller.organizationId,
-      members.map(member => member.id)
-    )
-    return {
-      spaces: reached.map(
-        ({ id, name, role, color, description, pinnedAt, openedAt }) => ({
-          id,
-          name,
-          role,
-          color,
-          description: description ?? '',
-          pinnedAt,
-          openedAt,
-          members: members
-            .filter(member => member.spaceId === id)
-            .map(({ id, username, displayName }) => ({
-              id,
-              username,
-              displayName,
-              workplaceFqdn: fqdns.get(id) ?? null
-            }))
-        })
+    const ids = new Set(managed.map(space => space.id))
+    return reached.map(space => ({ ...space, manages: ids.has(space.id) }))
+  }
+
+  app.get(
+    '/spaces',
+    { preHandler: authorize('space:read') },
+    async (request, reply) => {
+      const caller = callerOf(request)
+      const query = listQuery.safeParse(request.query)
+      if (!query.success) {
+        return reply.code(400).send({ error: 'invalid_request' })
+      }
+      const { state } = query.data
+      const reached = state
+        ? (await managedSpaces(db, caller, eq(spaces.state, state))).map(
+            space => ({
+              ...space,
+              pinnedAt: null,
+              openedAt: null,
+              manages: true
+            })
+          )
+        : await withManages(caller, await reachableSpaces(db, caller))
+      // The home cards show who is in each space.
+      const members =
+        reached.length === 0
+          ? []
+          : await db
+              .select({
+                spaceId: spaceMembers.spaceId,
+                id: spaceMembers.userId,
+                username: spaceMembers.username,
+                displayName: spaceMembers.displayName
+              })
+              .from(spaceMembers)
+              .where(
+                inArray(
+                  spaceMembers.spaceId,
+                  reached.map(space => space.id)
+                )
+              )
+              .orderBy(asc(spaceMembers.username))
+      const fqdns = await workplaces(
+        caller.organizationId,
+        members.map(member => member.id)
       )
+      return {
+        spaces: reached.map(
+          ({
+            id,
+            name,
+            role,
+            color,
+            description,
+            pinnedAt,
+            openedAt,
+            manages
+          }) => ({
+            id,
+            name,
+            role,
+            color,
+            description: description ?? '',
+            pinnedAt,
+            openedAt,
+            manages,
+            members: members
+              .filter(member => member.spaceId === id)
+              .map(({ id, username, displayName }) => ({
+                id,
+                username,
+                displayName,
+                workplaceFqdn: fqdns.get(id) ?? null
+              }))
+          })
+        )
+      }
     }
-  })
+  )
 
   app.get(
     '/spaces/apps',
@@ -177,8 +291,12 @@ export function registerSpaceRoutes(
       const params = spaceParams.safeParse(request.params)
       if (!params.success) return reply.code(404).send({ error: 'not_found' })
       const spaceId = params.data.id
+      const caller = callerOf(request)
 
-      const [space] = await reachableSpaces(db, callerOf(request), spaceId)
+      const [space] = await withManages(
+        caller,
+        await reachableSpaces(db, caller, spaceId)
+      )
       if (!space) {
         return reply.code(404).send({ error: 'not_found' })
       }
