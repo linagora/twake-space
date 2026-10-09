@@ -238,7 +238,7 @@ export function SpaceScreen(): ReactElement {
                     value={item.tab}
                     label={
                       item.tab === 'home' ? (
-                        <Icon icon={Home} />
+                        <Icon icon={Home} size={24} />
                       ) : (
                         <CountedLabel label={name} count={badgeLabel(count)} />
                       )
