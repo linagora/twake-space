@@ -567,6 +567,30 @@ describe('space writes', () => {
     expect(await testDb.db.select().from(spaceBanners)).toEqual([])
   })
 
+  it('takes a 5 MB image on the banner route only', async () => {
+    const { directory } = ldapRest()
+    const write = setUp(directory)
+    const image = Buffer.alloc(2 * 1024 * 1024)
+
+    const banner = await write(
+      'PUT',
+      `/spaces/${DESIGN}/banner`,
+      image,
+      'alice',
+      'image/png'
+    )
+    const elsewhere = await write(
+      'PATCH',
+      `/spaces/${DESIGN}`,
+      image,
+      undefined,
+      'image/png'
+    )
+
+    expect(banner.statusCode).toBe(204)
+    expect(elsewhere.statusCode).toBe(413)
+  })
+
   it('deletes the banner with the space', async () => {
     const { directory } = ldapRest()
     await testDb.db.insert(spaceBanners).values({

@@ -268,15 +268,16 @@ export function registerSpaceWriteRoutes(
 
   app.addContentTypeParser(
     BANNER_TYPES,
-    { parseAs: 'buffer', bodyLimit: BANNER_LIMIT },
+    { parseAs: 'buffer' },
     (_request, body, done) => {
       done(null, body)
     }
   )
 
+  // The body is read before authorize runs, so only this route takes 5 MB.
   app.put(
     '/spaces/:id/banner',
-    writeSpace,
+    { ...writeSpace, bodyLimit: BANNER_LIMIT },
     refusing(async (request, reply) => {
       const { id } = parse(spaceParams, request.params)
       const image = request.body
