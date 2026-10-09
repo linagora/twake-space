@@ -529,7 +529,9 @@
     "notSetUp": "Trợ lý chưa được thiết lập cho TwakeSpace.",
     "failed": "Không thể mở trợ lý.",
     "post": "Đăng lên bảng tin",
-    "postFailed": "Không thể đăng câu trả lời."
+    "postFailed": "Không thể đăng câu trả lời.",
+    "posted": "Đã đăng lên bảng tin",
+    "openFeed": "Mở bảng tin"
   },
   "suggestions": {
     "title": "Gợi ý của trợ lý",
