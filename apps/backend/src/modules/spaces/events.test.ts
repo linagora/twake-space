@@ -132,12 +132,52 @@ describe('space events', () => {
     ])
   })
 
+  it('keeps who created a space, active', async () => {
+    await created({ actor: 'Admin@EvilCorp.com' })
+
+    expect(await readSpace()).toMatchObject([
+      { state: 'active', createdBy: 'admin@evilcorp.com' }
+    ])
+  })
+
+  it('names no creator for a write that names no person', async () => {
+    await created({ actor: 'token:evilcorp123' })
+
+    expect(await readSpace()).toMatchObject([{ createdBy: null }])
+  })
+
+  it('takes the creator from a replayed creation, and keeps the first one', async () => {
+    await created({ actor: undefined })
+    await created({ actor: 'admin@evilcorp.com' })
+    await created({ actor: 'other@evilcorp.com' })
+
+    expect(await readSpace()).toMatchObject([
+      { createdBy: 'admin@evilcorp.com' }
+    ])
+  })
+
   it('changes nothing when a created space is replayed', async () => {
     await created()
     await created()
 
     expect(await readSpace()).toHaveLength(1)
     expect(await readMembers()).toHaveLength(1)
+  })
+
+  it('leaves an archived space archived when its creation is replayed, renamed or not', async () => {
+    await created()
+    await testDb.db
+      .update(spaces)
+      .set({ state: 'archived' })
+      .where(eq(spaces.spaceId, SPACE_ID))
+
+    await created()
+    await created({
+      name: 'Design Week',
+      timestamp: '2026-10-05T10:00:00.000Z'
+    })
+
+    expect(await readSpace()).toMatchObject([{ state: 'archived' }])
   })
 
   it('names a member by their first and last name, if they have one', async () => {
@@ -234,6 +274,22 @@ describe('space events', () => {
     expect(
       (await testDb.db.select().from(spaceMarks)).map(m => m.userId)
     ).toEqual([other])
+  })
+
+  it('forgets that a deleted user created a space', async () => {
+    await created({ actor: jdoe.email })
+
+    await handle('domain.user.deleted', {
+      emitter: 'ldap-rest',
+      type: 'user.deleted',
+      uuid: JDOE_ID,
+      userId: 'jdoe',
+      internalEmail: jdoe.email,
+      organizationId: 'evilcorp123',
+      reason: 'user deleted'
+    })
+
+    expect(await readSpace()).toMatchObject([{ createdBy: null }])
   })
 
   it('removes a deleted user sent without a uuid by their email', async () => {
@@ -423,6 +479,20 @@ describe('member events', () => {
     await member('twake.space.member.removed', [jdoe])
 
     expect(await readMembers()).toMatchObject([{ username: 'asmith' }])
+  })
+
+  it("forgets the pins and visits of a member who leaves, and no one else's", async () => {
+    await created({ members: [jdoe, asmith] })
+    await testDb.db.insert(spaceMarks).values([
+      { spaceId: SPACE_ID, userId: JDOE_ID, pinnedAt: new Date() },
+      { spaceId: SPACE_ID, userId: asmith.uuid, openedAt: new Date() }
+    ])
+
+    await member('twake.space.member.removed', [jdoe])
+
+    expect(
+      (await testDb.db.select().from(spaceMarks)).map(m => m.userId)
+    ).toEqual([asmith.uuid])
   })
 
   it('finds a member sent without a uuid by their email', async () => {

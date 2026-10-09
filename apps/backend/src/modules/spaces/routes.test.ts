@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm'
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createServer } from '../../infra/http.ts'
@@ -8,6 +9,7 @@ import type { TokenCaller } from '../tokens/authenticator.ts'
 import { spaceApp, type SpaceApp } from './resources.ts'
 import { registerSpaceRoutes } from './routes.ts'
 import {
+  organizationMembers,
   spaceBanners,
   spaceGroups,
   spaceMarks,
@@ -33,6 +35,7 @@ afterAll(() => testDb.drop())
 beforeEach(async () => {
   const { db } = testDb
   for (const table of [
+    organizationMembers,
     spaceMarks,
     spaceMembers,
     spaceGroups,
@@ -187,6 +190,7 @@ describe('GET /spaces', () => {
           description: '',
           pinnedAt: null,
           openedAt: null,
+          manages: true,
           members: [
             {
               id: ALICE,
@@ -218,6 +222,78 @@ describe('GET /spaces', () => {
     expect(response.json()).toMatchObject({
       spaces: [{ id: DESIGN, description: 'Brand and product design' }]
     })
+  })
+})
+
+describe('archived spaces and the Bin', () => {
+  const ids = (body: { spaces: { id: string }[] }) =>
+    body.spaces.map(space => space.id)
+  const moveTo = (spaceId: string, state: 'archived' | 'trashed') =>
+    testDb.db.update(spaces).set({ state }).where(eq(spaces.spaceId, spaceId))
+
+  it('leaves archived and binned spaces out of the lists and reads', async () => {
+    await moveTo(DESIGN, 'archived')
+    const get = setUp(aTokenCaller({ userId: null, role: 'viewer' }))
+
+    expect(ids((await get('/spaces')).json())).toEqual([])
+    expect(ids((await get('/spaces', 'tws_bot')).json())).toEqual([SALES])
+    expect((await get(`/spaces/${DESIGN}`)).statusCode).toBe(404)
+  })
+
+  it('tells which spaces the caller manages', async () => {
+    await testDb.db
+      .update(spaces)
+      .set({ createdBy: 'alice@example.com' })
+      .where(eq(spaces.spaceId, SALES))
+    await testDb.db.insert(spaceMembers).values({
+      spaceId: SALES,
+      userId: ALICE,
+      username: 'alice',
+      email: 'alice@example.com',
+      role: 'viewer'
+    })
+
+    const response = await setUp()('/spaces')
+
+    expect(
+      response
+        .json<{ spaces: { id: string; manages: boolean }[] }>()
+        .spaces.map(({ id, manages }) => ({ id, manages }))
+    ).toEqual([
+      { id: DESIGN, manages: true },
+      { id: SALES, manages: true }
+    ])
+    expect((await setUp()(`/spaces/${SALES}`)).json()).toMatchObject({
+      role: 'viewer',
+      manages: true
+    })
+  })
+
+  it('lists the binned spaces the caller manages, even outside them', async () => {
+    await moveTo(DESIGN, 'trashed')
+    await moveTo(SALES, 'trashed')
+    await testDb.db.insert(organizationMembers).values({
+      organizationId: 'org-1',
+      userId: ALICE,
+      email: 'alice@example.com',
+      role: 'owner'
+    })
+
+    const response = await setUp()('/spaces?state=trashed')
+
+    expect(response.json()).toMatchObject({
+      spaces: [
+        { id: DESIGN, role: 'admin', manages: true },
+        { id: SALES, role: null, manages: true }
+      ]
+    })
+    expect(ids((await setUp()('/spaces?state=archived')).json())).toEqual([])
+  })
+
+  it('refuses an unknown state', async () => {
+    const response = await setUp()('/spaces?state=active')
+
+    expect(response.statusCode).toBe(400)
   })
 })
 

@@ -120,11 +120,11 @@ The browser reads `GET /settings` once signed in and again each time the tab com
 
 ### Space copy
 
-- `twake.space.created`: inserts the space, its members and its linked groups.
+- `twake.space.created`: inserts the space, its members and its linked groups, and keeps its `actor`, when it is an email, as the space's creator (`created_by`). A replayed creation sets the creator only if none is known, and never changes the space's state, so an archived space or one in the Bin stays there.
 - `twake.space.updated`: renames the space. A rename of a space not created yet is parked until the creation arrives, and a rename of a deleted space is dropped.
 - `twake.space.deleted`: removes the space, its members, groups and resources, records their keys in `last_changes`, and drops the space from API tokens.
 - `twake.space.member.added`, `twake.space.member.role.changed`: upsert members.
-- `twake.space.member.removed`: removes members.
+- `twake.space.member.removed`: removes members, with their pins and visits of the space.
 - `twake.space.group.linked`, `twake.space.group.role.changed`: upsert linked groups.
 - `twake.space.group.unlinked`: removes linked groups.
 - `b2b.group.updated`: renames the group in every space.

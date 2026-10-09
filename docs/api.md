@@ -69,6 +69,8 @@ The refusals look like this.
 - Returns the spaces the caller reaches, sorted by name, with the role it acts with in each, the avatar color picked at creation (null when none was), the description (empty when none was) and the people who are members of it, sorted by username.
 - A session caller or an account token reaches the spaces its account is a member of. An organization token reaches every space of the organization and acts with its own role. A token that covers a list of spaces reaches only those.
 - `pinnedAt` is when the caller's account pinned the space and `openedAt` when it last opened it, both null when it did not. They are null for an organization token.
+- `manages` tells whether the caller manages the space: it is its admin, an owner or admin of the organization, or the person who created it. An organization token manages the spaces it covers when its role is `admin`.
+- Only active spaces are listed, and `GET /spaces/:id` answers 404 for the others. `?state=archived` or `?state=trashed` lists instead the archived spaces, or those in the Bin, that the caller manages, member or not. There, `role` is null when the caller is not a member. Any other `state` answers `400 {"error":"invalid_request"}`.
 
 ```json
 {
@@ -81,6 +83,7 @@ The refusals look like this.
       "description": "Brand and product design",
       "pinnedAt": "2026-10-08T09:00:00.000Z",
       "openedAt": null,
+      "manages": true,
       "members": [
         { "id": "<uuid>", "username": "jdoe", "displayName": "Jane Doe" }
       ]
@@ -106,7 +109,7 @@ The refusals look like this.
 - `description`, `color` and `apps` are what was picked at creation. `apps` lists the tabs the space shows when this deployment provides their app. A space created outside twake-space has an empty description, no color and every tab.
 - `chat` and `mail` are the organization's chat and mail availability, false when the organization is unknown. `homeserverUrl` is the organization's Matrix homeserver, or null.
 - `createdAt` is when the backend learned of the space.
-- `pinnedAt` and `openedAt` are as in `GET /spaces`.
+- `pinnedAt`, `openedAt` and `manages` are as in `GET /spaces`.
 - `resources` lists the kind (`drive`, `mailbox`, `calendar`, `matrix_space`, `project`) of each app this deployment provides, set by `SPACE_APPS` in [Deploying](deploy.md#configuration). A kind whose `id` is null is still being prepared by its app.
 
 ```json
@@ -542,9 +545,9 @@ twake_space_parked_events 0
 
 Shared rules:
 
-- `POST`, `PATCH` and `DELETE /spaces/:id` need a session, or a token with `space:write`. The member and group routes need a session, or a token with `members:write`.
+- `POST /spaces`, `PATCH /spaces/:id`, `PUT /spaces/:id/state` and the `DELETE` of a space or of the Bin need a session, or a token with `space:write`. The member and group routes need a session, or a token with `members:write`.
 - Path ids are UUIDs. A malformed path or body answers `400 {"error":"invalid_request"}`, before any access check.
-- On an existing space, the caller must reach it (`404 {"error":"not_found"}`) and act as its `admin` (`403 {"error":"not_space_admin"}`). An organization token acts with its own role.
+- On an existing space, the caller must reach it (`404 {"error":"not_found"}`) and act as its `admin` (`403 {"error":"not_space_admin"}`), except for its state and its deletion, which need a manager. An organization token acts with its own role.
 - `role` is `viewer`, `editor` or `admin`. A space name is 1 to 255 characters, trimmed.
 - A 4xx from ldap-rest other than 401 reaches the caller with the same status, as `{"error":"<ldap-rest code>"}`, or `{"error":"ldap_rest_refused"}` when ldap-rest gives no code. Examples in the code: last admin, unknown user, member with another role. Any other ldap-rest failure answers 500.
 
@@ -565,9 +568,21 @@ Shared rules:
 - `apps` replaces the app tabs the space shows, among the same values as on creation. It stays in twake-space, so ldap-rest is not called for it.
 - Answers `204`.
 
+### PUT /spaces/:id/state
+
+- Body: `{"state":"archived"}`, or `trashed` to move it to the Bin, or `active` to restore it. The state stays in twake-space: ldap-rest and the other apps still hold the space.
+- Needs a caller who manages the space (see `GET /spaces`), whatever its state. A member of an active space who does not manage it gets `403 {"error":"not_space_manager"}`, anyone else `404 {"error":"not_found"}`.
+- Sends `spaces` on the live stream to the space's members and the organization's owners and admins. Answers `204`.
+
 ### DELETE /spaces/:id
 
-Deletes the space. Answers `204`.
+- Deletes the space for good, from ldap-rest then from the copy. A space ldap-rest no longer knows is removed from the copy all the same. Needs a caller who manages it, as for its state, and a space in the Bin, or answers `409 {"error":"not_in_bin"}`.
+- Answers `204`.
+
+### DELETE /spaces/bin
+
+- Deletes for good every space in the Bin the caller manages, one after the other. The first ldap-rest failure stops it and answers as above: the spaces left stay in the Bin, so sending it again finishes the job.
+- Answers `204`.
 
 ### POST /spaces/:id/members
 
