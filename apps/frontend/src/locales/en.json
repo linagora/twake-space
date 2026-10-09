@@ -114,8 +114,8 @@
   "spaceActions": {
     "edit": "Edit space",
     "delete": "Delete space",
-    "deleteTitle": "Delete %{name}?",
-    "deleteHint": "Its members lose access to it. This cannot be undone."
+    "deleteTitle": "Delete %{name} forever?",
+    "deleteHint": "It leaves every app, with its chats, files and tasks. This cannot be undone."
   },
   "spaceMenu": {
     "open": "More actions for %{name}",

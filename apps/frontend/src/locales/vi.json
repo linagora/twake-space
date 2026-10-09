@@ -114,8 +114,8 @@
   "spaceActions": {
     "edit": "Chỉnh sửa không gian",
     "delete": "Xóa không gian",
-    "deleteTitle": "Xóa %{name}?",
-    "deleteHint": "Các thành viên sẽ mất quyền truy cập. Không thể hoàn tác."
+    "deleteTitle": "Xóa vĩnh viễn %{name}?",
+    "deleteHint": "Nó sẽ rời khỏi mọi ứng dụng, cùng với trò chuyện, tệp và nhiệm vụ. Không thể hoàn tác."
   },
   "spaceMenu": {
     "open": "Thao tác khác cho %{name}",

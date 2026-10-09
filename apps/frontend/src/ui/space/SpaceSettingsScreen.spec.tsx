@@ -145,21 +145,23 @@ describe('SpaceSettingsScreen', () => {
     )
   })
 
-  it('deletes the space from the danger zone and goes home', async () => {
-    const spaces = renderSettings(space)
+  it.each([
+    ['Delete', 'trashed'],
+    ['Archive', 'archived']
+  ])(
+    'moves the space out from the danger zone with %s, and goes home',
+    async (button, state) => {
+      const spaces = renderSettings(space)
 
-    const zone = await screen.findByRole('region', { name: 'Danger zone' })
-    fireEvent.click(within(zone).getByRole('button', { name: 'Delete' }))
-    const dialog = await screen.findByRole('dialog', {
-      name: 'Delete Roadmap?'
-    })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
+      const zone = await screen.findByRole('region', { name: 'Danger zone' })
+      fireEvent.click(within(zone).getByRole('button', { name: button }))
 
-    await waitFor(() => {
-      expect(screen.getByLabelText('path')).toHaveTextContent(/^\/$/)
-    })
-    expect(spaces.remove).toHaveBeenCalledWith('a1')
-  })
+      await waitFor(() => {
+        expect(screen.getByLabelText('path')).toHaveTextContent(/^\/$/)
+      })
+      expect(spaces.setState).toHaveBeenCalledWith('a1', state)
+    }
+  )
 
   it('keeps the page from members who are not admins', async () => {
     renderSettings({ ...space, role: 'editor' })

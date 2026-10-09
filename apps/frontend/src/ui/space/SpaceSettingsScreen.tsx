@@ -1,4 +1,5 @@
 import {
+  Archive,
   CrossCircleOutline,
   Icon,
   Key,
@@ -50,7 +51,7 @@ import { useI18n } from '@/ui/i18n/useI18n'
 import { useSession } from '@/ui/session/SessionGate'
 import { AddPeopleRow } from '@/ui/space/PeopleDialog'
 import { RoleMenu } from '@/ui/space/RoleMenu'
-import { DeleteDialog, EditDialog } from '@/ui/space/SpaceMenu'
+import { EditDialog, useShelve } from '@/ui/space/SpaceMenu'
 import { WriteError } from '@/ui/space/WriteError'
 import { AppIcon } from '@/ui/spaces/AppPicker'
 import {
@@ -75,9 +76,9 @@ interface Row {
   avatar: string | null
 }
 
-// The management page of a space, for its admins. The mockup's archive,
-// access and notification settings, and the description and color edits,
-// wait for their backend.
+// The management page of a space, for its admins. The mockup's access and
+// notification settings, and the description and color edits, wait for their
+// backend.
 export function SpaceSettingsScreen(): ReactElement {
   const { t } = useI18n()
   const { spaceId = '' } = useParams()
@@ -125,7 +126,8 @@ export function SpaceSettingsScreen(): ReactElement {
 
 function Settings({ space }: { space: Space }): ReactElement {
   const { t } = useI18n()
-  const [dialog, setDialog] = useState<'edit' | 'delete' | 'add' | null>(null)
+  const { shelve, notice } = useShelve(space.id)
+  const [dialog, setDialog] = useState<'edit' | 'add' | null>(null)
   const closeDialog = (): void => {
     setDialog(null)
   }
@@ -163,9 +165,18 @@ function Settings({ space }: { space: Space }): ReactElement {
           </Button>
           <Button
             variant="outlined"
+            startIcon={<Icon icon={Archive} />}
+            onClick={() => {
+              shelve('archived')
+            }}
+          >
+            {t('settings.archive')}
+          </Button>
+          <Button
+            variant="outlined"
             startIcon={<Icon icon={Trash} />}
             onClick={() => {
-              setDialog('delete')
+              shelve('trashed')
             }}
           >
             {t('common.delete')}
@@ -229,6 +240,24 @@ function Settings({ space }: { space: Space }): ReactElement {
             </Button>
           </ListItem>
           <ListItem gutters="disabled">
+            <ListItemIcon>
+              <Icon icon={Archive} />
+            </ListItemIcon>
+            <ListItemText
+              primary={t('settings.archiveSpace')}
+              secondary={t('settings.archiveHint')}
+            />
+            <Button
+              variant="outlined"
+              className="u-flex-none u-ml-1"
+              onClick={() => {
+                shelve('archived')
+              }}
+            >
+              {t('settings.archive')}
+            </Button>
+          </ListItem>
+          <ListItem gutters="disabled">
             <ListItemIcon className="u-error">
               <Icon icon={Trash} />
             </ListItemIcon>
@@ -241,7 +270,7 @@ function Settings({ space }: { space: Space }): ReactElement {
               color="error"
               className="u-flex-none u-ml-1"
               onClick={() => {
-                setDialog('delete')
+                shelve('trashed')
               }}
             >
               {t('common.delete')}
@@ -251,12 +280,10 @@ function Settings({ space }: { space: Space }): ReactElement {
       </Section>
 
       {dialog === 'edit' && <EditDialog space={space} onClose={closeDialog} />}
-      {dialog === 'delete' && (
-        <DeleteDialog space={space} onClose={closeDialog} />
-      )}
       {dialog === 'add' && (
         <AddMembersDialog space={space} onClose={closeDialog} />
       )}
+      {notice}
     </Page>
   )
 }
