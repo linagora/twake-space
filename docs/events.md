@@ -289,7 +289,7 @@ A new `m.room.message` notifies each user in `m.mentions.user_ids` who is on the
 
 ### From the assistant
 
-`POST /notifications/suggestions` (API token with `notifications:write`) creates an `assistant_suggestion` for one user, found by Matrix id as for mentions, with `{ text, pendingCallId, matrixRoomId }` as payload. It follows the user's settings and sends the `notification` live event like the others.
+`POST /notifications/suggestions` (a technical account's API token with `notifications:write`) creates an `assistant_suggestion` for one user, found by Matrix id as for mentions, with `{ text, pendingCallId, matrixRoomId }` as payload. It follows the user's settings and sends the `notification` live event like the others.
 
 ### Settings and delivery
 

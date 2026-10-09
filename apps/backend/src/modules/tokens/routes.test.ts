@@ -642,6 +642,25 @@ describe('technical account tokens', () => {
       .from(apiTokens)
     expect(row).toEqual({ technical: true })
   })
+
+  it('alone gets notifications:write', async () => {
+    const call = setUp()
+    const scopes = ['notifications:write']
+
+    const own = await call('POST', '/tokens', create({ scopes }))
+    const org = await call('POST', '/organization/tokens', orgToken({ scopes }))
+    const technical = await call('POST', url, create({ scopes }))
+
+    const refusal = {
+      error: 'forbidden',
+      message: 'notifications:write is for technical accounts'
+    }
+    expect(own.statusCode).toBe(403)
+    expect(own.json()).toEqual(refusal)
+    expect(org.statusCode).toBe(403)
+    expect(org.json()).toEqual(refusal)
+    expect(technical.statusCode).toBe(201)
+  })
 })
 
 describe('organization token policy', () => {

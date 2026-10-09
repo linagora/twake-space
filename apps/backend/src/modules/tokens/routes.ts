@@ -287,6 +287,12 @@ function registerManagedTokens(
     if (refused) return invalid(reply, refused)
 
     const scopes = [...new Set(body.scopes)]
+    if (
+      scopes.includes('notifications:write') &&
+      !(manager.owner.ownerKind === 'account' && manager.owner.technical)
+    ) {
+      return forbidden(reply, 'notifications:write is for technical accounts')
+    }
     const spaceIds = body.spaces === 'all' ? null : [...new Set(body.spaces)]
     if (
       spaceIds &&
