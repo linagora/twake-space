@@ -1,5 +1,6 @@
-import { Icon } from '@linagora/twake-icons'
+import { Archive, Icon, Trash } from '@linagora/twake-icons'
 import {
+  List,
   ListItem,
   ListItemText,
   NavIcon,
@@ -20,6 +21,7 @@ import {
 import {
   AppFrame,
   NavAvatar,
+  SidebarDivider,
   SidebarHeader,
   SidebarNav,
   SidebarSearch,
@@ -130,6 +132,7 @@ export function AppShell(): ReactElement {
             )}
             <AppNav />
             <SpaceList query={query ?? ''} />
+            <ShelfLinks />
           </>
         }
       >
@@ -235,6 +238,29 @@ function Hint({ text }: { text: string }): ReactElement {
     <ListItem>
       <ListItemText secondary={text} />
     </ListItem>
+  )
+}
+
+function ShelfLinks(): ReactElement {
+  const { t } = useI18n()
+  return (
+    <>
+      <SidebarDivider />
+      <List aria-label={t('shell.shelves')}>
+        <NavItem>
+          <RouteNavLink to="/archives">
+            <NavIcon icon={Archive} />
+            <NavText>{t('shell.archives')}</NavText>
+          </RouteNavLink>
+        </NavItem>
+        <NavItem>
+          <RouteNavLink to="/bin">
+            <NavIcon icon={Trash} />
+            <NavText>{t('shell.bin')}</NavText>
+          </RouteNavLink>
+        </NavItem>
+      </List>
+    </>
   )
 }
 

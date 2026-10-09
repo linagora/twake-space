@@ -214,6 +214,22 @@ describe('AppShell', () => {
     ).toHaveAttribute('aria-current', 'page')
   })
 
+  it('links the Archives and the Bin from the sidebar', async () => {
+    renderRoute('/bin', { spaces: spaces() })
+
+    const shelves = within(
+      await screen.findByRole('list', { name: 'Archives and Bin' })
+    )
+    expect(shelves.getByRole('link', { name: 'Archives' })).toHaveAttribute(
+      'href',
+      '/archives'
+    )
+    expect(shelves.getByRole('link', { name: 'Bin' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
+  })
+
   it('follows the UI language', async () => {
     renderRoute('/', { lang: 'fr', spaces: spaces() })
 
