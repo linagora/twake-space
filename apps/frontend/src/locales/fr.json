@@ -114,8 +114,8 @@
   "spaceActions": {
     "edit": "Modifier l'espace",
     "delete": "Supprimer l'espace",
-    "deleteTitle": "Supprimer %{name} ?",
-    "deleteHint": "Ses membres n'y auront plus accès. Cette action est définitive."
+    "deleteTitle": "Supprimer %{name} définitivement ?",
+    "deleteHint": "Il quitte toutes les applications, avec ses discussions, fichiers et tâches. C’est irréversible."
   },
   "spaceMenu": {
     "open": "Plus d’actions pour %{name}",

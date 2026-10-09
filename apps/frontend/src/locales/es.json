@@ -114,8 +114,8 @@
   "spaceActions": {
     "edit": "Editar el espacio",
     "delete": "Eliminar el espacio",
-    "deleteTitle": "¿Eliminar %{name}?",
-    "deleteHint": "Sus miembros perderán el acceso. No se puede deshacer."
+    "deleteTitle": "¿Eliminar %{name} definitivamente?",
+    "deleteHint": "Sale de todas las aplicaciones, con sus chats, archivos y tareas. No se puede deshacer."
   },
   "spaceMenu": {
     "open": "Más acciones para %{name}",

@@ -114,8 +114,8 @@
   "spaceActions": {
     "edit": "Space bearbeiten",
     "delete": "Space löschen",
-    "deleteTitle": "%{name} löschen?",
-    "deleteHint": "Seine Mitglieder verlieren den Zugriff. Das lässt sich nicht rückgängig machen."
+    "deleteTitle": "%{name} endgültig löschen?",
+    "deleteHint": "Er verschwindet aus allen Apps, mit seinen Chats, Dateien und Aufgaben. Dies kann nicht rückgängig gemacht werden."
   },
   "spaceMenu": {
     "open": "Weitere Aktionen für %{name}",

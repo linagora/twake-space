@@ -1,4 +1,5 @@
 import {
+  Archive,
   Dots,
   Icon,
   Link,
@@ -23,9 +24,10 @@ import {
   Typography
 } from '@linagora/twake-mui'
 import { useEffect, useId, useState, type ReactElement } from 'react'
-import { useNavigate } from 'react-router'
+import { useMatch, useNavigate } from 'react-router'
 
 import type {
+  ShelfState,
   Space,
   SpaceApp,
   SpaceChange,
@@ -41,6 +43,7 @@ import {
   useDeleteSpace,
   useEditSpace,
   useSetPinned,
+  useSetState,
   useSpace,
   useSpaceApps
 } from '@/ui/spaces/queries'
@@ -94,27 +97,25 @@ export function ShareLinkButton({ id }: { id: string }): ReactElement {
 }
 
 // The "more" menu of a space, on its card and in its header. Every entry
-// does something today: the mockup's notification and archive wait for
-// their backend.
+// does something today: the mockup's notification waits for its backend.
 export function SpaceMenu({
   space
 }: {
-  space: Pick<SpaceSummary, 'id' | 'name' | 'role' | 'pinnedAt'>
+  space: Pick<SpaceSummary, 'id' | 'name' | 'role' | 'pinnedAt' | 'manages'>
 }): ReactElement {
   const { t } = useI18n()
   const navigate = useNavigate()
   const setPinned = useSetPinned(space.id)
+  const { shelve, notice: shelveNotice } = useShelve(space.id)
   const pinned = space.pinnedAt !== null
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-  const [dialog, setDialog] = useState<'people' | 'edit' | 'delete' | null>(
-    null
-  )
+  const [dialog, setDialog] = useState<'people' | 'edit' | null>(null)
   const { share, notice } = useShareLink(space.id)
   const isAdmin = space.role === 'admin'
   const close = (): void => {
     setAnchor(null)
   }
-  const open = (which: 'people' | 'edit' | 'delete') => () => {
+  const open = (which: 'people' | 'edit') => () => {
     close()
     setDialog(which)
   }
@@ -178,11 +179,26 @@ export function SpaceMenu({
             close()
             void navigate(`/spaces/${encodeURIComponent(space.id)}/settings`)
           })}
-        {isAdmin && <Divider />}
-        {isAdmin &&
-          item('delete', Trash, t('spaceActions.delete'), open('delete'), true)}
+        {space.manages &&
+          item('archive', Archive, t('spaceMenu.archive'), () => {
+            close()
+            shelve('archived')
+          })}
+        {space.manages && <Divider />}
+        {space.manages &&
+          item(
+            'delete',
+            Trash,
+            t('spaceActions.delete'),
+            () => {
+              close()
+              shelve('trashed')
+            },
+            true
+          )}
       </Menu>
       {notice}
+      {shelveNotice}
       {dialog === 'people' && (
         <WithSpace spaceId={space.id} onClose={closeDialog}>
           {full => <PeopleDialog space={full} onClose={closeDialog} />}
@@ -193,11 +209,45 @@ export function SpaceMenu({
           {full => <EditDialog space={full} onClose={closeDialog} />}
         </WithSpace>
       )}
-      {dialog === 'delete' && (
-        <DeleteDialog space={space} onClose={closeDialog} />
-      )}
     </>
   )
+}
+
+// Archives a space, moves it to the Bin or restores it. Out of reach, it
+// leaves its pages; a failure says so for a moment.
+export function useShelve(id: string): {
+  shelve: (state: ShelfState | 'active') => void
+  notice: ReactElement
+} {
+  const { t } = useI18n()
+  const setState = useSetState(id)
+  const navigate = useNavigate()
+  const inside = useMatch('/spaces/:spaceId/*')?.params.spaceId === id
+  const [failed, setFailed] = useState(false)
+  return {
+    // Not mutate's own callbacks: they are dropped once the page unmounts.
+    shelve: state => {
+      void setState.mutateAsync(state).then(
+        () => {
+          if (inside && state !== 'active')
+            void navigate('/', { replace: true })
+        },
+        () => {
+          setFailed(true)
+        }
+      )
+    },
+    notice: (
+      <Snackbar
+        open={failed}
+        autoHideDuration={5000}
+        onClose={() => {
+          setFailed(false)
+        }}
+        message={t('shelves.moveFailed')}
+      />
+    )
+  }
 }
 
 // The people picker needs who is already in, and the app picker the space's
@@ -303,6 +353,7 @@ export function EditDialog({
   )
 }
 
+// Deletes a space in the Bin for good, in every app.
 export function DeleteDialog({
   space,
   onClose
@@ -312,7 +363,6 @@ export function DeleteDialog({
 }): ReactElement {
   const { t } = useI18n()
   const titleId = useId()
-  const navigate = useNavigate()
   const remove = useDeleteSpace(space.id)
   return (
     <Dialog open onClose={onClose} aria-labelledby={titleId} size="small">
@@ -336,14 +386,10 @@ export function DeleteDialog({
           color="error"
           disabled={remove.isPending}
           onClick={() => {
-            remove.mutate(undefined, {
-              onSuccess: () => {
-                void navigate('/', { replace: true })
-              }
-            })
+            remove.mutate(undefined, { onSuccess: onClose })
           }}
         >
-          {t('common.delete')}
+          {t('shelves.deleteForever')}
         </Button>
       </DialogActions>
     </Dialog>

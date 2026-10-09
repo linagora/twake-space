@@ -114,8 +114,8 @@
   "spaceActions": {
     "edit": "Modifica lo spazio",
     "delete": "Elimina lo spazio",
-    "deleteTitle": "Eliminare %{name}?",
-    "deleteHint": "I suoi membri perderanno l'accesso. L'operazione è definitiva."
+    "deleteTitle": "Eliminare %{name} definitivamente?",
+    "deleteHint": "Esce da tutte le app, con chat, file e attività. Non si può annullare."
   },
   "spaceMenu": {
     "open": "Altre azioni per %{name}",

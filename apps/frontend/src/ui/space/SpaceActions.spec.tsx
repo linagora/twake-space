@@ -55,7 +55,7 @@ const openMenu = async () => {
 
 describe('SpaceActions', () => {
   it('lets a member who is not an admin share the link and see the members', async () => {
-    renderActions({ ...space, role: 'editor' })
+    renderActions({ ...space, role: 'editor', manages: false })
 
     expect(
       await screen.findByRole('button', { name: 'Share link' })
@@ -141,6 +141,7 @@ describe('SpaceActions', () => {
         'Manage people',
         'Edit space',
         'Manage space',
+        'Archive',
         'Delete space'
       ]
     )
@@ -215,21 +216,31 @@ describe('SpaceActions', () => {
     expect(spaces.edit).not.toHaveBeenCalled()
   })
 
-  it('deletes the space after confirming, and goes to the space list', async () => {
-    const spaces = renderActions(space)
+  it.each([
+    ['Delete space', 'trashed'],
+    ['Archive', 'archived']
+  ])(
+    'moves the space out with %s, and goes to the space list',
+    async (entry, state) => {
+      const spaces = renderActions(space)
+
+      fireEvent.click((await openMenu()).getByRole('menuitem', { name: entry }))
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('path')).toHaveTextContent(/^\/$/)
+      })
+      expect(spaces.setState).toHaveBeenCalledWith('a1', state)
+      expect(spaces.remove).not.toHaveBeenCalled()
+    }
+  )
+
+  it('leaves archiving and deleting to the people who manage the space', async () => {
+    renderActions({ ...space, manages: false })
 
     const menu = await openMenu()
-    fireEvent.click(menu.getByRole('menuitem', { name: 'Delete space' }))
-    const dialog = await screen.findByRole('dialog', {
-      name: 'Delete Roadmap?'
-    })
-    expect(spaces.remove).not.toHaveBeenCalled()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
 
-    await waitFor(() => {
-      expect(screen.getByLabelText('path')).toHaveTextContent(/^\/$/)
-    })
-    expect(spaces.remove).toHaveBeenCalledWith('a1')
+    expect(menu.queryByRole('menuitem', { name: 'Archive' })).toBe(null)
+    expect(menu.queryByRole('menuitem', { name: 'Delete space' })).toBe(null)
   })
 
   it('shows why an edit was refused', async () => {
