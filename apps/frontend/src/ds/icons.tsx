@@ -55,6 +55,33 @@ export function Videocam(props: SVGAttributes<SVGSVGElement>): ReactElement {
   )
 }
 
+// The header's mockup icons are drawn in a 20px frame. They show its middle
+// 16px so they sit in the 16px slot of the header's buttons beside Twake's
+// glyphs, and spill into the padding at the mockup's size.
+
+// Material Symbols' videocam, as in the mockup's header.
+export function VideocamSymbolIcon(
+  props: SVGAttributes<SVGSVGElement>
+): ReactElement {
+  return (
+    <svg viewBox="2 2 16 16" overflow="visible" {...props}>
+      <path d="M3.333 16.667q-.687 0-1.177-.49A1.6 1.6 0 0 1 1.666 15V5q0-.687.49-1.177t1.177-.49h10q.688 0 1.177.49T15 5v3.75l2.625-2.625q.209-.209.458-.104.25.104.25.396v7.166q0 .292-.25.396t-.458-.104L15 11.25V15q0 .687-.49 1.177-.489.49-1.177.49zm0-1.667h10V5h-10z" />
+    </svg>
+  )
+}
+
+// Material's group_add, as in the mockup's header: Twake's PersonAdd is one
+// filled person.
+export function GroupAddIcon(
+  props: SVGAttributes<SVGSVGElement>
+): ReactElement {
+  return (
+    <svg viewBox="2 2 16 16" overflow="visible" {...props}>
+      <path d="M18.333 7.5V5.833h-1.666V7.5H15v1.667h1.667v1.666h1.666V9.167H20V7.5zM6.667 10a3.332 3.332 0 1 0 0-6.667 3.332 3.332 0 1 0 0 6.667m0-5c.916 0 1.666.75 1.666 1.667 0 .916-.75 1.666-1.666 1.666C5.75 8.333 5 7.583 5 6.667 5 5.75 5.75 5 6.667 5M6.667 10.833C4.442 10.833 0 11.95 0 14.167v2.5h13.333v-2.5c0-2.217-4.441-3.334-6.666-3.334m5 4.167h-10v-.825c.166-.6 2.75-1.675 5-1.675s4.833 1.075 5 1.667zM10.425 3.375a5 5 0 0 1 1.242 3.292 5 5 0 0 1-1.242 3.291 3.32 3.32 0 0 0 2.908-3.291c0-1.7-1.275-3.084-2.908-3.292M13.775 11.525c.742.692 1.225 1.558 1.225 2.642v2.5h1.667v-2.5c0-1.209-1.325-2.092-2.892-2.642" />
+    </svg>
+  )
+}
+
 // Material's keyboard_arrow_down, as in the mockup's filter chip: Twake's
 // Down is an arrow.
 export function ChevronDownIcon(

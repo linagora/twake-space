@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router'
 import { tabPath } from '@/application/embeddedApps'
 import type { Space } from '@/application/spaces'
 import { isTabReady } from '@/application/spaceTabs'
-import { Videocam } from '@/ds/icons'
+import { Videocam, VideocamSymbolIcon } from '@/ds/icons'
 import { MenuEntry } from '@/ds/Menu'
 import { useCall } from '@/ui/call/CallContext'
 import { JoinMeetingDialog } from '@/ui/call/JoinMeetingDialog'
@@ -43,7 +43,7 @@ export function MeetingMenu({ space }: { space: Space }): ReactElement | null {
           setAnchor(event.currentTarget)
         }}
       >
-        <Icon icon={Videocam} />
+        <Icon icon={VideocamSymbolIcon} />
       </IconButton>
       <Menu anchorEl={anchor} open={anchor !== null} onClose={close}>
         {chatCall && (
