@@ -1,4 +1,10 @@
-import { Alert, Typography, useColorScheme } from '@linagora/twake-mui'
+import {
+  Alert,
+  Button,
+  Snackbar,
+  Typography,
+  useColorScheme
+} from '@linagora/twake-mui'
 import { useMutation } from '@tanstack/react-query'
 import {
   createContext,
@@ -9,6 +15,7 @@ import {
   useSyncExternalStore,
   type ReactElement
 } from 'react'
+import { Link as RouterLink } from 'react-router'
 
 import {
   ASSISTANT_INTENT,
@@ -25,6 +32,7 @@ import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
 import { useFeedCache } from '@/ui/space/feedQueries'
+import { useSpace } from '@/ui/spaces/queries'
 
 // Whether the assistant's panel is open, for the shell that shows it and
 // the header that toggles it. Outside the shell the button does nothing.
@@ -89,12 +97,18 @@ export function AssistantPanel({
     }
   }, [ready])
   const service = intent.status === 'ready' ? intent.service : null
+  const [posted, setPosted] = useState(false)
   const post = useMutation({
     mutationFn: (text: string) => feed.post(spaceId, text),
-    onSuccess: add
+    onSuccess: item => {
+      add(item)
+      setPosted(true)
+    }
   })
   const { mutate } = post
-  const postLabel = t('assistant.post')
+  // While the space loads, the action stays: the feed refuses a viewer anyway
+  const canPost = useSpace(spaceId).data?.role !== 'viewer'
+  const postLabel = canPost ? t('assistant.post') : null
   const theme =
     colorScheme === 'light' || colorScheme === 'dark' ? colorScheme : null
 
@@ -107,19 +121,31 @@ export function AssistantPanel({
       ) {
         return
       }
-      const message = parseAssistantMessage(event.data, service.intentId)
-      if (message?.kind === 'ready') {
+      const data: unknown = event.data
+      const message = parseAssistantMessage(data, service.intentId)
+      if (message === null) {
+        // Its type only: warnings reach Sentry, and the data holds the answer
+        const type =
+          typeof data === 'object' &&
+          data !== null &&
+          'type' in data &&
+          typeof data.type === 'string'
+            ? data.type
+            : typeof data
+        console.warn('Assistant message ignored:', type)
+      } else if (message.kind === 'ready') {
         const config: AssistantConfig = {
-          answerActions: [{ name: 'post', label: postLabel }],
+          answerActions:
+            postLabel === null ? [] : [{ name: 'post', label: postLabel }],
           ...(theme && { theme: { type: theme } })
         }
         frame.current.contentWindow?.postMessage(config, service.origin)
       } else if (
-        message?.kind === 'result' &&
+        message.kind === 'result' &&
         message.result.answerAction === 'post'
       ) {
         mutate(message.result.text)
-      } else if (message?.kind === 'cancel') {
+      } else if (message.kind === 'cancel') {
         onClose()
       }
     }
@@ -158,6 +184,27 @@ export function AssistantPanel({
         src={service.href}
         title={t('assistant.title')}
         allow="clipboard-write"
+      />
+      <Snackbar
+        open={posted}
+        autoHideDuration={5000}
+        onClose={() => {
+          setPosted(false)
+        }}
+        message={t('assistant.posted')}
+        action={
+          <Button
+            variant="text"
+            size="small"
+            component={RouterLink}
+            to={`/spaces/${spaceId}/feed`}
+            onClick={() => {
+              setPosted(false)
+            }}
+          >
+            {t('assistant.openFeed')}
+          </Button>
+        }
       />
     </>
   )

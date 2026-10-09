@@ -2,8 +2,10 @@ import { act, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ASSISTANT_INTENT } from '@/application/assistant'
+import type { Space } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeSession, fakeUser } from '@/testing/fakeSession'
+import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { AssistantPanel } from '@/ui/assistant/AssistantPanel'
 
@@ -31,12 +33,36 @@ vi.mock('@linagora/twake-sdk', () => ({
 
 const ORIGIN = 'https://assistant.test'
 
-function renderPanel(idToken: string | null = 'id-token') {
+function renderPanel(
+  idToken: string | null = 'id-token',
+  role: Space['role'] = 'editor'
+) {
   const feed = fakeFeed()
+  const spaces = fakeSpaces()
+  vi.mocked(spaces.get).mockResolvedValue({
+    id: 'a1',
+    name: 'Roadmap',
+    role,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    color: null,
+    description: '',
+    pinnedAt: null,
+    openedAt: null,
+    manages: role === 'admin',
+    apps: [],
+    chat: false,
+    mail: false,
+    homeserverUrl: null,
+    banner: null,
+    members: [],
+    groups: [],
+    resources: []
+  })
   const onClose = vi.fn()
   renderWithProviders(<AssistantPanel spaceId="a1" onClose={onClose} />, {
     session: fakeSession(() => Promise.resolve(fakeUser(idToken))),
-    feed
+    feed,
+    spaces
   })
   return { feed, onClose }
 }
@@ -96,6 +122,44 @@ describe('AssistantPanel', () => {
     await waitFor(() => {
       expect(feed.post).toHaveBeenCalledWith('a1', 'Hello all')
     })
+    expect(await screen.findByText('Posted in the feed')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open the feed' })).toHaveAttribute(
+      'href',
+      '/spaces/a1/feed'
+    )
+  })
+
+  it('offers no post in the feed to a viewer', async () => {
+    renderPanel('id-token', 'viewer')
+    const frame = await findFrame()
+    const inside = frame.contentWindow
+    if (!inside) throw new Error('no frame window')
+    const postMessage = vi.spyOn(inside, 'postMessage')
+
+    // Once the space, and so the role, is loaded
+    await waitFor(() => {
+      receive({ type: 'intent-i1:ready' })
+      expect(postMessage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ answerActions: [] }),
+        ORIGIN
+      )
+    })
+  })
+
+  it('logs a message of the assistant it does not understand', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { feed } = renderPanel()
+    await findFrame()
+
+    receive({ type: 'intent-i1:result', result: { text: 'Hello all' } })
+
+    // Not the answer, which would reach Sentry
+    expect(warn).toHaveBeenCalledWith(
+      'Assistant message ignored:',
+      'intent-i1:result'
+    )
+    expect(feed.post).not.toHaveBeenCalled()
+    warn.mockRestore()
   })
 
   it('ignores another window of the assistant origin', async () => {

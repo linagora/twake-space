@@ -529,7 +529,9 @@
     "notSetUp": "L’assistente non è configurato per TwakeSpace.",
     "failed": "Impossibile aprire l’assistente.",
     "post": "Pubblica nel feed",
-    "postFailed": "Impossibile pubblicare la risposta."
+    "postFailed": "Impossibile pubblicare la risposta.",
+    "posted": "Pubblicato nel feed",
+    "openFeed": "Apri il feed"
   },
   "suggestions": {
     "title": "Suggerimenti dell'assistente",
