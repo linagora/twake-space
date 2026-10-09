@@ -13,7 +13,8 @@ import coverArt from '@/assets/space-cover.png'
 
 // `fill` off leaves the rest of the content to what follows the page: the
 // frame of an embedded app, under the tabs. `compact` keeps a narrow edge,
-// on a page given to the content.
+// on a page given to the content. The page scrolls itself, or content
+// overflowing a page shrunk to the screen would cover its bottom edge.
 export function Page({
   fill = true,
   compact = false,
@@ -31,6 +32,7 @@ export function Page({
         flexDirection: 'column',
         flex: fill ? '1 1 auto' : '0 0 auto',
         minHeight: 0,
+        overflow: 'hidden auto',
         px: compact ? 1 : { xs: 2, lg: 3 },
         pt: compact ? 1 : 2,
         pb: fill ? (compact ? 1 : 2) : 0
@@ -78,7 +80,9 @@ export function TabPanel({
   )
 }
 
-// A panel that scrolls as a whole, under the space's header.
+// A panel that scrolls as a whole, under the space's header. Its edge, out
+// into the page's, leaves room for the shadows of the cards: 20px holds the
+// blur of a hovered card (shadow 3), within the page's 24px on wide screens.
 export function ScrollPanel({
   children
 }: {
@@ -93,6 +97,8 @@ export function ScrollPanel({
         flex: '1 1 auto',
         minHeight: 0,
         overflowY: 'auto',
+        px: { xs: 2, lg: 2.5 },
+        mx: { xs: -2, lg: -2.5 },
         pb: 2
       }}
     >
