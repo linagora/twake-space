@@ -77,7 +77,8 @@ export function containerTab(space: Space, kind: ResourceKind): Tab | null {
 
 /**
  * Where a feed item opens: a card in its container's tab, anything else in
- * the feed, at the item. An event opens in Calendar's preview of it.
+ * the feed, at the item. An event opens in Calendar's preview of it, a message
+ * in Mail at the email.
  */
 export function itemPlace(
   space: Space,
@@ -87,9 +88,15 @@ export function itemPlace(
   const tab = container && containerTab(space, container.kind)
   const base = `/spaces/${space.id}/${tab ?? 'feed'}`
   if (!tab) return { tab: 'feed', path: base, feedItem: item.id }
-  const below =
-    tab === 'calendar' && item.kind === 'card'
-      ? `/events/${encodeURIComponent(item.object.id)}`
-      : ''
+  const below = item.kind === 'card' ? belowTab(tab, item.object) : ''
   return { tab, path: base + below, feedItem: null }
+}
+
+// The path under the tab's embed route that shows the object itself, if the
+// app can: Calendar knows its event by uid, Mail its email by JMAP id.
+function belowTab(tab: Tab, object: { type: string; id: string }): string {
+  const id = encodeURIComponent(object.id)
+  if (tab === 'calendar') return `/events/${id}`
+  if (tab === 'mail' && object.type === 'message') return `/email/${id}`
+  return ''
 }

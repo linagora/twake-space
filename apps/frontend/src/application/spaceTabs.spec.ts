@@ -178,6 +178,24 @@ describe('itemPlace', () => {
     })
   })
 
+  it('opens a message in its email in the Mail tab', () => {
+    const message: FeedCard = {
+      ...card,
+      type: 'com.twake.mail.message.received.v1',
+      object: {
+        type: 'message',
+        id: '956ee570-c1aa-11f1-bdf6-19e2a75a28cc',
+        title: 'Partner feedback',
+        container: { kind: 'mailbox', id: 'root-1' }
+      }
+    }
+    expect(itemPlace(space, message)).toEqual({
+      tab: 'mail',
+      path: '/spaces/a1/mail/email/956ee570-c1aa-11f1-bdf6-19e2a75a28cc',
+      feedItem: null
+    })
+  })
+
   it('opens a post, or a card with no tab, in the feed at the item', () => {
     expect(itemPlace(space, post)).toEqual({
       tab: 'feed',
