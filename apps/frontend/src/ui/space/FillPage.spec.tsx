@@ -9,7 +9,11 @@ import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderRoute } from '@/testing/renderWithProviders'
 
 vi.mock('@linagora/twake-sdk', () => ({
-  createSdk: () => ({ status: 'ready' })
+  createSdk: () => ({
+    status: 'ready',
+    onStatusChange: () => () => undefined,
+    createIntent: () => new Promise(() => undefined)
+  })
 }))
 
 // The bar is tested in its own package: only whether it shows matters here
@@ -163,6 +167,21 @@ describe('full page', () => {
     await waitFor(() => {
       expect(fillButton()).toHaveFocus()
     })
+  })
+
+  it('closes the assistant, which the page given to the tab cannot close', async () => {
+    renderAt('/spaces/space-1/feed')
+    await screen.findByRole('tabpanel')
+    fireEvent.click(screen.getByRole('button', { name: 'Twake AI assistant' }))
+    expect(
+      screen.getByRole('status', { name: 'Opening the assistant…' })
+    ).toBeInTheDocument()
+
+    fireEvent.click(fillButton())
+
+    expect(
+      screen.queryByRole('status', { name: 'Opening the assistant…' })
+    ).toBe(null)
   })
 
   it('gives the page to a tab of TwakeSpace too, keeping its panel', async () => {
