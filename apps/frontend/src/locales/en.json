@@ -57,6 +57,9 @@
     "recent": "Recent",
     "noPinned": "Pin a space from its menu",
     "noRecent": "The spaces you open show here",
+    "shelves": "Archives and Bin",
+    "archives": "Archives",
+    "bin": "Bin",
     "title": "Space",
     "allSpaces": "All shared spaces",
     "spaceWithCount": "%{name}, %{smart_count} new",
@@ -119,6 +122,7 @@
     "shareLink": "Share link",
     "pin": "Pin",
     "unpin": "Unpin",
+    "archive": "Archive",
     "linkCopied": "Link copied",
     "invite": "Invite people",
     "managePeople": "Manage people",
@@ -142,6 +146,21 @@
     "pinned": "Pinned",
     "createHint": "Project, department, topic group…",
     "createCard": "Create new space"
+  },
+  "shelves": {
+    "archives": "Archives",
+    "archivesIntro": "Archived spaces leave the lists of their members. Restore one to bring it back.",
+    "noArchives": "No archived space.",
+    "bin": "Bin",
+    "binIntro": "Spaces in the Bin stay in Chat, Drive and the other apps until they are deleted forever.",
+    "binIsEmpty": "The Bin is empty.",
+    "emptyTheBin": "Empty the Bin",
+    "restore": "Restore",
+    "moveToBin": "Move to Bin",
+    "deleteForever": "Delete forever",
+    "emptyTitle": "Empty the Bin?",
+    "emptyHint": "Every space in it leaves every app, with its chats, files and tasks. This cannot be undone.",
+    "moveFailed": "The space could not be moved."
   },
   "createSpace": {
     "name": "Space name",
@@ -231,9 +250,12 @@
       "calendar": "Shared calendar and events"
     },
     "dangerZone": "Danger zone",
+    "archive": "Archive",
+    "archiveSpace": "Archive space",
+    "archiveHint": "Hide it from the lists of every member. You can restore it from Archives.",
     "apiTokensHint": "Tokens for scripts, integrations and AI agents",
     "manage": "Manage",
-    "deleteHint": "Permanently remove all chats, files and tasks"
+    "deleteHint": "Move it to the Bin. You can restore it from there."
   },
   "tasks": {
     "notSetUp": "Tasks is not set up for TwakeSpace."
