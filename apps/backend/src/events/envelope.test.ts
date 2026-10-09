@@ -35,6 +35,12 @@ describe('parseCloudEvent', () => {
     expect(parseCloudEvent(event).ok).toBe(true)
   })
 
+  it('refuses an id too long to be a key', () => {
+    const event = { ...calendarAccepted, id: 'x'.repeat(256) }
+
+    expect(parseCloudEvent(event).ok).toBe(false)
+  })
+
   it('accepts an event without an organization', () => {
     const event = { ...calendarAccepted, twakeorg: undefined }
 
