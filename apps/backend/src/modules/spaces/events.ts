@@ -90,7 +90,8 @@ const group = z.looseObject({
 const spaceCreated = spaceEvent.extend({
   name: z.string().min(1),
   members: z.array(member).default([]),
-  groups: z.array(group).default([])
+  groups: z.array(group).default([]),
+  actor: z.string().optional()
 })
 
 const spaceUpdated = spaceEvent.extend({ name: z.string().min(1).optional() })
@@ -370,8 +371,14 @@ async function removeMembers(
 }
 
 const onCreated: Handler<PlatformEvent> = async (event, tx, log) => {
-  const space = parseOrDrop(spaceCreated, event.body, event.routingKey)
-  await createSpace(tx, log, space, space.timestamp)
+  const { actor, ...space } = parseOrDrop(
+    spaceCreated,
+    event.body,
+    event.routingKey
+  )
+  // An organization token's write names no person.
+  const createdBy = actor?.includes('@') ? actor.toLowerCase() : null
+  await createSpace(tx, log, { ...space, createdBy }, space.timestamp)
 }
 
 export async function createSpace(
@@ -381,6 +388,7 @@ export async function createSpace(
     id: string
     organizationId: string
     name: string
+    createdBy: string | null
     members: z.infer<typeof member>[]
     groups: z.infer<typeof group>[]
   },
@@ -388,17 +396,22 @@ export async function createSpace(
 ) {
   if (!(await fresh(tx, at, [spaceKey(space.id)])).size) return
   const renamed = (await fresh(tx, at, [spaceNameKey(space.id)])).size > 0
-  const insert = tx.insert(spaces).values({
-    spaceId: space.id,
-    organizationId: space.organizationId,
-    name: space.name
-  })
-  await (renamed
-    ? insert.onConflictDoUpdate({
-        target: spaces.spaceId,
-        set: { name: space.name, updatedAt: sql`now()` }
-      })
-    : insert.onConflictDoNothing())
+  // The event and the creating write's own copy can land in either order.
+  const createdBy = sql`coalesce(${spaces.createdBy}, excluded.created_by)`
+  await tx
+    .insert(spaces)
+    .values({
+      spaceId: space.id,
+      organizationId: space.organizationId,
+      name: space.name,
+      createdBy: space.createdBy
+    })
+    .onConflictDoUpdate({
+      target: spaces.spaceId,
+      set: renamed
+        ? { name: space.name, updatedAt: sql`now()`, createdBy }
+        : { createdBy }
+    })
   await upsertMembers(tx, log, space.id, at, space.members)
   await upsertGroups(tx, space.id, at, space.groups)
 }
@@ -676,6 +689,14 @@ const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
           : eq(organizationMembers.email, internalEmail)
       )
     )
+  // So that whoever gets the address next does not manage these spaces.
+  const email = known?.email ?? internalEmail
+  if (email) {
+    await tx
+      .update(spaces)
+      .set({ createdBy: null })
+      .where(eq(spaces.createdBy, email.toLowerCase()))
+  }
 }
 
 const organizationRoleChanged = z.looseObject({

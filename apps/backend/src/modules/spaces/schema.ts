@@ -11,6 +11,14 @@ import { timestamptz } from '../../infra/db.ts'
 
 export const spaceRole = pgEnum('space_role', ['viewer', 'editor', 'admin'])
 
+// Twake Space's own: ldap-rest and the other apps still hold an archived space,
+// or one in the Bin.
+export const spaceState = pgEnum('space_state', [
+  'active',
+  'archived',
+  'trashed'
+])
+
 export const spaces = pgTable(
   'spaces',
   {
@@ -18,7 +26,10 @@ export const spaces = pgTable(
     organizationId: text('organization_id').notNull(),
     name: text().notNull(),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
-    updatedAt: timestamptz('updated_at').notNull().defaultNow()
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+    state: spaceState().notNull().default('active'),
+    // The lowercased email of the person who created it, when known.
+    createdBy: text('created_by')
   },
   table => [index().on(table.organizationId)]
 )

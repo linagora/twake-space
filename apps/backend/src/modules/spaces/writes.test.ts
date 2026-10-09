@@ -210,6 +210,11 @@ describe('space writes', () => {
     ])
     expect(await nameOf(CREATED)).toBe('Launch')
     expect(await members(CREATED)).toEqual([{ userId: ALICE, role: 'admin' }])
+    const [space] = await testDb.db
+      .select({ createdBy: spaces.createdBy })
+      .from(spaces)
+      .where(eq(spaces.spaceId, CREATED))
+    expect(space?.createdBy).toBe('alice@example.com')
   })
 
   it('keeps the description, color and apps picked at creation', async () => {

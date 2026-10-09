@@ -215,6 +215,7 @@ export function registerSpaceWriteRoutes(
               id,
               organizationId: orgId,
               name: body.name,
+              createdBy: creator.email.toLowerCase(),
               members: [{ ...creator, role: 'admin' }],
               groups: []
             },
