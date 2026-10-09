@@ -2,6 +2,7 @@ import {
   Avatar,
   Box,
   Content,
+  Divider,
   Layout,
   List,
   ListSubheader,
@@ -167,6 +168,10 @@ export function SidebarNav({
   children: ReactNode
 }): ReactElement {
   return <SpacedNav>{children}</SpacedNav>
+}
+
+export function SidebarDivider(): ReactElement {
+  return <Divider sx={{ mx: 2, my: 1 }} />
 }
 
 // Under the header, on wide screens like the list it filters.
