@@ -250,8 +250,8 @@ export function SpaceHeader({
 }
 
 // The space's header while its content has the page: one line, the way back
-// first, so that it is the first stop of the keyboard on its way out of a
-// frame.
+// at its end, where the full page button was. Still the header's only stop,
+// so the first of the keyboard on its way out of a frame.
 export function CompactSpaceHeader({
   back,
   avatar,
@@ -274,7 +274,6 @@ export function CompactSpaceHeader({
         mb: 1
       }}
     >
-      {back}
       {avatar}
       <Typography variant="h6" component="h1" noWrap>
         {title}
@@ -282,6 +281,7 @@ export function CompactSpaceHeader({
       <Typography variant="body2" color="textSecondary" noWrap>
         {tab}
       </Typography>
+      <Box sx={{ ml: 'auto', flexShrink: 0 }}>{back}</Box>
     </Box>
   )
 }
