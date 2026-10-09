@@ -45,7 +45,13 @@ export function scopesOf(access: TokenAccess): TokenScope[] {
 /** The backend routes each scope opens to a token. */
 export const SCOPE_ROUTES: Record<TokenScope, string[]> = {
   'space:read': ['GET /spaces', 'GET /spaces/apps', 'GET /spaces/:id'],
-  'space:write': ['POST /spaces', 'PATCH /spaces/:id', 'DELETE /spaces/:id'],
+  'space:write': [
+    'POST /spaces',
+    'PATCH /spaces/:id',
+    'PUT /spaces/:id/state',
+    'DELETE /spaces/:id',
+    'DELETE /spaces/bin'
+  ],
   'members:write': [
     'POST /spaces/:id/members',
     'PATCH, DELETE /spaces/:id/members/:userId',

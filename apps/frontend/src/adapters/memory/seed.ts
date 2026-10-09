@@ -7,7 +7,13 @@ import type {
   FeedPost
 } from '@/application/feed'
 import type { User } from '@/application/session'
-import type { Member, Space, SpaceApp, SpaceRole } from '@/application/spaces'
+import type {
+  Member,
+  ShelfState,
+  Space,
+  SpaceApp,
+  SpaceRole
+} from '@/application/spaces'
 import type { ApiToken, TokenOwner } from '@/application/tokens'
 
 // The same organization, people and roles as the local SSO stack, so moving
@@ -70,6 +76,7 @@ export const seedSpaces: Space[] = [
     createdAt: '2026-09-01T08:00:00.000Z',
     pinnedAt: '2026-09-02T08:00:00.000Z',
     openedAt: '2026-10-07T08:00:00.000Z',
+    manages: true,
     color: '#46a2ff',
     description: 'What we ship this year, and when.',
     apps: ALL_APPS,
@@ -98,6 +105,7 @@ export const seedSpaces: Space[] = [
     createdAt: '2026-09-15T08:00:00.000Z',
     pinnedAt: null,
     openedAt: '2026-10-06T08:00:00.000Z',
+    manages: false,
     color: null,
     description: '',
     apps: ['chat', 'tasks', 'drive', 'calendar'],
@@ -125,6 +133,7 @@ export const seedSpaces: Space[] = [
     banner: null,
     pinnedAt: null,
     openedAt: null,
+    manages: true,
     apps: ALL_APPS,
     chat: true,
     mail: true,
@@ -151,6 +160,7 @@ export const seedSpaces: Space[] = [
     createdAt: '2026-09-20T08:00:00.000Z',
     pinnedAt: null,
     openedAt: null,
+    manages: false,
     color: null,
     description: '',
     apps: ALL_APPS,
@@ -167,8 +177,51 @@ export const seedSpaces: Space[] = [
       { kind: 'mailbox', id: null },
       { kind: 'calendar', id: null }
     ]
+  },
+  {
+    id: 'launch-2025',
+    name: 'Launch 2025',
+    role: 'admin',
+    createdAt: '2025-03-01T08:00:00.000Z',
+    pinnedAt: null,
+    openedAt: null,
+    manages: true,
+    color: '#ff9f43',
+    description: 'Last year’s launch, done and kept.',
+    apps: ALL_APPS,
+    chat: false,
+    mail: false,
+    homeserverUrl: null,
+    banner: null,
+    members: [member('alice', 'admin'), member('bob', 'editor')],
+    groups: [],
+    resources: []
+  },
+  {
+    id: 'offsite',
+    name: 'Team Offsite',
+    role: 'admin',
+    createdAt: '2026-06-01T08:00:00.000Z',
+    pinnedAt: null,
+    openedAt: null,
+    manages: true,
+    color: null,
+    description: 'Planning the June offsite.',
+    apps: ALL_APPS,
+    chat: false,
+    mail: false,
+    homeserverUrl: null,
+    banner: null,
+    members: [member('alice', 'admin')],
+    groups: [],
+    resources: []
   }
 ]
+
+export const seedShelves: Record<string, ShelfState> = {
+  'launch-2025': 'archived',
+  offsite: 'trashed'
+}
 
 const START = Date.UTC(2026, 9, 1, 8)
 const HOUR = 3_600_000

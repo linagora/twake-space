@@ -33,6 +33,7 @@ const spaces = () =>
       description: '',
       pinnedAt: '2026-10-01T08:00:00.000Z',
       openedAt: '2026-10-02T08:00:00.000Z',
+      manages: true,
       members: []
     },
     {
@@ -43,6 +44,7 @@ const spaces = () =>
       description: '',
       pinnedAt: null,
       openedAt: '2026-10-01T08:00:00.000Z',
+      manages: false,
       members: []
     },
     {
@@ -53,6 +55,7 @@ const spaces = () =>
       description: '',
       pinnedAt: null,
       openedAt: null,
+      manages: false,
       members: []
     }
   ])
@@ -66,6 +69,7 @@ const detail = (id: string, name: string, mailbox: string): Space => ({
   description: '',
   pinnedAt: null,
   openedAt: null,
+  manages: true,
   apps: ['tasks', 'mail'],
   chat: true,
   mail: true,
@@ -157,6 +161,7 @@ describe('AppShell', () => {
         description: '',
         pinnedAt: null,
         openedAt: null,
+        manages: false,
         members: []
       }
     ])

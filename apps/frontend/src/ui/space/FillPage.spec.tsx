@@ -30,6 +30,7 @@ const detail = (id: string, name: string): Space => ({
   description: '',
   pinnedAt: null,
   openedAt: null,
+  manages: true,
   apps: ['chat', 'tasks', 'mail'],
   chat: true,
   mail: true,
@@ -54,6 +55,7 @@ function renderAt(path: string) {
       description: '',
       pinnedAt: '2026-10-01T08:00:00.000Z',
       openedAt: null,
+      manages: true,
       members: []
     },
     {
@@ -64,6 +66,7 @@ function renderAt(path: string) {
       description: '',
       pinnedAt: null,
       openedAt: null,
+      manages: true,
       members: []
     }
   ])

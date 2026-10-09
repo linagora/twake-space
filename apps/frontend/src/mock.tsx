@@ -13,6 +13,7 @@ import {
   seedFeed,
   seedFeedReads,
   seedOrganization,
+  seedShelves,
   seedSpaces,
   seedSuggestions,
   seedTokens,
@@ -35,7 +36,7 @@ const session = {
   onEndedElsewhere: () => () => undefined
 }
 const services = {
-  spaces: memorySpaces(seedSpaces, seedOrganization),
+  spaces: memorySpaces(seedSpaces, seedOrganization, seedShelves),
   tokens: memoryTokens(seedTokens, {
     organizationAdmin: true,
     policy: { allowNoExpiry: true, maxLifetimeDays: 90 },

@@ -1,6 +1,7 @@
 import type { MemoryOrganization } from '@/adapters/memory/memoryDirectory'
 import type {
   Refusal,
+  ShelfState,
   Space,
   SpaceSummary,
   SpacesService
@@ -14,6 +15,7 @@ const summary = ({
   description,
   pinnedAt,
   openedAt,
+  manages,
   members
 }: Space): SpaceSummary => ({
   id,
@@ -23,6 +25,7 @@ const summary = ({
   description,
   pinnedAt,
   openedAt,
+  manages,
   members: members.map(({ id, username, displayName, workplaceFqdn }) => ({
     id,
     username,
@@ -38,10 +41,20 @@ const refuse = (status: number, code: string) =>
 
 export function memorySpaces(
   seed: Space[],
-  organization: MemoryOrganization
+  organization: MemoryOrganization,
+  shelves: Record<string, ShelfState> = {}
 ): SpacesService {
   let spaces = seed.map(space => ({ ...space }))
-  const find = (id: string) => spaces.find(space => space.id === id)
+  const states = new Map(Object.entries(shelves))
+  const active = () => spaces.filter(space => !states.has(space.id))
+  const find = (id: string) => active().find(space => space.id === id)
+  // Like the backend: whatever the state, for its managers only.
+  const managed = (id: string) => {
+    const space = spaces.find(s => s.id === id)
+    if (!space) return refuse(404, 'not_found')
+    if (!space.manages) return refuse(403, 'not_space_manager')
+    return Promise.resolve(space)
+  }
   const banners = new Map<string, Blob>()
 
   // Runs a change on a space the caller administers, like the backend.
@@ -54,7 +67,7 @@ export function memorySpaces(
   }
 
   return {
-    list: () => Promise.resolve(spaces.map(summary)),
+    list: () => Promise.resolve(active().map(summary)),
     get: id => {
       const space = find(id)
       return space
@@ -68,6 +81,7 @@ export function memorySpaces(
         ...created,
         id: crypto.randomUUID(),
         role: 'admin',
+        manages: true,
         createdAt: new Date().toISOString(),
         pinnedAt: null,
         openedAt: null,
@@ -102,10 +116,29 @@ export function memorySpaces(
         banners.set(id, image)
         space.banner = new Date().toISOString()
       }),
-    remove: id =>
-      write(id, () => {
-        spaces = spaces.filter(space => space.id !== id)
-      }),
+    remove: async id => {
+      await managed(id)
+      if (states.get(id) !== 'trashed') return refuse(409, 'not_in_bin')
+      spaces = spaces.filter(space => space.id !== id)
+      states.delete(id)
+    },
+    shelved: state =>
+      Promise.resolve(
+        spaces
+          .filter(space => space.manages && states.get(space.id) === state)
+          .map(summary)
+      ),
+    setState: async (id, state) => {
+      await managed(id)
+      if (state === 'active') states.delete(id)
+      else states.set(id, state)
+    },
+    emptyBin: () => {
+      spaces = spaces.filter(
+        space => !(space.manages && states.get(space.id) === 'trashed')
+      )
+      return Promise.resolve()
+    },
     setPinned: (id, pinned) => {
       const space = find(id)
       if (!space) return refuse(404, 'not_found')

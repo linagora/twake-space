@@ -23,6 +23,19 @@ export interface SpaceSummary {
   pinnedAt: string | null
   /** When the person last opened the space, or null. */
   openedAt: string | null
+  /**
+   * Whether the person may archive it, move it to the Bin, restore it and
+   * delete it for good: its admins, the organization's owners and admins,
+   * and the person who created it.
+   */
+  manages: boolean
+}
+
+export type ShelfState = 'archived' | 'trashed'
+
+/** An archived space, or one in the Bin: the person may not be in it. */
+export interface ShelvedSpace extends Omit<SpaceSummary, 'role'> {
+  role: SpaceRole | null
 }
 
 const RECENT = 5
@@ -153,8 +166,9 @@ export function rankSpaces(
 }
 
 /**
- * Every write but create and the person's own marks needs the caller to be an
- * admin of the space.
+ * Every write but create, the person's own marks and the state needs the
+ * caller to be an admin of the space. The state and deleting for good need a
+ * manager.
  */
 export interface SpacesService {
   list: () => Promise<SpaceSummary[]>
@@ -165,7 +179,14 @@ export interface SpacesService {
   edit: (id: string, change: SpaceChange) => Promise<void>
   banner: (id: string) => Promise<Blob>
   setBanner: (id: string, image: Blob) => Promise<void>
+  /** Deletes a space in the Bin for good, in every app. */
   remove: (id: string) => Promise<void>
+  /** The archived spaces, or those in the Bin, that the person manages. */
+  shelved: (state: ShelfState) => Promise<ShelvedSpace[]>
+  /** Archives a space, moves it to the Bin, or restores it. */
+  setState: (id: string, state: ShelfState | 'active') => Promise<void>
+  /** Deletes for good every space in the Bin the person manages. */
+  emptyBin: () => Promise<void>
   setPinned: (id: string, pinned: boolean) => Promise<void>
   /** Records that the person opened the space now. */
   markOpened: (id: string) => Promise<void>

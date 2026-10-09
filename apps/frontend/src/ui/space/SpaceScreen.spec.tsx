@@ -19,6 +19,7 @@ const roadmap: Space = {
   description: 'Where the year is planned',
   pinnedAt: null,
   openedAt: null,
+  manages: false,
   apps: ['chat', 'tasks', 'drive', 'mail', 'calendar'],
   chat: false,
   mail: true,

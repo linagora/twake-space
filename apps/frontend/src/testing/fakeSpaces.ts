@@ -31,7 +31,8 @@ export function fakeSpaces(initial: SpaceSummary[] = []): SpacesService {
         description: '',
         members: [],
         pinnedAt: null,
-        openedAt: null
+        openedAt: null,
+        manages: true
       }
       spaces.push(space)
       return Promise.resolve(space)
@@ -44,6 +45,9 @@ export function fakeSpaces(initial: SpaceSummary[] = []): SpacesService {
     remove: write(),
     setPinned: write(),
     markOpened: write(),
+    shelved: vi.fn(() => Promise.resolve([])),
+    setState: write(),
+    emptyBin: write(),
     addMembers: write(),
     setMemberRole: write(),
     removeMember: write(),

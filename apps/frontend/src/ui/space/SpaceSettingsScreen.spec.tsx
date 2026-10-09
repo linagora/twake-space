@@ -16,6 +16,7 @@ const space: Space = {
   description: 'Where the year is planned',
   pinnedAt: null,
   openedAt: null,
+  manages: true,
   apps: ['chat', 'drive'],
   chat: true,
   mail: true,

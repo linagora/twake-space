@@ -1,6 +1,7 @@
 import type { KyInstance } from 'ky'
 
 import type {
+  ShelvedSpace,
   Space,
   SpaceApp,
   SpaceSummary,
@@ -31,6 +32,15 @@ export function httpSpaces(api: KyInstance): SpacesService {
         })
       ),
     remove: id => send(api.delete(space(id))),
+    shelved: async state =>
+      (
+        await api
+          .get('spaces', { searchParams: { state } })
+          .json<{ spaces: ShelvedSpace[] }>()
+      ).spaces,
+    setState: (id, state) =>
+      send(api.put(space(id, 'state'), { json: { state } })),
+    emptyBin: () => send(api.delete('spaces/bin')),
     setPinned: (id, pinned) =>
       send(pinned ? api.put(space(id, 'pin')) : api.delete(space(id, 'pin'))),
     markOpened: id => send(api.put(space(id, 'opened'))),

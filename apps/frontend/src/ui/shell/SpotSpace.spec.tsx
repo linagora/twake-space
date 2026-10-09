@@ -17,6 +17,7 @@ const space = (
   description: '',
   pinnedAt: null,
   openedAt,
+  manages: false,
   members: []
 })
 

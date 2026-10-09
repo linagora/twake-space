@@ -17,6 +17,7 @@ const space: Space = {
   description: '',
   pinnedAt: null,
   openedAt: null,
+  manages: false,
   apps: ['chat'],
   chat: true,
   mail: false,
