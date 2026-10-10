@@ -225,5 +225,6 @@ export async function startConsumer(
     ),
     options
   )
+  logger.info({ queue }, 'consuming from RabbitMQ')
   return client
 }

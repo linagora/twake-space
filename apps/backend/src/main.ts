@@ -65,6 +65,7 @@ const lifecycle = handleSignals({
 
 const { sql, db } = createDb(config.DATABASE_URL)
 await migrateDb(sql)
+logger.info('database migrated')
 let homeserverId: string | undefined
 if (config.homeserver) {
   const { key, ...homeserver } = config.homeserver
