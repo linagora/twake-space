@@ -3,6 +3,7 @@ import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { CloudEvent } from '../../events/envelope.ts'
 import { NotYetKnownError, RejectedEventError } from '../../events/router.ts'
+import { lastChanges } from '../../events/schema.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { notifications, notificationSettings } from '../notifications/schema.ts'
 import {
@@ -26,6 +27,7 @@ afterAll(() => testDb.drop())
 beforeEach(async () => {
   const { db } = testDb
   await db.delete(activityEvents)
+  await db.delete(lastChanges)
   await db.delete(spaceGroups)
   await db.delete(spaceMembers)
   await db.delete(spaceResources)
@@ -138,6 +140,32 @@ describe('activity events', () => {
 
   it('finds an actor sent by email only among the space members', async () => {
     await store(anEvent({ twakeactorid: undefined }))
+
+    expect((await stored())[0]?.actor).toEqual({
+      type: 'user',
+      id: ALICE,
+      email: 'alice@linagora.com'
+    })
+  })
+
+  it('forgets an actor deleted after the event', async () => {
+    await testDb.db.insert(lastChanges).values({
+      object: `user:${ALICE}:deleted`,
+      at: new Date('2026-10-05T10:00:00Z')
+    })
+
+    await store(anEvent())
+
+    expect((await stored())[0]?.actor).toEqual({ type: 'deleted_user' })
+  })
+
+  it('keeps an actor whose email was freed before the event', async () => {
+    await testDb.db.insert(lastChanges).values({
+      object: 'email:alice@linagora.com:deleted',
+      at: new Date('2026-10-05T09:00:00Z')
+    })
+
+    await store(anEvent())
 
     expect((await stored())[0]?.actor).toEqual({
       type: 'user',

@@ -1,6 +1,8 @@
-import { and, eq, or, sql } from 'drizzle-orm'
+import { and, eq, gt, inArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { CloudEvent } from '../../events/envelope.ts'
+import { deletedEmailKey, deletedUserKey } from '../../events/freshness.ts'
+import { lastChanges } from '../../events/schema.ts'
 import {
   NotYetKnownError,
   parseOrDrop,
@@ -122,6 +124,22 @@ async function findSpace(
   return undefined
 }
 
+// Its deletion may have been handled before this older event.
+async function deletedBefore(tx: Tx, actor: Actor | null, at: Date) {
+  if (actor?.type !== 'user') return false
+  const keys = [
+    ...(actor.id ? [deletedUserKey(actor.id)] : []),
+    ...(actor.email ? [deletedEmailKey(actor.email)] : [])
+  ]
+  if (keys.length === 0) return false
+  const [deletion] = await tx
+    .select({ at: lastChanges.at })
+    .from(lastChanges)
+    .where(and(inArray(lastChanges.object, keys), gt(lastChanges.at, at)))
+    .limit(1)
+  return deletion !== undefined
+}
+
 async function checkActor(tx: Tx, spaceId: string, actor: Actor | null) {
   if (actor?.type !== 'user') return
   // Sent by email only and no member has it: someone outside the space, such
@@ -166,9 +184,13 @@ function store(category: Category): Handler<CloudEvent> {
       event.type
     )
     const spaceId = await findSpace(tx, data.object.container, twakeorg)
-    const actor: Actor | null = data.actor
+    const time = event.time ? new Date(event.time) : new Date()
+    const found: Actor | null = data.actor
       ? { type: 'token', id: data.actor.id, name: data.actor.name }
       : await findUser(tx, spaceId, twakeactorid, twakeactor)
+    const actor: Actor | null = (await deletedBefore(tx, found, time))
+      ? { type: 'deleted_user' }
+      : found
     if (spaceId) await checkActor(tx, spaceId, actor)
     // Recipients stay out of the card every space member sees.
     const { recipients, ...content } = data
@@ -186,7 +208,7 @@ function store(category: Category): Handler<CloudEvent> {
         objectType: data.object.type,
         objectId: data.object.id,
         content,
-        time: event.time ? new Date(event.time) : new Date()
+        time
       })
       .onConflictDoNothing()
       .returning({ id: activityEvents.id, time: activityEvents.time })
