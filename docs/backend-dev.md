@@ -60,7 +60,7 @@ Modules import each other's schemas and helpers directly. There is no module reg
 
 ## Events from RabbitMQ
 
-The consumer reads one queue, `twake-space`, bound to the `activity` exchange and to the platform exchanges (`space`, `b2b`, `admin-panel`, `settings`). [Events](events.md#consuming-rabbitmq) lists the bindings.
+The consumer reads two queues: `twake-space`, in order, bound to the platform exchanges (`space`, `b2b`, `admin-panel`, `settings`) and to the apps' provisioned events, and `twake-space.activity`, several messages at a time, bound to the rest of the `activity` exchange. [Events](events.md#consuming-rabbitmq) lists the bindings.
 
 ```mermaid
 flowchart LR
@@ -75,7 +75,7 @@ flowchart LR
   handler -- RejectedEventError --> dlq["dead letter queue"]
   handler -- MalformedEventError --> drop
   handler -- Postgres refuses the data --> dlq
-  handler -- NotYetKnownError --> park[parked_events, retried] -- still waiting after 5 min --> dlq
+  handler -- NotYetKnownError --> park[parked_events, retried] -- still waiting after 30 min --> dlq
   handler -- other error --> retry[held unacknowledged, retried]
 ```
 

@@ -9,7 +9,7 @@ import {
   consumerAlive,
   consumerStats,
   deadLetterQueue,
-  startConsumer
+  startConsumers
 } from './infra/amqp.ts'
 import { createDb, migrateDb } from './infra/db.ts'
 import { createServer } from './infra/http.ts'
@@ -65,6 +65,7 @@ const lifecycle = handleSignals({
 
 const { sql, db } = createDb(config.DATABASE_URL)
 await migrateDb(sql)
+logger.info('database migrated')
 let homeserverId: string | undefined
 if (config.homeserver) {
   const { key, ...homeserver } = config.homeserver
@@ -148,20 +149,29 @@ const metrics = createServer({ logger, isReady: () => Promise.resolve(true) })
 registerMetrics(metrics, { db, consumer: consumerStatus })
 await metrics.listen({ host: config.HTTP_HOST, port: config.METRICS_PORT })
 
-const handle = createMessageHandler({
-  routes,
+const handlerDeps = {
   dedupe: postgresDeduplicator(db, 'twake-space'),
   park: parkIn(db),
   logger
-})
-// Live updates first, so the changes the consumer commits reach browsers.
-const consumer = await startConsumer(
+}
+const handle = createMessageHandler({ routes, ...handlerDeps })
+// Live updates first, so the changes the consumers commit reach browsers.
+const consumers = await startConsumers(
   config,
   logger,
-  handle,
+  {
+    // It still drains the activity events older versions bound to it.
+    space: handle,
+    // The space queue handles provisioned events, after the space's creation.
+    activity: createMessageHandler({
+      routes: { ...routes, activity: activityRoute },
+      ...handlerDeps
+    })
+  },
   consumerStatus,
   client => listenForLive(client, config.amqp.liveExchange, streams, logger)
 )
+const consumer = consumers.space
 // Mandatory: unroutable while no calendar consumer is bound, so the route
 // fails instead of dropping the meeting. The client waits for the broker
 // without end and retries for over a minute, longer than a request should
@@ -180,7 +190,7 @@ publish = (routingKey, event, messageId) => {
     })
   ])
 }
-isAlive = consumerAlive(consumer, consumerStatus)
+isAlive = consumerAlive([consumers.space, consumers.activity], consumerStatus)
 const stopParked = scheduleParkedRetries(
   db,
   handle,
@@ -197,7 +207,7 @@ lifecycle.started(async () => {
   stopSweep()
   try {
     await parkedStopped
-    await consumer.close()
+    await Promise.all([consumers.space.close(), consumers.activity.close()])
     await delay(DRAIN_MS)
     await server.close()
     await metrics.close()

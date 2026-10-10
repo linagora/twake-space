@@ -64,6 +64,9 @@ export const amqpTopology = z
     AMQP_QUEUE: z.string().min(1).default('twake-space'),
     AMQP_DEAD_LETTER_EXCHANGE: z.string().min(1).optional(),
     AMQP_DELIVERY_LIMIT: z.coerce.number().int().min(1).default(20),
+    AMQP_ACTIVITY_QUEUE: z.string().min(1).optional(),
+    AMQP_ACTIVITY_DEAD_LETTER_EXCHANGE: z.string().min(1).optional(),
+    AMQP_ACTIVITY_CONCURRENCY: z.coerce.number().int().min(1).default(10),
     AMQP_ACTIVITY_EXCHANGE: z.string().min(1).default('activity'),
     AMQP_SPACE_EXCHANGE: z.string().min(1).default('space'),
     AMQP_B2B_EXCHANGE: z.string().min(1).default('b2b'),
@@ -111,12 +114,20 @@ export const amqpTopology = z
         })
       }
     }
+    const activityQueue =
+      env.AMQP_ACTIVITY_QUEUE ?? `${env.AMQP_QUEUE}.activity`
     return {
       amqp: {
         queue: env.AMQP_QUEUE,
         deadLetterExchange:
           env.AMQP_DEAD_LETTER_EXCHANGE ?? `${env.AMQP_QUEUE}.dlx`,
         deliveryLimit: env.AMQP_DELIVERY_LIMIT,
+        activityQueue,
+        // Its own: the queue binds `#.dead` on it, which would catch every
+        // other queue's dead letters too.
+        activityDeadLetterExchange:
+          env.AMQP_ACTIVITY_DEAD_LETTER_EXCHANGE ?? `${activityQueue}.dlx`,
+        activityConcurrency: env.AMQP_ACTIVITY_CONCURRENCY,
         activityExchange: env.AMQP_ACTIVITY_EXCHANGE,
         twakeSpaceExchange: env.AMQP_TWAKE_SPACE_EXCHANGE,
         liveExchange: env.AMQP_LIVE_EXCHANGE,
