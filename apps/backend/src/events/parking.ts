@@ -4,8 +4,9 @@ import type { Db } from '../infra/db.ts'
 import type { DeadLetter, IncomingMessage, Outcome, Park } from './router.ts'
 import { parkedEvents } from './schema.ts'
 
-// Long enough for the late platform event to arrive after a restart.
-export const WAIT_SECONDS = 5 * 60
+// As long as RabbitMQ's default consumer_timeout, so the late platform event
+// can arrive from behind a message that keeps failing.
+export const WAIT_SECONDS = 30 * 60
 const RETRY_EVERY_MS = 5000
 const BATCH = 100
 

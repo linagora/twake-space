@@ -99,12 +99,25 @@ describe('parked events', () => {
     expect(deadLetter).not.toHaveBeenCalled()
   })
 
-  it('sends an event parked for over 5 minutes to the dead letter queue', async () => {
+  it('keeps waiting for an event parked for 10 minutes', async () => {
+    const { deadLetter, handle, retry } = setup()
+    await handle(memberAdded())
+    await testDb.db.execute(
+      sql`update parked_events set parked_at = now() - interval '10 minutes'`
+    )
+
+    await retry()
+
+    expect(deadLetter).not.toHaveBeenCalled()
+    expect(await parked()).toHaveLength(1)
+  })
+
+  it('sends an event parked for over 30 minutes to the dead letter queue', async () => {
     const { deadLetter, handle, retry } = setup()
     const message = memberAdded()
     await handle(message)
     await testDb.db.execute(
-      sql`update parked_events set parked_at = now() - interval '6 minutes'`
+      sql`update parked_events set parked_at = now() - interval '31 minutes'`
     )
 
     await retry()
@@ -118,7 +131,7 @@ describe('parked events', () => {
     await handle(memberAdded())
     await handle(memberAdded())
     await testDb.db.execute(
-      sql`update parked_events set parked_at = now() - interval '6 minutes'`
+      sql`update parked_events set parked_at = now() - interval '31 minutes'`
     )
     deadLetter.mockRejectedValueOnce(new Error('broker down'))
 
