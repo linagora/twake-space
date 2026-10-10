@@ -7,6 +7,7 @@ import {
   RejectedEventError,
   type Handler
 } from '../../events/router.ts'
+import { attachToSpace } from '../feed/activity.ts'
 import { tellSpaceMembers } from '../live/notify.ts'
 import { deletedAfter, resourceKey } from './events.ts'
 import { spaceResourceKind, spaceResources, spaces } from './schema.ts'
@@ -68,6 +69,7 @@ function onProvisioned(kind: SpaceResourceKind): Handler<CloudEvent> {
         target: [spaceResources.spaceId, spaceResources.kind],
         set: { resourceId: resource.id, provisionedAt: sql`now()` }
       })
+    await attachToSpace(tx, space_id, twakeorg, { kind, id: resource.id })
     await tellSpaceMembers(tx, space_id)
   }
 }

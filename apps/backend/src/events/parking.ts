@@ -5,7 +5,7 @@ import type { DeadLetter, IncomingMessage, Outcome, Park } from './router.ts'
 import { parkedEvents } from './schema.ts'
 
 // Long enough for the late platform event to arrive after a restart.
-const WAIT_SECONDS = 5 * 60
+export const WAIT_SECONDS = 5 * 60
 const RETRY_EVERY_MS = 5000
 const BATCH = 100
 

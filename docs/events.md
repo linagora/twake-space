@@ -186,6 +186,7 @@ The [space write routes](api.md#space-writes) apply their change to the copy the
 - It needs `twakeorg`, and rejects the event when that is not the space's organization.
 - A space the copy does not have was deleted after the app provisioned it, since the app provisions on the space's created event, which reaches the queue first. The event is logged and dropped, and the app's next sync removes the resource.
 - It upserts `space_resources`, so a new id replaces the old one, and sends a `spaces` live event to the space's members.
+- It moves into the space the activity events on that resource stored without a space in the last 5 minutes (as long as a parked event waits), and shows their cards. An older event on it belonged to a person before the space had the resource.
 - It ignores an event for a space deleted after the event's `time`.
 
 ### Activity that becomes a card
@@ -217,7 +218,7 @@ The actor stored on the card is one of:
 - `{ type: 'deleted_user' }` once the user is deleted, or for an event older than the deletion that arrives after it.
 - null when the event names no actor.
 
-The space is the one whose resource of that kind has the container's id. An app publishes a resource's provisioned event before any activity on it, and both reach the same queue in that order, so a container no space has belongs to a person: the card is for personal notifications only. A container held only by another organization's space is rejected to the dead letter queue. A user actor with a uuid who is not a member may only mean the platform event that adds them has not arrived yet, so the event is parked. An actor sent by email only that no member has is kept as is: someone outside the space, such as an attendee replying to a team calendar event. A parked event is handled after the events that came after it in the queue. The copy holds the members a linked group brings, with their resolved role, so a space with linked groups checks its actors the same way.
+The space is the one whose resource of that kind has the container's id. A container no space has belongs to a person, and the event is for personal notifications only, until the resource's provisioned event moves it into the space (see above). A container held only by another organization's space is rejected to the dead letter queue. A user actor with a uuid who is not a member may only mean the platform event that adds them has not arrived yet, so the event is parked. An actor sent by email only that no member has is kept as is: someone outside the space, such as an attendee replying to a team calendar event. A parked event is handled after the events that came after it in the queue. The copy holds the members a linked group brings, with their resolved role, so a space with linked groups checks its actors the same way.
 
 The card stores everything in `data` except `recipients`. An event already stored under the same `source` and `id` is skipped, and one without a `time` is stored at the time it arrives.
 

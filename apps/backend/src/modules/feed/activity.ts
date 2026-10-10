@@ -1,7 +1,8 @@
-import { and, eq, gt, inArray, or, sql } from 'drizzle-orm'
+import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { CloudEvent } from '../../events/envelope.ts'
 import { deletedEmailKey, deletedUserKey } from '../../events/freshness.ts'
+import { WAIT_SECONDS } from '../../events/parking.ts'
 import { lastChanges } from '../../events/schema.ts'
 import {
   NotYetKnownError,
@@ -92,15 +93,36 @@ async function findUser(
   return { type: 'user', id: member?.userId ?? null, email }
 }
 
-// A resource no space has belongs to a person: notifications only. The app
-// publishes a space resource's provisioned event before any activity on it,
-// and both reach the one queue in that order, so it is never just late.
+interface Container {
+  kind: SpaceResourceKind
+  id: string
+}
+
+// Events on a container read its space under the shared lock, and its
+// provisioned event attaches them under the exclusive one, so neither commits
+// unseen by the other.
+async function lockContainer(
+  tx: Tx,
+  { kind, id }: Container,
+  mode: 'shared' | 'exclusive'
+) {
+  const key = `container:${kind}:${id}`
+  await tx.execute(
+    mode === 'shared'
+      ? sql`select pg_advisory_xact_lock_shared(hashtext(${key}))`
+      : sql`select pg_advisory_xact_lock(hashtext(${key}))`
+  )
+}
+
+// A resource no space has belongs to a person: notifications only, unless its
+// provisioned event comes later and attaches the event to its space.
 async function findSpace(
   tx: Tx,
-  container: { kind: SpaceResourceKind; id: string } | undefined,
+  container: Container | undefined,
   organizationId: string | undefined
 ): Promise<string | undefined> {
   if (!container) return undefined
+  await lockContainer(tx, container, 'shared')
   const holders = await tx
     .select({
       spaceId: spaceResources.spaceId,
@@ -174,6 +196,48 @@ async function showCard(tx: Tx, card: typeof feedCards.$inferInsert) {
     .returning({ id: feedCards.id, added: sql<boolean>`xmax = 0` })
   if (!shown) throw new Error('the card upsert returned no row')
   await tellFeed(tx, card.spaceId, shown.id, shown.added ? 'added' : 'changed')
+}
+
+// Only events that came within the wait for a late event: an older one on the
+// same container was a person's before the space had it.
+export async function attachToSpace(
+  tx: Tx,
+  spaceId: string,
+  organizationId: string,
+  container: Container
+) {
+  await lockContainer(tx, container, 'exclusive')
+  const object = sql`${activityEvents.content}->'object'->'container'`
+  const attached = await tx
+    .update(activityEvents)
+    .set({ spaceId })
+    .where(
+      and(
+        isNull(activityEvents.spaceId),
+        eq(activityEvents.organizationId, organizationId),
+        sql`${object}->>'kind' = ${container.kind}`,
+        sql`${object}->>'id' = ${container.id}`,
+        sql`${activityEvents.createdAt} > now() - make_interval(secs => ${WAIT_SECONDS})`
+      )
+    )
+    .returning({
+      id: activityEvents.id,
+      objectType: activityEvents.objectType,
+      objectId: activityEvents.objectId,
+      category: activityEvents.category,
+      time: activityEvents.time
+    })
+  for (const event of attached) {
+    await showCard(tx, {
+      spaceId,
+      objectType: event.objectType,
+      objectId: event.objectId,
+      category: event.category,
+      time: event.time,
+      latestEventId: event.id,
+      latestTime: event.time
+    })
+  }
 }
 
 function store(category: Category): Handler<CloudEvent> {
