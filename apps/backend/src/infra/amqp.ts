@@ -4,6 +4,7 @@ import {
   type RabbitMQMessageHandler,
   type SubscribeOptions
 } from '@linagora/rabbitmq-client'
+import amqplib from 'amqplib'
 import type { Logger } from 'pino'
 import type { Config } from '../config.ts'
 import { ACTIVITY_EXCHANGE } from '../events/envelope.ts'
@@ -269,6 +270,19 @@ async function consume(
   logger.info({ queue }, 'consuming from RabbitMQ')
 }
 
+// Older versions bound every activity event to the space queue, and the client
+// never removes a binding. Removing one already gone does nothing. To drop once
+// every deployment has run it.
+async function unbindOldActivity(url: string, topology: AmqpTopology) {
+  const connection = await amqplib.connect(url)
+  try {
+    const channel = await connection.createChannel()
+    await channel.unbindQueue(topology.queue, topology.activityExchange, '#')
+  } finally {
+    await connection.close()
+  }
+}
+
 // The activity queue first, so it holds every activity event before the space
 // queue lets them go.
 export async function startConsumers(
@@ -292,5 +306,6 @@ export async function startConsumers(
   const subscribed = activitySubscription(amqp)
   await consume(activity, config, logger, stats, subscribed, handle.activity)
   await consume(space, config, logger, stats, subscription(amqp), handle.space)
+  await unbindOldActivity(config.AMQP_URL, amqp)
   return { space, activity }
 }
