@@ -70,17 +70,23 @@ type Handle = (message: IncomingMessage) => Promise<Outcome>
 
 export type ConsumerStats = ReturnType<typeof consumerStats>
 
+interface Handling {
+  since: number
+}
+
 export function consumerStats() {
   const outcomes = new Map<Outcome | 'failed', number>()
-  let handlingSince: number | undefined
+  const handling = new Set<Handling>()
   let unsubscribed = false
   return {
     outcomes,
-    started() {
-      handlingSince = Date.now()
+    started(): Handling {
+      const started = { since: Date.now() }
+      handling.add(started)
+      return started
     },
-    ended(outcome: Outcome | 'failed') {
-      handlingSince = undefined
+    ended(started: Handling, outcome: Outcome | 'failed') {
+      handling.delete(started)
       outcomes.set(outcome, (outcomes.get(outcome) ?? 0) + 1)
     },
     // The client gives up on a subscription it fails to restore, and stays
@@ -90,7 +96,7 @@ export function consumerStats() {
     },
     unsubscribed: () => unsubscribed,
     stuck: () =>
-      handlingSince !== undefined && Date.now() - handlingSince > STUCK_MS
+      [...handling].some(({ since }) => Date.now() - since > STUCK_MS)
   }
 }
 
@@ -111,16 +117,17 @@ export function consumerAlive(
   }
 }
 
-// With one message in flight at a time, a failure streak is that message's.
+// The client passes the same properties to every retry of a delivery, so they
+// key its failure streak.
 export function deliveryHandler(
   handle: Handle,
   stats: ConsumerStats,
   logger: Logger
 ): RabbitMQMessageHandler {
-  let failingSince: number | undefined
-  let warned = false
-  return async (body, { exchange, routingKey, messageId }) => {
-    stats.started()
+  const failing = new WeakMap<object, { since: number; warned: boolean }>()
+  return async (body, properties) => {
+    const { exchange, routingKey, messageId } = properties
+    const started = stats.started()
     let outcome: Outcome
     try {
       outcome = await handle({
@@ -130,10 +137,14 @@ export function deliveryHandler(
         body
       })
     } catch (error) {
-      stats.ended('failed')
-      failingSince ??= Date.now()
-      if (!warned && Date.now() - failingSince > LONG_FAILING_MS) {
-        warned = true
+      stats.ended(started, 'failed')
+      const streak = failing.get(properties) ?? {
+        since: Date.now(),
+        warned: false
+      }
+      failing.set(properties, streak)
+      if (!streak.warned && Date.now() - streak.since > LONG_FAILING_MS) {
+        streak.warned = true
         logger.error(
           { exchange, routingKey, messageId },
           'a message has failed for over 25 minutes; the broker may redeliver it'
@@ -141,9 +152,8 @@ export function deliveryHandler(
       }
       throw error
     }
-    stats.ended(outcome)
-    failingSince = undefined
-    warned = false
+    stats.ended(started, outcome)
+    failing.delete(properties)
     if (outcome === 'rejected') {
       throw new DeadLetterError(`rejected ${routingKey}`)
     }
