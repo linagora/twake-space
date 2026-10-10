@@ -19,14 +19,17 @@ flowchart LR
     P["space, b2b, admin-panel, settings"]
     A[activity]
     Q[twake-space queue]
+    AQ[twake-space.activity queue]
   end
   P --> Q
-  A --> Q
+  A -->|provisioned events| Q
+  A -->|every other event| AQ
   Q --> R[Router]
+  AQ --> R
   R -->|dedupe + handler, one transaction| PG[(Postgres)]
   R -->|NotYetKnownError| PE[(parked_events)]
   PE -->|retried every 5 s| R
-  R -->|rejected, or waiting over 5 min| DLQ["twake-space.dlx → twake-space.dlq"]
+  R -->|rejected, or waiting over 30 min| DLQ["twake-space.dlq, twake-space.activity.dlq"]
   R -->|after commit| L[twake-space.live exchange]
   L -->|one queue per replica| SSE[GET /stream]
   MX[Synapse] -->|app service transactions| PG
@@ -37,20 +40,29 @@ flowchart LR
 
 ## Consuming RabbitMQ
 
-The backend consumes one queue, `twake-space`, through [@linagora/rabbitmq-client](https://github.com/linagora/rabbitmq-client/tree/v0.7.1). At startup it declares the queue and binds it to each platform event it handles, routing key equal to the event name:
+The backend consumes two queues through [@linagora/rabbitmq-client](https://github.com/linagora/rabbitmq-client/tree/v0.7.1), each on its own connection:
+
+- `twake-space` takes the events whose order matters: the platform events, and the apps' provisioned events, which follow the space's creation.
+- `twake-space.activity` takes every other activity event. Each one stands alone, so every replica consumes it.
+
+At startup the backend declares `twake-space` and binds it to each platform event it handles, routing key equal to the event name:
 
 - `space`: `twake.space.created`, `twake.space.updated`, `twake.space.deleted`, `twake.space.member.added`, `twake.space.member.role.changed`, `twake.space.member.removed`, `twake.space.group.linked`, `twake.space.group.role.changed`, `twake.space.group.unlinked`
 - `b2b`: `b2b.group.updated`, `b2b.member.role.changed`, `b2b.member.disabled`, `domain.user.deleted`, `domain.organization.deleted`, `chat.deprovision`, `chat.deployment.completed`
 - `admin-panel`: `dns.validated`
 - `settings`: `user.settings.updated`
-- `activity`: `#`
+- `activity`: `com.twake.*.space.provisioned.v1`
 
-The queue:
+It declares `twake-space.activity` with one binding, `#` on `activity`. Older versions bound that key to `twake-space`, and each start removes it from there, once `twake-space.activity` holds those events. `twake-space` still handles the activity events it already held.
 
-- Is a quorum queue with a single active consumer and a delivery limit of 20. Each replica consumes with prefetch 1, so messages are handled one at a time, in the order they were published.
-- Dead-letters to the `twake-space.dlx` exchange, which routes to the `twake-space.dlq` queue. The backend declares both. The dead letter routing key is the first platform event's, with `.dead` appended (`twake.space.created.dead`).
-- Has the client's other arguments, `x-overflow: reject-publish` and `x-dead-letter-strategy: at-least-once`.
-- Gets each message acknowledged only after its Postgres transaction commits.
+Both queues:
+
+- Are quorum queues with a delivery limit of 20.
+- Dead-letter to their own exchange, which routes to their own queue: `twake-space.dlx` to `twake-space.dlq`, and `twake-space.activity.dlx` to `twake-space.activity.dlq`. The backend declares them. The dead letter routing key is the queue's first binding, with `.dead` appended (`twake.space.created.dead` and `#.dead`).
+- Have the client's other arguments, `x-overflow: reject-publish` and `x-dead-letter-strategy: at-least-once`.
+- Get each message acknowledged only after its Postgres transaction commits.
+
+`twake-space` has a single active consumer, with prefetch 1, so its messages are handled one at a time, in the order they were published. Each replica consumes `twake-space.activity` with prefetch 10 (`AMQP_ACTIVITY_CONCURRENCY`), and handles up to 10 of its messages at once.
 
 Startup fails when `space`, `b2b` or `admin-panel` is missing, since other services own them. The backend declares `activity` and `settings` itself, as durable topic exchanges: the apps declare `activity` the same way, and declaring `settings` lets the backend run on a platform without common settings.
 
@@ -71,9 +83,9 @@ Each message ends in one outcome:
 - duplicate: `processed_events` already holds `(consumer, source, id)`, so the handler did not run.
 - unrouted: no handler for the key. Logged at debug and acknowledged.
 - malformed: a CloudEvent that does not parse, a platform event without a message id (nor a `request_id` in its body, which stands in for it), or a handler threw `MalformedEventError`. Logged and acknowledged. A body that is not JSON goes to the dead letter queue.
-- rejected: a handler threw `RejectedEventError`, or Postgres refused the event's data (an error of class 22, 23 or 54, such as a NUL byte in a preview or a key too long for its index). The message is dead-lettered to `twake-space.dlq`. It carries RabbitMQ's `x-death` header but no reason: the `event rejected` log line has it.
+- rejected: a handler threw `RejectedEventError`, or Postgres refused the event's data (an error of class 22, 23 or 54, such as a NUL byte in a preview or a key too long for its index). The message is dead-lettered to its queue's dead letter queue. It carries RabbitMQ's `x-death` header but no reason: the `event rejected` log line has it.
 - parked: a handler threw `NotYetKnownError`, because the event is about a space or member the copy does not hold yet. The event goes to the `parked_events` table and is acknowledged. One replica at a time (under an advisory lock) retries parked events, 5 seconds after its previous pass ended. One still waiting after 30 minutes, RabbitMQ's default `consumer_timeout`, is published through `twake-space.dlx` to `twake-space.dlq`, with its message id and the headers `x-twake-space-exchange`, `x-twake-space-routing-key` and `x-twake-space-reason`; the row stays when that publish fails. A retry that throws keeps the row for the next pass. Any other outcome of a retry, rejected included, deletes the row without a dead letter: only the log line tells.
-- failed: any other error, such as Postgres being down. The message stays unacknowledged and is retried in the process, 1 second after the first failure, doubling up to a minute. Nothing behind it is handled meanwhile. After 25 minutes of failures the backend logs an error, because RabbitMQ's `consumer_timeout` (30 minutes by default) then closes the channel and delivers the message again. Each such redelivery, like one after a restart, counts toward the delivery limit: once a message has been delivered 21 times (about 10 hours of failures), RabbitMQ sends it to `twake-space.dlq` and the queue moves on.
+- failed: any other error, such as Postgres being down. The message stays unacknowledged and is retried in the process, 1 second after the first failure, doubling up to a minute. It holds one of its queue's prefetch slots meanwhile, so on `twake-space` nothing behind it is handled. After 25 minutes of failures the backend logs an error, because RabbitMQ's `consumer_timeout` (30 minutes by default) then closes the channel and delivers the message again. Each such redelivery, like one after a restart, counts toward the delivery limit: once a message has been delivered 21 times (about 10 hours of failures), RabbitMQ sends it to its queue's dead letter queue and the queue moves on.
 
 The dedupe claim and the handler run in the same Postgres transaction, so a handler failure releases the claim.
 
