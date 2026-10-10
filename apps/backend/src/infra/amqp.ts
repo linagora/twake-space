@@ -70,17 +70,23 @@ type Handle = (message: IncomingMessage) => Promise<Outcome>
 
 export type ConsumerStats = ReturnType<typeof consumerStats>
 
+interface Handling {
+  since: number
+}
+
 export function consumerStats() {
   const outcomes = new Map<Outcome | 'failed', number>()
-  let handlingSince: number | undefined
+  const handling = new Set<Handling>()
   let unsubscribed = false
   return {
     outcomes,
-    started() {
-      handlingSince = Date.now()
+    started(): Handling {
+      const started = { since: Date.now() }
+      handling.add(started)
+      return started
     },
-    ended(outcome: Outcome | 'failed') {
-      handlingSince = undefined
+    ended(started: Handling, outcome: Outcome | 'failed') {
+      handling.delete(started)
       outcomes.set(outcome, (outcomes.get(outcome) ?? 0) + 1)
     },
     // The client gives up on a subscription it fails to restore, and stays
@@ -90,7 +96,7 @@ export function consumerStats() {
     },
     unsubscribed: () => unsubscribed,
     stuck: () =>
-      handlingSince !== undefined && Date.now() - handlingSince > STUCK_MS
+      [...handling].some(({ since }) => Date.now() - since > STUCK_MS)
   }
 }
 
@@ -120,7 +126,7 @@ export function deliveryHandler(
   let failingSince: number | undefined
   let warned = false
   return async (body, { exchange, routingKey, messageId }) => {
-    stats.started()
+    const started = stats.started()
     let outcome: Outcome
     try {
       outcome = await handle({
@@ -130,7 +136,7 @@ export function deliveryHandler(
         body
       })
     } catch (error) {
-      stats.ended('failed')
+      stats.ended(started, 'failed')
       failingSince ??= Date.now()
       if (!warned && Date.now() - failingSince > LONG_FAILING_MS) {
         warned = true
@@ -141,7 +147,7 @@ export function deliveryHandler(
       }
       throw error
     }
-    stats.ended(outcome)
+    stats.ended(started, outcome)
     failingSince = undefined
     warned = false
     if (outcome === 'rejected') {

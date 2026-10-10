@@ -134,6 +134,34 @@ describe('consumerAlive', () => {
     expect(alive()).toBe(true)
   })
 
+  it('times each message in flight on its own', async () => {
+    const finish: (() => void)[] = []
+    const { deliver, stats } = setup(
+      () =>
+        new Promise(resolve => {
+          finish.push(() => {
+            resolve('processed')
+          })
+        })
+    )
+    const alive = consumerAlive(connected, stats)
+
+    const first = deliver({}, properties())
+    await vi.advanceTimersByTimeAsync(3 * 60_000)
+    const second = deliver({}, properties({ messageId: 'm-2' }))
+    finish[0]?.()
+    await first
+    await vi.advanceTimersByTimeAsync(3 * 60_000)
+    expect(alive()).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(3 * 60_000)
+    expect(alive()).toBe(false)
+
+    finish[1]?.()
+    await second
+    expect(alive()).toBe(true)
+  })
+
   it('rides out a reconnect, and is dead once disconnected for a minute', async () => {
     let connectedNow = false
     const alive = consumerAlive(

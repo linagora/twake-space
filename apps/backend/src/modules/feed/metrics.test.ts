@@ -26,9 +26,9 @@ it('counts messages by outcome and the parked events', async () => {
     reason: 'unknown space'
   })
   const stats = consumerStats()
-  stats.ended('processed')
-  stats.ended('processed')
-  stats.ended('failed')
+  stats.ended(stats.started(), 'processed')
+  stats.ended(stats.started(), 'processed')
+  stats.ended(stats.started(), 'failed')
   const app = createServer({
     logger: pino({ level: 'silent' }),
     isReady: () => Promise.resolve(true)
