@@ -131,6 +131,9 @@ describe('loadConfig: RabbitMQ topology', () => {
       queue: 'twake-space',
       deadLetterExchange: 'twake-space.dlx',
       deliveryLimit: 20,
+      activityQueue: 'twake-space.activity',
+      activityDeadLetterExchange: 'twake-space.activity.dlx',
+      activityConcurrency: 10,
       activityExchange: 'activity'
     })
     expect(amqp.events['twake.space.created']).toEqual({
@@ -165,6 +168,8 @@ describe('loadConfig: RabbitMQ topology', () => {
     expect(amqp).toMatchObject({
       queue: 'space-events',
       deadLetterExchange: 'space-events.dlx',
+      activityQueue: 'space-events.activity',
+      activityDeadLetterExchange: 'space-events.activity.dlx',
       deliveryLimit: 5,
       activityExchange: 'apps',
       twakeSpaceExchange: 'space-commands'

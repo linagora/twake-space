@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { IncomingMessage, Outcome } from '../events/router.ts'
 import { amqpTopology } from '../events/topology.ts'
 import {
+  activitySubscription,
   canonical,
   consumerAlive,
   consumerStats,
@@ -124,7 +125,7 @@ describe('deliveryHandler', () => {
 })
 
 describe('consumerAlive', () => {
-  const connected = { isConnected: () => true }
+  const connected = [{ isConnected: () => true }]
 
   it('stays alive while idle, and while a handler runs under 5 minutes', async () => {
     let finish: () => void = () => undefined
@@ -179,10 +180,10 @@ describe('consumerAlive', () => {
     expect(alive()).toBe(true)
   })
 
-  it('rides out a reconnect, and is dead once disconnected for a minute', async () => {
+  it('rides out a reconnect, and is dead once a client is disconnected for a minute', async () => {
     let connectedNow = false
     const alive = consumerAlive(
-      { isConnected: () => connectedNow },
+      [{ isConnected: () => true }, { isConnected: () => connectedNow }],
       consumerStats()
     )
 
@@ -198,15 +199,19 @@ describe('consumerAlive', () => {
     expect(alive()).toBe(true)
   })
 
-  it('is dead when a reconnect fails to restore the subscription', () => {
+  it('is dead while a reconnect has failed to restore a subscription', () => {
     const stats = consumerStats()
     const alive = consumerAlive(connected, stats)
 
-    stats.reconnected({ subscriptionsFailed: 0 })
+    stats.reconnected('twake-space', { subscriptionsFailed: 0 })
     expect(alive()).toBe(true)
 
-    stats.reconnected({ subscriptionsFailed: 1 })
+    stats.reconnected('twake-space.activity', { subscriptionsFailed: 1 })
+    stats.reconnected('twake-space', { subscriptionsFailed: 0 })
     expect(alive()).toBe(false)
+
+    stats.reconnected('twake-space.activity', { subscriptionsFailed: 0 })
+    expect(alive()).toBe(true)
   })
 })
 
@@ -230,11 +235,34 @@ describe('subscription', () => {
     })
     expect(options.bindings).toContainEqual({
       exchange: 'activity',
+      routingKey: 'com.twake.*.space.provisioned.v1'
+    })
+    expect(options.bindings).not.toContainEqual({
+      exchange: 'activity',
       routingKey: '#'
     })
     expect(options.passiveExchanges).toEqual(['space', 'b2b', 'dns'])
     expect(options.deadLetterExchange).toBe('twake-space.dlx')
-    expect(options.queueArguments).toMatchObject({ 'x-delivery-limit': 20 })
+    expect(options.queueArguments).toMatchObject({
+      'x-single-active-consumer': true,
+      'x-delivery-limit': 20
+    })
+  })
+})
+
+describe('activitySubscription', () => {
+  it('binds every activity event to a queue every replica consumes, with its own dead letter exchange', () => {
+    const { exchange, routingKey, queue, options } = activitySubscription(
+      amqpTopology.parse({ AMQP_ACTIVITY_EXCHANGE: 'apps' }).amqp
+    )
+
+    expect({ exchange, routingKey, queue }).toEqual({
+      exchange: 'apps',
+      routingKey: '#',
+      queue: 'twake-space.activity'
+    })
+    expect(options.deadLetterExchange).toBe('twake-space.activity.dlx')
+    expect(options.queueArguments).toEqual({ 'x-delivery-limit': 20 })
   })
 })
 

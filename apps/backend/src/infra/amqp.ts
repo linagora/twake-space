@@ -10,7 +10,9 @@ import { ACTIVITY_EXCHANGE } from '../events/envelope.ts'
 import type { DeadLetter, IncomingMessage, Outcome } from '../events/router.ts'
 import type { AmqpTopology } from '../events/topology.ts'
 
-// Only what a handler exists for: a binding without one would only ack and drop.
+// The events whose order matters. Only what a handler exists for: a binding
+// without one would only ack and drop. An app provisions on the space's created
+// event, so its provisioned event comes here, after it.
 export function subscription(topology: AmqpTopology) {
   const platform = Object.values(topology.events)
   const [primary, ...rest] = platform
@@ -18,7 +20,7 @@ export function subscription(topology: AmqpTopology) {
   const options = {
     bindings: [
       ...rest,
-      { exchange: topology.activityExchange, routingKey: '#' }
+      { exchange: topology.activityExchange, routingKey: PROVISIONED }
     ],
     deadLetterExchange: topology.deadLetterExchange,
     // Other services own these. The apps and we declare the activity one, and
@@ -38,6 +40,24 @@ export function subscription(topology: AmqpTopology) {
     }
   } satisfies SubscribeOptions
   return { ...primary, queue: topology.queue, options }
+}
+
+const PROVISIONED = 'com.twake.*.space.provisioned.v1'
+
+// Each activity event stands alone, so every replica consumes the queue.
+export function activitySubscription(topology: AmqpTopology) {
+  const options = {
+    deadLetterExchange: topology.activityDeadLetterExchange,
+    maxRetries: Infinity,
+    maxRetryDelay: MAX_RETRY_MS,
+    queueArguments: { 'x-delivery-limit': topology.deliveryLimit }
+  } satisfies SubscribeOptions
+  return {
+    exchange: topology.activityExchange,
+    routingKey: '#',
+    queue: topology.activityQueue,
+    options
+  }
 }
 
 // The router, its handlers and the parked rows know events by their default
@@ -77,7 +97,7 @@ interface Handling {
 export function consumerStats() {
   const outcomes = new Map<Outcome | 'failed', number>()
   const handling = new Set<Handling>()
-  let unsubscribed = false
+  const unsubscribed = new Set<string>()
   return {
     outcomes,
     started(): Handling {
@@ -91,10 +111,14 @@ export function consumerStats() {
     },
     // The client gives up on a subscription it fails to restore, and stays
     // connected without consuming.
-    reconnected({ subscriptionsFailed }: { subscriptionsFailed: number }) {
-      unsubscribed = subscriptionsFailed > 0
+    reconnected(
+      queue: string,
+      { subscriptionsFailed }: { subscriptionsFailed: number }
+    ) {
+      if (subscriptionsFailed > 0) unsubscribed.add(queue)
+      else unsubscribed.delete(queue)
     },
-    unsubscribed: () => unsubscribed,
+    unsubscribed: () => unsubscribed.size > 0,
     stuck: () =>
       [...handling].some(({ since }) => Date.now() - since > STUCK_MS)
   }
@@ -103,16 +127,20 @@ export function consumerStats() {
 // An idle consumer is alive: only a stuck handler, a lost connection or a lost
 // subscription is not.
 export function consumerAlive(
-  client: Pick<RabbitMQClient, 'isConnected'>,
+  clients: Pick<RabbitMQClient, 'isConnected'>[],
   stats: ConsumerStats
 ): () => boolean {
-  let disconnectedSince: number | undefined
+  const disconnectedSince = new Map<object, number>()
   return () => {
-    if (client.isConnected()) disconnectedSince = undefined
-    else disconnectedSince ??= Date.now()
-    const lost =
-      disconnectedSince !== undefined &&
-      Date.now() - disconnectedSince > DISCONNECTED_MS
+    const lost = clients.some(client => {
+      if (client.isConnected()) {
+        disconnectedSince.delete(client)
+        return false
+      }
+      const since = disconnectedSince.get(client) ?? Date.now()
+      disconnectedSince.set(client, since)
+      return Date.now() - since > DISCONNECTED_MS
+    })
     return !lost && !stats.stuck() && !stats.unsubscribed()
   }
 }
@@ -187,29 +215,42 @@ export function deadLetterQueue(
     )
 }
 
-export async function startConsumer(
+type Subscription = ReturnType<
+  typeof subscription | typeof activitySubscription
+>
+
+// The prefetch is the channel's, so each queue has its own client.
+async function connect(
   config: Config,
   logger: Logger,
-  handle: Handle,
   stats: ConsumerStats,
-  beforeConsuming: (client: RabbitMQClient) => Promise<void>
+  queue: string,
+  prefetch: number
 ): Promise<RabbitMQClient> {
   const client = new RabbitMQClient({
     url: config.AMQP_URL,
-    // One message at a time keeps the order the publishers sent.
-    prefetch: 1,
+    prefetch,
     retryDelay: FIRST_RETRY_MS,
     // The client logs every message at info.
-    logger: logger.child({ component: 'amqp' }, { level: 'warn' }),
+    logger: logger.child({ component: 'amqp', queue }, { level: 'warn' }),
     hooks: {
       onReconnect: info => {
-        stats.reconnected(info)
+        stats.reconnected(queue, info)
       }
     }
   })
   await client.init()
-  await beforeConsuming(client)
-  const { exchange, routingKey, queue, options } = subscription(config.amqp)
+  return client
+}
+
+async function consume(
+  client: RabbitMQClient,
+  config: Config,
+  logger: Logger,
+  stats: ConsumerStats,
+  { exchange, routingKey, queue, options }: Subscription,
+  handle: Handle
+) {
   await client.subscribe(
     exchange,
     routingKey,
@@ -226,5 +267,30 @@ export async function startConsumer(
     options
   )
   logger.info({ queue }, 'consuming from RabbitMQ')
-  return client
+}
+
+// The activity queue first, so it holds every activity event before the space
+// queue lets them go.
+export async function startConsumers(
+  config: Config,
+  logger: Logger,
+  handle: { space: Handle; activity: Handle },
+  stats: ConsumerStats,
+  beforeConsuming: (client: RabbitMQClient) => Promise<void>
+): Promise<{ space: RabbitMQClient; activity: RabbitMQClient }> {
+  const { amqp } = config
+  // One message at a time keeps the order the publishers sent.
+  const space = await connect(config, logger, stats, amqp.queue, 1)
+  await beforeConsuming(space)
+  const activity = await connect(
+    config,
+    logger,
+    stats,
+    amqp.activityQueue,
+    amqp.activityConcurrency
+  )
+  const subscribed = activitySubscription(amqp)
+  await consume(activity, config, logger, stats, subscribed, handle.activity)
+  await consume(space, config, logger, stats, subscription(amqp), handle.space)
+  return { space, activity }
 }
