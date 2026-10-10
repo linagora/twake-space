@@ -117,15 +117,16 @@ export function consumerAlive(
   }
 }
 
-// With one message in flight at a time, a failure streak is that message's.
+// The client passes the same properties to every retry of a delivery, so they
+// key its failure streak.
 export function deliveryHandler(
   handle: Handle,
   stats: ConsumerStats,
   logger: Logger
 ): RabbitMQMessageHandler {
-  let failingSince: number | undefined
-  let warned = false
-  return async (body, { exchange, routingKey, messageId }) => {
+  const failing = new WeakMap<object, { since: number; warned: boolean }>()
+  return async (body, properties) => {
+    const { exchange, routingKey, messageId } = properties
     const started = stats.started()
     let outcome: Outcome
     try {
@@ -137,9 +138,13 @@ export function deliveryHandler(
       })
     } catch (error) {
       stats.ended(started, 'failed')
-      failingSince ??= Date.now()
-      if (!warned && Date.now() - failingSince > LONG_FAILING_MS) {
-        warned = true
+      const streak = failing.get(properties) ?? {
+        since: Date.now(),
+        warned: false
+      }
+      failing.set(properties, streak)
+      if (!streak.warned && Date.now() - streak.since > LONG_FAILING_MS) {
+        streak.warned = true
         logger.error(
           { exchange, routingKey, messageId },
           'a message has failed for over 25 minutes; the broker may redeliver it'
@@ -148,8 +153,7 @@ export function deliveryHandler(
       throw error
     }
     stats.ended(started, outcome)
-    failingSince = undefined
-    warned = false
+    failing.delete(properties)
     if (outcome === 'rejected') {
       throw new DeadLetterError(`rejected ${routingKey}`)
     }

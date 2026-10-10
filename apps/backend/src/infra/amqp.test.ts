@@ -84,24 +84,41 @@ describe('deliveryHandler', () => {
         : Promise.resolve('processed')
     )
 
-    await deliver({}, properties()).catch(() => undefined)
+    const message = properties()
+    await deliver({}, message).catch(() => undefined)
     await vi.advanceTimersByTimeAsync(24 * 60_000)
-    await deliver({}, properties()).catch(() => undefined)
+    await deliver({}, message).catch(() => undefined)
     expect(lines).toEqual([])
 
     await vi.advanceTimersByTimeAsync(2 * 60_000)
-    await deliver({}, properties()).catch(() => undefined)
-    await deliver({}, properties()).catch(() => undefined)
+    await deliver({}, message).catch(() => undefined)
+    await deliver({}, message).catch(() => undefined)
     expect(lines.map(line => line.msg)).toEqual([
       'a message has failed for over 25 minutes; the broker may redeliver it'
     ])
 
     failing = false
-    await deliver({}, properties())
+    await deliver({}, message)
     failing = true
-    await deliver({}, properties()).catch(() => undefined)
+    await deliver({}, message).catch(() => undefined)
     await vi.advanceTimersByTimeAsync(20 * 60_000)
-    await deliver({}, properties()).catch(() => undefined)
+    await deliver({}, message).catch(() => undefined)
+    expect(lines).toHaveLength(1)
+  })
+
+  it('keeps the failure streak of a message while another one succeeds', async () => {
+    const { deliver, lines } = setup(message =>
+      message.messageId === 'm-1'
+        ? Promise.reject(new Error('db down'))
+        : Promise.resolve('processed')
+    )
+    const failingOne = properties()
+
+    await deliver({}, failingOne).catch(() => undefined)
+    await vi.advanceTimersByTimeAsync(26 * 60_000)
+    await deliver({}, properties({ messageId: 'm-2' }))
+    await deliver({}, failingOne).catch(() => undefined)
+
     expect(lines).toHaveLength(1)
   })
 })
