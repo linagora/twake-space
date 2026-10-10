@@ -4,12 +4,15 @@ import {
   ButtonBase,
   IconButton,
   InputBase,
+  Tooltip,
   Typography
 } from '@linagora/twake-mui'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 
 import { NameAvatar } from '@/ds/AppFrame'
 import { SidePanelIcon } from '@/ds/icons'
+
+const COLUMNS = 4
 
 export interface PanelMember {
   id: string
@@ -42,17 +45,34 @@ export function MembersPanel({
 }): ReactElement {
   const [query, setQuery] = useState('')
   const panel = useRef<HTMLElement>(null)
-  // The panel covers the feed on a narrow screen: focus goes in when it opens
-  // and back to the button that opened it when it closes.
+  // The panel covers the feed on a narrow screen: focus goes in when it
+  // opens, and the toolbar takes it back when it closes.
   useEffect(() => {
-    const opener = document.activeElement
     panel.current?.focus()
-    return () => {
-      if (opener instanceof HTMLElement) opener.focus()
-    }
   }, [])
   const needle = query.trim().toLowerCase()
   const shown = members.filter(m => m.name.toLowerCase().includes(needle))
+  // The list is one stop of the keyboard, on this member; the arrows, Home
+  // and End move through it.
+  const [active, setActive] = useState(0)
+  const current = Math.min(active, shown.length - 1)
+  const moveTo = (list: HTMLElement, key: string): boolean => {
+    const step: Record<string, number> = {
+      ArrowLeft: -1,
+      ArrowRight: 1,
+      ArrowUp: -COLUMNS,
+      ArrowDown: COLUMNS,
+      Home: -shown.length,
+      End: shown.length
+    }
+    const by = step[key]
+    if (by === undefined) return false
+    const next = Math.max(0, Math.min(shown.length - 1, current + by))
+    setActive(next)
+    const item = list.children.item(next)
+    if (item instanceof HTMLElement) item.focus()
+    return true
+  }
   return (
     <Box
       component="aside"
@@ -70,8 +90,9 @@ export function MembersPanel({
         flex: '0 0 300px',
         width: { xs: 'auto', md: 300 },
         bgcolor: 'background.paper',
+        // In the same media query as the border, which resets its colour
         borderLeft: { md: 1 },
-        borderColor: 'divider',
+        borderLeftColor: { md: 'divider' },
         p: 2,
         display: 'flex',
         flexDirection: 'column',
@@ -148,47 +169,54 @@ export function MembersPanel({
       )}
       <Box
         component="ul"
+        onKeyDown={event => {
+          if (moveTo(event.currentTarget, event.key)) event.preventDefault()
+        }}
         sx={{
           m: 0,
           p: 0,
           listStyle: 'none',
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: `repeat(${String(COLUMNS)}, 1fr)`,
           rowGap: 2,
           columnGap: 1
         }}
       >
-        {shown.map(member => (
-          <Box
-            component="li"
-            key={member.id}
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 0.75,
-              minWidth: 0
-            }}
-          >
-            <NameAvatar
-              name={member.name}
-              size={48}
-              src={member.avatar ?? null}
-            />
-            <Typography
-              variant="caption"
-              noWrap
-              title={member.name}
+        {shown.map((member, index) => (
+          <Tooltip key={member.id} title={member.name}>
+            <Box
+              component="li"
+              tabIndex={index === current ? 0 : -1}
+              onFocus={() => {
+                setActive(index)
+              }}
               sx={{
-                maxWidth: '100%',
-                fontSize: 11,
-                lineHeight: '16px',
-                letterSpacing: 0.5
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 0.75,
+                minWidth: 0
               }}
             >
-              {member.name.split(' ')[0]}
-            </Typography>
-          </Box>
+              <NameAvatar
+                name={member.name}
+                size={48}
+                src={member.avatar ?? null}
+              />
+              <Typography
+                variant="caption"
+                noWrap
+                sx={{
+                  maxWidth: '100%',
+                  fontSize: 11,
+                  lineHeight: '16px',
+                  letterSpacing: 0.5
+                }}
+              >
+                {member.name.split(' ')[0]}
+              </Typography>
+            </Box>
+          </Tooltip>
         ))}
       </Box>
     </Box>

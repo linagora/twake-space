@@ -288,7 +288,8 @@ export function FeedWithSide({
   )
 }
 
-/** The button of the members panel, beside the filter. */
+/** The button of the members panel, beside the filter. Gone while the panel
+ * is open, which has its own close button; takes the focus back on close. */
 export function FeedToolbar({
   panelLabel,
   panelOpen,
@@ -300,17 +301,30 @@ export function FeedToolbar({
   onPanel: () => void
   children: ReactNode
 }): ReactElement {
+  const button = useRef<HTMLButtonElement>(null)
+  const wasOpen = useRef(panelOpen)
+  useEffect(() => {
+    if (wasOpen.current && !panelOpen) button.current?.focus()
+    wasOpen.current = panelOpen
+  }, [panelOpen])
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-      <IconButton
-        size="small"
-        aria-label={panelLabel}
-        aria-pressed={panelOpen}
-        onClick={onPanel}
-        sx={{ width: 34, height: 32, borderRadius: 100, color: 'text.primary' }}
-      >
-        <Icon icon={SidePanelIcon} size={20} />
-      </IconButton>
+      {!panelOpen && (
+        <IconButton
+          ref={button}
+          size="small"
+          aria-label={panelLabel}
+          onClick={onPanel}
+          sx={{
+            width: 34,
+            height: 32,
+            borderRadius: 100,
+            color: 'text.primary'
+          }}
+        >
+          <Icon icon={SidePanelIcon} size={20} />
+        </IconButton>
+      )}
       {children}
     </Box>
   )
@@ -433,7 +447,8 @@ function BubbleTail(): ReactElement {
   )
 }
 
-/** A 36px round tile with an app's icon, for cards an app sends. */
+/** A 36px round tile with an app's icon in its colour on the neutral grey,
+ * for cards an app sends. */
 export function AppAvatar({
   icon,
   label,
@@ -449,8 +464,8 @@ export function AppAvatar({
       aria-label={label}
       title={label}
       sx={theme => ({
-        bgcolor: theme.space.appColors[app],
-        color: 'common.white'
+        bgcolor: 'background.default',
+        color: theme.space.appColors[app]
       })}
     >
       <Icon icon={icon} size={18} />
