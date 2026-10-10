@@ -1,0 +1,1 @@
+CREATE INDEX "activity_events_unattached_idx" ON "activity_events" (("content"->'object'->'container'->>'kind'),("content"->'object'->'container'->>'id')) WHERE "space_id" is null;

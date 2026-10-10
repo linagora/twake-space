@@ -2,7 +2,11 @@ import { and, eq, gt, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 import type { Logger as Pino } from 'pino'
 import { z } from 'zod'
 import type { PlatformEvent } from '../../events/envelope.ts'
-import { fresh } from '../../events/freshness.ts'
+import {
+  deletedEmailKey,
+  deletedUserKey,
+  fresh
+} from '../../events/freshness.ts'
 import { lastChanges } from '../../events/schema.ts'
 import {
   NotYetKnownError,
@@ -56,9 +60,6 @@ const groupKey = (spaceId: string, groupId: string) =>
   `space:${spaceId}:group:${groupId}`
 export const resourceKey = (spaceId: string, kind: SpaceResourceKind) =>
   `space:${spaceId}:resource:${kind}`
-// An email can be given to a new user later, so its marker only holds back older events.
-const deletedUserKey = (uuid: string) => `user:${uuid}:deleted`
-const deletedEmailKey = (email: string) => `email:${email}:deleted`
 
 const role = z.enum(spaceRole.enumValues)
 

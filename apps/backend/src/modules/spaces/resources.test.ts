@@ -4,6 +4,8 @@ import type { CloudEvent } from '../../events/envelope.ts'
 import { lastChanges } from '../../events/schema.ts'
 import { MalformedEventError, RejectedEventError } from '../../events/router.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
+import { activityRoute } from '../feed/activity.ts'
+import { activityEvents, feedCards } from '../feed/schema.ts'
 import { resourceActivityRoutes } from './resources.ts'
 import { spaceResources, spaces } from './schema.ts'
 
@@ -15,6 +17,7 @@ beforeAll(async () => {
 })
 afterAll(() => testDb.drop())
 beforeEach(async () => {
+  await testDb.db.delete(activityEvents)
   await testDb.db.delete(spaceResources)
   await testDb.db.delete(lastChanges)
   await testDb.db.delete(spaces)
@@ -151,6 +154,70 @@ describe('provisioned events', () => {
     await expect(
       provisioned('drive', { kind: 'drive', id: 'a1' }, { twakeorg: undefined })
     ).rejects.toBeInstanceOf(MalformedEventError)
+  })
+
+  describe('after activity on the resource', () => {
+    function activity(twakeorg = 'linagora') {
+      const type = 'com.twake.drive.file.created.v1'
+      const handler = activityRoute.get(type)
+      if (!handler) throw new Error(`no handler for ${type}`)
+      const event: CloudEvent = {
+        specversion: '1.0',
+        id: '01J9Z6K4X8M2Q7R5T3V1W0Y9AB',
+        source: 'twake://drive',
+        type,
+        time: '2026-10-05T09:14:22Z',
+        twakeorg,
+        data: {
+          object: {
+            type: 'file',
+            id: 'f1',
+            container: { kind: 'drive', id: 'drive-1' },
+            title: 'Roadmap.odt'
+          }
+        }
+      }
+      return testDb.db.transaction(tx =>
+        handler(event, tx, pino({ level: 'silent' }))
+      )
+    }
+
+    const cards = () =>
+      testDb.db
+        .select({ spaceId: feedCards.spaceId, objectId: feedCards.objectId })
+        .from(feedCards)
+
+    it('brings the earlier activity into the space', async () => {
+      await activity()
+
+      await provisioned('drive', { kind: 'drive', id: 'drive-1' })
+
+      expect(
+        await testDb.db
+          .select({ spaceId: activityEvents.spaceId })
+          .from(activityEvents)
+      ).toEqual([{ spaceId: SPACE_ID }])
+      expect(await cards()).toEqual([{ spaceId: SPACE_ID, objectId: 'f1' }])
+    })
+
+    it("leaves another organization's activity out", async () => {
+      await activity('globex')
+
+      await provisioned('drive', { kind: 'drive', id: 'drive-1' })
+
+      expect(await cards()).toEqual([])
+    })
+
+    it('leaves out activity older than the wait for a late event', async () => {
+      await activity()
+      await testDb.db
+        .update(activityEvents)
+        .set({ createdAt: new Date(Date.now() - 31 * 60_000) })
+
+      await provisioned('drive', { kind: 'drive', id: 'drive-1' })
+
+      expect(await cards()).toEqual([])
+    })
   })
 
   it('ignores a provisioned event older than the last one', async () => {

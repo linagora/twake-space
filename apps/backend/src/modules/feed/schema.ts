@@ -57,6 +57,13 @@ export const activityEvents = pgTable(
         sql`${table.matrixEventId} is null and ${table.postFailedAt} is null and ${table.spaceId} is not null`
       ),
     index().on(table.spaceId, table.objectType, table.objectId, table.time),
+    // For a late provisioned event to find the events on its container.
+    index('activity_events_unattached_idx')
+      .on(
+        sql`(${table.content}->'object'->'container'->>'kind')`,
+        sql`(${table.content}->'object'->'container'->>'id')`
+      )
+      .where(sql`${table.spaceId} is null`),
     index().on(table.createdAt)
   ]
 )
