@@ -172,6 +172,29 @@ it('refreshes the homeserver on each chat deployment', async () => {
   expect(await testDb.db.$count(homeservers)).toBe(1)
 })
 
+it("keeps the tenant's Chat address with its homeserver, as the control plane gives it", async () => {
+  const homeserverOf = vi
+    .fn<TenantHomeservers['homeserverOf']>()
+    .mockResolvedValueOnce({
+      ...tenantHomeserver('hs'),
+      chatUrl: 'https://chat-org_acme.example.com'
+    })
+    .mockResolvedValueOnce(tenantHomeserver('hs'))
+  const { handle } = setUp(acme, undefined, { homeserverOf })
+  const chatUrls = () =>
+    testDb.db.select({ chatUrl: homeservers.chatUrl }).from(homeservers)
+
+  await handle('twake.space.created', { organizationId: 'org_acme' })
+  const met = await chatUrls()
+  await handle('chat.deployment.completed', {
+    organizationId: 'org_acme',
+    deployment: { completedAt: '2026-10-05T09:00:00Z' }
+  })
+
+  expect(met).toEqual([{ chatUrl: 'https://chat-org_acme.example.com' }])
+  expect(await chatUrls()).toEqual([{ chatUrl: null }])
+})
+
 it('handles the event of a new organization when the chat control plane fails', async () => {
   const homeserverOf = vi.fn(() => Promise.reject(new Error('503')))
   const { other, handle } = setUp(acme, undefined, { homeserverOf })
