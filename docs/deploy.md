@@ -270,7 +270,7 @@ namespaces:
 
 ### Chat control plane (SaaS)
 
-`GET <CHAT_CONTROL_PLANE_URL>/deployment/<organizationId>/twake-space` with the bearer token, 10 second timeout, when the backend first meets an organization and on `chat.deployment.completed` platform events. A `404` means the organization has no chat deployed yet.
+`GET <CHAT_CONTROL_PLANE_URL>/deployment/<organizationId>/twake-space` with the bearer token, 10 second timeout, when the backend first meets an organization and on `chat.deployment.completed` and `chat.deployment.updated` platform events. A `404` means the organization has no chat deployed yet.
 
 ## Local stack
 
