@@ -10,8 +10,8 @@ import {
   consumerAlive,
   consumerStats,
   deadLetterQueue,
-  drivePublisher,
-  startConsumers
+  startConsumers,
+  sweepPublisher
 } from './infra/amqp.ts'
 import { createDb, migrateDb } from './infra/db.ts'
 import { createServer } from './infra/http.ts'
@@ -199,12 +199,18 @@ publish = (routingKey, event, messageId) => {
     })
   )
 }
-const drives = drivePublisher(
-  () => amqplib.connect(config.AMQP_URL, { timeout: PUBLISH_TIMEOUT_MS }),
-  config.amqp,
+const connectToPublish = () =>
+  amqplib.connect(config.AMQP_URL, { timeout: PUBLISH_TIMEOUT_MS })
+const drives = sweepPublisher(
+  connectToPublish,
+  config.amqp.driveExchange,
   PUBLISH_TIMEOUT_MS
 )
-const stopDriveCommands = scheduleDriveCommands(db, drives.publish, logger)
+const stopDriveCommands = scheduleDriveCommands(
+  db,
+  command => drives.publish(config.amqp.driveRoutingKey, command),
+  logger
+)
 isAlive = consumerAlive([consumers.space, consumers.activity], consumerStatus)
 const stopParked = scheduleParkedRetries(
   db,
