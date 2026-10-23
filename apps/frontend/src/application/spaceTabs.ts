@@ -94,7 +94,7 @@ export function itemPlace(
 
 // The path under the tab's embed route that shows the object itself, if the
 // app can: Calendar knows its event by uid, Mail its email by JMAP id, Drive
-// its folder by id. A Drive file opens in its folder, which no card names.
+// its folder by id. A Drive file opens at the tab, as no card names its folder.
 function belowTab(tab: Tab, object: { type: string; id: string }): string {
   const id = encodeURIComponent(object.id)
   if (tab === 'calendar') return `/events/${id}`
