@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -71,6 +71,12 @@ async function join(link: string) {
 }
 
 const meeting = () => screen.getByRole('region', { name: 'Video meeting' })
+
+// The pickers keep their value in a hidden input beside the label's group
+const field = (dialog: HTMLElement, label: string) =>
+  within(dialog)
+    .getByRole('group', { name: label })
+    .parentElement?.querySelector('input') ?? dialog
 
 describe('MeetingMenu', () => {
   beforeEach(() => {
@@ -164,10 +170,10 @@ describe('MeetingMenu', () => {
     await choose('Schedule a meeting')
     const dialog = screen.getByRole('dialog', { name: 'Schedule a meeting' })
     expect(within(dialog).getByLabelText('Title')).toHaveValue('Roadmap')
-    fireEvent.change(within(dialog).getByLabelText('Date'), {
-      target: { value: '2026-10-14' }
+    fireEvent.change(field(dialog, 'Date'), {
+      target: { value: '10/14/2026' }
     })
-    fireEvent.change(within(dialog).getByLabelText('Start time'), {
+    fireEvent.change(field(dialog, 'Start time'), {
       target: { value: '10:00' }
     })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Schedule' }))
@@ -191,6 +197,29 @@ describe('MeetingMenu', () => {
     expect(first?.[1].start).toMatch(/^2026-10-14T10:00:00[+-]\d\d:\d\d$/)
     expect(first?.[1].end).toMatch(/^2026-10-14T10:30:00[+-]\d\d:\d\d$/)
     expect(second?.[1].uid).toBe(first?.[1].uid)
+  })
+
+  it('picks the day on the calendar of the date picker', async () => {
+    const schedule = vi
+      .fn<MeetingsService['schedule']>()
+      .mockResolvedValue(undefined)
+    renderWithProviders(<MeetingMenu space={withCalendar} />, {
+      meetings: { schedule },
+      path: '/spaces/a1'
+    })
+
+    await choose('Schedule a meeting')
+    const dialog = screen.getByRole('dialog', { name: 'Schedule a meeting' })
+    fireEvent.click(within(dialog).getByRole('button', { name: /Choose date/ }))
+    const calendar = (await screen.findAllByRole('dialog')).at(-1)
+    fireEvent.click(
+      within(calendar ?? document.body).getByRole('gridcell', { name: '28' })
+    )
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Schedule' }))
+
+    await waitFor(() => {
+      expect(schedule.mock.calls[0]?.[1].start).toMatch(/^\d{4}-\d\d-28T/)
+    })
   })
 
   it('offers scheduling to editors and admins only', async () => {

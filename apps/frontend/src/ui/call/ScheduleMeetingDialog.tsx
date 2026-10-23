@@ -19,6 +19,7 @@ import {
 } from '@/application/meetings'
 import { isRefusal, type Space } from '@/application/spaces'
 import { DialogHeader } from '@/ds/Dialog'
+import { DayField, TimeField } from '@/ds/Pickers'
 import { useI18n, type TranslationKey } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useCommonSettings } from '@/ui/settings/useCommonSettings'
@@ -102,24 +103,16 @@ export function ScheduleMeetingDialog({
               }}
             />
             <Stack direction="row" spacing={2}>
-              <TextField
-                fullWidth
-                type="date"
+              <DayField
                 label={t('call.date')}
                 value={date}
-                onChange={event => {
-                  setDate(event.target.value)
-                }}
+                onChange={setDate}
               />
-              <TextField
-                fullWidth
-                type="time"
+              <TimeField
                 label={t('call.time')}
                 value={time}
                 helperText={t('call.duration', { minutes: MEETING_MINUTES })}
-                onChange={event => {
-                  setTime(event.target.value)
-                }}
+                onChange={setTime}
               />
             </Stack>
             <TextField
