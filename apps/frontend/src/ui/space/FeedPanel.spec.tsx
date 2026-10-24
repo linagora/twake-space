@@ -1027,7 +1027,7 @@ describe('FeedPanel', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
       expect(
         screen.getAllByRole('menuitem').map(item => item.textContent)
-      ).toEqual(['Poll', 'Yes/no question'])
+      ).toEqual(['Poll', 'Yes/no question', 'Announcement', 'Feedback'])
     })
 
     it('lets an approver approve once, with a comment', async () => {
