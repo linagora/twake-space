@@ -1,5 +1,9 @@
 import { z } from 'zod'
 import { amqpTopology } from './events/topology.ts'
+import {
+  NEW_TOKEN_CHECKS,
+  NEW_TOKENS_WAITING
+} from './modules/auth/authenticator.ts'
 import { spaceApp } from './modules/spaces/resources.ts'
 
 const HOMESERVER_KEYS = ['MATRIX_HOMESERVER_URL', 'MATRIX_SERVER_NAME'] as const
@@ -62,6 +66,12 @@ const configSchema = z
     OIDC_AUDIENCE: z.string().min(1).default('twakespace'),
     OIDC_CLIENT_ID: z.string().min(1).default('twakespace-backend'),
     OIDC_CLIENT_SECRET: z.string().min(1),
+    NEW_TOKEN_CHECKS: z.coerce.number().int().min(1).default(NEW_TOKEN_CHECKS),
+    NEW_TOKENS_WAITING: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(NEW_TOKENS_WAITING),
     HTTP_HOST: z.string().min(1).default('0.0.0.0'),
     HTTP_PORT: z.coerce.number().int().min(1).max(65535).default(8080),
     // Kept off the public port.

@@ -6,8 +6,8 @@ export type Authenticate = (accessToken: string) => Promise<Identity | null>
 
 const CACHE_TTL_MS = 60_000
 const MAX_REFUSED = 10_000
-const NEW_TOKEN_CHECKS = 10
-const NEW_TOKENS_WAITING = 100
+export const NEW_TOKEN_CHECKS = 10
+export const NEW_TOKENS_WAITING = 100
 
 export function sha256(value: string): string {
   return createHash('sha256').update(value).digest('base64url')
@@ -39,6 +39,8 @@ export function createAuthenticator(deps: {
   provider: IdentityProvider
   store: AuthStore
   now?: () => number
+  newTokenChecks?: number
+  newTokensWaiting?: number
 }): Authenticate {
   const now = deps.now ?? Date.now
   // An entry outlives its 60 seconds until the token expires, so a token
@@ -46,7 +48,10 @@ export function createAuthenticator(deps: {
   const cache = new Map<string, { identity: Identity; until: number }>()
   // Anyone can send made-up tokens, each one a call to the provider. Tokens
   // seen before skip the line; a refreshed token is a new one and waits.
-  const newToken = gate(NEW_TOKEN_CHECKS, NEW_TOKENS_WAITING)
+  const newToken = gate(
+    deps.newTokenChecks ?? NEW_TOKEN_CHECKS,
+    deps.newTokensWaiting ?? NEW_TOKENS_WAITING
+  )
   const checking = new Map<string, Promise<Identity | null>>()
 
   // Entries are not in expiry order (tokens differ in lifetime), so this scans
