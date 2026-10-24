@@ -1,7 +1,7 @@
 import { pino } from 'pino'
 import { describe, expect, it, vi } from 'vitest'
 import { createServer } from '../../infra/http.ts'
-import { fixedWindows } from '../auth/index.ts'
+import { DEFAULT_LIMITS, fixedWindows } from '../auth/index.ts'
 import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
 import type { LinkPreview } from './preview.ts'
 import { cachedPreviews, registerLinkRoutes } from './routes.ts'
@@ -24,7 +24,12 @@ function request(url: string, preview = vi.fn(), token = 'alice') {
     t => (t === 'alice' ? anIdentity() : null),
     t => (t === 'tws_bot' ? aTokenCaller() : null)
   )
-  registerLinkRoutes(app, { authorize, limiter: fixedWindows(), preview })
+  registerLinkRoutes(app, {
+    authorize,
+    limiter: fixedWindows(),
+    fetchLimit: DEFAULT_LIMITS.linkFetch,
+    preview
+  })
   return app.inject({
     method: 'GET',
     url,
@@ -81,6 +86,7 @@ describe('GET /link-preview', () => {
     registerLinkRoutes(app, {
       authorize,
       limiter: fixedWindows(),
+      fetchLimit: DEFAULT_LIMITS.linkFetch,
       preview: cachedPreviews(fetch)
     })
     const get = (path: string) =>

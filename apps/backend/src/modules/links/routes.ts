@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { HttpServer } from '../../infra/http.ts'
-import { perMinute, type Authorize, type Limiter } from '../auth/index.ts'
+import type { Authorize, Limit, Limiter } from '../auth/index.ts'
 import { fetchPreview, type LinkPreview } from './preview.ts'
 
 const CACHED_MS = 60 * 60 * 1000
@@ -17,9 +17,6 @@ const previewQuery = z.object({
       return parsed
     })
 })
-
-// Only a fetch costs another site a request, so only a fetch counts.
-const FETCH_LIMIT = perMinute(30)
 
 type Fetch = (url: URL) => Promise<LinkPreview | null>
 type Preview = (
@@ -65,7 +62,12 @@ export function cachedPreviews(fetch: Fetch, now = Date.now): Preview {
 
 export function registerLinkRoutes(
   app: HttpServer,
-  deps: { authorize: Authorize; limiter: Limiter; preview?: Preview }
+  deps: {
+    authorize: Authorize
+    limiter: Limiter
+    fetchLimit: Limit
+    preview?: Preview
+  }
 ) {
   const preview = deps.preview ?? cachedPreviews(url => fetchPreview(url))
 
@@ -78,9 +80,11 @@ export function registerLinkRoutes(
         return reply.code(400).send({ error: 'invalid_request' })
       }
       const caller = request.caller?.userId ?? ''
+      // Only a fetch costs another site a request, so only a fetch counts.
       const found = await preview(
         query.data.url,
-        async () => (await deps.limiter(`fetch:${caller}`, FETCH_LIMIT)) === 0
+        async () =>
+          (await deps.limiter(`fetch:${caller}`, deps.fetchLimit)) === 0
       )
       if (found === 'limited') {
         return reply
