@@ -58,6 +58,8 @@ const LONG_DAYS: Record<string, string> = {
 const DAY = 'YYYY-MM-DD'
 const TIME = 'HH:mm'
 
+const onDay = (time: string) => dayjs(`2000-01-01T${time}`)
+
 export function PickersProvider({
   lang,
   children
@@ -110,19 +112,19 @@ function usePopup() {
 
 const textField = {
   fullWidth: true,
-  size: 'small',
-  margin: 'dense',
   slotProps: { inputLabel: { shrink: true } }
 } as const
 
-/** Days are YYYY-MM-DD strings, empty for none. */
+/** Days are YYYY-MM-DD strings, empty for none, `min` the first one offered. */
 export function DayField({
   label,
   value,
+  min,
   onChange
 }: {
   label: string
   value: string
+  min: string
   onChange: (day: string) => void
 }): ReactElement {
   const lang = usePickerAdapter().getCurrentLocaleCode()
@@ -133,6 +135,7 @@ export function DayField({
       label={label}
       format={LONG_DAYS[lang] ?? LONG_DAY}
       value={value ? dayjs(value) : null}
+      minDate={dayjs(min)}
       onChange={(next: Dayjs | null) => {
         onChange(next?.isValid() ? next.format(DAY) : '')
       }}
@@ -140,31 +143,25 @@ export function DayField({
         field: { readOnly: true },
         // The long day takes two thirds of a row shared with a time
         textField: { ...textField, ...trigger, sx: { flex: '2 1 0' } },
-        openPickerButton: { sx: { display: 'none' } },
-        layout: {
-          sx: {
-            '& .MuiDateCalendar-root.MuiDateCalendar-root': {
-              width: 260,
-              maxWidth: 260,
-              px: '15px'
-            }
-          }
-        }
+        openPickerButton: { sx: { display: 'none' } }
       }}
     />
   )
 }
 
-/** Times are HH:mm strings, empty for none, picked in steps of 30 minutes. */
+/**
+ * Times are HH:mm strings, empty for none, picked in steps of 30 minutes.
+ * `min` is the first one offered, if any.
+ */
 export function TimeField({
   label,
   value,
-  helperText,
+  min,
   onChange
 }: {
   label: string
   value: string
-  helperText: string
+  min?: string | undefined
   onChange: (time: string) => void
 }): ReactElement {
   const { trigger, ...popup } = usePopup()
@@ -173,7 +170,8 @@ export function TimeField({
       {...popup}
       closeOnSelect
       label={label}
-      value={value ? dayjs(`2000-01-01T${value}`) : null}
+      value={value ? onDay(value) : null}
+      {...(min && { minTime: onDay(min) })}
       ampm={false}
       timeSteps={{ minutes: 30 }}
       // One column of the 48 half hours of a day
@@ -192,12 +190,7 @@ export function TimeField({
       }}
       slots={{ actionBar: () => null }}
       slotProps={{
-        textField: {
-          ...textField,
-          helperText,
-          ...trigger,
-          sx: { flex: '1 1 0' }
-        },
+        textField: { ...textField, ...trigger, sx: { flex: '1 1 0' } },
         openPickerButton: { sx: { display: 'none' } },
         popper: {
           sx: {

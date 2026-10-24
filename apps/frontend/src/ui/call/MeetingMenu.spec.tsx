@@ -208,7 +208,11 @@ describe('MeetingMenu', () => {
     expect(second?.[1].uid).toBe(first?.[1].uid)
   })
 
-  it('starts at the next half hour, and takes a typed time', async () => {
+  it('starts at the next half hour, and takes a typed time to come', async () => {
+    vi.useFakeTimers({
+      toFake: ['Date'],
+      now: new Date('2026-10-01T11:00:00Z')
+    })
     const schedule = vi
       .fn<MeetingsService['schedule']>()
       .mockResolvedValue(undefined)
@@ -221,11 +225,14 @@ describe('MeetingMenu', () => {
     const dialog = screen.getByRole('dialog', { name: 'Schedule a meeting' })
     const time = field(dialog, 'Start time')
     expect((time as HTMLInputElement).value).toMatch(/^\d\d:(00|30)$/)
-    fireEvent.change(time, { target: { value: '10:15' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Schedule' }))
+    const submit = within(dialog).getByRole('button', { name: 'Schedule' })
+    fireEvent.change(time, { target: { value: '00:00' } })
+    expect(submit).toBeDisabled()
+    fireEvent.change(time, { target: { value: '23:45' } })
+    fireEvent.click(submit)
 
     await waitFor(() => {
-      expect(schedule.mock.calls[0]?.[1].start).toMatch(/T10:15:00/)
+      expect(schedule.mock.calls[0]?.[1].start).toMatch(/T23:45:00/)
     })
   })
 
