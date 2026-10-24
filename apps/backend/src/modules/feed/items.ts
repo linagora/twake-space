@@ -301,7 +301,6 @@ export async function findItem(
   return items.get(itemId)
 }
 
-// Latest pinned first.
 export async function pinnedItems(
   db: Db,
   spaceId: string,

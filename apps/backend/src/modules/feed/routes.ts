@@ -144,6 +144,12 @@ function mentioner(caller: Caller, mentions: string[]): string | null {
   return caller.userId
 }
 
+// A token reads for its account, but the feedback answers go to the person.
+const readBy = (caller: Caller) => (item: FeedItem) =>
+  caller.kind === 'token' && item.kind === 'post' && item.feedback
+    ? serialize({ ...item, feedback: { ...item.feedback, answers: null } })
+    : serialize(item)
+
 const serialize = (item: FeedItem) => ({
   ...item,
   time: item.time.toISOString(),
@@ -249,6 +255,7 @@ export function registerFeedRoutes(
     const [post] = await tx
       .select({
         kind: feedPosts.kind,
+        authorId: feedPosts.authorId,
         options: feedPosts.pollOptions,
         approverIds: feedPosts.approverIds,
         closedAt: feedPosts.pollClosedAt
@@ -320,7 +327,7 @@ export function registerFeedRoutes(
           ...(since && { since }),
           ...(q && { q })
         })
-        return { items: page.items.map(serialize), next: page.next }
+        return { items: page.items.map(readBy(caller)), next: page.next }
       } catch (error) {
         return refused(error, reply)
       }
@@ -340,7 +347,7 @@ export function registerFeedRoutes(
           caller.userId
         )
         if (!item) throw new Refusal(404, 'not_found')
-        return serialize(item)
+        return readBy(caller)(item)
       } catch (error) {
         return refused(error, reply)
       }
@@ -354,7 +361,7 @@ export function registerFeedRoutes(
       try {
         const { caller, space } = await reach(request)
         const items = await pinnedItems(db, space.id, caller.userId)
-        return { items: items.map(serialize) }
+        return { items: items.map(readBy(caller)) }
       } catch (error) {
         return refused(error, reply)
       }
@@ -535,9 +542,12 @@ export function registerFeedRoutes(
             tx,
             request
           )
-          // The decisions answer the text the approvers read.
+          // Decisions and answers reply to the text people read.
           if (kind === 'approval') {
             throw new Refusal(409, 'cannot_edit_approval')
+          }
+          if (kind === 'feedback') {
+            throw new Refusal(409, 'cannot_edit_feedback')
           }
           const { body, mentions } = parse(postBody, request.body)
           const speaker = mentioner(caller, mentions)
@@ -723,7 +733,10 @@ export function registerFeedRoutes(
         const postId = itemOf(request)
         const { text } = parse(answerBody, request.body)
         await db.transaction(async tx => {
-          await openPoll(tx, spaceId, postId, ['feedback'])
+          const post = await openPoll(tx, spaceId, postId, ['feedback'])
+          if (post.authorId === userId) {
+            throw new Refusal(403, 'cannot_answer_own')
+          }
           const [answered] = await tx
             .insert(feedPollVotes)
             .values({ postId, userId, option: 0, comment: text })

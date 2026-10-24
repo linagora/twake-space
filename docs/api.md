@@ -316,7 +316,7 @@ A feed item:
 - A poll is `{kind, options, closedAt}`. `kind` is `choice`, or `yes_no` for a yes/no question, whose options are labelled `yes` and `no` for the reader's language. `options` lists `{label, userIds}` in the order they were given, `userIds` being the members who chose it in the order they voted, and `closedAt` is `null` while it is open.
 - An approval request is `{state, approvers, closedAt}`. `approvers` lists `{id, name, decision, comment, decidedAt}` in the order the author picked them, `decision` being `approved`, `rejected`, or `null` until they decide. `state` is `rejected` once one approver rejects, `approved` once they all approve, `pending` otherwise. An approver who left the space without deciding (`name` is `null`) no longer counts.
 - An announcement is `{pinnedAt}`, `null` once unpinned.
-- A feedback request is `{count, mine, answers, closedAt}`. `count` is how many members answered, `mine` the caller's own answer or `null`. `answers` lists `{userId, name, text, answeredAt}`, oldest first, for the author only: it is `null` for anyone else.
+- A feedback request is `{count, mine, answers, closedAt}`. `count` is how many members answered, `mine` the caller's own answer or `null`. `answers` lists `{userId, name, text, answeredAt}`, oldest first, for the author only: it is `null` for anyone else, the author's own tokens included.
 - An actor or author is `{type: "user", id, name}`, `{type: "token", id, name}`, or `{type: "deleted_user"}`. For a user, `id` is `null` when the app named them by email only and no member has it, and `name` is the member's display name or username, or `null` when they are not a member of the space.
 
 ```json
@@ -388,7 +388,7 @@ Answers `{"readAt": "<time>"}`, the `time` of the newest item the caller has see
 
 ### PATCH /spaces/:spaceId/feed/posts/:itemId
 
-- Body: `{"body": "...", "mentions": [...]}`, as for a new post without the poll or the approval. Answers the post. A poll keeps its options and votes. An approval request cannot be edited, the approvers decide on its text: `409 {"error":"cannot_edit_approval"}`.
+- Body: `{"body": "...", "mentions": [...]}`, as for a new post without the poll or the approval. Answers the post. A poll keeps its options and votes. An approval request cannot be edited, the approvers decide on its text: `409 {"error":"cannot_edit_approval"}`. Neither can a feedback request, the members answer its question: `409 {"error":"cannot_edit_feedback"}`.
 - Only the members the post did not mention before are notified and published.
 - Its author only, otherwise `403 {"error":"not_author"}`. A token's post belongs to that token, and to the person of its account, from a session, even once the token is revoked.
 
@@ -421,7 +421,7 @@ Takes the caller's vote back. Answers `204`, `404 {"error":"not_found"}` on a po
 ### PUT /spaces/:spaceId/feed/posts/:itemId/answer
 
 - Body: `{"text": "..."}`, 1 to 2000 characters once trimmed.
-- Any member, viewers included, from a session only. Answering again replaces the answer. Answers `204`.
+- Any member but the author, viewers included, from a session only. Answering again replaces the answer. Answers `204`, or `403 {"error":"cannot_answer_own"}` for the author.
 - `404 {"error":"not_found"}` on a post that is no feedback request, `409 {"error":"poll_closed"}` once it is closed.
 
 ### PUT /spaces/:spaceId/feed/posts/:itemId/pin

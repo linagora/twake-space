@@ -1891,6 +1891,35 @@ describe('feedback requests', () => {
     expect(response.statusCode).toBe(403)
     expect(response.json()).toEqual({ error: 'cannot_ask_feedback' })
   })
+
+  it("keeps the answers from its author's tokens", async () => {
+    const send = setUp()
+    const id = (await ask(send)).json<Item>().id
+    await answer(send, id, 'bob', 'Great')
+    await aToken()
+    const bot = setUp(aTokenCaller({ userId: ALICE, scopes: ['feed:read'] }))
+
+    expect(await feedbackOf(bot, id, 'tws_bot')).toMatchObject({
+      count: 1,
+      answers: null
+    })
+  })
+
+  it('takes no answer from its author, and no edit', async () => {
+    const send = setUp()
+    const id = (await ask(send)).json<Item>().id
+
+    const own = await answer(send, id, 'alice', 'Fine')
+    const edited = await send(
+      'PATCH',
+      `/spaces/${DESIGN}/feed/posts/${id}`,
+      'alice',
+      { body: 'How was the trip?', mentions: [] }
+    )
+
+    expect(own.json()).toEqual({ error: 'cannot_answer_own' })
+    expect(edited.json()).toEqual({ error: 'cannot_edit_feedback' })
+  })
 })
 
 describe('reactions', () => {
