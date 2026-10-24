@@ -442,6 +442,36 @@ export function registerTokenRoutes(
   const { db } = deps
   const preHandler = deps.authorize('tokens:write')
   const manageOrganization = organizationManager(deps.directory)
+
+  // Any token may read itself, so a client learns what it was given before a
+  // route refuses it, and when it expires.
+  app.get(
+    '/tokens/self',
+    { preHandler: deps.authorize('any') },
+    (request, reply) => {
+      const caller = callerOf(request)
+      if (caller.kind !== 'token') {
+        return forbidden(reply, 'not an API token')
+      }
+      return {
+        id: caller.tokenId,
+        name: caller.name,
+        owner:
+          caller.userId === null
+            ? 'organization'
+            : caller.technical
+              ? 'technical_account'
+              : 'account',
+        accountId: caller.userId,
+        organizationId: caller.organizationId,
+        scopes: caller.scopes,
+        spaces: caller.spaceIds ?? 'all',
+        role: caller.role,
+        expiresAt: caller.expiresAt
+      }
+    }
+  )
+
   registerManagedTokens(app, db, '/tokens', preHandler, manageOwnAccount)
   registerManagedTokens(
     app,
