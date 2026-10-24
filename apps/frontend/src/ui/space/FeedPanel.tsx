@@ -370,7 +370,7 @@ function Composer({ space }: { space: Space }): ReactElement {
   const [body, setBody] = useState('')
   const [polling, setPolling] = useState(false)
   const send = useMutation({
-    mutationFn: (text: string) => feed.post(space.id, text),
+    mutationFn: (text: string) => feed.post(space.id, text, []),
     onSuccess: item => {
       add(item)
       setBody('')
@@ -539,7 +539,7 @@ function Post({
   const mine = post.author.type === 'user' && post.author.id === myId
   const [draft, setDraft] = useState<string | null>(null)
   const edit = useMutation({
-    mutationFn: (body: string) => feed.edit(space.id, post.id, body),
+    mutationFn: (body: string) => feed.edit(space.id, post.id, body, []),
     onSuccess: item => {
       replace(item)
       setDraft(null)

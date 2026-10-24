@@ -684,7 +684,7 @@ describe('FeedPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
     expect(await screen.findByText('Hello team')).toBeInTheDocument()
-    expect(feed.post).toHaveBeenCalledWith('a1', 'Hello team')
+    expect(feed.post).toHaveBeenCalledWith('a1', 'Hello team', [])
     expect(composer).toHaveValue('')
   })
 
@@ -778,7 +778,7 @@ describe('FeedPanel', () => {
       expect(
         await screen.findByRole('group', { name: 'Which day?' })
       ).toBeInTheDocument()
-      expect(feed.post).toHaveBeenCalledWith('a1', 'Which day?', {
+      expect(feed.post).toHaveBeenCalledWith('a1', 'Which day?', [], {
         options: ['Tuesday', 'Friday']
       })
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
