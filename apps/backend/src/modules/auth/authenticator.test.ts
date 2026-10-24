@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createAuthenticator } from './authenticator.ts'
+import { createAuthenticator, gate } from './authenticator.ts'
 import type { Identity, IdentityProvider } from './oidc.ts'
 import type { AuthStore } from './store.ts'
 import { anIdentity } from './testing.ts'
@@ -86,6 +86,47 @@ describe('createAuthenticator', () => {
     expect(identify).toHaveBeenCalledTimes(10_002)
   })
 
+  it('refuses new tokens past 10 checks running and 100 waiting, never one seen before', async () => {
+    const { authenticate, identify, advance } = setUp()
+    await authenticate('seen')
+    const hanging = new Promise<Identity | null>(() => undefined)
+    vi.mocked(identify).mockImplementation(token =>
+      token === 'seen' ? Promise.resolve(anIdentity()) : hanging
+    )
+
+    for (let i = 0; i < 110; i++) void authenticate(`new-${String(i)}`)
+    advance(60_000)
+
+    await expect(authenticate('one-too-many')).rejects.toThrow()
+    await expect(authenticate('seen')).resolves.not.toBeNull()
+  })
+
+  it('keeps a seen token out of a full line while it is checked again', async () => {
+    const { authenticate, identify, advance } = setUp()
+    await authenticate('seen')
+    const recheck = Promise.withResolvers<Identity | null>()
+    vi.mocked(identify).mockImplementation(token =>
+      token === 'seen' ? recheck.promise : new Promise(() => undefined)
+    )
+
+    for (let i = 0; i < 110; i++) void authenticate(`new-${String(i)}`)
+    advance(60_000)
+    const first = authenticate('seen')
+    const second = authenticate('seen')
+    recheck.resolve(anIdentity())
+
+    await expect(first).resolves.not.toBeNull()
+    await expect(second).resolves.not.toBeNull()
+  })
+
+  it('checks a new token once for the requests sent with it at once', async () => {
+    const { authenticate, identify } = setUp()
+
+    await Promise.all(Array.from({ length: 20 }, () => authenticate('fresh')))
+
+    expect(identify).toHaveBeenCalledTimes(1)
+  })
+
   it('refuses a cached token once its session is revoked', async () => {
     const { authenticate, revoked } = setUp()
 
@@ -93,5 +134,21 @@ describe('createAuthenticator', () => {
     revoked.add('session-1')
 
     await expect(authenticate('token')).resolves.toBeNull()
+  })
+})
+
+describe('gate', () => {
+  it('runs a waiting task as soon as a running one ends', async () => {
+    const pass = gate(1, 1)
+    const held = Promise.withResolvers<string>()
+    const first = pass(() => held.promise)
+    const second = pass(() => Promise.resolve('second'))
+
+    await expect(pass(() => Promise.resolve('third'))).rejects.toThrow()
+    held.resolve('first')
+
+    await expect(first).resolves.toBe('first')
+    await expect(second).resolves.toBe('second')
+    await expect(pass(() => Promise.resolve('fourth'))).resolves.toBe('fourth')
   })
 })

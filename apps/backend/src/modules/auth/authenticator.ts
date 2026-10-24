@@ -6,9 +6,33 @@ export type Authenticate = (accessToken: string) => Promise<Identity | null>
 
 const CACHE_TTL_MS = 60_000
 const MAX_REFUSED = 10_000
+const NEW_TOKEN_CHECKS = 10
+const NEW_TOKENS_WAITING = 100
 
 export function sha256(value: string): string {
   return createHash('sha256').update(value).digest('base64url')
+}
+
+export class GateFullError extends Error {}
+
+// Runs at most `running` tasks at once with `waiting` more in line, and refuses
+// the rest at once.
+export function gate(running: number, waiting: number) {
+  let busy = 0
+  const line: (() => void)[] = []
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    if (busy < running) busy++
+    else if (line.length < waiting) {
+      await new Promise<void>(resolve => line.push(resolve))
+    } else throw new GateFullError('too many tokens waiting for a check')
+    try {
+      return await task()
+    } finally {
+      const next = line.shift()
+      if (next) next()
+      else busy--
+    }
+  }
 }
 
 export function createAuthenticator(deps: {
@@ -17,12 +41,22 @@ export function createAuthenticator(deps: {
   now?: () => number
 }): Authenticate {
   const now = deps.now ?? Date.now
+  // An entry outlives its 60 seconds until the token expires, so a token
+  // checked before is told apart from one never seen.
   const cache = new Map<string, { identity: Identity; until: number }>()
+  // Anyone can send made-up tokens, each one a call to the provider. Tokens
+  // seen before skip the line; a refreshed token is a new one and waits.
+  const newToken = gate(NEW_TOKEN_CHECKS, NEW_TOKENS_WAITING)
+  const checking = new Map<string, Promise<Identity | null>>()
 
+  // Entries are not in expiry order (tokens differ in lifetime), so this scans
+  // them all, at most once a minute.
+  let nextSweep = 0
   function evictExpired(at: number) {
+    if (at < nextSweep) return
+    nextSweep = at + CACHE_TTL_MS
     for (const [key, entry] of cache) {
-      if (entry.until > at) break
-      cache.delete(key)
+      if (entry.identity.expiresAt.getTime() <= at) cache.delete(key)
     }
   }
 
@@ -47,8 +81,21 @@ export function createAuthenticator(deps: {
     }
     let entry = cache.get(key)
     if (!entry || entry.until <= at) {
+      const seen =
+        entry !== undefined && entry.identity.expiresAt.getTime() > at
+      // The requests a page sends at once share one check and one place in line.
+      let check = checking.get(key)
+      if (!check) {
+        const identify = () => deps.provider.identify(accessToken)
+        check = (seen ? identify() : newToken(identify)).finally(() =>
+          checking.delete(key)
+        )
+        checking.set(key, check)
+      }
+      const identity = await check
+      // Kept until the provider answers, so a request alongside this one, or
+      // after a provider failure, still counts the token as seen.
       cache.delete(key)
-      const identity = await deps.provider.identify(accessToken)
       if (!identity) {
         refuse(key, at)
         return null
