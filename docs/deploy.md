@@ -253,7 +253,7 @@ Optional, set with `REDIS_URL`. It holds only the rate limit counts, under `twak
 - Meeting requests are published on `twake-space` with publisher confirms and `mandatory`, with a 10 second timeout: they fail while no calendar consumer has a queue bound.
 - Live updates are published once, and dropped while the replica is disconnected.
 - Every replica consumes both queues. The events of one space take turns under a Postgres advisory lock ([Events](events.md#ordering)).
-- `twake-space` and `twake-space.dlq`, the queues of older versions, lose their bindings and are drained. Delete both once every replica runs this version and they are empty.
+- `twake-space` and `twake-space.dlq`, the queues of older versions, lose their bindings and are drained. The backend keeps consuming `twake-space` and declares it again when it reconnects, so delete both only once a release that drops the drain runs everywhere, and only when they are empty.
 - An event the backend cannot process ends in `twake-space.platform.dlq`, or `twake-space.activity.dlq` for an activity event. See [Events](events.md#consuming-rabbitmq).
 - A message that fails for over 25 minutes is logged as an error. RabbitMQ's `consumer_timeout` (30 minutes by default) then closes the channel and delivers it again. After 21 deliveries (about 10 hours of failures, less with restarts) RabbitMQ dead-letters it and the queue moves on.
 
