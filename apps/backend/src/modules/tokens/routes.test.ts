@@ -663,6 +663,27 @@ describe('technical account tokens', () => {
   })
 })
 
+describe('feed:write', () => {
+  it('is refused to a viewer organization token', async () => {
+    const call = setUp()
+    const scopes = ['feed:write']
+
+    const viewer = await call(
+      'POST',
+      '/organization/tokens',
+      orgToken({ scopes, role: 'viewer' })
+    )
+    const editor = await call(
+      'POST',
+      '/organization/tokens',
+      orgToken({ scopes })
+    )
+
+    expect(viewer.statusCode).toBe(400)
+    expect(editor.statusCode).toBe(201)
+  })
+})
+
 describe('GET /tokens/self', () => {
   it('describes the calling token, whatever its scopes', async () => {
     const expiresAt = new Date(Date.now() + 10 * DAY)
