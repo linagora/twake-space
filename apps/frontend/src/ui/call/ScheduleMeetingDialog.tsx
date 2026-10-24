@@ -14,6 +14,7 @@ import {
   fromInputs,
   MEETING_MINUTES,
   MINUTE,
+  nextSlot,
   toInputs,
   withOffset
 } from '@/application/meetings'
@@ -46,8 +47,9 @@ export function ScheduleMeetingDialog({
   const { settings } = useCommonSettings()
   const zone =
     settings.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  // A slot of the time list, at least half an hour ahead
   const [start] = useState(() =>
-    toInputs(new Date(Date.now() + 30 * MINUTE), zone)
+    toInputs(nextSlot(new Date(Date.now() + 30 * MINUTE), zone, 30), zone)
   )
   const [title, setTitle] = useState(space.name)
   const [date, setDate] = useState(start.date)
