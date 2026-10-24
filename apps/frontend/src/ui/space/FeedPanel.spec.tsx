@@ -58,6 +58,8 @@ const post = (minute: number, overrides: Partial<FeedPost> = {}): FeedPost => ({
   editedAt: null,
   poll: null,
   approval: null,
+  announcement: null,
+  feedback: null,
   ...overrides
 })
 
