@@ -39,6 +39,9 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...base, NEW_TOKEN_CHECKS: '0' })).toThrow(
       'NEW_TOKEN_CHECKS'
     )
+    expect(() => loadConfig({ ...base, NEW_TOKENS_WAITING: ' ' })).toThrow(
+      'NEW_TOKENS_WAITING'
+    )
   })
 
   it('has no homeserver unless one is configured', () => {

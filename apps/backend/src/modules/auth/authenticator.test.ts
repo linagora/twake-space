@@ -4,7 +4,10 @@ import type { Identity, IdentityProvider } from './oidc.ts'
 import type { AuthStore } from './store.ts'
 import { anIdentity } from './testing.ts'
 
-function setUp(identity: Identity | null = anIdentity()) {
+function setUp(
+  identity: Identity | null = anIdentity(),
+  limits: { newTokenChecks?: number; newTokensWaiting?: number } = {}
+) {
   let clock = Date.now()
   const revoked = new Set<string>()
   const provider: IdentityProvider = {
@@ -18,7 +21,8 @@ function setUp(identity: Identity | null = anIdentity()) {
   const authenticate = createAuthenticator({
     provider,
     store,
-    now: () => clock
+    now: () => clock,
+    ...limits
   })
   return {
     authenticate,
@@ -99,6 +103,18 @@ describe('createAuthenticator', () => {
 
     await expect(authenticate('one-too-many')).rejects.toThrow()
     await expect(authenticate('seen')).resolves.not.toBeNull()
+  })
+
+  it('holds new tokens to the limits it is given', async () => {
+    const { authenticate, identify } = setUp(anIdentity(), {
+      newTokenChecks: 1,
+      newTokensWaiting: 0
+    })
+    vi.mocked(identify).mockImplementation(() => new Promise(() => undefined))
+
+    void authenticate('first')
+
+    await expect(authenticate('second')).rejects.toThrow()
   })
 
   it('keeps a seen token out of a full line while it is checked again', async () => {
