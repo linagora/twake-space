@@ -293,6 +293,12 @@ function registerManagedTokens(
     ) {
       return forbidden(reply, 'notifications:write is for technical accounts')
     }
+    if (
+      scopes.includes('notifications:read') &&
+      manager.owner.ownerKind === 'organization'
+    ) {
+      return forbidden(reply, 'notifications:read is for account tokens')
+    }
     if (scopes.includes('feed:write') && body.role === 'viewer') {
       return invalid(reply, 'a viewer posts nothing: feed:write needs editor')
     }

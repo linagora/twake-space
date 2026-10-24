@@ -663,6 +663,22 @@ describe('technical account tokens', () => {
   })
 })
 
+describe('notifications:read', () => {
+  it('is for account tokens only', async () => {
+    const call = setUp()
+    const scopes = ['notifications:read']
+
+    const own = await call('POST', '/tokens', create({ scopes }))
+    const org = await call('POST', '/organization/tokens', orgToken({ scopes }))
+
+    expect(own.statusCode).toBe(201)
+    expect(org.json()).toEqual({
+      error: 'forbidden',
+      message: 'notifications:read is for account tokens'
+    })
+  })
+})
+
 describe('feed:write', () => {
   it('is refused to a viewer organization token', async () => {
     const call = setUp()
