@@ -71,7 +71,7 @@ const WINDOWS_MS = {
   day: 86_400_000
 }
 
-// For example {"feedPost":"10/minute"}; a name left out keeps its default.
+// For example {"feedPost":"10/minute"}.
 const rateLimits = json.pipe(
   z.partialRecord(
     z.enum(Object.keys(DEFAULT_LIMITS) as [LimitName, ...LimitName[]]),

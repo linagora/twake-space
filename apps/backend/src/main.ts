@@ -163,8 +163,7 @@ registerFeedRoutes(server, {
 })
 registerLinkRoutes(server, {
   authorize,
-  limiter,
-  fetchLimit: config.limits.linkFetch
+  fetchLimiter: key => limiter(key, config.limits.linkFetch)
 })
 // Publishing reuses the consumer's client, which starts after the server listens.
 let publish: Publish = () => Promise.reject(new Error('not connected yet'))

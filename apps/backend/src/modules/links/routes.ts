@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { HttpServer } from '../../infra/http.ts'
-import type { Authorize, Limit, Limiter } from '../auth/index.ts'
+import type { Authorize } from '../auth/index.ts'
 import { fetchPreview, type LinkPreview } from './preview.ts'
 
 const CACHED_MS = 60 * 60 * 1000
@@ -64,8 +64,8 @@ export function registerLinkRoutes(
   app: HttpServer,
   deps: {
     authorize: Authorize
-    limiter: Limiter
-    fetchLimit: Limit
+    // Milliseconds until the key may fetch again, or 0.
+    fetchLimiter: (key: string) => number | Promise<number>
     preview?: Preview
   }
 ) {
@@ -81,15 +81,15 @@ export function registerLinkRoutes(
       }
       const caller = request.caller?.userId ?? ''
       // Only a fetch costs another site a request, so only a fetch counts.
+      let waitMs = 0
       const found = await preview(
         query.data.url,
-        async () =>
-          (await deps.limiter(`fetch:${caller}`, deps.fetchLimit)) === 0
+        async () => (waitMs = await deps.fetchLimiter(`fetch:${caller}`)) === 0
       )
       if (found === 'limited') {
         return reply
           .code(429)
-          .header('retry-after', 60)
+          .header('retry-after', Math.ceil(waitMs / 1000))
           .send({ error: 'rate_limited' })
       }
       if (!found) return reply.code(404).send({ error: 'no_preview' })

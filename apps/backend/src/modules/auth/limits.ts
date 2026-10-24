@@ -24,7 +24,7 @@ export const DEFAULT_LIMITS = {
   // Fetches of links not cached yet, the only previews that cost another site
   // a request.
   linkFetch: perMinute(30),
-  // What one author can notify one member of in an hour, across posts.
+  // What one author can notify one member of, across posts.
   mention: perHour(20),
   meetingCreate: perHour(30),
   spaceCreate: perHour(20),
