@@ -116,6 +116,8 @@ export interface Poll {
   /** Its options name only the user among their voters. */
   anonymous: boolean
   options: PollOption[]
+  /** Its deadline, if any; once past, also its `closedAt`. */
+  closesAt: string | null
   closedAt: string | null
 }
 
@@ -143,7 +145,7 @@ export const APPROVERS = { max: 20 }
 /** What a new post asks of the members, beyond its text. */
 export type PostAsk =
   | { poll: { options: string[]; multiple: boolean; anonymous: boolean } }
-  | { poll: { kind: 'yes_no' } }
+  | { poll: { kind: 'yes_no'; closesAt?: string } }
   | { approval: { approvers: string[] } }
   | { announcement: { title?: string; color?: string; pinned: boolean } }
   | { feedback: true }

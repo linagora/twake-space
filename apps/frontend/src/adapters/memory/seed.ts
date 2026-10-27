@@ -667,6 +667,7 @@ export function showcaseFeed(now: number): FeedItem[] {
           { label: 'Thursday', count: 1, userIds: ['uuid-bob'] },
           { label: 'Friday', count: 0, userIds: [] }
         ],
+        closesAt: null,
         closedAt: null
       },
       approval: null,
@@ -691,6 +692,7 @@ export function showcaseFeed(now: number): FeedItem[] {
           { label: 'yes', count: 2, userIds: ['uuid-bob', 'uuid-dave'] },
           { label: 'no', count: 1, userIds: ['uuid-carol'] }
         ],
+        closesAt: iso(now + 3 * HOUR),
         closedAt: null
       },
       approval: null,

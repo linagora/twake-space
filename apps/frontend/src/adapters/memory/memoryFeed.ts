@@ -62,7 +62,10 @@ export function memoryFeed(
   const openPoll = (spaceId: string, postId: string) => {
     const post = find(spaceId, postId)
     if (post?.kind !== 'post' || !post.poll) return refuse(404, 'not_found')
-    if (post.poll.closedAt) return refuse(409, 'poll_closed')
+    const { closedAt, closesAt } = post.poll
+    if (closedAt || (closesAt && new Date(closesAt) <= new Date())) {
+      return refuse(409, 'poll_closed')
+    }
     return Promise.resolve(post)
   }
 
@@ -154,6 +157,7 @@ export function memoryFeed(
                     count: 0,
                     userIds: []
                   })),
+                  closesAt: null,
                   closedAt: null
                 }
               : {
@@ -164,6 +168,7 @@ export function memoryFeed(
                     { label: 'yes', count: 0, userIds: [] },
                     { label: 'no', count: 0, userIds: [] }
                   ],
+                  closesAt: ask.poll.closesAt ?? null,
                   closedAt: null
                 }
             : null,

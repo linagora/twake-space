@@ -104,6 +104,7 @@ describe('withVote', () => {
       { label: 'Tuesday', count: 2, userIds: ['u1', 'me'] },
       { label: 'Friday', count: 1, userIds: ['u2'] }
     ],
+    closesAt: null,
     closedAt: null
   }
 
