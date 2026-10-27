@@ -128,6 +128,8 @@ interface Poll {
   // `userIds` in the order they voted; on an anonymous poll, only the
   // viewer's own.
   options: { label: string; count: number; userIds: string[] }[]
+  // Its deadline, if any; once past, also its `closedAt`.
+  closesAt: Date | null
   closedAt: Date | null
 }
 
@@ -473,6 +475,7 @@ async function loadItems(
   }
   const votesOf = Map.groupBy(votes, v => v.postId)
   const choicesOf = Map.groupBy(choices, c => c.postId)
+  const now = new Date()
   type Post = (typeof posts)[number]['post']
   const pollOf = (post: Post): Poll | null => {
     const labels =
@@ -497,7 +500,12 @@ async function loadItems(
             : userIds
         }
       }),
-      closedAt: post.pollClosedAt
+      closesAt: post.pollClosesAt,
+      closedAt:
+        post.pollClosedAt ??
+        (post.pollClosesAt && post.pollClosesAt <= now
+          ? post.pollClosesAt
+          : null)
     }
   }
   const approvalOf = (post: Post): Approval | null => {

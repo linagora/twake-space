@@ -124,6 +124,8 @@ export const feedPosts = pgTable(
     pollAnonymous: boolean('poll_anonymous').notNull().default(false),
     // Closes a poll, a yes/no question, an approval or a feedback request.
     pollClosedAt: timestamptz('poll_closed_at'),
+    // A poll's deadline: past it, the poll is closed without anyone closing it.
+    pollClosesAt: timestamptz('poll_closes_at'),
     // Set on an approval request only.
     approverIds: uuid('approver_ids').array(),
     // Holds an announcement at the top of the feed.
