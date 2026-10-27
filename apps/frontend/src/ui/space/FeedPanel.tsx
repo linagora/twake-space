@@ -108,6 +108,7 @@ import { ConnectionDetailsDialog } from '@/ui/call/ConnectionDetailsDialog'
 import { useI18n, type TranslationKey } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
+import { useAppUploads } from '@/ui/space/AppUploads'
 import {
   FEED_NEWS,
   useFeed,
@@ -484,11 +485,34 @@ function Composer({ space }: { space: Space }): ReactElement {
   const [body, setBody] = useState('')
   const [asking, setAsking] = useState<Ask | null>(null)
   const people = useMentionable(space)
-  const navigate = useNavigate()
-  // Files go to the space's Drive, whose activity brings them into the feed.
-  const toDrive = () => {
-    void navigate(`/spaces/${space.id}/drive`)
-  }
+  const uploads = useAppUploads()
+  const driveId = isTabReady(space, 'drive')
+    ? space.resources.find(r => r.kind === 'drive')?.id
+    : undefined
+  // Picked files go to the space's Drive, through its frame: Drive's
+  // activity brings them into the feed
+  const upload = useMutation({
+    mutationFn: ({ drive, files }: { drive: string; files: File[] }) =>
+      uploads.upload('drive', drive, files)
+  })
+  const [filePicker, setFilePicker] = useState<HTMLInputElement | null>(null)
+  const [mediaPicker, setMediaPicker] = useState<HTMLInputElement | null>(null)
+  const picker = (accept: string | undefined, ref: typeof setFilePicker) => (
+    <input
+      ref={ref}
+      type="file"
+      accept={accept}
+      multiple
+      hidden
+      onChange={event => {
+        const files = [...(event.target.files ?? [])]
+        event.target.value = ''
+        if (driveId && files.length > 0) {
+          upload.mutate({ drive: driveId, files })
+        }
+      }}
+    />
+  )
   const stopAsking = () => {
     setAsking(null)
   }
@@ -507,6 +531,15 @@ function Composer({ space }: { space: Space }): ReactElement {
   return (
     <>
       <FeedFailure error={send.error} message={t('feed.postFailed')} />
+      <FeedFailure
+        error={upload.error}
+        message={t('feed.compose.uploadFailed')}
+      />
+      {upload.isPending && (
+        <Alert severity="info">{t('feed.compose.uploading')}</Alert>
+      )}
+      {picker(undefined, setFilePicker)}
+      {picker('image/*,video/*', setMediaPicker)}
       <FeedComposer
         label={t('feed.composer')}
         sendLabel={t('feed.send')}
@@ -524,17 +557,21 @@ function Composer({ space }: { space: Space }): ReactElement {
           <FeedComposerMenu
             label={t('feed.add')}
             files={
-              isTabReady(space, 'drive')
+              driveId
                 ? [
                     {
                       label: t('feed.compose.upload'),
                       icon: Upload,
-                      onClick: toDrive
+                      onClick: () => {
+                        filePicker?.click()
+                      }
                     },
                     {
                       label: t('feed.compose.media'),
                       icon: Image,
-                      onClick: toDrive
+                      onClick: () => {
+                        mediaPicker?.click()
+                      }
                     }
                   ]
                 : []

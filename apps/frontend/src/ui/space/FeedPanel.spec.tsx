@@ -1,4 +1,6 @@
+import type { UploadMessage } from '@linagora/twake-embed'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { useEffect } from 'react'
 import { useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -17,6 +19,7 @@ import { fakeLive } from '@/testing/fakeLive'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { CallWindow } from '@/ui/call/CallWindow'
 import { useLiveUpdates } from '@/ui/live/useLiveUpdates'
+import { useAppUploads } from '@/ui/space/AppUploads'
 import { FeedPanel } from '@/ui/space/FeedPanel'
 
 const roadmap: Space = {
@@ -128,12 +131,14 @@ function renderFeed(
     space = roadmap,
     pageSize,
     readAt,
-    live = fakeLive()
+    live = fakeLive(),
+    drive = () => true
   }: {
     space?: Space
     pageSize?: number
     readAt?: string
     live?: ReturnType<typeof fakeLive>
+    drive?: DriveAnswer
   } = {}
 ) {
   const feed = fakeFeed(
@@ -144,12 +149,28 @@ function renderFeed(
       ...(readAt && { readAt: { a1: readAt } })
     }
   )
-  renderWithProviders(<LiveFeed space={space} />, { feed, live })
+  renderWithProviders(<LiveFeed space={space} drive={drive} />, { feed, live })
   return { feed, live }
 }
 
-function LiveFeed({ space }: { space: Space }) {
+// Whether the Drive frame stored the files it got
+type DriveAnswer = (resourceId: string, files: readonly File[]) => boolean
+
+function LiveFeed({ space, drive }: { space: Space; drive: DriveAnswer }) {
   useLiveUpdates()
+  const uploads = useAppUploads()
+  useEffect(() => {
+    const frame = {
+      postMessage: (message: UploadMessage) => {
+        uploads.settle(
+          'drive',
+          message.id,
+          drive(message.resourceId, message.files)
+        )
+      }
+    }
+    return uploads.attach('drive', frame, 'https://drive.test')
+  }, [uploads, drive])
   return (
     <>
       <FeedPanel space={space} />
@@ -1166,15 +1187,21 @@ describe('FeedPanel', () => {
       ).toEqual(['Poll', 'Yes/no question', 'Announcement', 'Feedback'])
     })
 
-    it('sends files to the space drive, above the asks', async () => {
+    it('sends picked files to the space drive, above the asks, and keeps the draft', async () => {
+      const drive = vi.fn<DriveAnswer>(() => true)
       renderFeed([post(0)], {
         space: {
           ...roadmap,
           apps: [...roadmap.apps, 'drive'],
           resources: [...roadmap.resources, { kind: 'drive', id: 'drive-1' }]
-        }
+        },
+        drive
       })
-      fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
+      const composer = await screen.findByRole('textbox', {
+        name: 'Text message'
+      })
+      fireEvent.change(composer, { target: { value: 'Draft' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Add' }))
       expect(
         screen.getAllByRole('menuitem').map(item => item.textContent)
       ).toEqual([
@@ -1186,11 +1213,50 @@ describe('FeedPanel', () => {
         'Feedback'
       ])
 
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Upload files' }))
-
-      expect(screen.getByRole('status', { name: 'Address' })).toHaveTextContent(
-        '/spaces/a1/drive'
+      const opened = vi.spyOn(HTMLInputElement.prototype, 'click')
+      fireEvent.click(
+        screen.getByRole('menuitem', { name: 'Photos or Videos' })
       )
+      const picker = opened.mock.contexts[0] as HTMLInputElement
+      opened.mockRestore()
+      expect(picker.type).toBe('file')
+      expect(picker.accept).toBe('image/*,video/*')
+
+      const photo = new File(['p'], 'photo.png', { type: 'image/png' })
+      fireEvent.change(picker, { target: { files: [photo] } })
+
+      await waitFor(() => {
+        expect(drive).toHaveBeenCalledWith('drive-1', [photo])
+      })
+      expect(composer).toHaveValue('Draft')
+      expect(
+        screen.getByRole('status', { name: 'Address' })
+      ).not.toHaveTextContent('drive')
+    })
+
+    it('says when the drive could not take the files', async () => {
+      renderFeed([post(0)], {
+        space: {
+          ...roadmap,
+          apps: [...roadmap.apps, 'drive'],
+          resources: [...roadmap.resources, { kind: 'drive', id: 'drive-1' }]
+        },
+        drive: () => false
+      })
+      fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
+      const opened = vi.spyOn(HTMLInputElement.prototype, 'click')
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Upload files' }))
+      const picker = opened.mock.contexts[0] as HTMLInputElement
+      opened.mockRestore()
+      expect(picker.accept).toBe('')
+
+      fireEvent.change(picker, {
+        target: { files: [new File(['a'], 'notes.txt')] }
+      })
+
+      expect(
+        await screen.findByText('Your files could not be added to the Drive.')
+      ).toBeInTheDocument()
     })
 
     it('lets an approver approve once, with a comment', async () => {

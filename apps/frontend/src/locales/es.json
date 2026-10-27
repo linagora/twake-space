@@ -396,7 +396,9 @@
     "add": "Añadir",
     "compose": {
       "upload": "Subir archivos",
-      "media": "Fotos o vídeos"
+      "media": "Fotos o vídeos",
+      "uploading": "Añadiendo tus archivos al Drive…",
+      "uploadFailed": "No se pudieron añadir tus archivos al Drive."
     },
     "yesNo": {
       "menu": "Pregunta de sí o no",
