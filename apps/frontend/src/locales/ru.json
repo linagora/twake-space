@@ -384,6 +384,8 @@
       "multiple": "Разрешить несколько ответов",
       "anonymous": "Анонимное голосование",
       "removeOption": "Удалить вариант %{n}",
+      "single": "Один вариант",
+      "several": "Несколько вариантов",
       "votes": "%{smart_count} голос |||| %{smart_count} голоса |||| %{smart_count} голосов",
       "choice": "%{label}: %{smart_count} голос |||| %{label}: %{smart_count} голоса |||| %{label}: %{smart_count} голосов",
       "closed": "Завершён",

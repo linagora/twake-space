@@ -651,6 +651,22 @@ export function actorAvatar(space: Space, actor: Actor | null): string | null {
   return avatarUrl(member?.workplaceFqdn ?? null)
 }
 
+function spacePeople(
+  space: Space,
+  ids: string[],
+  someone: string
+): { id: string; name: string; avatar: string | null }[] {
+  const members = new Map(space.members.map(m => [m.id, m]))
+  return ids.map(id => {
+    const member = members.get(id)
+    return {
+      id,
+      name: member ? (member.displayName ?? member.username) : someone,
+      avatar: member ? avatarUrl(member.workplaceFqdn) : null
+    }
+  })
+}
+
 function useTime(): (iso: string) => string {
   const { lang } = useI18n()
   return iso => {
@@ -798,7 +814,7 @@ function Post({
           <PollVotes
             post={post}
             poll={post.poll}
-            spaceId={space.id}
+            space={space}
             myId={myId}
             onClose={post.poll.closedAt ? null : closing}
           />
@@ -892,25 +908,25 @@ function PostLink({ body }: { body: string }): ReactElement | null {
 function PollVotes({
   post,
   poll,
-  spaceId,
+  space,
   myId,
   onClose
 }: {
   post: FeedPost
   poll: Poll
-  spaceId: string
+  space: Space
   myId: string | null
   onClose: (() => void) | null
 }): ReactElement {
   const { t } = useI18n()
   const { feed } = useServices()
-  const { replace } = useFeedCache(spaceId)
+  const { replace } = useFeedCache(space.id)
   // Shown at once; the live event that follows brings the stored votes.
   const vote = useMutation({
     mutationFn: ({ option, picked }: { option: number; picked: boolean }) =>
       picked
-        ? feed.vote(spaceId, post.id, option)
-        : feed.unvote(spaceId, post.id, option),
+        ? feed.vote(space.id, post.id, option)
+        : feed.unvote(space.id, post.id, option),
     onMutate: ({ option, picked }) => {
       if (myId) replace({ ...post, poll: withVote(poll, myId, option, picked) })
       return post
@@ -918,7 +934,7 @@ function PollVotes({
     // Rereads the post: it may have closed in the meantime.
     onError: (_error, _vote, before) => {
       if (before) replace(before)
-      feed.item(spaceId, post.id).then(replace, () => undefined)
+      feed.item(space.id, post.id).then(replace, () => undefined)
     }
   })
   const mine = (option: PollOption) =>
@@ -928,7 +944,13 @@ function PollVotes({
   return (
     <>
       <FeedPoll
+        kind={
+          poll.kind === 'yes_no'
+            ? null
+            : t(poll.multiple ? 'feed.poll.several' : 'feed.poll.single')
+        }
         question={post.body}
+        multiple={poll.multiple}
         options={poll.options.map((option, index) => {
           const label =
             poll.kind === 'yes_no'
@@ -938,7 +960,10 @@ function PollVotes({
             label,
             name: t('feed.poll.choice', { label, smart_count: option.count }),
             count: option.count,
-            mine: mine(option)
+            mine: mine(option),
+            voters: poll.anonymous
+              ? []
+              : spacePeople(space, option.userIds, t('feed.someone'))
           }
         })}
         summary={poll.closedAt ? `${votes} · ${t('feed.poll.closed')}` : votes}
@@ -1160,15 +1185,7 @@ function AnnouncementAcknowledgements({
           label: t('feed.announcement.acknowledged', {
             smart_count: acknowledgedBy.length
           }),
-          people: acknowledgedBy.map(id => {
-            const member = space.members.find(m => m.id === id)
-            return {
-              id,
-              name: member
-                ? (member.displayName ?? member.username)
-                : t('feed.someone')
-            }
-          })
+          people: spacePeople(space, acknowledgedBy, t('feed.someone'))
         }}
         acknowledge={
           mine

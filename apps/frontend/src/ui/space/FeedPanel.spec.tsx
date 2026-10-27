@@ -838,42 +838,71 @@ describe('FeedPanel', () => {
     it('votes, changes the vote and takes it back', async () => {
       const { feed } = renderFeed([lunch()])
       const poll = await screen.findByRole('group', { name: 'Which day?' })
+      expect(screen.getByText('Single choice')).toBeInTheDocument()
+      expect(within(poll).getByText('100%')).toBeInTheDocument()
 
       fireEvent.click(
-        within(poll).getByRole('button', { name: 'Friday: 0 votes' })
+        within(poll).getByRole('radio', { name: 'Friday: 0 votes' })
       )
       expect(
-        await within(poll).findByRole('button', {
+        await within(poll).findByRole('radio', {
           name: 'Friday: 1 vote',
-          pressed: true
+          checked: true
         })
       ).toBeInTheDocument()
+      expect(within(poll).getAllByText('50%')).toHaveLength(2)
       expect(feed.vote).toHaveBeenCalledWith('a1', 'post-1', 1)
 
       fireEvent.click(
-        await within(poll).findByRole('button', {
+        await within(poll).findByRole('radio', {
           name: 'Tuesday: 1 vote',
-          pressed: false
+          checked: false
         })
       )
       expect(
-        await within(poll).findByRole('button', {
+        await within(poll).findByRole('radio', {
           name: 'Tuesday: 2 votes',
-          pressed: true
+          checked: true
         })
       ).toBeInTheDocument()
       expect(feed.vote).toHaveBeenLastCalledWith('a1', 'post-1', 0)
 
       fireEvent.click(
-        await within(poll).findByRole('button', { name: 'Tuesday: 2 votes' })
+        await within(poll).findByRole('radio', { name: 'Tuesday: 2 votes' })
       )
       expect(
-        await within(poll).findByRole('button', {
+        await within(poll).findByRole('radio', {
           name: 'Tuesday: 1 vote',
-          pressed: false
+          checked: false
         })
       ).toBeInTheDocument()
       expect(feed.unvote).toHaveBeenCalledWith('a1', 'post-1', 0)
+    })
+
+    it('shows who voted, unless the poll is anonymous', async () => {
+      renderFeed([
+        lunch(),
+        lunch({
+          id: 'post-2',
+          body: 'Which room?',
+          poll: {
+            kind: 'choice',
+            multiple: false,
+            anonymous: true,
+            options: [
+              { label: 'Blue', count: 1, userIds: [] },
+              { label: 'Red', count: 0, userIds: [] }
+            ],
+            closedAt: null
+          }
+        })
+      ])
+      const open = await screen.findByRole('group', { name: 'Which day?' })
+      const anonymous = screen.getByRole('group', { name: 'Which room?' })
+
+      expect(within(open).getByText('SO')).toBeInTheDocument()
+      expect(within(anonymous).getByText('100%')).toBeInTheDocument()
+      expect(within(anonymous).queryByText('SO')).not.toBeInTheDocument()
     })
 
     it('keeps each pick on a multiple poll', async () => {
@@ -892,24 +921,25 @@ describe('FeedPanel', () => {
         })
       ])
       const poll = await screen.findByRole('group', { name: 'Which day?' })
+      expect(screen.getByText('Multiple choice')).toBeInTheDocument()
 
       fireEvent.click(
-        within(poll).getByRole('button', { name: 'Tuesday: 1 vote' })
+        within(poll).getByRole('checkbox', { name: 'Tuesday: 1 vote' })
       )
       fireEvent.click(
-        await within(poll).findByRole('button', { name: 'Friday: 0 votes' })
+        await within(poll).findByRole('checkbox', { name: 'Friday: 0 votes' })
       )
 
       expect(
-        await within(poll).findByRole('button', {
+        await within(poll).findByRole('checkbox', {
           name: 'Friday: 1 vote',
-          pressed: true
+          checked: true
         })
       ).toBeInTheDocument()
       expect(
-        within(poll).getByRole('button', {
+        within(poll).getByRole('checkbox', {
           name: 'Tuesday: 2 votes',
-          pressed: true
+          checked: true
         })
       ).toBeInTheDocument()
       expect(feed.unvote).not.toHaveBeenCalled()
@@ -926,7 +956,7 @@ describe('FeedPanel', () => {
       expect(await screen.findByText('1 vote · Closed')).toBeInTheDocument()
       expect(feed.closePoll).toHaveBeenCalledWith('a1', 'post-1')
       expect(
-        within(poll).getByRole('button', { name: 'Friday: 0 votes' })
+        within(poll).getByRole('radio', { name: 'Friday: 0 votes' })
       ).toBeDisabled()
       expect(
         screen.queryByRole('button', { name: 'Close the poll' })
@@ -940,12 +970,12 @@ describe('FeedPanel', () => {
       vi.mocked(feed.item).mockResolvedValueOnce(lunch({}, at(5)))
 
       fireEvent.click(
-        within(poll).getByRole('button', { name: 'Friday: 0 votes' })
+        within(poll).getByRole('radio', { name: 'Friday: 0 votes' })
       )
 
       expect(await screen.findByText('1 vote · Closed')).toBeInTheDocument()
       expect(
-        within(poll).getByRole('button', { name: 'Friday: 0 votes' })
+        within(poll).getByRole('radio', { name: 'Friday: 0 votes' })
       ).toBeDisabled()
       expect(screen.getByText('Could not save your vote.')).toBeInTheDocument()
     })
@@ -961,7 +991,7 @@ describe('FeedPanel', () => {
       )
 
       fireEvent.click(
-        within(poll).getByRole('button', { name: 'Friday: 0 votes' })
+        within(poll).getByRole('radio', { name: 'Friday: 0 votes' })
       )
 
       expect(
@@ -987,7 +1017,7 @@ describe('FeedPanel', () => {
       ).not.toBeInTheDocument()
 
       fireEvent.click(
-        within(poll).getByRole('button', { name: 'Friday: 0 votes' })
+        within(poll).getByRole('radio', { name: 'Friday: 0 votes' })
       )
 
       await waitFor(() => {
@@ -1017,15 +1047,15 @@ describe('FeedPanel', () => {
     expect(feed.post).toHaveBeenCalledWith('a1', 'Keep the demo?', [], {
       poll: { kind: 'yes_no' }
     })
-    fireEvent.click(within(poll).getByRole('button', { name: 'No: 0 votes' }))
+    fireEvent.click(within(poll).getByRole('radio', { name: 'No: 0 votes' }))
     expect(
-      await within(poll).findByRole('button', {
+      await within(poll).findByRole('radio', {
         name: 'No: 1 vote',
-        pressed: true
+        checked: true
       })
     ).toBeInTheDocument()
     expect(
-      within(poll).getByRole('button', { name: 'Yes: 0 votes' })
+      within(poll).getByRole('radio', { name: 'Yes: 0 votes' })
     ).toBeInTheDocument()
   })
 
