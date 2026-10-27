@@ -110,7 +110,20 @@ const newPostBody = postBody
           .refine(ids => new Set(ids).size === ids.length)
       })
       .optional(),
-    announcement: z.literal(true).optional(),
+    announcement: z
+      .union([
+        z.literal(true),
+        z.strictObject({
+          title: z.string().trim().min(1).max(120).optional(),
+          // No colour, no banner.
+          color: z
+            .string()
+            .regex(/^#[0-9a-f]{6}$/i)
+            .transform(color => color.toLowerCase())
+            .optional()
+        })
+      ])
+      .optional(),
     feedback: z.literal(true).optional()
   })
   .refine(
@@ -174,6 +187,7 @@ const serialize = (item: FeedItem) => ({
       closedAt: item.approval.closedAt?.toISOString() ?? null
     },
     announcement: item.announcement && {
+      ...item.announcement,
       pinnedAt: item.announcement.pinnedAt?.toISOString() ?? null
     },
     feedback: item.feedback && {
@@ -522,7 +536,11 @@ export function registerFeedRoutes(
               time,
               pollOptions: poll?.kind === 'choice' ? poll.options : null,
               approverIds: approval?.approvers ?? null,
-              pinnedAt: announcement ? time : null
+              pinnedAt: announcement ? time : null,
+              ...(typeof announcement === 'object' && {
+                title: announcement.title ?? null,
+                color: announcement.color ?? null
+              })
             })
             .returning({ id: feedPosts.id })
           if (!post) throw new Error('the post insert returned no row')
@@ -769,6 +787,33 @@ export function registerFeedRoutes(
             })
             .returning({ postId: feedPollVotes.postId })
           if (answered) await tellFeed(tx, spaceId, postId, 'changed')
+        })
+        return await reply.code(204).send()
+      } catch (error) {
+        return refused(error, reply)
+      }
+    }
+  )
+
+  // Acknowledging again changes nothing.
+  app.put(
+    '/spaces/:spaceId/feed/posts/:itemId/acknowledgement',
+    { preHandler, config: { limit: 'feedVote' } },
+    async (request, reply) => {
+      try {
+        const { spaceId, userId } = await memberOf(request)
+        const postId = itemOf(request)
+        await db.transaction(async tx => {
+          const post = await openPoll(tx, spaceId, postId, ['announcement'])
+          if (post.authorId === userId) {
+            throw new Refusal(403, 'cannot_acknowledge_own')
+          }
+          const [acknowledged] = await tx
+            .insert(feedPollVotes)
+            .values({ postId, userId, option: 0 })
+            .onConflictDoNothing()
+            .returning({ postId: feedPollVotes.postId })
+          if (acknowledged) await tellFeed(tx, spaceId, postId, 'changed')
         })
         return await reply.code(204).send()
       } catch (error) {

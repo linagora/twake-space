@@ -333,9 +333,9 @@ For the user's assistant (Twake Harness), through an API token of a technical ac
 
 ## Feed
 
-A space's feed holds cards and posts. A card shows the activity on one object (a file, a calendar event, a task): the apps' later events about the object change the card instead of adding one. Members post, react, vote on polls and yes/no questions, decide on the approval requests asked of them and answer feedback requests. A poll, a yes/no question, an approval or a feedback request is a post whose body is the question. An announcement is a post pinned at the top of the feed until its author unpins it.
+A space's feed holds cards and posts. A card shows the activity on one object (a file, a calendar event, a task): the apps' later events about the object change the card instead of adding one. Members post, react, vote on polls and yes/no questions, decide on the approval requests asked of them, answer feedback requests and acknowledge announcements. A poll, a yes/no question, an approval or a feedback request is a post whose body is the question. An announcement is a post pinned at the top of the feed until its author unpins it.
 
-`GET /spaces/:spaceId/feed`, `GET /spaces/:spaceId/feed/pinned` and `GET /spaces/:spaceId/feed/items/:itemId` also take an API token holding `feed:read`, and the post routes but the vote, decision and answer ones holding `feed:write`, on a space the token reaches. A token signs its posts itself, as `{type: "token", id, name}`, never as its account. The other feed routes are for session callers only, and the caller must be a member of the space. The space must be active. Otherwise, when the space or item does not exist, or when an id in the path is not a UUID: `404 {"error":"not_found"}`. A failed query or body, or a malformed reaction key: `400 {"error":"invalid_request"}`.
+`GET /spaces/:spaceId/feed`, `GET /spaces/:spaceId/feed/pinned` and `GET /spaces/:spaceId/feed/items/:itemId` also take an API token holding `feed:read`, and the post routes but the vote, decision, answer and acknowledgement ones holding `feed:write`, on a space the token reaches. A token signs its posts itself, as `{type: "token", id, name}`, never as its account. The other feed routes are for session callers only, and the caller must be a member of the space. The space must be active. Otherwise, when the space or item does not exist, or when an id in the path is not a UUID: `404 {"error":"not_found"}`. A failed query or body, or a malformed reaction key: `400 {"error":"invalid_request"}`.
 
 A feed item:
 
@@ -344,7 +344,7 @@ A feed item:
 - A post adds `author`, `body` (plain text), `editedAt` (`null` until edited), `poll`, `approval`, `announcement` and `feedback` (each `null` unless the post is one).
 - A poll is `{kind, options, closedAt}`. `kind` is `choice`, or `yes_no` for a yes/no question, whose options are labelled `yes` and `no`, for the client to word in the reader's language. `options` lists `{label, userIds}` in the order they were given, `userIds` being the members who chose it in the order they voted, and `closedAt` is `null` while it is open.
 - An approval request is `{state, approvers, closedAt}`. `approvers` lists `{id, name, decision, comment, decidedAt}` in the order the author picked them, `decision` being `approved`, `rejected`, or `null` until they decide. `state` is `rejected` once one approver rejects, `approved` once they all approve, `pending` otherwise. An approver who left the space without deciding (`name` is `null`) no longer counts.
-- An announcement is `{pinnedAt}`, `null` once unpinned.
+- An announcement is `{title, color, pinnedAt, acknowledgedBy}`. `title` is its headline and `color` its banner's colour, as `#rrggbb`, each `null` when the author gave none. `pinnedAt` is `null` once unpinned. `acknowledgedBy` lists the members who acknowledged it, in the order they did.
 - A feedback request is `{count, mine, answers, closedAt}`. `count` is how many members answered, `mine` the caller's own answer or `null`. `answers` lists `{userId, name, text, answeredAt}`, oldest first, for the author only: it is `null` for anyone else, the author's own tokens included.
 - An actor or author is `{type: "user", id, name}`, `{type: "token", id, name}`, or `{type: "deleted_user"}`. For a user, `id` is `null` when the app named them by email only and no member has it, and `name` is the member's display name or username, or `null` when they are not a member of the space.
 
@@ -408,7 +408,7 @@ Answers `{"readAt": "<time>"}`, the `time` of the newest item the caller has see
 
 ### POST /spaces/:spaceId/feed/posts
 
-- Body: `{"body": "...", "mentions": ["<user uuid>"]}`. `body` is 1 to 4000 characters once trimmed. `mentions` is optional, up to 50 member ids. A poll adds `"poll": {"options": ["...", "..."]}`: 2 to 10 options that differ beyond letter case, 1 to 200 characters each once trimmed. A yes/no question adds `"poll": {"kind": "yes_no"}`, with no options. An approval request adds `"approval": {"approvers": ["<user uuid>"]}`: 1 to 20 different ids (otherwise `400 {"error":"invalid_request"}`), each of a member of the space other than the author (otherwise `400 {"error":"invalid_approvers"}`). An announcement adds `"announcement": true` and is pinned. A feedback request adds `"feedback": true`; its answers go to a person, so a token cannot ask for one: `403 {"error":"cannot_ask_feedback"}`. A post is one of these at most.
+- Body: `{"body": "...", "mentions": ["<user uuid>"]}`. `body` is 1 to 4000 characters once trimmed. `mentions` is optional, up to 50 member ids. A poll adds `"poll": {"options": ["...", "..."]}`: 2 to 10 options that differ beyond letter case, 1 to 200 characters each once trimmed. A yes/no question adds `"poll": {"kind": "yes_no"}`, with no options. An approval request adds `"approval": {"approvers": ["<user uuid>"]}`: 1 to 20 different ids (otherwise `400 {"error":"invalid_request"}`), each of a member of the space other than the author (otherwise `400 {"error":"invalid_approvers"}`). An announcement adds `"announcement": {"title": "...", "color": "#99aff3"}`, both optional, or `"announcement": true`, and is pinned: `title` is 1 to 120 characters once trimmed, `color` six hex digits after `#`. A feedback request adds `"feedback": true`; its answers go to a person, so a token cannot ask for one: `403 {"error":"cannot_ask_feedback"}`. A post is one of these at most.
 - Each approver gets an `approval_request` notification, and the request is published on `activity` ([Events](events.md#approval-requests)). An organization token speaks for no person, so its request answers `403 {"error":"cannot_request_approval"}`.
 - Each mentioned member of the space other than the author gets a `card_mention` notification, and the mention is published on `activity` ([Events](events.md#mentions-in-posts)). An id that is no member of the space is left out. An approver also mentioned hears once, of the request.
 - An author sends one member at most 20 mention notifications an hour by default, across posts (the `mention` [rate limit](#rate-limits)). Past that, the post still names the member, without a notification or a published mention. Approval requests are never limited.
@@ -454,6 +454,11 @@ Takes the caller's vote back. Answers `204`, `404 {"error":"not_found"}` on a po
 - Body: `{"text": "..."}`, 1 to 2000 characters once trimmed.
 - Any member but the author, viewers included, from a session only. Answering again replaces the answer. Answers `204`, or `403 {"error":"cannot_answer_own"}` for the author.
 - `404 {"error":"not_found"}` on a post that is no feedback request, `409 {"error":"poll_closed"}` once it is closed.
+
+### PUT /spaces/:spaceId/feed/posts/:itemId/acknowledgement
+
+- Acknowledges the announcement. Any member but the author, viewers included, from a session only. Acknowledging again changes nothing. Answers `204`, or `403 {"error":"cannot_acknowledge_own"}` for the author.
+- `404 {"error":"not_found"}` on a post that is no announcement.
 
 ### PUT /spaces/:spaceId/feed/posts/:itemId/pin
 

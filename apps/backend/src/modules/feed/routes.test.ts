@@ -1851,6 +1851,87 @@ describe('announcements', () => {
     expect(byViewer.statusCode).toBe(403)
     expect(withPoll.statusCode).toBe(400)
   })
+
+  it('keeps a headline and a banner colour', async () => {
+    const send = setUp()
+
+    const styled = await send('POST', `/spaces/${DESIGN}/feed/posts`, 'alice', {
+      body: 'Reviews move to Thursdays',
+      announcement: { title: ' New review cadence ', color: '#99AFF3' }
+    })
+    const plain = await announce(send, 'Offsite')
+    const badColor = await send(
+      'POST',
+      `/spaces/${DESIGN}/feed/posts`,
+      'alice',
+      { body: 'Hi', announcement: { color: 'blue' } }
+    )
+
+    expect(styled.statusCode).toBe(201)
+    expect(styled.json()).toMatchObject({
+      announcement: {
+        title: 'New review cadence',
+        color: '#99aff3',
+        acknowledgedBy: []
+      }
+    })
+    expect(plain.json()).toMatchObject({
+      announcement: { title: null, color: null }
+    })
+    expect(badColor.statusCode).toBe(400)
+  })
+
+  it('is acknowledged once by each member but its author', async () => {
+    const send = setUp()
+    const id = (await announce(send, 'Offsite')).json<Item>().id
+    const url = `/spaces/${DESIGN}/feed/posts/${id}/acknowledgement`
+
+    const byBob = await send('PUT', url, 'bob')
+    const again = await send('PUT', url, 'bob')
+    const byCarol = await send('PUT', url, 'carol')
+    const byAuthor = await send('PUT', url)
+    const item = await send('GET', `/spaces/${DESIGN}/feed/items/${id}`, 'bob')
+
+    expect([byBob, again, byCarol].map(r => r.statusCode)).toEqual([
+      204, 204, 204
+    ])
+    expect(byAuthor.statusCode).toBe(403)
+    expect(item.json()).toMatchObject({
+      announcement: { acknowledgedBy: [BOB, CAROL] }
+    })
+  })
+
+  it('no longer counts who left the space', async () => {
+    const send = setUp()
+    const id = (await announce(send, 'Offsite')).json<Item>().id
+    const url = `/spaces/${DESIGN}/feed/posts/${id}/acknowledgement`
+    await send('PUT', url, 'bob')
+    await send('PUT', url, 'carol')
+
+    await testDb.db
+      .delete(spaceMembers)
+      .where(
+        and(eq(spaceMembers.spaceId, DESIGN), eq(spaceMembers.userId, CAROL))
+      )
+
+    const item = await send('GET', `/spaces/${DESIGN}/feed/items/${id}`, 'bob')
+    expect(item.json()).toMatchObject({
+      announcement: { acknowledgedBy: [BOB] }
+    })
+  })
+
+  it('cannot acknowledge a post that is not an announcement', async () => {
+    const send = setUp()
+    const id = await aPost('Hello', '2026-10-05T10:00:00Z')
+
+    const response = await send(
+      'PUT',
+      `/spaces/${DESIGN}/feed/posts/${id}/acknowledgement`,
+      'bob'
+    )
+
+    expect(response.statusCode).toBe(404)
+  })
 })
 
 describe('feedback requests', () => {
