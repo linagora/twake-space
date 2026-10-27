@@ -25,6 +25,7 @@ import {
   Menu,
   MenuItem,
   Paper,
+  Popover,
   Popper,
   TextField,
   Tooltip,
@@ -40,10 +41,14 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ChangeEvent,
   type ReactElement,
   type ReactNode
 } from 'react'
 
+import customRing from '@/assets/announcement-custom-ring.svg'
+import megaphone from '@/assets/announcement-megaphone.svg'
+import palette from '@/assets/announcement-palette.svg'
 import {
   AddCircleIcon,
   AddReactionIcon,
@@ -1898,6 +1903,297 @@ export function FeedFeedback({
   )
 }
 
+/** The banner colours design picked; an author may also pick any other. */
+export const ANNOUNCEMENT_COLORS = [
+  '#abd3ca',
+  '#a36f9e',
+  '#ba718e',
+  '#99aff3',
+  '#c77962',
+  '#e8c283',
+  '#8c78b8',
+  '#638f83',
+  '#4d9795',
+  '#cbddba',
+  '#b9c9f3',
+  '#dfb5cd',
+  '#d1c2ec',
+  '#646580'
+]
+export const ANNOUNCEMENT_DEFAULT_COLOR = '#99aff3'
+
+/**
+ * An announcement's headline on its colour. Without a colour it sits on the
+ * bubble's grey, in the text colour.
+ */
+export function AnnouncementBanner({
+  color,
+  rounded,
+  corner,
+  children
+}: {
+  color: string | null
+  rounded: boolean
+  /** Bottom right, over the watermark: the dialog's colour button. */
+  corner?: ReactNode
+  children: ReactNode
+}): ReactElement {
+  return (
+    <Box
+      sx={{
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 149,
+        px: 6,
+        py: 3,
+        borderRadius: rounded ? '16.8px' : 0,
+        bgcolor: color ?? 'action.hover',
+        color: color ? 'common.white' : 'text.primary'
+      }}
+    >
+      {color && (
+        // Only the colour under it changes: the gradient keeps white readable.
+        <Box
+          aria-hidden
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(90deg, rgba(27,31,41,0.12) 0%, rgba(27,31,41,0.08) 50%, rgba(27,31,41,0) 100%)'
+          }}
+        />
+      )}
+      <Box
+        aria-hidden
+        sx={{
+          position: 'absolute',
+          right: -25,
+          top: 'calc(50% + 29px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 144,
+          height: 144,
+          transform: 'translateY(-50%) rotate(-12.69deg)',
+          ...(!color && { filter: 'invert(1)' })
+        }}
+      >
+        <img src={megaphone} alt="" width={120} height={120} />
+      </Box>
+      <Box
+        sx={{
+          position: 'relative',
+          width: '100%',
+          textAlign: 'center',
+          fontSize: 22,
+          fontWeight: 600,
+          lineHeight: '25.7px',
+          overflowWrap: 'anywhere'
+        }}
+      >
+        {children}
+      </Box>
+      {corner && (
+        <Box sx={{ position: 'absolute', right: 13, bottom: 10 }}>{corner}</Box>
+      )}
+    </Box>
+  )
+}
+
+/** The swatches over the banner: none, design's colours, and any other. */
+export function AnnouncementColors({
+  value,
+  labels,
+  onChange
+}: {
+  value: string | null
+  labels: { none: string; custom: string; color: (hex: string) => string }
+  onChange: (color: string | null) => void
+}): ReactElement {
+  const custom = value !== null && !ANNOUNCEMENT_COLORS.includes(value)
+  const picker = useRef<HTMLInputElement>(null)
+  const swatch = {
+    width: 21,
+    height: 21,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  } as const
+  return (
+    <Box
+      role="radiogroup"
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(7, 21px)',
+        gap: '5.3px',
+        p: 2
+      }}
+    >
+      <ButtonBase
+        role="radio"
+        aria-checked={value === null}
+        aria-label={labels.none}
+        onClick={() => {
+          onChange(null)
+        }}
+        sx={{
+          ...swatch,
+          bgcolor: 'common.white',
+          border: '1px solid #cdcdcd',
+          color: 'text.secondary'
+        }}
+      >
+        <Icon icon={Cross} size={10} />
+      </ButtonBase>
+      {ANNOUNCEMENT_COLORS.map(color => (
+        <ButtonBase
+          key={color}
+          role="radio"
+          aria-checked={value === color}
+          aria-label={labels.color(color)}
+          onClick={() => {
+            onChange(color)
+          }}
+          sx={{ ...swatch, bgcolor: color, color: 'common.white' }}
+        >
+          {value === color && <Icon icon={Check} size={12} />}
+        </ButtonBase>
+      ))}
+      <ButtonBase
+        role="radio"
+        aria-checked={custom}
+        aria-label={labels.custom}
+        onClick={() => {
+          picker.current?.click()
+        }}
+        sx={{
+          ...swatch,
+          position: 'relative',
+          bgcolor: custom ? value : 'transparent'
+        }}
+      >
+        <Box
+          component="img"
+          src={customRing}
+          alt=""
+          sx={{ position: 'absolute', inset: 0, width: 21, height: 21 }}
+        />
+        <img src={palette} alt="" width={10} height={10} />
+      </ButtonBase>
+      {/* The swatch opens it: hidden from the keyboard and screen readers. */}
+      <Box
+        component="input"
+        ref={picker}
+        type="color"
+        tabIndex={-1}
+        aria-hidden
+        value={value ?? ANNOUNCEMENT_DEFAULT_COLOR}
+        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+          onChange(event.target.value.toLowerCase())
+        }}
+        sx={{ position: 'absolute', width: 0, height: 0, opacity: 0 }}
+      />
+    </Box>
+  )
+}
+
+/** The dialog's banner: the headline typed on it, its colour picked in a corner. */
+export function AnnouncementBannerField({
+  title,
+  onTitle,
+  placeholder,
+  label,
+  maxLength,
+  color,
+  onColor,
+  colors
+}: {
+  title: string
+  onTitle: (title: string) => void
+  placeholder: string
+  label: string
+  maxLength: number
+  color: string | null
+  onColor: (color: string | null) => void
+  colors: {
+    label: string
+    none: string
+    custom: string
+    color: (hex: string) => string
+  }
+}): ReactElement {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  return (
+    <>
+      <AnnouncementBanner
+        color={color}
+        rounded={false}
+        corner={
+          <ButtonBase
+            aria-label={colors.label}
+            aria-haspopup="dialog"
+            onClick={event => {
+              setAnchor(event.currentTarget)
+            }}
+            sx={{
+              width: 24,
+              height: 24,
+              borderRadius: '8px',
+              bgcolor: 'common.white',
+              boxShadow:
+                '0 4px 16px rgba(29,33,42,0.06), 0 2px 4px rgba(29,33,42,0.08), 0 0 0 0.5px rgba(29,33,42,0.12)'
+            }}
+          >
+            <Box
+              sx={{
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                bgcolor: color ?? 'common.white',
+                border: color ? 0 : '1px solid #cdcdcd'
+              }}
+            />
+          </ButtonBase>
+        }
+      >
+        <InputBase
+          fullWidth
+          value={title}
+          placeholder={placeholder}
+          inputProps={{ 'aria-label': label, maxLength }}
+          onChange={event => {
+            onTitle(event.target.value)
+          }}
+          sx={{
+            color: 'inherit',
+            font: 'inherit',
+            '& input': { textAlign: 'center', p: 0 },
+            '& input::placeholder': { color: 'inherit', opacity: 1 }
+          }}
+        />
+      </AnnouncementBanner>
+      <Popover
+        open={anchor !== null}
+        anchorEl={anchor}
+        onClose={() => {
+          setAnchor(null)
+        }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        slotProps={{
+          paper: { 'aria-label': colors.label, sx: { borderRadius: '16px' } }
+        }}
+      >
+        <AnnouncementColors value={color} labels={colors} onChange={onColor} />
+      </Popover>
+    </>
+  )
+}
+
 /** An announcement's text, set apart in the bubble. */
 export function FeedAnnouncement({
   label,
@@ -1942,6 +2238,7 @@ export function FeedAnnouncement({
   )
 }
 
+/** The pinned announcements over the feed, each opening its place in it. */
 /** The pinned announcements over the feed, each opening its place in it. */
 export function FeedPinned({
   label,
