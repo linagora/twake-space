@@ -15,6 +15,7 @@ import type { SystemNotifications } from '@/application/notifications'
 import type { SessionService } from '@/application/session'
 import type { SettingsService } from '@/application/settings'
 import type { SpacesService } from '@/application/spaces'
+import type { TaskSearchService } from '@/application/taskSearch'
 import type { TokensService } from '@/application/tokens'
 import { AppProviders } from '@/app/AppProviders'
 import { makeQueryClient } from '@/app/queryClient'
@@ -45,6 +46,7 @@ interface Options {
   notifications?: SystemNotifications
   suggestions?: SuggestionsService
   harness?: HarnessService | null
+  taskSearch?: TaskSearchService | null
   feedback?: FeedbackService | null
   path?: string
   tasksUrl?: string | null
@@ -76,6 +78,7 @@ function withProviders(
     },
     suggestions = fakeSuggestions(),
     harness = fakeHarness(),
+    taskSearch = null,
     feedback = null,
     tasksUrl = 'https://tasks.test/',
     mailUrl = 'https://mail.test/',
@@ -100,6 +103,7 @@ function withProviders(
         notifications,
         suggestions,
         harness,
+        taskSearch,
         feedback,
         apiUrl: 'https://space.test/api/',
         tasksUrl,

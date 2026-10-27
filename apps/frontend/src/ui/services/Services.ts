@@ -12,6 +12,7 @@ import type { MeetingsService } from '@/application/meetings'
 import type { SystemNotifications } from '@/application/notifications'
 import type { SettingsService } from '@/application/settings'
 import type { SpacesService } from '@/application/spaces'
+import type { TaskSearchService } from '@/application/taskSearch'
 import type { TokensService } from '@/application/tokens'
 
 export interface Services {
@@ -26,6 +27,8 @@ export interface Services {
   suggestions: SuggestionsService
   // Null without HARNESS_URL: a suggestion then only closes
   harness: HarnessService | null
+  // Null without TASKS_URL
+  taskSearch: TaskSearchService | null
   // Null without a Sentry DSN
   feedback: FeedbackService | null
   // The backend's base URL, shown to API token users
