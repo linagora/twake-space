@@ -35,7 +35,6 @@ import { useCall } from '@/ui/call/CallContext'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
-import { useAppUploads } from '@/ui/space/AppUploads'
 
 // Downloads too: a sandboxed frame without it cannot save a file. A tab the
 // frame opens inherits the sandbox (no alert, confirm or print) unless
@@ -113,7 +112,6 @@ export function EmbeddedAppFrame({
   const { signIn } = useSession()
   const { meetUrl, notifications } = useServices()
   const { join } = useCall()
-  const uploads = useAppUploads()
   const origin = new URL(appUrl).origin
   const name = `twake-embed-${app}`
 
@@ -132,15 +130,6 @@ export function EmbeddedAppFrame({
   useEffect(
     () => () => {
       reportBadges.current(null)
-    },
-    []
-  )
-  // Uploads go to the document that said it listens: one posted earlier is
-  // dropped, and a new document cannot answer those of the one before
-  const detachUploads = useRef<() => void>(() => undefined)
-  useEffect(
-    () => () => {
-      detachUploads.current()
     },
     []
   )
@@ -215,8 +204,6 @@ export function EmbeddedAppFrame({
           return
         }
         if (message?.type === 'twake-embed:ready') {
-          detachUploads.current()
-          detachUploads.current = uploads.attach(app, target, origin)
           setOverlayed(true)
           setLoads(n => n + 1)
           return
@@ -235,10 +222,6 @@ export function EmbeddedAppFrame({
             reportBadges.current(badgesOf(message.metadata))
           }
           reportMetadata.current(message.metadata)
-          return
-        }
-        if (message?.type === 'twake-embed:upload-done') {
-          uploads.settle(app, message.id, message.ok)
           return
         }
         if (message?.type === 'twake-embed:pip') {
@@ -285,17 +268,7 @@ export function EmbeddedAppFrame({
     return () => {
       listening.abort()
     }
-  }, [
-    app,
-    embedPath,
-    frameRef,
-    join,
-    meetUrl,
-    notifications,
-    origin,
-    signIn,
-    uploads
-  ])
+  }, [app, embedPath, frameRef, join, meetUrl, notifications, origin, signIn])
 
   return (
     <>
