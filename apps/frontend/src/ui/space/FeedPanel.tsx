@@ -33,6 +33,7 @@ import {
   splitMentions,
   toEventState,
   type Actor,
+  type Announcement,
   type Approval,
   type Decision,
   FEEDBACK_ANSWER,
@@ -111,6 +112,7 @@ import {
   useFeedReadAt,
   usePinned
 } from '@/ui/space/feedQueries'
+import { AnnouncementDialog } from '@/ui/space/AnnouncementDialog'
 import { ApprovalDialog } from '@/ui/space/ApprovalDialog'
 import { FeedFailure } from '@/ui/space/FeedFailure'
 import { PeopleDialog } from '@/ui/space/PeopleDialog'
@@ -386,8 +388,10 @@ function Pinned({
         items={(pinned.data ?? []).map(post => ({
           id: post.id,
           author: name(post.author) ?? t('feed.someone'),
-          text: post.body,
-          openLabel: t('feed.announcement.open', { text: post.body }),
+          text: post.announcement?.title ?? post.body,
+          openLabel: t('feed.announcement.open', {
+            text: post.announcement?.title ?? post.body
+          }),
           onOpen: () => {
             void navigate(location.pathname, {
               state: { feedItem: post.id }
@@ -539,10 +543,16 @@ function Composer({ space }: { space: Space }): ReactElement {
           onPublished={published}
         />
       )}
-      {(asking === 'announcement' || asking === 'feedback') && (
+      {asking === 'announcement' && (
+        <AnnouncementDialog
+          spaceId={space.id}
+          onClose={stopAsking}
+          onPublished={published}
+        />
+      )}
+      {asking === 'feedback' && (
         <TextPostDialog
           spaceId={space.id}
-          kind={asking}
           onClose={stopAsking}
           onPublished={published}
         />
@@ -745,7 +755,12 @@ function Post({
     >
       <FeedHeader
         who={author}
-        what={post.editedAt && t('feed.edited')}
+        what={[
+          post.announcement && t('feed.announcement.posted'),
+          post.editedAt && t('feed.edited')
+        ]
+          .filter(Boolean)
+          .join(' · ')}
         menu={
           mine && (
             <ItemMenu
@@ -803,15 +818,15 @@ function Post({
             onClose={post.feedback.closedAt ? null : closing}
           />
         ) : post.announcement ? (
-          <FeedAnnouncement
-            label={
-              post.announcement.pinnedAt
-                ? `${t('feed.announcement.label')} · ${t('feed.announcement.pinnedLabel')}`
-                : t('feed.announcement.label')
-            }
+          <AnnouncementAcknowledgements
+            post={post}
+            announcement={post.announcement}
+            space={space}
+            myId={myId}
+            mine={mine}
           >
             {text}
-          </FeedAnnouncement>
+          </AnnouncementAcknowledgements>
         ) : (
           text
         )
@@ -1099,6 +1114,81 @@ function FeedbackAnswers({
         error={answer.error}
         message={t('feed.feedback.answerFailed')}
       />
+    </>
+  )
+}
+
+function AnnouncementAcknowledgements({
+  post,
+  announcement,
+  space,
+  myId,
+  mine,
+  children
+}: {
+  post: FeedPost
+  announcement: Announcement
+  space: Space
+  myId: string | null
+  mine: boolean
+  children: ReactElement
+}): ReactElement {
+  const { t } = useI18n()
+  const { feed } = useServices()
+  const { replace } = useFeedCache(space.id)
+  const acknowledge = useMutation({
+    mutationFn: () => feed.acknowledge(space.id, post.id),
+    // Saved: a failed reread is no failed acknowledgement, the live change follows.
+    onSuccess: () =>
+      feed
+        .item(space.id, post.id)
+        .then(replace)
+        .catch(() => undefined)
+  })
+  const { acknowledgedBy } = announcement
+  const done = myId !== null && acknowledgedBy.includes(myId)
+  return (
+    <>
+      <FeedAnnouncement
+        label={
+          announcement.pinnedAt
+            ? `${t('feed.announcement.label')} · ${t('feed.announcement.pinnedLabel')}`
+            : t('feed.announcement.label')
+        }
+        title={announcement.title}
+        color={announcement.color}
+        acknowledged={{
+          label: t('feed.announcement.acknowledged', {
+            smart_count: acknowledgedBy.length
+          }),
+          people: acknowledgedBy.map(id => {
+            const member = space.members.find(m => m.id === id)
+            return {
+              id,
+              name: member
+                ? (member.displayName ?? member.username)
+                : t('feed.someone')
+            }
+          })
+        }}
+        acknowledge={
+          mine
+            ? null
+            : {
+                label: done
+                  ? t('feed.announcement.acknowledgedMine')
+                  : t('feed.announcement.acknowledge'),
+                done,
+                disabled: done || acknowledge.isPending,
+                onClick: () => {
+                  acknowledge.mutate()
+                }
+              }
+        }
+      >
+        {children}
+      </FeedAnnouncement>
+      <FeedFailure error={acknowledge.error} message={t('feed.changeFailed')} />
     </>
   )
 }

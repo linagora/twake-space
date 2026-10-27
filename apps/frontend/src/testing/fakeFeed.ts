@@ -42,6 +42,7 @@ export function fakeFeed(
     pinned: vi.fn(feed.pinned),
     pin: vi.fn(feed.pin),
     answer: vi.fn(feed.answer),
+    acknowledge: vi.fn(feed.acknowledge),
     react: vi.fn(feed.react),
     unreact: vi.fn(feed.unreact),
     linkPreview: vi.fn(feed.linkPreview)

@@ -107,9 +107,17 @@ export type FeedItem =
       editedAt: Date | null
       poll: Poll | null
       approval: Approval | null
-      announcement: { pinnedAt: Date | null } | null
+      announcement: Announcement | null
       feedback: Feedback | null
     })
+
+interface Announcement {
+  title: string | null
+  color: string | null
+  pinnedAt: Date | null
+  // In the order they acknowledged.
+  acknowledgedBy: string[]
+}
 
 interface Poll {
   // A yes/no question's labels are `yes` and `no`, for the reader's language.
@@ -397,10 +405,15 @@ async function loadItems(
   const asked = (post: (typeof posts)[number]['post']) =>
     post.kind === 'feedback' && viewer !== null && post.authorId === viewer
   const askedIds = new Set(posts.filter(p => asked(p.post)).map(p => p.post.id))
+  const announcementIds = new Set(
+    posts.filter(p => p.post.kind === 'announcement').map(p => p.post.id)
+  )
   const userIds = [
     ...cards.map(c => (c.actor?.type === 'user' ? c.actor.id : null)),
     ...posts.flatMap(p => [p.post.authorId, ...(p.post.approverIds ?? [])]),
-    ...votes.filter(v => askedIds.has(v.postId)).map(v => v.userId)
+    ...votes
+      .filter(v => askedIds.has(v.postId) || announcementIds.has(v.postId))
+      .map(v => v.userId)
   ].filter(id => id !== null)
   const names = await memberNames(db, spaceId, userIds)
   const named = (actor: Actor | null): NamedActor | null => {
@@ -530,7 +543,17 @@ async function loadItems(
       poll: pollOf(post),
       approval: approvalOf(post),
       announcement:
-        post.kind === 'announcement' ? { pinnedAt: post.pinnedAt } : null,
+        post.kind === 'announcement'
+          ? {
+              title: post.title,
+              color: post.color,
+              pinnedAt: post.pinnedAt,
+              // Who left the space no longer counts.
+              acknowledgedBy: (votesOf.get(post.id) ?? [])
+                .map(v => v.userId)
+                .filter(id => names.has(id))
+            }
+          : null,
       feedback: feedbackOf(post),
       reactions: reactionsOf(post.id)
     })

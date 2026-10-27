@@ -739,7 +739,12 @@ export function showcaseFeed(now: number): FeedItem[] {
       editedAt: null,
       poll: null,
       approval: null,
-      announcement: { pinnedAt: iso(now - 30 * MINUTE) },
+      announcement: {
+        title: 'Long weekend',
+        color: '#99aff3',
+        pinnedAt: iso(now - 30 * MINUTE),
+        acknowledgedBy: ['uuid-bob', 'uuid-dave']
+      },
       feedback: null,
       reactions: [{ key: '🎉', userIds: ['uuid-bob', 'uuid-dave'] }],
       time: '',

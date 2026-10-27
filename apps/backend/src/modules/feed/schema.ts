@@ -122,7 +122,10 @@ export const feedPosts = pgTable(
     // Set on an approval request only.
     approverIds: uuid('approver_ids').array(),
     // Holds an announcement at the top of the feed.
-    pinnedAt: timestamptz('pinned_at')
+    pinnedAt: timestamptz('pinned_at'),
+    // An announcement's headline, and the colour of the banner it sits on.
+    title: text(),
+    color: text()
   },
   table => [
     index().on(table.spaceId, table.time, table.id),
@@ -144,7 +147,7 @@ export const feedPollVotes = pgTable(
     userId: uuid('user_id').notNull(),
     // The index of the option in the post's poll options; on a yes/no
     // question 0 is yes, on an approval request 0 approves and 1 rejects, on
-    // a feedback request it is 0.
+    // a feedback request or an acknowledged announcement it is 0.
     option: integer().notNull(),
     // An approver's, with their decision, or a member's feedback answer.
     comment: text(),

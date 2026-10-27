@@ -72,6 +72,8 @@ export function httpFeed(api: KyInstance): FeedService {
       send(
         api.put(feed(spaceId, 'posts', postId, 'answer'), { json: { text } })
       ),
+    acknowledge: (spaceId, postId) =>
+      send(api.put(feed(spaceId, 'posts', postId, 'acknowledgement'))),
     react: (spaceId, itemId, key) =>
       send(api.put(feed(spaceId, 'items', itemId, 'reactions', key))),
     unreact: (spaceId, itemId, key) =>

@@ -275,7 +275,7 @@ describe('memoryFeed', () => {
   it('pins an announcement until its author unpins it', async () => {
     const feed = feedFor('admin')
     const post = await feed.post('roadmap', 'Closed Friday', [], {
-      announcement: true
+      announcement: {}
     })
     expect((await feed.pinned('roadmap')).map(item => item.id)).toEqual([
       post.id
