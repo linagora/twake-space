@@ -1280,16 +1280,16 @@ export function DateTile({
   )
 }
 
-/**
- * The « + » before the composer's field, as tall as the field: a menu of the
- * kinds of post, each opening its dialog, as the chat's composer offers them.
- */
 interface MenuEntry {
   label: string
   icon: IconProps['icon']
   onClick: () => void
 }
 
+/**
+ * The « + » before the composer's field, as tall as the field: a menu of the
+ * kinds of post, each opening its dialog, as the chat's composer offers them.
+ */
 export function FeedComposerMenu({
   label,
   files,

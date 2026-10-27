@@ -51,8 +51,8 @@ import {
 } from '@/application/feed'
 import { avatarUrl } from '@/application/avatar'
 import { meetRoomUrl } from '@/application/meet'
-import type { ResourceKind, Space } from '@/application/spaces'
-import { itemPlace } from '@/application/spaceTabs'
+import type { Space } from '@/application/spaces'
+import { isTabReady, itemPlace } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
 import {
   AppAvatar,
@@ -524,7 +524,7 @@ function Composer({ space }: { space: Space }): ReactElement {
           <FeedComposerMenu
             label={t('feed.add')}
             files={
-              hasApp(space, 'drive', 'drive')
+              isTabReady(space, 'drive')
                 ? [
                     {
                       label: t('feed.compose.upload'),
@@ -595,18 +595,6 @@ const ASKS: { kind: Ask; label: TranslationKey; icon: IconProps['icon'] }[] = [
   { kind: 'feedback', label: 'feed.feedback.menu', icon: Comment }
 ]
 
-// A tab of an app the space has, once its resource is ready.
-function hasApp(
-  space: Space,
-  app: 'tasks' | 'drive' | 'calendar',
-  kind: ResourceKind
-): boolean {
-  return (
-    space.apps.includes(app) &&
-    space.resources.some(r => r.kind === kind && r.id)
-  )
-}
-
 function Setup({
   space,
   onInvite
@@ -615,8 +603,6 @@ function Setup({
   onInvite: () => void
 }): ReactElement {
   const { t } = useI18n()
-  const has = (app: 'tasks' | 'drive' | 'calendar', kind: ResourceKind) =>
-    hasApp(space, app, kind)
   const open = (app: 'tasks' | 'drive' | 'calendar') => ({
     component: RouterLink,
     to: `/spaces/${space.id}/${app}`,
@@ -633,17 +619,17 @@ function Setup({
               {t('feed.setup.invite')}
             </Button>
           )}
-          {has('drive', 'drive') && (
+          {isTabReady(space, 'drive') && (
             <Button {...open('drive')} startIcon={<Icon icon={Upload} />}>
               {t('feed.setup.file')}
             </Button>
           )}
-          {has('tasks', 'project') && (
+          {isTabReady(space, 'tasks') && (
             <Button {...open('tasks')} startIcon={<Icon icon={CheckList} />}>
               {t('feed.setup.task')}
             </Button>
           )}
-          {has('calendar', 'calendar') && (
+          {isTabReady(space, 'calendar') && (
             <Button
               {...open('calendar')}
               startIcon={<Icon icon={CalendarIcon} />}
