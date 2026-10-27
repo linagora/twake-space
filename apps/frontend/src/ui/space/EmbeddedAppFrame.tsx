@@ -135,6 +135,15 @@ export function EmbeddedAppFrame({
     },
     []
   )
+  // Uploads go to the document that said it listens: one posted earlier is
+  // dropped, and a new document cannot answer those of the one before
+  const detachUploads = useRef<() => void>(() => undefined)
+  useEffect(
+    () => () => {
+      detachUploads.current()
+    },
+    []
+  )
 
   const [region, setRegion] = useState<OverlayRegion | null>(null)
   // The overlay loads once the app runs in its frame, signed in: an app on a
@@ -206,6 +215,8 @@ export function EmbeddedAppFrame({
           return
         }
         if (message?.type === 'twake-embed:ready') {
+          detachUploads.current()
+          detachUploads.current = uploads.attach(app, target, origin)
           setOverlayed(true)
           setLoads(n => n + 1)
           return
@@ -271,10 +282,8 @@ export function EmbeddedAppFrame({
         removeEventListener: () => undefined
       }
     )
-    const detach = uploads.attach(app, target, origin)
     return () => {
       listening.abort()
-      detach()
     }
   }, [
     app,
