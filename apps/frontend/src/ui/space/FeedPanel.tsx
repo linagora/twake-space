@@ -4,6 +4,7 @@ import {
   CheckList,
   Comment,
   Icon,
+  Image,
   Copy,
   Pin,
   Mail,
@@ -483,6 +484,11 @@ function Composer({ space }: { space: Space }): ReactElement {
   const [body, setBody] = useState('')
   const [asking, setAsking] = useState<Ask | null>(null)
   const people = useMentionable(space)
+  const navigate = useNavigate()
+  // Files go to the space's Drive, whose activity brings them into the feed.
+  const toDrive = () => {
+    void navigate(`/spaces/${space.id}/drive`)
+  }
   const stopAsking = () => {
     setAsking(null)
   }
@@ -517,6 +523,22 @@ function Composer({ space }: { space: Space }): ReactElement {
         tools={
           <FeedComposerMenu
             label={t('feed.add')}
+            files={
+              hasApp(space, 'drive', 'drive')
+                ? [
+                    {
+                      label: t('feed.compose.upload'),
+                      icon: Upload,
+                      onClick: toDrive
+                    },
+                    {
+                      label: t('feed.compose.media'),
+                      icon: Image,
+                      onClick: toDrive
+                    }
+                  ]
+                : []
+            }
             items={ASKS.filter(
               ask => ask.kind !== 'approval' || people.length > 0
             ).map(ask => ({
@@ -573,6 +595,18 @@ const ASKS: { kind: Ask; label: TranslationKey; icon: IconProps['icon'] }[] = [
   { kind: 'feedback', label: 'feed.feedback.menu', icon: Comment }
 ]
 
+// A tab of an app the space has, once its resource is ready.
+function hasApp(
+  space: Space,
+  app: 'tasks' | 'drive' | 'calendar',
+  kind: ResourceKind
+): boolean {
+  return (
+    space.apps.includes(app) &&
+    space.resources.some(r => r.kind === kind && r.id)
+  )
+}
+
 function Setup({
   space,
   onInvite
@@ -581,10 +615,8 @@ function Setup({
   onInvite: () => void
 }): ReactElement {
   const { t } = useI18n()
-  // Each action opens the tab of an app the space has, once it is ready.
   const has = (app: 'tasks' | 'drive' | 'calendar', kind: ResourceKind) =>
-    space.apps.includes(app) &&
-    space.resources.some(r => r.kind === kind && r.id)
+    hasApp(space, app, kind)
   const open = (app: 'tasks' | 'drive' | 'calendar') => ({
     component: RouterLink,
     to: `/spaces/${space.id}/${app}`,

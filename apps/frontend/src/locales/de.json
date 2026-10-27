@@ -394,6 +394,10 @@
       "menu": "Umfrage"
     },
     "add": "Hinzufügen",
+    "compose": {
+      "upload": "Dateien hochladen",
+      "media": "Fotos oder Videos"
+    },
     "yesNo": {
       "menu": "Ja/Nein-Frage",
       "title": "Neue Ja/Nein-Frage",

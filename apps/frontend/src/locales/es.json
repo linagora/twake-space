@@ -394,6 +394,10 @@
       "menu": "Encuesta"
     },
     "add": "Añadir",
+    "compose": {
+      "upload": "Subir archivos",
+      "media": "Fotos o vídeos"
+    },
     "yesNo": {
       "menu": "Pregunta de sí o no",
       "title": "Nueva pregunta de sí o no",

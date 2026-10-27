@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
@@ -153,6 +154,7 @@ function LiveFeed({ space }: { space: Space }) {
     <>
       <FeedPanel space={space} />
       <CallWindow />
+      <output aria-label="Address">{useLocation().pathname}</output>
     </>
   )
 }
@@ -1162,6 +1164,33 @@ describe('FeedPanel', () => {
       expect(
         screen.getAllByRole('menuitem').map(item => item.textContent)
       ).toEqual(['Poll', 'Yes/no question', 'Announcement', 'Feedback'])
+    })
+
+    it('sends files to the space drive, above the asks', async () => {
+      renderFeed([post(0)], {
+        space: {
+          ...roadmap,
+          apps: [...roadmap.apps, 'drive'],
+          resources: [...roadmap.resources, { kind: 'drive', id: 'drive-1' }]
+        }
+      })
+      fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
+      expect(
+        screen.getAllByRole('menuitem').map(item => item.textContent)
+      ).toEqual([
+        'Upload files',
+        'Photos or Videos',
+        'Poll',
+        'Yes/no question',
+        'Announcement',
+        'Feedback'
+      ])
+
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Upload files' }))
+
+      expect(screen.getByRole('status', { name: 'Address' })).toHaveTextContent(
+        '/spaces/a1/drive'
+      )
     })
 
     it('lets an approver approve once, with a comment', async () => {

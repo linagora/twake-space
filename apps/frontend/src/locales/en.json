@@ -394,6 +394,10 @@
       "menu": "Poll"
     },
     "add": "Add",
+    "compose": {
+      "upload": "Upload files",
+      "media": "Photos or Videos"
+    },
     "yesNo": {
       "menu": "Yes/no question",
       "title": "New yes/no question",
