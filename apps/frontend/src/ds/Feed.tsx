@@ -27,6 +27,7 @@ import {
   Paper,
   Popover,
   Popper,
+  Radio,
   TextField,
   Tooltip,
   Typography
@@ -1385,21 +1386,100 @@ export function FeedPollOption({
   )
 }
 
+/** The small tinted label over a card that says what kind of post it is. */
+function FeedKindChip({
+  icon,
+  label
+}: {
+  icon?: IconProps['icon']
+  label: string
+}): ReactElement {
+  return (
+    <Box
+      sx={theme => ({
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.5,
+        px: 1,
+        py: 0.5,
+        borderRadius: '100px',
+        color: 'primary.main',
+        bgcolor: theme.alpha(theme.vars.palette.primary.main, 0.04)
+      })}
+    >
+      {icon && <Icon icon={icon} size={16} />}
+      <Typography
+        sx={{
+          fontSize: 10,
+          fontWeight: 500,
+          lineHeight: '16px',
+          letterSpacing: 0.5
+        }}
+      >
+        {label}
+      </Typography>
+    </Box>
+  )
+}
+
+/** The first few people behind a count, as small overlapping avatars. */
+function FeedPeople({
+  people
+}: {
+  people: { id: string; name: string; avatar: string | null }[]
+}): ReactElement | null {
+  if (people.length === 0) return null
+  return (
+    <Box sx={{ display: 'flex' }}>
+      {people.slice(0, 4).map(person => (
+        <Box
+          key={person.id}
+          sx={{
+            mr: '-2px',
+            borderRadius: '50%',
+            border: 1,
+            borderColor: 'background.paper',
+            display: 'flex'
+          }}
+        >
+          <NameAvatar
+            name={person.name}
+            size={14}
+            label={person.name}
+            src={person.avatar}
+          />
+        </Box>
+      ))}
+    </Box>
+  )
+}
+
 /**
- * A poll as the chat shows one: its question, a button per option (pressed:
- * the user's vote) over a bar of its share of the votes, and a summary.
+ * A poll as the chat shows one: its question and a row per option to pick,
+ * with who picked it and its share of the votes, then a summary.
  */
 export function FeedPoll({
+  kind,
   question,
+  multiple,
   options,
   summary,
   disabled,
   onVote,
   close
 }: {
+  /** The chip over the question; null for none. */
+  kind: string | null
   question: string
-  /** `name` is the button's accessible name, with its count. */
-  options: { label: string; name: string; count: number; mine: boolean }[]
+  multiple: boolean
+  /** `name` is the option's accessible name, with its count. */
+  options: {
+    label: string
+    name: string
+    count: number
+    mine: boolean
+    voters: { id: string; name: string; avatar: string | null }[]
+  }[]
   summary: string
   disabled: boolean
   onVote: (index: number) => void
@@ -1407,90 +1487,103 @@ export function FeedPoll({
   close: { label: string; onClick: () => void } | null
 }): ReactElement {
   const total = options.reduce((sum, option) => sum + option.count, 0)
+  const Pick = multiple ? Checkbox : Radio
   return (
     <Box
       sx={{
         display: 'flex',
         flexDirection: 'column',
+        alignItems: 'flex-start',
         gap: 1,
-        width: 400,
-        maxWidth: '100%',
         py: 0.5
       }}
     >
-      <FeedTitle large>{question}</FeedTitle>
+      {kind && <FeedKindChip label={kind} />}
+      <FeedTitle>{question}</FeedTitle>
       <Box
         role="group"
         aria-label={question}
-        sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}
+        sx={{
+          alignSelf: 'stretch',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 0.5
+        }}
       >
         {options.map((option, index) => (
-          <Box key={option.label}>
-            <Button
-              fullWidth
-              variant={option.mine ? 'contained' : 'outlined'}
-              color={option.mine ? 'primary' : 'inherit'}
-              aria-pressed={option.mine}
-              aria-label={option.name}
+          <Box
+            key={option.label}
+            component="label"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              minHeight: 40,
+              pl: 2,
+              pr: 1,
+              py: 0.5,
+              borderRadius: '80px',
+              bgcolor: 'background.paper',
+              cursor: disabled ? 'default' : 'pointer'
+            }}
+          >
+            <Pick
+              size="small"
+              checked={option.mine}
               disabled={disabled}
+              // A click, not a change: picking the checked radio again takes the vote back.
               onClick={() => {
                 onVote(index)
               }}
-              startIcon={option.mine && <Icon icon={Check} size={16} />}
+              slotProps={{ input: { 'aria-label': option.name } }}
               sx={{
-                justifyContent: 'flex-start',
-                gap: 1,
-                borderRadius: '10px',
-                textTransform: 'none',
-                textAlign: 'start',
-                ...(!option.mine && { borderColor: 'border.main' }),
-                '& .MuiButton-startIcon': { m: 0 },
-                // Closed, the results stay readable.
-                '&.Mui-disabled': {
-                  color: 'text.primary',
-                  borderColor: 'border.main',
-                  bgcolor: option.mine ? 'action.selected' : 'transparent'
-                }
+                p: 0.5,
+                m: -0.5,
+                // Closed, one's own pick stays readable.
+                '&.Mui-checked.Mui-disabled': { color: 'primary.main' }
+              }}
+            />
+            <Typography
+              variant="caption"
+              sx={{
+                flex: '1 1 auto',
+                minWidth: 0,
+                fontWeight: 500,
+                letterSpacing: 0.5,
+                overflowWrap: 'anywhere'
               }}
             >
-              <Box
-                component="span"
-                sx={{ flex: '1 1 auto', minWidth: 0, overflowWrap: 'anywhere' }}
-              >
-                {option.label}
-              </Box>
-              <Box component="span" sx={{ flex: '0 0 auto' }}>
-                {option.count}
-              </Box>
-            </Button>
-            <Box
+              {option.label}
+            </Typography>
+            <FeedPeople people={option.voters} />
+            <Typography
               aria-hidden
+              color="textSecondary"
               sx={{
-                mt: 0.5,
-                height: 4,
-                borderRadius: 2,
-                bgcolor: 'action.hover'
+                flex: '0 0 auto',
+                fontSize: 14,
+                fontWeight: 500,
+                lineHeight: '18.4px',
+                letterSpacing: 0.25
               }}
             >
-              <Box
-                sx={{
-                  height: '100%',
-                  borderRadius: 2,
-                  bgcolor: 'primary.main',
-                  transform: `scaleX(${String(total > 0 ? option.count / total : 0)})`,
-                  transformOrigin: 'left',
-                  transition: 'transform 250ms ease-out'
-                }}
-              />
-            </Box>
+              {`${String(total > 0 ? Math.round((option.count / total) * 100) : 0)}%`}
+            </Typography>
           </Box>
         ))}
       </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box
+        sx={{
+          alignSelf: 'stretch',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}
+      >
         <Typography
           variant="caption"
           color="textSecondary"
-          sx={{ flex: '1 1 auto', fontWeight: 500, letterSpacing: 0.4 }}
+          sx={{ flex: '1 1 auto', fontWeight: 500, letterSpacing: 0.4, pl: 1 }}
         >
           {summary}
         </Typography>
@@ -2207,7 +2300,10 @@ export function FeedAnnouncement({
   title: string | null
   color: string | null
   children: ReactNode
-  acknowledged: { label: string; people: { id: string; name: string }[] }
+  acknowledged: {
+    label: string
+    people: { id: string; name: string; avatar: string | null }[]
+  }
   /** Null for its author. */
   acknowledge: {
     label: string
@@ -2226,30 +2322,7 @@ export function FeedAnnouncement({
         py: 0.5
       }}
     >
-      <Box
-        sx={theme => ({
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0.5,
-          px: 1,
-          py: 0.5,
-          borderRadius: '100px',
-          color: 'primary.main',
-          bgcolor: theme.alpha(theme.vars.palette.primary.main, 0.04)
-        })}
-      >
-        <Icon icon={CampaignIcon} size={16} />
-        <Typography
-          sx={{
-            fontSize: 10,
-            fontWeight: 500,
-            lineHeight: '16px',
-            letterSpacing: 0.5
-          }}
-        >
-          {label}
-        </Typography>
-      </Box>
+      <FeedKindChip icon={CampaignIcon} label={label} />
       {(color !== null || title !== null) && (
         <Box sx={{ alignSelf: 'stretch' }}>
           {color ? (
@@ -2280,28 +2353,7 @@ export function FeedAnnouncement({
             pl: 1
           }}
         >
-          {acknowledged.people.length > 0 && (
-            <Box sx={{ display: 'flex' }}>
-              {acknowledged.people.slice(0, 4).map(person => (
-                <Box
-                  key={person.id}
-                  sx={{
-                    mr: '-2px',
-                    borderRadius: '50%',
-                    border: 1,
-                    borderColor: 'background.paper',
-                    display: 'flex'
-                  }}
-                >
-                  <NameAvatar
-                    name={person.name}
-                    size={14}
-                    label={person.name}
-                  />
-                </Box>
-              ))}
-            </Box>
-          )}
+          <FeedPeople people={acknowledged.people} />
           <Typography
             variant="caption"
             color="textSecondary"

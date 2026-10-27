@@ -384,6 +384,8 @@
       "multiple": "Consenti più risposte",
       "anonymous": "Voti anonimi",
       "removeOption": "Rimuovi l’opzione %{n}",
+      "single": "Scelta singola",
+      "several": "Scelta multipla",
       "votes": "%{smart_count} voto |||| %{smart_count} voti",
       "choice": "%{label}: %{smart_count} voto |||| %{label}: %{smart_count} voti",
       "closed": "Chiuso",

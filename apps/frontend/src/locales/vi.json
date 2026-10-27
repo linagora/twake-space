@@ -384,6 +384,8 @@
       "multiple": "Cho phép nhiều câu trả lời",
       "anonymous": "Bình chọn ẩn danh",
       "removeOption": "Xóa lựa chọn %{n}",
+      "single": "Một lựa chọn",
+      "several": "Nhiều lựa chọn",
       "votes": "%{smart_count} phiếu",
       "choice": "%{label}: %{smart_count} phiếu",
       "closed": "Đã đóng",
