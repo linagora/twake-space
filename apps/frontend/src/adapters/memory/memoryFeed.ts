@@ -186,7 +186,7 @@ export function memoryFeed(
             ? {
                 title: ask.announcement.title ?? null,
                 color: ask.announcement.color?.toLowerCase() ?? null,
-                pinnedAt: time,
+                pinnedAt: ask.announcement.pinned ? time : null,
                 acknowledgedBy: []
               }
             : null,

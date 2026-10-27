@@ -1250,11 +1250,16 @@ describe('FeedPanel', () => {
           target: { value: ' Office closed Friday ' }
         }
       )
+      fireEvent.click(
+        within(dialog).getByRole('switch', {
+          name: 'Pin to the top of the feed'
+        })
+      )
       fireEvent.click(within(dialog).getByRole('button', { name: 'Publish' }))
 
       const strip = await pinnedStrip()
       expect(feed.post).toHaveBeenCalledWith('a1', 'Office closed Friday', [], {
-        announcement: { title: 'Long weekend', color: '#99aff3' }
+        announcement: { title: 'Long weekend', color: '#99aff3', pinned: true }
       })
       expect(
         within(strip).getByRole('button', {
@@ -1264,6 +1269,25 @@ describe('FeedPanel', () => {
       expect(screen.getByText('Announcement · Pinned')).toBeInTheDocument()
       // In the strip, then on the banner.
       expect(screen.getAllByText('Long weekend')).toHaveLength(2)
+    })
+
+    it('is published unpinned unless asked', async () => {
+      const { feed } = renderFeed([post(0)])
+      const dialog = await openDialog()
+
+      fireEvent.change(
+        within(dialog).getByRole('textbox', { name: 'Message' }),
+        { target: { value: 'Office closed Friday' } }
+      )
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Publish' }))
+
+      expect(await screen.findByText('Announcement')).toBeInTheDocument()
+      expect(feed.post).toHaveBeenCalledWith('a1', 'Office closed Friday', [], {
+        announcement: { color: '#99aff3', pinned: false }
+      })
+      expect(
+        screen.queryByRole('region', { name: 'Pinned announcements' })
+      ).not.toBeInTheDocument()
     })
 
     it('goes without a banner when its colour is taken off', async () => {
@@ -1283,9 +1307,13 @@ describe('FeedPanel', () => {
       )
       fireEvent.click(within(dialog).getByRole('button', { name: 'Publish' }))
 
-      await pinnedStrip()
-      expect(feed.post).toHaveBeenCalledWith('a1', 'Office closed Friday', [], {
-        announcement: {}
+      await waitFor(() => {
+        expect(feed.post).toHaveBeenCalledWith(
+          'a1',
+          'Office closed Friday',
+          [],
+          { announcement: { pinned: false } }
+        )
       })
     })
 

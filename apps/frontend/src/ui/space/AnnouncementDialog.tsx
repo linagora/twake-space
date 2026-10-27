@@ -10,14 +10,19 @@ import { useMutation } from '@tanstack/react-query'
 import { useId, useState, type ReactElement } from 'react'
 
 import { ANNOUNCEMENT_TITLE, type FeedItem } from '@/application/feed'
-import { DialogFields, DialogHeader, DialogSection } from '@/ds/Dialog'
+import {
+  DialogFields,
+  DialogHeader,
+  DialogSection,
+  DialogSwitch
+} from '@/ds/Dialog'
 import { ANNOUNCEMENT_DEFAULT_COLOR, AnnouncementBannerField } from '@/ds/Feed'
 import { CampaignIcon } from '@/ds/icons'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { FeedFailure } from '@/ui/space/FeedFailure'
 
-/** A new announcement, pinned once published, for everyone to acknowledge. */
+/** A new announcement for everyone to acknowledge, pinned if its author asks. */
 export function AnnouncementDialog({
   spaceId,
   onClose,
@@ -34,12 +39,14 @@ export function AnnouncementDialog({
   const [title, setTitle] = useState('')
   const [text, setText] = useState('')
   const [color, setColor] = useState<string | null>(ANNOUNCEMENT_DEFAULT_COLOR)
+  const [pinned, setPinned] = useState(false)
   const publish = useMutation({
     mutationFn: () =>
       feed.post(spaceId, text.trim(), [], {
         announcement: {
           ...(title.trim() && { title: title.trim() }),
-          ...(color && { color })
+          ...(color && { color }),
+          pinned
         }
       }),
     onSuccess: onPublished
@@ -92,8 +99,13 @@ export function AnnouncementDialog({
                 setText(event.target.value)
               }}
             />
-            <FeedFailure error={publish.error} message={t('feed.postFailed')} />
           </DialogSection>
+          <DialogSwitch
+            label={t('feed.announcement.pinNow')}
+            checked={pinned}
+            onChange={setPinned}
+          />
+          <FeedFailure error={publish.error} message={t('feed.postFailed')} />
         </DialogFields>
         <Divider />
         <DialogActions>

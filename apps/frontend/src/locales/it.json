@@ -423,6 +423,7 @@
     "announcement": {
       "menu": "Annuncio",
       "title": "Nuovo annuncio",
+      "pinNow": "Fissa in cima al feed",
       "text": "Messaggio",
       "publish": "Pubblica",
       "label": "Annuncio",
