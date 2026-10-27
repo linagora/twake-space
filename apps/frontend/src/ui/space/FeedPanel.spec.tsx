@@ -778,6 +778,7 @@ describe('FeedPanel', () => {
             { label: 'Tuesday', count: 1, userIds: ['u-bob'] },
             { label: 'Friday', count: 0, userIds: [] }
           ],
+          closesAt: null,
           closedAt
         },
         ...overrides
@@ -893,6 +894,7 @@ describe('FeedPanel', () => {
               { label: 'Blue', count: 1, userIds: [] },
               { label: 'Red', count: 0, userIds: [] }
             ],
+            closesAt: null,
             closedAt: null
           }
         })
@@ -916,6 +918,7 @@ describe('FeedPanel', () => {
               { label: 'Tuesday', count: 1, userIds: ['u-bob'] },
               { label: 'Friday', count: 0, userIds: [] }
             ],
+            closesAt: null,
             closedAt: null
           }
         })
@@ -1047,16 +1050,42 @@ describe('FeedPanel', () => {
     expect(feed.post).toHaveBeenCalledWith('a1', 'Keep the demo?', [], {
       poll: { kind: 'yes_no' }
     })
-    fireEvent.click(within(poll).getByRole('radio', { name: 'No: 0 votes' }))
+    expect(screen.getByText('asked a question')).toBeInTheDocument()
+    fireEvent.click(within(poll).getByRole('button', { name: 'No: 0 votes' }))
     expect(
-      await within(poll).findByRole('radio', {
+      await within(poll).findByRole('button', {
         name: 'No: 1 vote',
-        checked: true
+        pressed: true
       })
     ).toBeInTheDocument()
     expect(
-      within(poll).getByRole('radio', { name: 'Yes: 0 votes' })
+      within(poll).getByRole('button', { name: 'Yes: 0 votes', pressed: false })
     ).toBeInTheDocument()
+    expect(screen.getByText('1 answered')).toBeInTheDocument()
+  })
+
+  it('asks a yes/no question until a deadline', async () => {
+    const { feed } = renderFeed([post(0)])
+    fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Yes/no question' }))
+    const dialog = screen.getByRole('dialog', { name: 'New yes/no question' })
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: 'Question' }),
+      { target: { value: 'Ship today?' } }
+    )
+    fireEvent.click(
+      within(dialog).getByRole('switch', { name: 'Set a deadline' })
+    )
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Send question' })
+    )
+
+    await screen.findByRole('group', { name: 'Ship today?' })
+    const ask = vi.mocked(feed.post).mock.calls[0]?.[3]
+    const closesAt =
+      ask && 'poll' in ask && 'kind' in ask.poll ? ask.poll.closesAt : undefined
+    expect(new Date(closesAt ?? 0).getTime()).toBeGreaterThan(Date.now())
+    expect(screen.getByText(/^By /)).toBeInTheDocument()
   })
 
   describe('an approval request', () => {

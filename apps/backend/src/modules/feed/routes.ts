@@ -1,4 +1,14 @@
-import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm'
+import {
+  and,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  sql
+} from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db, Tx } from '../../infra/db.ts'
@@ -83,6 +93,11 @@ const postBody = z.object({
   // Member ids: anyone else is left out.
   mentions: z.array(z.uuid()).max(50).default([])
 })
+const deadline = z.iso
+  .datetime({ offset: true })
+  .transform(t => new Date(t))
+  .refine(t => t > new Date())
+  .optional()
 const newPostBody = postBody
   .extend({
     poll: z
@@ -99,9 +114,10 @@ const newPostBody = postBody
                 options.length
             ),
           multiple: z.boolean().default(false),
-          anonymous: z.boolean().default(false)
+          anonymous: z.boolean().default(false),
+          closesAt: deadline
         }),
-        z.strictObject({ kind: z.literal('yes_no') })
+        z.strictObject({ kind: z.literal('yes_no'), closesAt: deadline })
       ])
       .optional(),
     approval: z
@@ -190,6 +206,7 @@ const serialize = (item: FeedItem) => ({
     editedAt: item.editedAt?.toISOString() ?? null,
     poll: item.poll && {
       ...item.poll,
+      closesAt: item.poll.closesAt?.toISOString() ?? null,
       closedAt: item.poll.closedAt?.toISOString() ?? null
     },
     approval: item.approval && {
@@ -301,7 +318,8 @@ export function registerFeedRoutes(
         options: feedPosts.pollOptions,
         multiple: feedPosts.pollMultiple,
         approverIds: feedPosts.approverIds,
-        closedAt: feedPosts.pollClosedAt
+        closedAt: feedPosts.pollClosedAt,
+        closesAt: feedPosts.pollClosesAt
       })
       .from(feedPosts)
       .where(and(eq(feedPosts.id, postId), eq(feedPosts.spaceId, spaceId)))
@@ -309,7 +327,9 @@ export function registerFeedRoutes(
     if (!post || !kinds.includes(post.kind)) {
       throw new Refusal(404, 'not_found')
     }
-    if (post.closedAt) throw new Refusal(409, 'poll_closed')
+    if (post.closedAt || (post.closesAt && post.closesAt <= new Date())) {
+      throw new Refusal(409, 'poll_closed')
+    }
     return post
   }
 
@@ -554,6 +574,7 @@ export function registerFeedRoutes(
                 pollMultiple: poll.multiple,
                 pollAnonymous: poll.anonymous
               }),
+              pollClosesAt: poll?.closesAt ?? null,
               approverIds: approval?.approvers ?? null,
               ...(typeof announcement === 'object' && {
                 title: announcement.title ?? null,
@@ -727,14 +748,20 @@ export function registerFeedRoutes(
           const { spaceId, postId, caller } = await authoredPost(tx, request, {
             takingDown: true
           })
+          const now = new Date()
           const [closed] = await tx
             .update(feedPosts)
-            .set({ pollClosedAt: new Date() })
+            .set({ pollClosedAt: now })
             .where(
               and(
                 eq(feedPosts.id, postId),
                 inArray(feedPosts.kind, CLOSING),
-                isNull(feedPosts.pollClosedAt)
+                isNull(feedPosts.pollClosedAt),
+                // Past its deadline, it closed then.
+                or(
+                  isNull(feedPosts.pollClosesAt),
+                  gt(feedPosts.pollClosesAt, now)
+                )
               )
             )
             .returning({ id: feedPosts.id })

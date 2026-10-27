@@ -1,0 +1,1 @@
+ALTER TABLE "feed_posts" ADD COLUMN "poll_closes_at" timestamp with time zone;

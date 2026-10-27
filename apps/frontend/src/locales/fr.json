@@ -399,7 +399,14 @@
       "title": "Nouvelle question oui/non",
       "publish": "Envoyer la question",
       "yes": "Oui",
-      "no": "Non"
+      "no": "Non",
+      "asked": "a posé une question",
+      "kind": "Oui/Non",
+      "by": "Avant %{time}",
+      "answered": "%{smart_count} réponse |||| %{smart_count} réponses",
+      "deadline": "Fixer une échéance",
+      "date": "Date",
+      "time": "Heure"
     },
     "approval": {
       "menu": "Demande d’approbation",

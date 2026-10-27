@@ -4,12 +4,20 @@ import {
   Dialog,
   DialogActions,
   Divider,
+  Stack,
   TextField
 } from '@linagora/twake-mui'
 import { useMutation } from '@tanstack/react-query'
 import { useId, useRef, useState, type ReactElement } from 'react'
 
 import { POLL_OPTIONS, type FeedItem, type Poll } from '@/application/feed'
+import {
+  fromInputs,
+  MINUTE,
+  nextSlot,
+  toInputs,
+  withOffset
+} from '@/application/meetings'
 import {
   DialogFields,
   DialogHeader,
@@ -18,6 +26,7 @@ import {
 } from '@/ds/Dialog'
 import { FeedPollOption } from '@/ds/Feed'
 import { PollIcon } from '@/ds/icons'
+import { DayField, TimeField } from '@/ds/Pickers'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { FeedFailure } from '@/ui/space/FeedFailure'
@@ -51,9 +60,21 @@ export function PollDialog({
   )
   const [multiple, setMultiple] = useState(false)
   const [anonymous, setAnonymous] = useState(false)
+  // The browser's clock, as the feed shows every time on it.
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const [opened] = useState(() => new Date())
+  const today = toInputs(opened, zone)
+  const [start] = useState(() =>
+    toInputs(nextSlot(new Date(opened.getTime() + 60 * MINUTE), zone, 30), zone)
+  )
+  const [deadline, setDeadline] = useState(false)
+  const [date, setDate] = useState(start.date)
+  const [time, setTime] = useState(start.time)
+  const closesAt = deadline ? fromInputs(date, time, zone) : null
   const options = fields.map(field => field.text.trim()).filter(Boolean)
   const valid =
     question.trim() !== '' &&
+    (!deadline || (closesAt !== null && closesAt > new Date())) &&
     (kind === 'yes_no' ||
       (options.length >= POLL_OPTIONS.min &&
         new Set(options.map(o => o.toLowerCase())).size === options.length))
@@ -64,7 +85,12 @@ export function PollDialog({
         question.trim(),
         [],
         kind === 'yes_no'
-          ? { poll: { kind } }
+          ? {
+              poll: {
+                kind,
+                ...(closesAt && { closesAt: withOffset(closesAt, zone) })
+              }
+            }
           : { poll: { options, multiple, anonymous } }
       ),
     onSuccess: onPublished
@@ -170,6 +196,31 @@ export function PollDialog({
                 />
               </div>
             </>
+          )}
+          {kind === 'yes_no' && (
+            <div>
+              <DialogSwitch
+                label={t('feed.yesNo.deadline')}
+                checked={deadline}
+                onChange={setDeadline}
+              />
+              {deadline && (
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <DayField
+                    label={t('feed.yesNo.date')}
+                    value={date}
+                    min={today.date}
+                    onChange={setDate}
+                  />
+                  <TimeField
+                    label={t('feed.yesNo.time')}
+                    value={time}
+                    min={date === today.date ? today.time : undefined}
+                    onChange={setTime}
+                  />
+                </Stack>
+              )}
+            </div>
           )}
           <FeedFailure error={publish.error} message={t('feed.postFailed')} />
         </DialogFields>

@@ -1275,6 +1275,7 @@ describe('polls', () => {
     multiple: boolean
     anonymous: boolean
     options: { label: string; count: number; userIds: string[] }[]
+    closesAt: string | null
     closedAt: string | null
   }
   const pollOf = async (send: ReturnType<typeof setUp>, postId: string) =>
@@ -1354,6 +1355,7 @@ describe('polls', () => {
         { label: 'Pizza', count: 1, userIds: [CAROL] },
         { label: 'Sushi', count: 1, userIds: [BOB] }
       ],
+      closesAt: null,
       closedAt: null
     })
 
@@ -1565,6 +1567,45 @@ describe('yes/no questions', () => {
     ).toBe(400)
     expect((await publish({ kind: 'rating' })).statusCode).toBe(400)
     expect((await publish({})).statusCode).toBe(400)
+  })
+
+  it('closes at its deadline, and refuses one already past', async () => {
+    const send = setUp()
+    const publish = (closesAt: string) =>
+      send('POST', `/spaces/${DESIGN}/feed/posts`, 'alice', {
+        body: 'Ship today?',
+        poll: { kind: 'yes_no', closesAt }
+      })
+    const soon = new Date(Date.now() + 60 * 60 * 1000)
+
+    const past = await publish('2020-01-01T00:00:00Z')
+    const created = await publish(soon.toISOString())
+    const id = created.json<Item>().id
+    const vote = () =>
+      send('PUT', `/spaces/${DESIGN}/feed/posts/${id}/vote`, 'bob', {
+        option: 0
+      })
+    const before = await vote()
+    const deadline = new Date('2026-10-01T17:00:00Z')
+    await testDb.db
+      .update(feedPosts)
+      .set({ pollClosesAt: deadline })
+      .where(eq(feedPosts.id, id))
+    const after = await vote()
+    const close = await send('POST', `/spaces/${DESIGN}/feed/posts/${id}/close`)
+
+    expect(past.statusCode).toBe(400)
+    expect(created.json()).toMatchObject({
+      poll: { closesAt: soon.toISOString(), closedAt: null }
+    })
+    expect(before.statusCode).toBe(204)
+    expect(after.statusCode).toBe(409)
+    expect(close.json()).toMatchObject({
+      poll: {
+        closesAt: deadline.toISOString(),
+        closedAt: deadline.toISOString()
+      }
+    })
   })
 })
 

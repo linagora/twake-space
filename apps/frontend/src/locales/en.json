@@ -399,7 +399,14 @@
       "title": "New yes/no question",
       "publish": "Send question",
       "yes": "Yes",
-      "no": "No"
+      "no": "No",
+      "asked": "asked a question",
+      "kind": "Yes/No",
+      "by": "By %{time}",
+      "answered": "%{smart_count} answered",
+      "deadline": "Set a deadline",
+      "date": "Date",
+      "time": "Time"
     },
     "approval": {
       "menu": "Approval request",
