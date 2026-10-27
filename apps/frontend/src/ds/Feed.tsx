@@ -17,6 +17,7 @@ import {
   Button,
   ButtonBase,
   Checkbox,
+  Divider,
   IconButton,
   InputBase,
   List,
@@ -1279,19 +1280,54 @@ export function DateTile({
   )
 }
 
+interface MenuEntry {
+  label: string
+  icon: IconProps['icon']
+  onClick: () => void
+}
+
 /**
  * The « + » before the composer's field, as tall as the field: a menu of the
  * kinds of post, each opening its dialog, as the chat's composer offers them.
  */
 export function FeedComposerMenu({
   label,
+  files,
   items
 }: {
   label: string
-  items: { label: string; icon: IconProps['icon']; onClick: () => void }[]
+  /** Above a divider: ways to share files, which open no dialog. */
+  files: MenuEntry[]
+  items: MenuEntry[]
 }): ReactElement {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const menuId = useId()
+  const entry = (item: MenuEntry, dialog: boolean) => (
+    <MenuItem
+      key={item.label}
+      aria-haspopup={dialog ? 'dialog' : undefined}
+      onClick={() => {
+        setAnchor(null)
+        item.onClick()
+      }}
+      sx={{
+        borderRadius: 1.5,
+        minHeight: 32,
+        typography: 'body2',
+        '& .MuiListItemIcon-root': {
+          width: 16,
+          minWidth: 0,
+          flexShrink: 0,
+          color: 'text.secondary'
+        }
+      }}
+    >
+      <ListItemIcon aria-hidden>
+        <Icon icon={item.icon} size={16} />
+      </ListItemIcon>
+      <ListItemText disableTypography>{item.label}</ListItemText>
+    </MenuItem>
+  )
   return (
     <>
       <Tooltip title={label}>
@@ -1332,32 +1368,9 @@ export function FeedComposerMenu({
           }
         }}
       >
-        {items.map(item => (
-          <MenuItem
-            key={item.label}
-            aria-haspopup="dialog"
-            onClick={() => {
-              setAnchor(null)
-              item.onClick()
-            }}
-            sx={{
-              borderRadius: 1.5,
-              minHeight: 32,
-              typography: 'body2',
-              '& .MuiListItemIcon-root': {
-                width: 16,
-                minWidth: 0,
-                flexShrink: 0,
-                color: 'text.secondary'
-              }
-            }}
-          >
-            <ListItemIcon aria-hidden>
-              <Icon icon={item.icon} size={16} />
-            </ListItemIcon>
-            <ListItemText disableTypography>{item.label}</ListItemText>
-          </MenuItem>
-        ))}
+        {files.map(item => entry(item, false))}
+        {files.length > 0 && <Divider sx={{ my: 0.5 }} />}
+        {items.map(item => entry(item, true))}
       </Menu>
     </>
   )

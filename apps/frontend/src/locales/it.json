@@ -394,6 +394,10 @@
       "menu": "Sondaggio"
     },
     "add": "Aggiungi",
+    "compose": {
+      "upload": "Carica file",
+      "media": "Foto o video"
+    },
     "yesNo": {
       "menu": "Domanda sì/no",
       "title": "Nuova domanda sì/no",

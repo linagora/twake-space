@@ -394,6 +394,10 @@
       "menu": "Bình chọn"
     },
     "add": "Thêm",
+    "compose": {
+      "upload": "Tải tệp lên",
+      "media": "Ảnh hoặc video"
+    },
     "yesNo": {
       "menu": "Câu hỏi có/không",
       "title": "Câu hỏi có/không mới",

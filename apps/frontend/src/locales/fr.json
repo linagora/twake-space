@@ -394,6 +394,10 @@
       "menu": "Sondage"
     },
     "add": "Ajouter",
+    "compose": {
+      "upload": "Importer des fichiers",
+      "media": "Photos ou vidéos"
+    },
     "yesNo": {
       "menu": "Question oui/non",
       "title": "Nouvelle question oui/non",
