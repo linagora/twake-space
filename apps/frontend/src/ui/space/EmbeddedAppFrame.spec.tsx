@@ -1,6 +1,6 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import type { Badge } from '@linagora/twake-embed'
-import { createRef, useEffect } from 'react'
+import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { EmbedPath } from '@/application/embeddedApps'
@@ -8,7 +8,6 @@ import type { SessionService } from '@/application/session'
 import { fakeSession } from '@/testing/fakeSession'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { useCall } from '@/ui/call/CallContext'
-import { useAppUploads, type AppUploads } from '@/ui/space/AppUploads'
 import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
 
 const MAIL = 'https://mail.test'
@@ -23,20 +22,11 @@ let notifications = {
 }
 let onBadges = vi.fn<(badges: readonly Badge[] | null) => void>()
 let unmountFrame: () => void = () => undefined
-const seeUploads = vi.fn<(uploads: AppUploads) => void>()
 
 // The room of the call window, as the app asked for it
 function CallProbe() {
   const { call } = useCall()
   return <output data-testid="call">{call?.url ?? ''}</output>
-}
-
-function UploadsProbe() {
-  const uploads = useAppUploads()
-  useEffect(() => {
-    seeUploads(uploads)
-  }, [uploads])
-  return null
 }
 
 async function renderFrame(
@@ -67,7 +57,6 @@ async function renderFrame(
         onMetadata={vi.fn()}
       />
       <CallProbe />
-      <UploadsProbe />
     </>,
     { session, meetUrl, notifications }
   )
@@ -483,41 +472,6 @@ describe('EmbeddedAppFrame', () => {
       unmountFrame()
 
       expect(onBadges).toHaveBeenCalledWith(null)
-    })
-  })
-
-  describe('files picked in TwakeSpace', () => {
-    function upload() {
-      const uploads = seeUploads.mock.lastCall?.[0]
-      if (!uploads) throw new Error('no uploads')
-      return uploads.upload('mail', 'm/1', [new File(['a'], 'a.txt')])
-    }
-
-    it('go to the app once it listens, and wait for its answer', async () => {
-      await renderFrame()
-      await expect(upload()).rejects.toThrow()
-
-      const target = frame().contentWindow
-      if (!target) throw new Error('no window')
-      const posted = vi.spyOn(target, 'postMessage')
-      await appReady()
-      const done = upload()
-      const sent = posted.mock.calls
-        .map(([message]) => message as { type: string; id?: string })
-        .find(message => message.type === 'twake-embed:upload')
-      postFromFrame({ type: 'twake-embed:upload-done', id: sent?.id, ok: true })
-
-      await expect(done).resolves.toBeUndefined()
-    })
-
-    it('fail when another document of the frame says it listens', async () => {
-      await renderFrame()
-      await appReady()
-      const done = upload()
-
-      postFromFrame({ type: 'twake-embed:ready' })
-
-      await expect(done).rejects.toThrow()
     })
   })
 })

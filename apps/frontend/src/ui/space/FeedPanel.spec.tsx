@@ -1,6 +1,4 @@
-import type { UploadMessage } from '@linagora/twake-embed'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { useEffect } from 'react'
 import { useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -19,8 +17,12 @@ import { fakeLive } from '@/testing/fakeLive'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { CallWindow } from '@/ui/call/CallWindow'
 import { useLiveUpdates } from '@/ui/live/useLiveUpdates'
-import { useAppUploads } from '@/ui/space/AppUploads'
+import { uploadToDrive } from '@/ui/space/driveUpload'
 import { FeedPanel } from '@/ui/space/FeedPanel'
+
+vi.mock('@/ui/space/driveUpload', () => ({
+  uploadToDrive: vi.fn(() => Promise.resolve())
+}))
 
 const roadmap: Space = {
   id: 'a1',
@@ -131,14 +133,12 @@ function renderFeed(
     space = roadmap,
     pageSize,
     readAt,
-    live = fakeLive(),
-    drive = () => true
+    live = fakeLive()
   }: {
     space?: Space
     pageSize?: number
     readAt?: string
     live?: ReturnType<typeof fakeLive>
-    drive?: DriveAnswer
   } = {}
 ) {
   const feed = fakeFeed(
@@ -149,28 +149,12 @@ function renderFeed(
       ...(readAt && { readAt: { a1: readAt } })
     }
   )
-  renderWithProviders(<LiveFeed space={space} drive={drive} />, { feed, live })
+  renderWithProviders(<LiveFeed space={space} />, { feed, live })
   return { feed, live }
 }
 
-// Whether the Drive frame stored the files it got
-type DriveAnswer = (resourceId: string, files: readonly File[]) => boolean
-
-function LiveFeed({ space, drive }: { space: Space; drive: DriveAnswer }) {
+function LiveFeed({ space }: { space: Space }) {
   useLiveUpdates()
-  const uploads = useAppUploads()
-  useEffect(() => {
-    const frame = {
-      postMessage: (message: UploadMessage) => {
-        uploads.settle(
-          'drive',
-          message.id,
-          drive(message.resourceId, message.files)
-        )
-      }
-    }
-    return uploads.attach('drive', frame, 'https://drive.test')
-  }, [uploads, drive])
   return (
     <>
       <FeedPanel space={space} />
@@ -1188,14 +1172,12 @@ describe('FeedPanel', () => {
     })
 
     it('sends picked files to the space drive, above the asks, and keeps the draft', async () => {
-      const drive = vi.fn<DriveAnswer>(() => true)
       renderFeed([post(0)], {
         space: {
           ...roadmap,
           apps: [...roadmap.apps, 'drive'],
           resources: [...roadmap.resources, { kind: 'drive', id: 'drive-1' }]
-        },
-        drive
+        }
       })
       const composer = await screen.findByRole('textbox', {
         name: 'Text message'
@@ -1226,7 +1208,7 @@ describe('FeedPanel', () => {
       fireEvent.change(picker, { target: { files: [photo] } })
 
       await waitFor(() => {
-        expect(drive).toHaveBeenCalledWith('drive-1', [photo])
+        expect(uploadToDrive).toHaveBeenCalledWith(null, 'drive-1', [photo])
       })
       expect(composer).toHaveValue('Draft')
       expect(
@@ -1235,13 +1217,13 @@ describe('FeedPanel', () => {
     })
 
     it('says when the drive could not take the files', async () => {
+      vi.mocked(uploadToDrive).mockRejectedValueOnce(new Error('quota'))
       renderFeed([post(0)], {
         space: {
           ...roadmap,
           apps: [...roadmap.apps, 'drive'],
           resources: [...roadmap.resources, { kind: 'drive', id: 'drive-1' }]
-        },
-        drive: () => false
+        }
       })
       fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
       const opened = vi.spyOn(HTMLInputElement.prototype, 'click')

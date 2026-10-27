@@ -108,7 +108,7 @@ import { ConnectionDetailsDialog } from '@/ui/call/ConnectionDetailsDialog'
 import { useI18n, type TranslationKey } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
-import { useAppUploads } from '@/ui/space/AppUploads'
+import { uploadToDrive } from '@/ui/space/driveUpload'
 import {
   FEED_NEWS,
   useFeed,
@@ -485,15 +485,15 @@ function Composer({ space }: { space: Space }): ReactElement {
   const [body, setBody] = useState('')
   const [asking, setAsking] = useState<Ask | null>(null)
   const people = useMentionable(space)
-  const uploads = useAppUploads()
+  const { sdk } = useSession()
   const driveId = isTabReady(space, 'drive')
     ? space.resources.find(r => r.kind === 'drive')?.id
     : undefined
-  // Picked files go to the space's Drive, through its frame: Drive's
+  // Picked files go to the space's Drive, through its Upload intent: Drive's
   // activity brings them into the feed
   const upload = useMutation({
     mutationFn: ({ drive, files }: { drive: string; files: File[] }) =>
-      uploads.upload('drive', drive, files)
+      uploadToDrive(sdk, drive, files)
   })
   const [filePicker, setFilePicker] = useState<HTMLInputElement | null>(null)
   const [mediaPicker, setMediaPicker] = useState<HTMLInputElement | null>(null)
