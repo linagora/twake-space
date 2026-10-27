@@ -7,6 +7,7 @@ import { spaceThemeOptions } from '@/ds/theme'
 import { I18nProvider } from '@/ui/i18n/I18nProvider'
 import type { SupportedLanguage } from '@/ui/i18n/languages'
 import { ServicesContext, type Services } from '@/ui/services/Services'
+import { AppUploadsProvider } from '@/ui/space/AppUploads'
 import { BadgesProvider } from '@/ui/space/Badges'
 import { FillPageProvider } from '@/ui/space/FillPage'
 
@@ -30,7 +31,9 @@ export function AppProviders({
           <ServicesContext value={services}>
             <PickersProvider lang={lang}>
               <BadgesProvider>
-                <FillPageProvider>{children}</FillPageProvider>
+                <AppUploadsProvider>
+                  <FillPageProvider>{children}</FillPageProvider>
+                </AppUploadsProvider>
               </BadgesProvider>
             </PickersProvider>
           </ServicesContext>

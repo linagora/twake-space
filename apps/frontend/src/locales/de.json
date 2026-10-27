@@ -396,7 +396,9 @@
     "add": "Hinzufügen",
     "compose": {
       "upload": "Dateien hochladen",
-      "media": "Fotos oder Videos"
+      "media": "Fotos oder Videos",
+      "uploading": "Ihre Dateien werden zum Drive hinzugefügt…",
+      "uploadFailed": "Ihre Dateien konnten nicht zum Drive hinzugefügt werden."
     },
     "yesNo": {
       "menu": "Ja/Nein-Frage",

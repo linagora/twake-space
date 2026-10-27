@@ -35,6 +35,7 @@ import { useCall } from '@/ui/call/CallContext'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { useSession } from '@/ui/session/SessionGate'
+import { useAppUploads } from '@/ui/space/AppUploads'
 
 // Downloads too: a sandboxed frame without it cannot save a file. A tab the
 // frame opens inherits the sandbox (no alert, confirm or print) unless
@@ -112,6 +113,7 @@ export function EmbeddedAppFrame({
   const { signIn } = useSession()
   const { meetUrl, notifications } = useServices()
   const { join } = useCall()
+  const uploads = useAppUploads()
   const origin = new URL(appUrl).origin
   const name = `twake-embed-${app}`
 
@@ -224,6 +226,10 @@ export function EmbeddedAppFrame({
           reportMetadata.current(message.metadata)
           return
         }
+        if (message?.type === 'twake-embed:upload-done') {
+          uploads.settle(app, message.id, message.ok)
+          return
+        }
         if (message?.type === 'twake-embed:pip') {
           const room =
             meetUrl === null ? null : meetRoomUrl(message.url, meetUrl)
@@ -265,10 +271,22 @@ export function EmbeddedAppFrame({
         removeEventListener: () => undefined
       }
     )
+    const detach = uploads.attach(app, target, origin)
     return () => {
       listening.abort()
+      detach()
     }
-  }, [app, embedPath, frameRef, join, meetUrl, notifications, origin, signIn])
+  }, [
+    app,
+    embedPath,
+    frameRef,
+    join,
+    meetUrl,
+    notifications,
+    origin,
+    signIn,
+    uploads
+  ])
 
   return (
     <>

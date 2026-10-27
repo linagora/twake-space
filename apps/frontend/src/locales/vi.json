@@ -396,7 +396,9 @@
     "add": "Thêm",
     "compose": {
       "upload": "Tải tệp lên",
-      "media": "Ảnh hoặc video"
+      "media": "Ảnh hoặc video",
+      "uploading": "Đang thêm tệp của bạn vào Drive…",
+      "uploadFailed": "Không thể thêm tệp của bạn vào Drive."
     },
     "yesNo": {
       "menu": "Câu hỏi có/không",
