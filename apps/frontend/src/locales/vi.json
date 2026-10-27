@@ -399,7 +399,14 @@
       "title": "Câu hỏi có/không mới",
       "publish": "Gửi câu hỏi",
       "yes": "Có",
-      "no": "Không"
+      "no": "Không",
+      "asked": "đã đặt một câu hỏi",
+      "kind": "Có/Không",
+      "by": "Trước %{time}",
+      "answered": "%{smart_count} người đã trả lời",
+      "deadline": "Đặt hạn chót",
+      "date": "Ngày",
+      "time": "Giờ"
     },
     "approval": {
       "menu": "Yêu cầu phê duyệt",

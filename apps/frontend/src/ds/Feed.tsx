@@ -1,6 +1,7 @@
 import {
   Check,
   CheckCircle,
+  ClockOutline,
   Cross,
   CrossCircle,
   Down,
@@ -58,6 +59,8 @@ import {
   EmojiIcon,
   MoreVertIcon,
   SidePanelIcon,
+  ThumbDownIcon,
+  ThumbUpIcon,
   Videocam
 } from '@/ds/icons'
 import { NameAvatar } from '@/ds/AppFrame'
@@ -1584,6 +1587,149 @@ export function FeedPoll({
           variant="caption"
           color="textSecondary"
           sx={{ flex: '1 1 auto', fontWeight: 500, letterSpacing: 0.4, pl: 1 }}
+        >
+          {summary}
+        </Typography>
+        {close && (
+          <Button size="small" color="inherit" onClick={close.onClick}>
+            {close.label}
+          </Button>
+        )}
+      </Box>
+    </Box>
+  )
+}
+
+const ANSWER_ICONS = [ThumbUpIcon, ThumbDownIcon]
+
+/**
+ * A yes/no question: its two answers side by side with their counts, the
+ * reader's own one tinted, then who answered.
+ */
+export function FeedYesNo({
+  kind,
+  deadline,
+  question,
+  answers,
+  people,
+  summary,
+  disabled,
+  onVote,
+  close
+}: {
+  kind: string
+  /** The chip that says when it closes; null for no deadline. */
+  deadline: string | null
+  question: string
+  /** Yes, then no. `name` is the answer's accessible name, with its count. */
+  answers: { label: string; name: string; count: number; mine: boolean }[]
+  people: { id: string; name: string; avatar: string | null }[]
+  summary: string
+  disabled: boolean
+  onVote: (index: number) => void
+  /** The author's button that closes it; null for anyone else. */
+  close: { label: string; onClick: () => void } | null
+}): ReactElement {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 1,
+        py: 0.5
+      }}
+    >
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <FeedKindChip label={kind} />
+        {deadline && <FeedKindChip icon={ClockOutline} label={deadline} />}
+      </Box>
+      <FeedTitle>{question}</FeedTitle>
+      <Box
+        role="group"
+        aria-label={question}
+        sx={{ alignSelf: 'stretch', display: 'flex', gap: 0.5 }}
+      >
+        {answers.map((answer, index) => {
+          const AnswerIcon = ANSWER_ICONS[index] ?? ThumbUpIcon
+          return (
+            <ButtonBase
+              key={answer.label}
+              aria-pressed={answer.mine}
+              aria-label={answer.name}
+              disabled={disabled}
+              onClick={() => {
+                onVote(index)
+              }}
+              sx={theme => ({
+                flex: '1 1 0',
+                minWidth: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                minHeight: 40,
+                pl: 2,
+                pr: 1,
+                borderRadius: '80px',
+                color: 'text.primary',
+                bgcolor: answer.mine
+                  ? theme.alpha(theme.vars.palette.success.main, 0.12)
+                  : 'background.paper'
+              })}
+            >
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <AnswerIcon width={20} height={20} />
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  flex: '1 1 auto',
+                  textAlign: 'start',
+                  fontWeight: 500,
+                  letterSpacing: 0.5
+                }}
+              >
+                {answer.label}
+              </Typography>
+              <Typography
+                aria-hidden
+                color="textSecondary"
+                sx={{
+                  fontSize: 14,
+                  fontWeight: 500,
+                  lineHeight: '18.4px',
+                  letterSpacing: 0.25,
+                  pr: 1
+                }}
+              >
+                {answer.count}
+              </Typography>
+            </ButtonBase>
+          )
+        })}
+      </Box>
+      <Box
+        sx={{
+          alignSelf: 'stretch',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
+          pl: 1
+        }}
+      >
+        <FeedPeople people={people} />
+        <Typography
+          variant="caption"
+          color="textSecondary"
+          sx={{ flex: '1 1 auto', fontWeight: 500, letterSpacing: 0.4 }}
         >
           {summary}
         </Typography>

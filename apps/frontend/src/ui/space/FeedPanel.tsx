@@ -81,6 +81,7 @@ import {
   FeedPinned,
   FeedPoll,
   FeedRow,
+  FeedYesNo,
   FeedTitle,
   FeedToolbar,
   FeedWithSide,
@@ -774,6 +775,7 @@ function Post({
         who={author}
         what={[
           post.announcement && t('feed.announcement.posted'),
+          post.poll?.kind === 'yes_no' && t('feed.yesNo.asked'),
           post.editedAt && t('feed.edited')
         ]
           .filter(Boolean)
@@ -921,6 +923,7 @@ function PollVotes({
   const { t } = useI18n()
   const { feed } = useServices()
   const { replace } = useFeedCache(space.id)
+  const time = useTime()
   // Shown at once; the live event that follows brings the stored votes.
   const vote = useMutation({
     mutationFn: ({ option, picked }: { option: number; picked: boolean }) =>
@@ -940,40 +943,56 @@ function PollVotes({
   const mine = (option: PollOption) =>
     myId !== null && option.userIds.includes(myId)
   const total = poll.options.reduce((sum, o) => sum + o.count, 0)
-  const votes = t('feed.poll.votes', { smart_count: total })
+  const closed = (summary: string) =>
+    poll.closedAt ? `${summary} · ${t('feed.poll.closed')}` : summary
+  const shared = {
+    question: post.body,
+    disabled: poll.closedAt !== null || vote.isPending,
+    onVote: (index: number) => {
+      const option = poll.options[index]
+      if (option) vote.mutate({ option: index, picked: !mine(option) })
+    },
+    close: onClose && { label: t('feed.poll.close'), onClick: onClose }
+  }
+  const choice = (option: PollOption, label: string) => ({
+    label,
+    name: t('feed.poll.choice', { label, smart_count: option.count }),
+    count: option.count,
+    mine: mine(option)
+  })
   return (
     <>
-      <FeedPoll
-        kind={
-          poll.kind === 'yes_no'
-            ? null
-            : t(poll.multiple ? 'feed.poll.several' : 'feed.poll.single')
-        }
-        question={post.body}
-        multiple={poll.multiple}
-        options={poll.options.map((option, index) => {
-          const label =
-            poll.kind === 'yes_no'
-              ? t(index === 0 ? 'feed.yesNo.yes' : 'feed.yesNo.no')
-              : option.label
-          return {
-            label,
-            name: t('feed.poll.choice', { label, smart_count: option.count }),
-            count: option.count,
-            mine: mine(option),
+      {poll.kind === 'yes_no' ? (
+        <FeedYesNo
+          {...shared}
+          kind={t('feed.yesNo.kind')}
+          deadline={
+            poll.closesAt && t('feed.yesNo.by', { time: time(poll.closesAt) })
+          }
+          answers={poll.options.map((option, index) =>
+            choice(option, t(index === 0 ? 'feed.yesNo.yes' : 'feed.yesNo.no'))
+          )}
+          people={spacePeople(
+            space,
+            poll.options.flatMap(o => o.userIds),
+            t('feed.someone')
+          )}
+          summary={closed(t('feed.yesNo.answered', { smart_count: total }))}
+        />
+      ) : (
+        <FeedPoll
+          {...shared}
+          kind={t(poll.multiple ? 'feed.poll.several' : 'feed.poll.single')}
+          multiple={poll.multiple}
+          options={poll.options.map(option => ({
+            ...choice(option, option.label),
             voters: poll.anonymous
               ? []
               : spacePeople(space, option.userIds, t('feed.someone'))
-          }
-        })}
-        summary={poll.closedAt ? `${votes} · ${t('feed.poll.closed')}` : votes}
-        disabled={poll.closedAt !== null || vote.isPending}
-        onVote={index => {
-          const option = poll.options[index]
-          if (option) vote.mutate({ option: index, picked: !mine(option) })
-        }}
-        close={onClose && { label: t('feed.poll.close'), onClick: onClose }}
-      />
+          }))}
+          summary={closed(t('feed.poll.votes', { smart_count: total }))}
+        />
+      )}
       <FeedFailure error={vote.error} message={t('feed.poll.voteFailed')} />
     </>
   )

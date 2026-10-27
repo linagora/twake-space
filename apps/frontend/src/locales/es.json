@@ -399,7 +399,14 @@
       "title": "Nueva pregunta de sí o no",
       "publish": "Enviar pregunta",
       "yes": "Sí",
-      "no": "No"
+      "no": "No",
+      "asked": "hizo una pregunta",
+      "kind": "Sí/No",
+      "by": "Antes de las %{time}",
+      "answered": "%{smart_count} respuesta |||| %{smart_count} respuestas",
+      "deadline": "Fijar una fecha límite",
+      "date": "Fecha",
+      "time": "Hora"
     },
     "approval": {
       "menu": "Solicitud de aprobación",

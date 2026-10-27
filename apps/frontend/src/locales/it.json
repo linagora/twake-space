@@ -399,7 +399,14 @@
       "title": "Nuova domanda sì/no",
       "publish": "Invia domanda",
       "yes": "Sì",
-      "no": "No"
+      "no": "No",
+      "asked": "ha fatto una domanda",
+      "kind": "Sì/No",
+      "by": "Entro %{time}",
+      "answered": "%{smart_count} risposta |||| %{smart_count} risposte",
+      "deadline": "Imposta una scadenza",
+      "date": "Data",
+      "time": "Ora"
     },
     "approval": {
       "menu": "Richiesta di approvazione",

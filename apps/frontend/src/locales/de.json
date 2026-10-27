@@ -399,7 +399,14 @@
       "title": "Neue Ja/Nein-Frage",
       "publish": "Frage senden",
       "yes": "Ja",
-      "no": "Nein"
+      "no": "Nein",
+      "asked": "hat eine Frage gestellt",
+      "kind": "Ja/Nein",
+      "by": "Bis %{time}",
+      "answered": "%{smart_count} Antwort |||| %{smart_count} Antworten",
+      "deadline": "Frist festlegen",
+      "date": "Datum",
+      "time": "Uhrzeit"
     },
     "approval": {
       "menu": "Freigabeanfrage",
