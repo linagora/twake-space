@@ -176,7 +176,15 @@ export function memoryFeed(
                 closedAt: null
               }
             : null,
-        announcement: ask && 'announcement' in ask ? { pinnedAt: time } : null,
+        announcement:
+          ask && 'announcement' in ask
+            ? {
+                title: ask.announcement.title ?? null,
+                color: ask.announcement.color?.toLowerCase() ?? null,
+                pinnedAt: time,
+                acknowledgedBy: []
+              }
+            : null,
         feedback:
           ask && 'feedback' in ask
             ? { count: 0, mine: null, answers: [], closedAt: null }
@@ -239,6 +247,20 @@ export function memoryFeed(
           answeredAt: new Date().toISOString()
         }
       ]
+      return Promise.resolve()
+    },
+    acknowledge: (spaceId, postId) => {
+      const post = find(spaceId, postId)
+      if (post?.kind !== 'post' || !post.announcement) {
+        return refuse(404, 'not_found')
+      }
+      const { author, announcement } = post
+      if (author.type === 'user' && author.id === me.id) {
+        return refuse(403, 'cannot_acknowledge_own')
+      }
+      if (!announcement.acknowledgedBy.includes(me.id)) {
+        announcement.acknowledgedBy.push(me.id)
+      }
       return Promise.resolve()
     },
     decide: (spaceId, postId, decision, comment) => {

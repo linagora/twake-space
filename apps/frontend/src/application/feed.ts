@@ -72,9 +72,20 @@ export interface FeedPost extends ItemBase {
   poll: Poll | null
   approval: Approval | null
   /** Pinned at the top of the feed until its author unpins it. */
-  announcement: { pinnedAt: string | null } | null
+  announcement: Announcement | null
   feedback: Feedback | null
 }
+
+export interface Announcement {
+  title: string | null
+  /** The banner's, as `#rrggbb`; no colour, no banner. */
+  color: string | null
+  pinnedAt: string | null
+  /** In the order they acknowledged. */
+  acknowledgedBy: string[]
+}
+
+export const ANNOUNCEMENT_TITLE = { max: 120 }
 
 /** Everyone sees the count and their own answer; only the author, the answers. */
 export interface Feedback {
@@ -128,7 +139,7 @@ export type PostAsk =
   | { poll: { options: string[] } }
   | { poll: { kind: 'yes_no' } }
   | { approval: { approvers: string[] } }
-  | { announcement: true }
+  | { announcement: { title?: string; color?: string } }
   | { feedback: true }
 
 export interface PollOption {
@@ -203,6 +214,8 @@ export interface FeedService {
   pin: (spaceId: string, postId: string, pinned: boolean) => Promise<FeedItem>
   /** Replaces the user's answer; `poll_closed` once the request is closed. */
   answer: (spaceId: string, postId: string, text: string) => Promise<void>
+  /** Any member but its author, `cannot_acknowledge_own` for them. */
+  acknowledge: (spaceId: string, postId: string) => Promise<void>
   /**
    * Once per approver: `already_decided` after that, `not_approver` for
    * anyone else, `poll_closed` once the request is closed.

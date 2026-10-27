@@ -2194,51 +2194,149 @@ export function AnnouncementBannerField({
   )
 }
 
-/** An announcement's text, set apart in the bubble. */
+/** An announcement in its bubble: the chip, the banner, the text and who read it. */
 export function FeedAnnouncement({
   label,
-  children
+  title,
+  color,
+  children,
+  acknowledged,
+  acknowledge
 }: {
   label: string
+  title: string | null
+  color: string | null
   children: ReactNode
+  acknowledged: { label: string; people: { id: string; name: string }[] }
+  /** Null for its author. */
+  acknowledge: {
+    label: string
+    done: boolean
+    disabled: boolean
+    onClick: () => void
+  } | null
 }): ReactElement {
   return (
     <Box
-      sx={theme => ({
+      sx={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 0.5,
-        my: 0.5,
-        px: 1.5,
-        py: 1,
-        borderRadius: '12px',
-        borderLeft: 3,
-        borderColor: 'primary.main',
-        bgcolor: theme.alpha(theme.vars.palette.primary.main, 0.08)
-      })}
+        alignItems: 'flex-start',
+        gap: 1,
+        py: 0.5
+      }}
     >
       <Box
-        sx={{
+        sx={theme => ({
           display: 'flex',
           alignItems: 'center',
-          gap: 0.75,
-          color: 'primary.main'
-        }}
+          gap: 0.5,
+          px: 1,
+          py: 0.5,
+          borderRadius: '100px',
+          color: 'primary.main',
+          bgcolor: theme.alpha(theme.vars.palette.primary.main, 0.04)
+        })}
       >
-        <Icon icon={CampaignIcon} size={18} />
+        <Icon icon={CampaignIcon} size={16} />
         <Typography
-          variant="caption"
-          sx={{ fontWeight: 600, letterSpacing: 0.4 }}
+          sx={{
+            fontSize: 10,
+            fontWeight: 500,
+            lineHeight: '16px',
+            letterSpacing: 0.5
+          }}
         >
           {label}
         </Typography>
       </Box>
-      {children}
+      {(color !== null || title !== null) && (
+        <Box sx={{ alignSelf: 'stretch' }}>
+          {color ? (
+            <AnnouncementBanner color={color} rounded>
+              {title}
+            </AnnouncementBanner>
+          ) : (
+            <FeedTitle large>{title}</FeedTitle>
+          )}
+        </Box>
+      )}
+      <Box sx={{ color: 'text.secondary' }}>{children}</Box>
+      <Box
+        sx={{
+          alignSelf: 'stretch',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          minHeight: 24
+        }}
+      >
+        <Box
+          sx={{
+            flex: '1 1 auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            pl: 1
+          }}
+        >
+          {acknowledged.people.length > 0 && (
+            <Box sx={{ display: 'flex' }}>
+              {acknowledged.people.slice(0, 4).map(person => (
+                <Box
+                  key={person.id}
+                  sx={{
+                    mr: '-2px',
+                    borderRadius: '50%',
+                    border: 1,
+                    borderColor: 'background.paper',
+                    display: 'flex'
+                  }}
+                >
+                  <NameAvatar
+                    name={person.name}
+                    size={14}
+                    label={person.name}
+                  />
+                </Box>
+              ))}
+            </Box>
+          )}
+          <Typography
+            variant="caption"
+            color="textSecondary"
+            sx={{ fontWeight: 500, letterSpacing: 0.4, ml: 0.5 }}
+          >
+            {acknowledged.label}
+          </Typography>
+        </Box>
+        {acknowledge && (
+          <Button
+            size="small"
+            variant={acknowledge.done ? 'text' : 'contained'}
+            disabled={acknowledge.disabled}
+            aria-pressed={acknowledge.done}
+            onClick={acknowledge.onClick}
+            startIcon={acknowledge.done && <Icon icon={Check} size={14} />}
+            sx={{
+              minHeight: 24,
+              px: 1,
+              py: 0.5,
+              borderRadius: '100px',
+              fontSize: 11,
+              lineHeight: '16px',
+              letterSpacing: 0.5,
+              '& .MuiButton-startIcon': { mr: 0.5 }
+            }}
+          >
+            {acknowledge.label}
+          </Button>
+        )}
+      </Box>
     </Box>
   )
 }
 
-/** The pinned announcements over the feed, each opening its place in it. */
 /** The pinned announcements over the feed, each opening its place in it. */
 export function FeedPinned({
   label,

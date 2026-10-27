@@ -6,6 +6,7 @@ import {
   type Approver,
   type Decision,
   type FeedCard,
+  type Announcement,
   type FeedItem,
   type FeedPost
 } from '@/application/feed'
@@ -1140,29 +1141,121 @@ describe('FeedPanel', () => {
   describe('an announcement', () => {
     const pinnedStrip = () =>
       screen.findByRole('region', { name: 'Pinned announcements' })
-
-    it('is published pinned, above the feed', async () => {
-      const { feed } = renderFeed([post(0)])
+    const announcement = (
+      overrides: Partial<Announcement> = {}
+    ): Announcement => ({
+      title: null,
+      color: null,
+      pinnedAt: null,
+      acknowledgedBy: [],
+      ...overrides
+    })
+    const openDialog = async () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
       fireEvent.click(screen.getByRole('menuitem', { name: 'Announcement' }))
-      const dialog = screen.getByRole('dialog', { name: 'New announcement' })
+      return screen.getByRole('dialog', { name: 'New announcement' })
+    }
+
+    it('is published pinned on its banner, headline first', async () => {
+      const { feed } = renderFeed([post(0)])
+      const dialog = await openDialog()
 
       fireEvent.change(
-        within(dialog).getByRole('textbox', { name: 'Announcement' }),
-        { target: { value: ' Office closed Friday ' } }
+        within(dialog).getByRole('textbox', { name: 'Headline' }),
+        { target: { value: ' Long weekend ' } }
       )
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Announce' }))
+      fireEvent.change(
+        within(dialog).getByRole('textbox', { name: 'Message' }),
+        {
+          target: { value: ' Office closed Friday ' }
+        }
+      )
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Publish' }))
 
       const strip = await pinnedStrip()
       expect(feed.post).toHaveBeenCalledWith('a1', 'Office closed Friday', [], {
-        announcement: true
+        announcement: { title: 'Long weekend', color: '#99aff3' }
       })
       expect(
         within(strip).getByRole('button', {
-          name: 'Show the announcement: Office closed Friday'
+          name: 'Show the announcement: Long weekend'
         })
       ).toBeInTheDocument()
       expect(screen.getByText('Announcement · Pinned')).toBeInTheDocument()
+      // In the strip, then on the banner.
+      expect(screen.getAllByText('Long weekend')).toHaveLength(2)
+    })
+
+    it('goes without a banner when its colour is taken off', async () => {
+      const { feed } = renderFeed([post(0)])
+      const dialog = await openDialog()
+
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'Banner color' })
+      )
+      fireEvent.click(screen.getByRole('radio', { name: 'No banner' }))
+      fireEvent.keyDown(screen.getByRole('radiogroup'), { key: 'Escape' })
+      fireEvent.change(
+        within(dialog).getByRole('textbox', { name: 'Message' }),
+        {
+          target: { value: 'Office closed Friday' }
+        }
+      )
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Publish' }))
+
+      await pinnedStrip()
+      expect(feed.post).toHaveBeenCalledWith('a1', 'Office closed Friday', [], {
+        announcement: {}
+      })
+    })
+
+    it('opens the colour picker from the custom swatch', async () => {
+      renderFeed([post(0)])
+      const dialog = await openDialog()
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'Banner color' })
+      )
+      const picker = document.querySelector('input[type="color"]')
+      if (!(picker instanceof HTMLInputElement)) throw new Error('no picker')
+      const click = vi.spyOn(picker, 'click')
+
+      fireEvent.click(screen.getByRole('radio', { name: 'Custom color' }))
+      fireEvent.change(picker, { target: { value: '#123ABC' } })
+
+      expect(click).toHaveBeenCalled()
+      expect(
+        screen.getByRole('radio', { name: 'Custom color' })
+      ).toHaveAttribute('aria-checked', 'true')
+    })
+
+    it('is acknowledged by a member, once', async () => {
+      const { feed } = renderFeed([
+        post(1, {
+          announcement: announcement({ acknowledgedBy: ['u-carol'] })
+        })
+      ])
+      expect(await screen.findByText('1 acknowledged')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Acknowledge' }))
+
+      expect(
+        await screen.findByRole('button', { name: 'Acknowledged' })
+      ).toBeDisabled()
+      expect(feed.acknowledge).toHaveBeenCalledWith('a1', 'post-1')
+      expect(screen.getByText('2 acknowledged')).toBeInTheDocument()
+    })
+
+    it('asks no acknowledgement of its author', async () => {
+      renderFeed([
+        post(1, {
+          author: { type: 'user', id: 'u-me', name: 'Alice Martin' },
+          announcement: announcement()
+        })
+      ])
+      expect(await screen.findByText('0 acknowledged')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Acknowledge' })
+      ).not.toBeInTheDocument()
     })
 
     it('is unpinned by its author, and stays in the feed', async () => {
@@ -1170,7 +1263,7 @@ describe('FeedPanel', () => {
         post(1, {
           body: 'Office closed Friday',
           author: { type: 'user', id: 'u-me', name: 'Alice Martin' },
-          announcement: { pinnedAt: at(1) }
+          announcement: announcement({ pinnedAt: at(1) })
         })
       ])
       const strip = await pinnedStrip()
@@ -1191,7 +1284,7 @@ describe('FeedPanel', () => {
       const { feed } = renderFeed([
         post(1, {
           author: { type: 'user', id: 'u-me', name: 'Alice Martin' },
-          announcement: { pinnedAt: null }
+          announcement: announcement()
         })
       ])
       fireEvent.click(
@@ -1207,7 +1300,7 @@ describe('FeedPanel', () => {
       const { feed } = renderFeed([
         post(1, {
           author: { type: 'user', id: 'u-me', name: 'Alice Martin' },
-          announcement: { pinnedAt: null }
+          announcement: announcement()
         })
       ])
       vi.mocked(feed.remove).mockRejectedValueOnce(new Error('offline'))
@@ -1236,7 +1329,7 @@ describe('FeedPanel', () => {
     })
 
     it('offers no one else to unpin it', async () => {
-      renderFeed([post(1, { announcement: { pinnedAt: at(1) } })])
+      renderFeed([post(1, { announcement: announcement({ pinnedAt: at(1) }) })])
       const strip = await pinnedStrip()
       expect(
         within(strip).queryByRole('button', { name: 'Unpin' })

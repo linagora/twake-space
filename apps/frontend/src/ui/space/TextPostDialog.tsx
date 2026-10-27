@@ -15,15 +15,13 @@ import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { FeedFailure } from '@/ui/space/FeedFailure'
 
-/** A new announcement, pinned once published, or a feedback request. */
+/** A new feedback request. */
 export function TextPostDialog({
   spaceId,
-  kind,
   onClose,
   onPublished
 }: {
   spaceId: string
-  kind: 'announcement' | 'feedback'
   onClose: () => void
   onPublished: (item: FeedItem) => void
 }): ReactElement {
@@ -32,13 +30,7 @@ export function TextPostDialog({
   const titleId = useId()
   const [text, setText] = useState('')
   const publish = useMutation({
-    mutationFn: () =>
-      feed.post(
-        spaceId,
-        text.trim(),
-        [],
-        kind === 'announcement' ? { announcement: true } : { feedback: true }
-      ),
+    mutationFn: () => feed.post(spaceId, text.trim(), [], { feedback: true }),
     onSuccess: onPublished
   })
 
@@ -53,7 +45,7 @@ export function TextPostDialog({
       >
         <DialogHeader
           id={titleId}
-          title={t(`feed.${kind}.title`)}
+          title={t('feed.feedback.title')}
           close={{ label: t('common.close'), onClick: onClose }}
         />
         <DialogContent>
@@ -61,10 +53,10 @@ export function TextPostDialog({
             <TextField
               fullWidth
               multiline
-              minRows={kind === 'announcement' ? 4 : 1}
+              minRows={1}
               maxRows={12}
-              label={t(`feed.${kind}.text`)}
-              helperText={t(`feed.${kind}.hint`)}
+              label={t('feed.feedback.text')}
+              helperText={t('feed.feedback.hint')}
               value={text}
               slotProps={{ htmlInput: { maxLength: 4000 } }}
               onChange={event => {
@@ -83,7 +75,7 @@ export function TextPostDialog({
             variant="contained"
             disabled={!text.trim() || publish.isPending}
           >
-            {t(`feed.${kind}.publish`)}
+            {t('feed.feedback.publish')}
           </Button>
         </DialogActions>
       </form>
