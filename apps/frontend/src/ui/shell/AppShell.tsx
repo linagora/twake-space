@@ -40,6 +40,7 @@ import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
 import { PlatformBar } from '@/ui/shell/PlatformBar'
 import { SpotSpace } from '@/ui/shell/SpotSpace'
 import { useSpaceTotals } from '@/ui/space/Badges'
+import { ChatFavourites } from '@/ui/space/ChatFavourites'
 import { EmbeddedApps } from '@/ui/space/EmbeddedApps'
 import { useFillPage } from '@/ui/space/FillPage'
 import { useSession } from '@/ui/session/SessionGate'
@@ -142,6 +143,7 @@ export function AppShell(): ReactElement {
           <Outlet />
         </AssistantContext>
         <EmbeddedApps />
+        <ChatFavourites />
         <SpotSpace />
         <NotificationPermissionPrompt />
         <CallWindow />
