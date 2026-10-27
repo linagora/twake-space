@@ -10,7 +10,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useId, useState, type ReactElement } from 'react'
 
 import { ANNOUNCEMENT_TITLE, type FeedItem } from '@/application/feed'
-import { DialogHeader, DialogSection } from '@/ds/Dialog'
+import { DialogFields, DialogHeader, DialogSection } from '@/ds/Dialog'
 import { ANNOUNCEMENT_DEFAULT_COLOR, AnnouncementBannerField } from '@/ds/Feed'
 import { CampaignIcon } from '@/ds/icons'
 import { useI18n } from '@/ui/i18n/useI18n'
@@ -77,22 +77,24 @@ export function AnnouncementDialog({
             color: hex => t('feed.announcement.colorName', { hex })
           }}
         />
-        <DialogSection label={t('feed.announcement.text')} htmlFor={textId}>
-          <TextField
-            id={textId}
-            fullWidth
-            multiline
-            minRows={3}
-            maxRows={12}
-            placeholder={t('feed.announcement.placeholder')}
-            value={text}
-            slotProps={{ htmlInput: { maxLength: 4000 } }}
-            onChange={event => {
-              setText(event.target.value)
-            }}
-          />
-          <FeedFailure error={publish.error} message={t('feed.postFailed')} />
-        </DialogSection>
+        <DialogFields>
+          <DialogSection label={t('feed.announcement.text')} htmlFor={textId}>
+            <TextField
+              id={textId}
+              fullWidth
+              multiline
+              minRows={3}
+              maxRows={12}
+              placeholder={t('feed.announcement.placeholder')}
+              value={text}
+              slotProps={{ htmlInput: { maxLength: 4000 } }}
+              onChange={event => {
+                setText(event.target.value)
+              }}
+            />
+            <FeedFailure error={publish.error} message={t('feed.postFailed')} />
+          </DialogSection>
+        </DialogFields>
         <Divider />
         <DialogActions>
           <Button variant="outlined" onClick={onClose}>

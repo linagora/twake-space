@@ -1,20 +1,23 @@
 import { CrossMedium, Icon, Previous } from '@linagora/twake-icons'
-import { Box, IconButton, Typography } from '@linagora/twake-mui'
-import type { ReactElement, ReactNode } from 'react'
+import { Box, IconButton, Switch, Typography } from '@linagora/twake-mui'
+import { useId, type ReactElement, type ReactNode } from 'react'
 
 interface HeaderAction {
   label: string
   onClick: () => void
 }
 
-// A small label over its field, padded as the header.
-export function DialogSection({
-  label,
-  htmlFor,
+const CAPTION = {
+  fontSize: 12,
+  fontWeight: 500,
+  lineHeight: '15.8px',
+  letterSpacing: 0.5
+}
+
+// The fields of a dialog, padded as the header.
+export function DialogFields({
   children
 }: {
-  label: string
-  htmlFor: string
   children: ReactNode
 }): ReactElement {
   return (
@@ -27,19 +30,75 @@ export function DialogSection({
         py: 2
       }}
     >
+      {children}
+    </Box>
+  )
+}
+
+// A small label over its field, or over a group of fields with no `htmlFor`.
+export function DialogSection({
+  label,
+  htmlFor,
+  children
+}: {
+  label: string
+  htmlFor?: string
+  children: ReactNode
+}): ReactElement {
+  const labelId = useId()
+  return (
+    <Box
+      role={htmlFor ? undefined : 'group'}
+      aria-labelledby={htmlFor ? undefined : labelId}
+      sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}
+    >
       <Typography
-        component="label"
+        id={labelId}
+        component={htmlFor ? 'label' : 'span'}
         htmlFor={htmlFor}
-        sx={{
-          fontSize: 12,
-          fontWeight: 500,
-          lineHeight: '15.8px',
-          letterSpacing: 0.5
-        }}
+        sx={CAPTION}
       >
         {label}
       </Typography>
       {children}
+    </Box>
+  )
+}
+
+// A setting the dialog applies: its label, and a switch at the row's end.
+export function DialogSwitch({
+  label,
+  checked,
+  onChange
+}: {
+  label: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}): ReactElement {
+  return (
+    <Box
+      component="label"
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 2,
+        minHeight: 40,
+        pl: 2,
+        pr: 1,
+        py: 0.5,
+        cursor: 'pointer'
+      }}
+    >
+      <Typography component="span" sx={CAPTION}>
+        {label}
+      </Typography>
+      <Switch
+        checked={checked}
+        onChange={(_event, on) => {
+          onChange(on)
+        }}
+      />
     </Box>
   )
 }
@@ -114,15 +173,7 @@ export function DialogHeader({
           >
             {title}
           </Typography>
-          <Typography
-            color="textSecondary"
-            sx={{
-              fontSize: 12,
-              fontWeight: 500,
-              lineHeight: '15.8px',
-              letterSpacing: 0.5
-            }}
-          >
+          <Typography color="textSecondary" sx={CAPTION}>
             {subtitle}
           </Typography>
         </Box>

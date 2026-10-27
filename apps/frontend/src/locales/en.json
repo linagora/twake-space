@@ -374,10 +374,15 @@
     "emoji": "Add an emoji",
     "poll": {
       "title": "New poll",
-      "publish": "Publish",
-      "question": "Ask a question",
+      "subtitle": "Let the team vote on options",
+      "publish": "Send poll",
+      "question": "Question",
+      "questionPlaceholder": "What should we prioritize next sprint?",
+      "options": "Options",
       "option": "Option %{n}",
-      "addOption": "Add an option",
+      "addOption": "Add option",
+      "multiple": "Allow multiple answers",
+      "anonymous": "Anonymous votes",
       "removeOption": "Remove option %{n}",
       "votes": "%{smart_count} vote |||| %{smart_count} votes",
       "choice": "%{label}: %{smart_count} vote |||| %{label}: %{smart_count} votes",
@@ -390,6 +395,7 @@
     "yesNo": {
       "menu": "Yes/no question",
       "title": "New yes/no question",
+      "publish": "Send question",
       "yes": "Yes",
       "no": "No"
     },

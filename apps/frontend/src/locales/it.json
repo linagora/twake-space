@@ -374,10 +374,15 @@
     "emoji": "Aggiungi un emoji",
     "poll": {
       "title": "Nuovo sondaggio",
-      "publish": "Pubblica",
-      "question": "Fai una domanda",
+      "subtitle": "Lascia che il team voti tra le opzioni",
+      "publish": "Invia sondaggio",
+      "question": "Domanda",
+      "questionPlaceholder": "A cosa diamo priorità nel prossimo sprint?",
+      "options": "Opzioni",
       "option": "Opzione %{n}",
       "addOption": "Aggiungi un’opzione",
+      "multiple": "Consenti più risposte",
+      "anonymous": "Voti anonimi",
       "removeOption": "Rimuovi l’opzione %{n}",
       "votes": "%{smart_count} voto |||| %{smart_count} voti",
       "choice": "%{label}: %{smart_count} voto |||| %{label}: %{smart_count} voti",
@@ -390,6 +395,7 @@
     "yesNo": {
       "menu": "Domanda sì/no",
       "title": "Nuova domanda sì/no",
+      "publish": "Invia domanda",
       "yes": "Sì",
       "no": "No"
     },

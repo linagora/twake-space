@@ -374,10 +374,15 @@
     "emoji": "Thêm biểu tượng cảm xúc",
     "poll": {
       "title": "Cuộc thăm dò mới",
-      "publish": "Đăng",
-      "question": "Đặt câu hỏi",
+      "subtitle": "Để nhóm bình chọn các lựa chọn",
+      "publish": "Gửi cuộc thăm dò",
+      "question": "Câu hỏi",
+      "questionPlaceholder": "Chúng ta nên ưu tiên gì trong sprint tới?",
+      "options": "Các lựa chọn",
       "option": "Lựa chọn %{n}",
       "addOption": "Thêm lựa chọn",
+      "multiple": "Cho phép nhiều câu trả lời",
+      "anonymous": "Bình chọn ẩn danh",
       "removeOption": "Xóa lựa chọn %{n}",
       "votes": "%{smart_count} phiếu",
       "choice": "%{label}: %{smart_count} phiếu",
@@ -390,6 +395,7 @@
     "yesNo": {
       "menu": "Câu hỏi có/không",
       "title": "Câu hỏi có/không mới",
+      "publish": "Gửi câu hỏi",
       "yes": "Có",
       "no": "Không"
     },
