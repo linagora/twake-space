@@ -230,7 +230,11 @@ export function memoryFeed(
       const post = await myPost(spaceId, postId)
       const closing = post.poll ?? post.approval ?? post.feedback
       if (!closing) return refuse(404, 'not_found')
-      closing.closedAt ??= new Date().toISOString()
+      const deadline = post.poll?.closesAt
+      closing.closedAt ??=
+        deadline && new Date(deadline) <= new Date()
+          ? deadline
+          : new Date().toISOString()
       return structuredClone(post)
     },
     pin: async (spaceId, postId, pinned) => {

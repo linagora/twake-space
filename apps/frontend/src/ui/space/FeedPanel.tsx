@@ -943,11 +943,15 @@ function PollVotes({
   const mine = (option: PollOption) =>
     myId !== null && option.userIds.includes(myId)
   const total = poll.options.reduce((sum, o) => sum + o.count, 0)
+  // No event comes at the deadline: past it, the card closes on its own.
+  const isClosed =
+    poll.closedAt !== null ||
+    (poll.closesAt !== null && new Date(poll.closesAt) <= new Date())
   const closed = (summary: string) =>
-    poll.closedAt ? `${summary} · ${t('feed.poll.closed')}` : summary
+    isClosed ? `${summary} · ${t('feed.poll.closed')}` : summary
   const shared = {
     question: post.body,
-    disabled: poll.closedAt !== null || vote.isPending,
+    disabled: isClosed || vote.isPending,
     onVote: (index: number) => {
       const option = poll.options[index]
       if (option) vote.mutate({ option: index, picked: !mine(option) })

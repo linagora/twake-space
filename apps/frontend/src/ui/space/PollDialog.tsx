@@ -29,10 +29,7 @@ import { PollIcon } from '@/ds/icons'
 import { DayField, TimeField } from '@/ds/Pickers'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
-import { useCommonSettings } from '@/ui/settings/useCommonSettings'
 import { FeedFailure } from '@/ui/space/FeedFailure'
-
-const HOUR = 60 * MINUTE
 
 // `key` keeps a field in place when one above it is removed.
 interface OptionField {
@@ -63,14 +60,12 @@ export function PollDialog({
   )
   const [multiple, setMultiple] = useState(false)
   const [anonymous, setAnonymous] = useState(false)
-  // The deadline is on the Twake Workplace clock, as the calendar's is.
-  const { settings } = useCommonSettings()
-  const zone =
-    settings.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  // The browser's clock, as the feed shows every time on it.
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const [opened] = useState(() => new Date())
   const today = toInputs(opened, zone)
   const [start] = useState(() =>
-    toInputs(nextSlot(new Date(opened.getTime() + HOUR), zone, 30), zone)
+    toInputs(nextSlot(new Date(opened.getTime() + 60 * MINUTE), zone, 30), zone)
   )
   const [deadline, setDeadline] = useState(false)
   const [date, setDate] = useState(start.date)

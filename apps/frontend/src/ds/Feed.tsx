@@ -1575,27 +1575,43 @@ export function FeedPoll({
           </Box>
         ))}
       </Box>
-      <Box
-        sx={{
-          alignSelf: 'stretch',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1
-        }}
+      <FeedPollFooter people={[]} summary={summary} close={close} />
+    </Box>
+  )
+}
+
+function FeedPollFooter({
+  people,
+  summary,
+  close
+}: {
+  people: { id: string; name: string; avatar: string | null }[]
+  summary: string
+  close: { label: string; onClick: () => void } | null
+}): ReactElement {
+  return (
+    <Box
+      sx={{
+        alignSelf: 'stretch',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.5,
+        pl: 1
+      }}
+    >
+      <FeedPeople people={people} />
+      <Typography
+        variant="caption"
+        color="textSecondary"
+        sx={{ flex: '1 1 auto', fontWeight: 500, letterSpacing: 0.4 }}
       >
-        <Typography
-          variant="caption"
-          color="textSecondary"
-          sx={{ flex: '1 1 auto', fontWeight: 500, letterSpacing: 0.4, pl: 1 }}
-        >
-          {summary}
-        </Typography>
-        {close && (
-          <Button size="small" color="inherit" onClick={close.onClick}>
-            {close.label}
-          </Button>
-        )}
-      </Box>
+        {summary}
+      </Typography>
+      {close && (
+        <Button size="small" color="inherit" onClick={close.onClick}>
+          {close.label}
+        </Button>
+      )}
     </Box>
   )
 }
@@ -1716,29 +1732,7 @@ export function FeedYesNo({
           )
         })}
       </Box>
-      <Box
-        sx={{
-          alignSelf: 'stretch',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0.5,
-          pl: 1
-        }}
-      >
-        <FeedPeople people={people} />
-        <Typography
-          variant="caption"
-          color="textSecondary"
-          sx={{ flex: '1 1 auto', fontWeight: 500, letterSpacing: 0.4 }}
-        >
-          {summary}
-        </Typography>
-        {close && (
-          <Button size="small" color="inherit" onClick={close.onClick}>
-            {close.label}
-          </Button>
-        )}
-      </Box>
+      <FeedPollFooter people={people} summary={summary} close={close} />
     </Box>
   )
 }
