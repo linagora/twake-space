@@ -106,9 +106,15 @@ export interface FeedbackAnswer {
 
 export const FEEDBACK_ANSWER = { max: 2000 }
 
-/** One choice per member. A yes/no question's labels are `yes` and `no`. */
+/**
+ * One choice per member, or several on a `multiple` poll. A yes/no question's
+ * labels are `yes` and `no`.
+ */
 export interface Poll {
   kind: 'choice' | 'yes_no'
+  multiple: boolean
+  /** Its options name only the user among their voters. */
+  anonymous: boolean
   options: PollOption[]
   closedAt: string | null
 }
@@ -136,7 +142,7 @@ export const APPROVERS = { max: 20 }
 
 /** What a new post asks of the members, beyond its text. */
 export type PostAsk =
-  | { poll: { options: string[] } }
+  | { poll: { options: string[]; multiple: boolean; anonymous: boolean } }
   | { poll: { kind: 'yes_no' } }
   | { approval: { approvers: string[] } }
   | { announcement: { title?: string; color?: string } }
@@ -144,6 +150,7 @@ export type PostAsk =
 
 export interface PollOption {
   label: string
+  count: number
   /** In the order they voted. */
   userIds: string[]
 }
@@ -204,10 +211,11 @@ export interface FeedService {
     mentions: string[]
   ) => Promise<FeedItem>
   remove: (spaceId: string, postId: string) => Promise<void>
-  /** Moves the user's vote to `option`, an index in the poll's options; a
-   * closed poll refuses it with `poll_closed`. */
+  /** Moves the user's vote to `option`, an index in the poll's options, or
+   * adds it to their picks on a multiple poll; a closed poll refuses it with
+   * `poll_closed`. */
   vote: (spaceId: string, postId: string, option: number) => Promise<void>
-  unvote: (spaceId: string, postId: string) => Promise<void>
+  unvote: (spaceId: string, postId: string, option: number) => Promise<void>
   /** Its author only, for a poll, an approval or a feedback request. */
   closePoll: (spaceId: string, postId: string) => Promise<FeedItem>
   /** Its author only, for an announcement. */
@@ -333,17 +341,29 @@ export function searchedText(item: FeedItem): string[] {
   return [item.object.title, item.preview ?? '']
 }
 
-/** The poll once a user has voted for `option`, or taken their vote back. */
+/**
+ * The poll once a user has picked `option`, or taken it back; on a poll with
+ * one answer, a pick replaces their vote.
+ */
 export function withVote(
   poll: Poll,
   userId: string,
-  option: number | null
+  option: number,
+  picked: boolean
 ): Poll {
   return {
     ...poll,
     options: poll.options.map((o, index) => {
-      const others = o.userIds.filter(id => id !== userId)
-      return { ...o, userIds: index === option ? [...others, userId] : others }
+      const had = o.userIds.includes(userId)
+      const has = index === option ? picked : poll.multiple && had
+      if (has === had) return o
+      return has
+        ? { ...o, count: o.count + 1, userIds: [...o.userIds, userId] }
+        : {
+            ...o,
+            count: o.count - 1,
+            userIds: o.userIds.filter(id => id !== userId)
+          }
     })
   }
 }

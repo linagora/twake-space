@@ -374,10 +374,15 @@
     "emoji": "Emoji hinzufügen",
     "poll": {
       "title": "Neue Umfrage",
-      "publish": "Veröffentlichen",
-      "question": "Eine Frage stellen",
+      "subtitle": "Lassen Sie das Team über Optionen abstimmen",
+      "publish": "Umfrage senden",
+      "question": "Frage",
+      "questionPlaceholder": "Was sollen wir im nächsten Sprint priorisieren?",
+      "options": "Optionen",
       "option": "Option %{n}",
       "addOption": "Option hinzufügen",
+      "multiple": "Mehrere Antworten erlauben",
+      "anonymous": "Anonyme Abstimmung",
       "removeOption": "Option %{n} entfernen",
       "votes": "%{smart_count} Stimme |||| %{smart_count} Stimmen",
       "choice": "%{label}: %{smart_count} Stimme |||| %{label}: %{smart_count} Stimmen",
@@ -390,6 +395,7 @@
     "yesNo": {
       "menu": "Ja/Nein-Frage",
       "title": "Neue Ja/Nein-Frage",
+      "publish": "Frage senden",
       "yes": "Ja",
       "no": "Nein"
     },

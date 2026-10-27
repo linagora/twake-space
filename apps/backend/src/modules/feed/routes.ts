@@ -31,6 +31,7 @@ import {
   feedCards,
   feedCategory,
   feedItemReactions,
+  feedPollChoices,
   feedPollVotes,
   feedPostKind,
   feedPosts,
@@ -96,7 +97,9 @@ const newPostBody = postBody
               options =>
                 new Set(options.map(o => o.toLowerCase())).size ===
                 options.length
-            )
+            ),
+          multiple: z.boolean().default(false),
+          anonymous: z.boolean().default(false)
         }),
         z.strictObject({ kind: z.literal('yes_no') })
       ])
@@ -131,6 +134,16 @@ const newPostBody = postBody
       [poll, approval, announcement, feedback].filter(Boolean).length <= 1
   )
 const voteBody = z.object({ option: z.int().min(0) })
+// Takes back the vote only while it is for that option, so a stale view
+// cannot take back a vote it does not show; on a multiple poll, that one pick.
+const unvoteQuery = z.object({
+  option: z
+    .string()
+    .trim()
+    .min(1)
+    .pipe(z.coerce.number<string>().int().min(0))
+    .optional()
+})
 const answerBody = z.object({ text: z.string().trim().min(1).max(2000) })
 const decisionBody = z.object({
   decision: z.enum(DECISIONS),
@@ -285,6 +298,7 @@ export function registerFeedRoutes(
         kind: feedPosts.kind,
         authorId: feedPosts.authorId,
         options: feedPosts.pollOptions,
+        multiple: feedPosts.pollMultiple,
         approverIds: feedPosts.approverIds,
         closedAt: feedPosts.pollClosedAt
       })
@@ -534,7 +548,11 @@ export function registerFeedRoutes(
               kind,
               body,
               time,
-              pollOptions: poll?.kind === 'choice' ? poll.options : null,
+              ...(poll?.kind === 'choice' && {
+                pollOptions: poll.options,
+                pollMultiple: poll.multiple,
+                pollAnonymous: poll.anonymous
+              }),
               approverIds: approval?.approvers ?? null,
               pinnedAt: announcement ? time : null,
               ...(typeof announcement === 'object' && {
@@ -644,15 +662,21 @@ export function registerFeedRoutes(
           if (option >= (poll.options?.length ?? 2)) {
             throw new Refusal(400, 'invalid_request')
           }
-          const [voted] = await tx
-            .insert(feedPollVotes)
-            .values({ postId, userId, option })
-            .onConflictDoUpdate({
-              target: [feedPollVotes.postId, feedPollVotes.userId],
-              set: { option, createdAt: new Date() },
-              setWhere: ne(feedPollVotes.option, option)
-            })
-            .returning({ postId: feedPollVotes.postId })
+          const [voted] = poll.multiple
+            ? await tx
+                .insert(feedPollChoices)
+                .values({ postId, userId, option })
+                .onConflictDoNothing()
+                .returning({ postId: feedPollChoices.postId })
+            : await tx
+                .insert(feedPollVotes)
+                .values({ postId, userId, option })
+                .onConflictDoUpdate({
+                  target: [feedPollVotes.postId, feedPollVotes.userId],
+                  set: { option, createdAt: new Date() },
+                  setWhere: ne(feedPollVotes.option, option)
+                })
+                .returning({ postId: feedPollVotes.postId })
           if (voted) await tellFeed(tx, spaceId, postId, 'changed')
         })
         return await reply.code(204).send()
@@ -669,17 +693,20 @@ export function registerFeedRoutes(
       try {
         const { spaceId, userId } = await memberOf(request)
         const postId = itemOf(request)
+        const { option } = parse(unvoteQuery, request.query)
         await db.transaction(async tx => {
-          await openPoll(tx, spaceId, postId)
+          const poll = await openPoll(tx, spaceId, postId)
+          const picks = poll.multiple ? feedPollChoices : feedPollVotes
           const [removed] = await tx
-            .delete(feedPollVotes)
+            .delete(picks)
             .where(
               and(
-                eq(feedPollVotes.postId, postId),
-                eq(feedPollVotes.userId, userId)
+                eq(picks.postId, postId),
+                eq(picks.userId, userId),
+                option === undefined ? undefined : eq(picks.option, option)
               )
             )
-            .returning({ postId: feedPollVotes.postId })
+            .returning({ postId: picks.postId })
           if (removed) await tellFeed(tx, spaceId, postId, 'changed')
         })
         return await reply.code(204).send()

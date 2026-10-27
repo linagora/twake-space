@@ -98,24 +98,35 @@ describe('approvalState', () => {
 describe('withVote', () => {
   const poll: Poll = {
     kind: 'choice',
+    multiple: false,
+    anonymous: false,
     options: [
-      { label: 'Tuesday', userIds: ['u1', 'me'] },
-      { label: 'Friday', userIds: ['u2'] }
+      { label: 'Tuesday', count: 2, userIds: ['u1', 'me'] },
+      { label: 'Friday', count: 1, userIds: ['u2'] }
     ],
     closedAt: null
   }
 
   it('moves my vote to the option, last in it', () => {
-    expect(withVote(poll, 'me', 1).options).toEqual([
-      { label: 'Tuesday', userIds: ['u1'] },
-      { label: 'Friday', userIds: ['u2', 'me'] }
+    expect(withVote(poll, 'me', 1, true).options).toEqual([
+      { label: 'Tuesday', count: 1, userIds: ['u1'] },
+      { label: 'Friday', count: 2, userIds: ['u2', 'me'] }
     ])
   })
 
   it('takes my vote back', () => {
-    expect(withVote(poll, 'me', null).options).toEqual([
-      { label: 'Tuesday', userIds: ['u1'] },
-      { label: 'Friday', userIds: ['u2'] }
+    expect(withVote(poll, 'me', 0, false).options).toEqual([
+      { label: 'Tuesday', count: 1, userIds: ['u1'] },
+      { label: 'Friday', count: 1, userIds: ['u2'] }
+    ])
+  })
+
+  it('adds a pick to mine on a multiple poll', () => {
+    expect(
+      withVote({ ...poll, multiple: true }, 'me', 1, true).options
+    ).toEqual([
+      { label: 'Tuesday', count: 2, userIds: ['u1', 'me'] },
+      { label: 'Friday', count: 2, userIds: ['u2', 'me'] }
     ])
   })
 })

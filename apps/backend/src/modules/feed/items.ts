@@ -21,6 +21,7 @@ import {
   activityEvents,
   feedCards,
   feedItemReactions,
+  feedPollChoices,
   feedPollVotes,
   feedPosts,
   type Actor,
@@ -122,8 +123,11 @@ interface Announcement {
 interface Poll {
   // A yes/no question's labels are `yes` and `no`, for the reader's language.
   kind: 'choice' | 'yes_no'
-  // `userIds` in the order they voted.
-  options: { label: string; userIds: string[] }[]
+  multiple: boolean
+  anonymous: boolean
+  // `userIds` in the order they voted; on an anonymous poll, only the
+  // viewer's own.
+  options: { label: string; count: number; userIds: string[] }[]
   closedAt: Date | null
 }
 
@@ -335,7 +339,7 @@ async function loadItems(
   const postIds = rows.filter(r => r.kind === 'post').map(r => r.id)
   const items = new Map<string, FeedItem>()
   if (rows.length === 0) return items
-  const [cards, posts, reactions, votes] = await Promise.all([
+  const [cards, posts, reactions, votes, choices] = await Promise.all([
     cardIds.length === 0
       ? []
       : db
@@ -400,7 +404,18 @@ async function loadItems(
           })
           .from(feedPollVotes)
           .where(inArray(feedPollVotes.postId, postIds))
-          .orderBy(asc(feedPollVotes.createdAt), asc(feedPollVotes.userId))
+          .orderBy(asc(feedPollVotes.createdAt), asc(feedPollVotes.userId)),
+    postIds.length === 0
+      ? []
+      : db
+          .select({
+            postId: feedPollChoices.postId,
+            userId: feedPollChoices.userId,
+            option: feedPollChoices.option
+          })
+          .from(feedPollChoices)
+          .where(inArray(feedPollChoices.postId, postIds))
+          .orderBy(asc(feedPollChoices.createdAt), asc(feedPollChoices.userId))
   ])
   const asked = (post: (typeof posts)[number]['post']) =>
     post.kind === 'feedback' && viewer !== null && post.authorId === viewer
@@ -457,6 +472,7 @@ async function loadItems(
     })
   }
   const votesOf = Map.groupBy(votes, v => v.postId)
+  const choicesOf = Map.groupBy(choices, c => c.postId)
   type Post = (typeof posts)[number]['post']
   const pollOf = (post: Post): Poll | null => {
     const labels =
@@ -466,14 +482,21 @@ async function loadItems(
           ? post.pollOptions
           : null
     if (!labels) return null
+    const picks = (post.pollMultiple ? choicesOf : votesOf).get(post.id) ?? []
     return {
       kind: post.kind === 'poll' ? 'choice' : 'yes_no',
-      options: labels.map((label, index) => ({
-        label,
-        userIds: (votesOf.get(post.id) ?? [])
-          .filter(v => v.option === index)
-          .map(v => v.userId)
-      })),
+      multiple: post.pollMultiple,
+      anonymous: post.pollAnonymous,
+      options: labels.map((label, index) => {
+        const userIds = picks.filter(p => p.option === index).map(p => p.userId)
+        return {
+          label,
+          count: userIds.length,
+          userIds: post.pollAnonymous
+            ? userIds.filter(id => id === viewer)
+            : userIds
+        }
+      }),
       closedAt: post.pollClosedAt
     }
   }

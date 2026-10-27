@@ -374,10 +374,15 @@
     "emoji": "Ajouter un emoji",
     "poll": {
       "title": "Nouveau sondage",
-      "publish": "Publier",
-      "question": "Poser une question",
+      "subtitle": "Laissez l’équipe voter entre plusieurs options",
+      "publish": "Envoyer le sondage",
+      "question": "Question",
+      "questionPlaceholder": "Que faut-il prioriser au prochain sprint ?",
+      "options": "Options",
       "option": "Option %{n}",
       "addOption": "Ajouter une option",
+      "multiple": "Autoriser plusieurs réponses",
+      "anonymous": "Votes anonymes",
       "removeOption": "Retirer l’option %{n}",
       "votes": "%{smart_count} vote |||| %{smart_count} votes",
       "choice": "%{label} : %{smart_count} vote |||| %{label} : %{smart_count} votes",
@@ -390,6 +395,7 @@
     "yesNo": {
       "menu": "Question oui/non",
       "title": "Nouvelle question oui/non",
+      "publish": "Envoyer la question",
       "yes": "Oui",
       "no": "Non"
     },

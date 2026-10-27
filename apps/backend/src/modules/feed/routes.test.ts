@@ -1272,7 +1272,9 @@ describe('mentions', () => {
 
 describe('polls', () => {
   interface Poll {
-    options: { label: string; userIds: string[] }[]
+    multiple: boolean
+    anonymous: boolean
+    options: { label: string; count: number; userIds: string[] }[]
     closedAt: string | null
   }
   const pollOf = async (send: ReturnType<typeof setUp>, postId: string) =>
@@ -1346,13 +1348,19 @@ describe('polls', () => {
     expect((await send('PUT', vote, 'bob', { option: 1 })).statusCode).toBe(204)
     expect(await pollOf(send, poll)).toEqual({
       kind: 'choice',
+      multiple: false,
+      anonymous: false,
       options: [
-        { label: 'Pizza', userIds: [CAROL] },
-        { label: 'Sushi', userIds: [BOB] }
+        { label: 'Pizza', count: 1, userIds: [CAROL] },
+        { label: 'Sushi', count: 1, userIds: [BOB] }
       ],
       closedAt: null
     })
 
+    expect((await send('DELETE', `${vote}?option=0`, 'bob')).statusCode).toBe(
+      204
+    )
+    expect((await pollOf(send, poll)).options[1]?.userIds).toEqual([BOB])
     expect((await send('DELETE', vote, 'bob')).statusCode).toBe(204)
     expect((await pollOf(send, poll)).options[1]?.userIds).toEqual([])
     await vi.waitFor(() => {
@@ -1363,6 +1371,60 @@ describe('polls', () => {
       itemId: poll,
       change: 'changed'
     })
+  })
+
+  it('lets a member pick several options of a multiple poll, and take one back', async () => {
+    const send = setUp()
+    const { id } = (
+      await send('POST', `/spaces/${DESIGN}/feed/posts`, 'alice', {
+        body: 'Lunch?',
+        poll: { options: ['Pizza', 'Sushi', 'Tacos'], multiple: true }
+      })
+    ).json<{ id: string }>()
+    const vote = `/spaces/${DESIGN}/feed/posts/${id}/vote`
+
+    await send('PUT', vote, 'bob', { option: 0 })
+    await send('PUT', vote, 'bob', { option: 2 })
+    await send('PUT', vote, 'carol', { option: 2 })
+    expect((await send('DELETE', `${vote}?option=0`, 'bob')).statusCode).toBe(
+      204
+    )
+
+    expect(await pollOf(send, id)).toMatchObject({
+      multiple: true,
+      options: [
+        { label: 'Pizza', count: 0, userIds: [] },
+        { label: 'Sushi', count: 0, userIds: [] },
+        { label: 'Tacos', count: 2, userIds: [BOB, CAROL] }
+      ]
+    })
+    await send('DELETE', vote, 'bob')
+    expect((await pollOf(send, id)).options[2]?.userIds).toEqual([CAROL])
+  })
+
+  it('counts the votes of an anonymous poll, showing each member only their own', async () => {
+    const send = setUp()
+    const { id } = (
+      await send('POST', `/spaces/${DESIGN}/feed/posts`, 'alice', {
+        body: 'Lunch?',
+        poll: { options: ['Pizza', 'Sushi'], anonymous: true }
+      })
+    ).json<{ id: string }>()
+    const vote = `/spaces/${DESIGN}/feed/posts/${id}/vote`
+    await send('PUT', vote, 'bob', { option: 0 })
+    await send('PUT', vote, 'carol', { option: 0 })
+
+    const seen = await send('GET', `/spaces/${DESIGN}/feed/items/${id}`, 'bob')
+    const byAuthor = await send('GET', `/spaces/${DESIGN}/feed`, 'alice')
+
+    expect(seen.json<{ poll: Poll }>().poll).toMatchObject({
+      anonymous: true,
+      options: [
+        { label: 'Pizza', count: 2, userIds: [BOB] },
+        { label: 'Sushi', count: 0, userIds: [] }
+      ]
+    })
+    expect(JSON.stringify(byAuthor.json())).not.toContain(BOB)
   })
 
   it('refuses an option out of range, and a vote on a post with no poll', async () => {

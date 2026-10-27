@@ -44,6 +44,7 @@ import {
   type FileCounts,
   type FeedPost,
   type Poll,
+  type PollOption,
   withReaction,
   withVote
 } from '@/application/feed'
@@ -906,23 +907,23 @@ function PollVotes({
   const { replace } = useFeedCache(spaceId)
   // Shown at once; the live event that follows brings the stored votes.
   const vote = useMutation({
-    mutationFn: (option: number | null) =>
-      option === null
-        ? feed.unvote(spaceId, post.id)
-        : feed.vote(spaceId, post.id, option),
-    onMutate: option => {
-      if (myId) replace({ ...post, poll: withVote(poll, myId, option) })
+    mutationFn: ({ option, picked }: { option: number; picked: boolean }) =>
+      picked
+        ? feed.vote(spaceId, post.id, option)
+        : feed.unvote(spaceId, post.id, option),
+    onMutate: ({ option, picked }) => {
+      if (myId) replace({ ...post, poll: withVote(poll, myId, option, picked) })
       return post
     },
     // Rereads the post: it may have closed in the meantime.
-    onError: (_error, _option, before) => {
+    onError: (_error, _vote, before) => {
       if (before) replace(before)
       feed.item(spaceId, post.id).then(replace, () => undefined)
     }
   })
-  const mine =
-    myId === null ? -1 : poll.options.findIndex(o => o.userIds.includes(myId))
-  const total = poll.options.reduce((sum, o) => sum + o.userIds.length, 0)
+  const mine = (option: PollOption) =>
+    myId !== null && option.userIds.includes(myId)
+  const total = poll.options.reduce((sum, o) => sum + o.count, 0)
   const votes = t('feed.poll.votes', { smart_count: total })
   return (
     <>
@@ -935,18 +936,16 @@ function PollVotes({
               : option.label
           return {
             label,
-            name: t('feed.poll.choice', {
-              label,
-              smart_count: option.userIds.length
-            }),
-            count: option.userIds.length,
-            mine: index === mine
+            name: t('feed.poll.choice', { label, smart_count: option.count }),
+            count: option.count,
+            mine: mine(option)
           }
         })}
         summary={poll.closedAt ? `${votes} · ${t('feed.poll.closed')}` : votes}
         disabled={poll.closedAt !== null || vote.isPending}
         onVote={index => {
-          vote.mutate(index === mine ? null : index)
+          const option = poll.options[index]
+          if (option) vote.mutate({ option: index, picked: !mine(option) })
         }}
         close={onClose && { label: t('feed.poll.close'), onClick: onClose }}
       />

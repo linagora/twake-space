@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  boolean,
   check,
   index,
   integer,
@@ -117,6 +118,10 @@ export const feedPosts = pgTable(
     editedAt: timestamptz('edited_at'),
     // Set on a poll only: a yes/no question's two answers are fixed, not stored.
     pollOptions: text('poll_options').array(),
+    // A member's several picks go to `feed_poll_choices`, not to the votes.
+    pollMultiple: boolean('poll_multiple').notNull().default(false),
+    // Its votes count, but no one sees who cast them.
+    pollAnonymous: boolean('poll_anonymous').notNull().default(false),
     // Closes a poll, a yes/no question, an approval or a feedback request.
     pollClosedAt: timestamptz('poll_closed_at'),
     // Set on an approval request only.
@@ -154,6 +159,20 @@ export const feedPollVotes = pgTable(
     createdAt: timestamptz('created_at').notNull().defaultNow()
   },
   table => [primaryKey({ columns: [table.postId, table.userId] })]
+)
+
+// A member's picks on a multiple poll, one per option.
+export const feedPollChoices = pgTable(
+  'feed_poll_choices',
+  {
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => feedPosts.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull(),
+    option: integer().notNull(),
+    createdAt: timestamptz('created_at').notNull().defaultNow()
+  },
+  table => [primaryKey({ columns: [table.postId, table.userId, table.option] })]
 )
 
 // On a card or a post.

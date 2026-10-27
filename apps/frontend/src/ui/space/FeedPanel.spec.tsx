@@ -772,9 +772,11 @@ describe('FeedPanel', () => {
         body: 'Which day?',
         poll: {
           kind: 'choice',
+          multiple: false,
+          anonymous: false,
           options: [
-            { label: 'Tuesday', userIds: ['u-bob'] },
-            { label: 'Friday', userIds: [] }
+            { label: 'Tuesday', count: 1, userIds: ['u-bob'] },
+            { label: 'Friday', count: 0, userIds: [] }
           ],
           closedAt
         },
@@ -786,10 +788,10 @@ describe('FeedPanel', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
       fireEvent.click(screen.getByRole('menuitem', { name: 'Poll' }))
       const dialog = screen.getByRole('dialog', { name: 'New poll' })
-      const publish = within(dialog).getByRole('button', { name: 'Publish' })
+      const publish = within(dialog).getByRole('button', { name: 'Send poll' })
 
       fireEvent.change(
-        within(dialog).getByRole('textbox', { name: 'Ask a question' }),
+        within(dialog).getByRole('textbox', { name: 'Question' }),
         { target: { value: ' Which day? ' } }
       )
       fireEvent.change(
@@ -803,7 +805,7 @@ describe('FeedPanel', () => {
       expect(publish).toBeDisabled()
 
       fireEvent.click(
-        within(dialog).getByRole('button', { name: 'Add an option' })
+        within(dialog).getByRole('button', { name: 'Add option' })
       )
       fireEvent.change(
         within(dialog).getByRole('textbox', { name: 'Option 3' }),
@@ -815,13 +817,20 @@ describe('FeedPanel', () => {
       expect(
         within(dialog).getByRole('textbox', { name: 'Option 2' })
       ).toHaveValue('Friday')
+      fireEvent.click(
+        within(dialog).getByRole('switch', { name: 'Allow multiple answers' })
+      )
       fireEvent.click(publish)
 
       expect(
         await screen.findByRole('group', { name: 'Which day?' })
       ).toBeInTheDocument()
       expect(feed.post).toHaveBeenCalledWith('a1', 'Which day?', [], {
-        poll: { options: ['Tuesday', 'Friday'] }
+        poll: {
+          options: ['Tuesday', 'Friday'],
+          multiple: true,
+          anonymous: false
+        }
       })
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
@@ -864,7 +873,46 @@ describe('FeedPanel', () => {
           pressed: false
         })
       ).toBeInTheDocument()
-      expect(feed.unvote).toHaveBeenCalledWith('a1', 'post-1')
+      expect(feed.unvote).toHaveBeenCalledWith('a1', 'post-1', 0)
+    })
+
+    it('keeps each pick on a multiple poll', async () => {
+      const { feed } = renderFeed([
+        lunch({
+          poll: {
+            kind: 'choice',
+            multiple: true,
+            anonymous: false,
+            options: [
+              { label: 'Tuesday', count: 1, userIds: ['u-bob'] },
+              { label: 'Friday', count: 0, userIds: [] }
+            ],
+            closedAt: null
+          }
+        })
+      ])
+      const poll = await screen.findByRole('group', { name: 'Which day?' })
+
+      fireEvent.click(
+        within(poll).getByRole('button', { name: 'Tuesday: 1 vote' })
+      )
+      fireEvent.click(
+        await within(poll).findByRole('button', { name: 'Friday: 0 votes' })
+      )
+
+      expect(
+        await within(poll).findByRole('button', {
+          name: 'Friday: 1 vote',
+          pressed: true
+        })
+      ).toBeInTheDocument()
+      expect(
+        within(poll).getByRole('button', {
+          name: 'Tuesday: 2 votes',
+          pressed: true
+        })
+      ).toBeInTheDocument()
+      expect(feed.unvote).not.toHaveBeenCalled()
     })
 
     it("lets its author close it, and no one vote once it's closed", async () => {
@@ -958,10 +1006,12 @@ describe('FeedPanel', () => {
     ).not.toBeInTheDocument()
 
     fireEvent.change(
-      within(dialog).getByRole('textbox', { name: 'Ask a question' }),
+      within(dialog).getByRole('textbox', { name: 'Question' }),
       { target: { value: 'Keep the demo?' } }
     )
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Publish' }))
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Send question' })
+    )
 
     const poll = await screen.findByRole('group', { name: 'Keep the demo?' })
     expect(feed.post).toHaveBeenCalledWith('a1', 'Keep the demo?', [], {
