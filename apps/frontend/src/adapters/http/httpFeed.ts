@@ -54,8 +54,12 @@ export function httpFeed(api: KyInstance): FeedService {
       send(
         api.put(feed(spaceId, 'posts', postId, 'vote'), { json: { option } })
       ),
-    unvote: (spaceId, postId) =>
-      send(api.delete(feed(spaceId, 'posts', postId, 'vote'))),
+    unvote: (spaceId, postId, option) =>
+      send(
+        api.delete(feed(spaceId, 'posts', postId, 'vote'), {
+          searchParams: { option }
+        })
+      ),
     closePoll: (spaceId, postId) =>
       api.post(feed(spaceId, 'posts', postId, 'close')).json<FeedItem>(),
     decide: (spaceId, postId, decision, comment) =>

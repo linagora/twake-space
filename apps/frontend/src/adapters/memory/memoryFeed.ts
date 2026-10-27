@@ -147,17 +147,22 @@ export function memoryFeed(
             ? 'options' in ask.poll
               ? {
                   kind: 'choice',
+                  multiple: ask.poll.multiple,
+                  anonymous: ask.poll.anonymous,
                   options: ask.poll.options.map(label => ({
                     label,
+                    count: 0,
                     userIds: []
                   })),
                   closedAt: null
                 }
               : {
                   kind: 'yes_no',
+                  multiple: false,
+                  anonymous: false,
                   options: [
-                    { label: 'yes', userIds: [] },
-                    { label: 'no', userIds: [] }
+                    { label: 'yes', count: 0, userIds: [] },
+                    { label: 'no', count: 0, userIds: [] }
                   ],
                   closedAt: null
                 }
@@ -210,11 +215,11 @@ export function memoryFeed(
     vote: async (spaceId, postId, option) => {
       const post = await openPoll(spaceId, postId)
       if (!post.poll?.options[option]) return refuse(400, 'invalid_request')
-      post.poll = withVote(post.poll, me.id, option)
+      post.poll = withVote(post.poll, me.id, option, true)
     },
-    unvote: async (spaceId, postId) => {
+    unvote: async (spaceId, postId, option) => {
       const post = await openPoll(spaceId, postId)
-      if (post.poll) post.poll = withVote(post.poll, me.id, null)
+      if (post.poll) post.poll = withVote(post.poll, me.id, option, false)
     },
     closePoll: async (spaceId, postId) => {
       const post = await myPost(spaceId, postId)

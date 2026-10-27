@@ -660,10 +660,12 @@ export function showcaseFeed(now: number): FeedItem[] {
       editedAt: null,
       poll: {
         kind: 'choice',
+        multiple: false,
+        anonymous: false,
         options: [
-          { label: 'Tuesday', userIds: ['uuid-carol', 'uuid-dave'] },
-          { label: 'Thursday', userIds: ['uuid-bob'] },
-          { label: 'Friday', userIds: [] }
+          { label: 'Tuesday', count: 2, userIds: ['uuid-carol', 'uuid-dave'] },
+          { label: 'Thursday', count: 1, userIds: ['uuid-bob'] },
+          { label: 'Friday', count: 0, userIds: [] }
         ],
         closedAt: null
       },
@@ -683,9 +685,11 @@ export function showcaseFeed(now: number): FeedItem[] {
       editedAt: null,
       poll: {
         kind: 'yes_no',
+        multiple: false,
+        anonymous: false,
         options: [
-          { label: 'yes', userIds: ['uuid-bob', 'uuid-dave'] },
-          { label: 'no', userIds: ['uuid-carol'] }
+          { label: 'yes', count: 2, userIds: ['uuid-bob', 'uuid-dave'] },
+          { label: 'no', count: 1, userIds: ['uuid-carol'] }
         ],
         closedAt: null
       },

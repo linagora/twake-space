@@ -55,7 +55,9 @@ export function PollDialog({
         spaceId,
         question.trim(),
         [],
-        kind === 'yes_no' ? { poll: { kind } } : { poll: { options } }
+        kind === 'yes_no'
+          ? { poll: { kind } }
+          : { poll: { options, multiple: false, anonymous: false } }
       ),
     onSuccess: onPublished
   })

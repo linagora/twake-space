@@ -133,14 +133,18 @@ describe('httpFeed', () => {
     {
       write: () =>
         feed.post('a1', 'Lunch?', [], {
-          poll: { options: ['Pizza', 'Sushi'] }
+          poll: {
+            options: ['Pizza', 'Sushi'],
+            multiple: true,
+            anonymous: false
+          }
         }),
       method: 'POST',
       path: 'spaces/a1/feed/posts',
       body: {
         body: 'Lunch?',
         mentions: [],
-        poll: { options: ['Pizza', 'Sushi'] }
+        poll: { options: ['Pizza', 'Sushi'], multiple: true, anonymous: false }
       }
     },
     {
@@ -167,9 +171,9 @@ describe('httpFeed', () => {
       body: { option: 1 }
     },
     {
-      write: () => feed.unvote('a1', 'p1'),
+      write: () => feed.unvote('a1', 'p1', 1),
       method: 'DELETE',
-      path: 'spaces/a1/feed/posts/p1/vote',
+      path: 'spaces/a1/feed/posts/p1/vote?option=1',
       body: null
     },
     {
