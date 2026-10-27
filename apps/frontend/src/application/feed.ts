@@ -145,7 +145,7 @@ export type PostAsk =
   | { poll: { options: string[]; multiple: boolean; anonymous: boolean } }
   | { poll: { kind: 'yes_no' } }
   | { approval: { approvers: string[] } }
-  | { announcement: { title?: string; color?: string } }
+  | { announcement: { title?: string; color?: string; pinned: boolean } }
   | { feedback: true }
 
 export interface PollOption {

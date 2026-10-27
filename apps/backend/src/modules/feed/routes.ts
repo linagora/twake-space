@@ -123,7 +123,8 @@ const newPostBody = postBody
             .string()
             .regex(/^#[0-9a-f]{6}$/i)
             .transform(color => color.toLowerCase())
-            .optional()
+            .optional(),
+          pinned: z.boolean().default(false)
         })
       ])
       .optional(),
@@ -554,10 +555,10 @@ export function registerFeedRoutes(
                 pollAnonymous: poll.anonymous
               }),
               approverIds: approval?.approvers ?? null,
-              pinnedAt: announcement ? time : null,
               ...(typeof announcement === 'object' && {
                 title: announcement.title ?? null,
-                color: announcement.color ?? null
+                color: announcement.color ?? null,
+                pinnedAt: announcement.pinned ? time : null
               })
             })
             .returning({ id: feedPosts.id })

@@ -423,6 +423,7 @@
     "announcement": {
       "menu": "Annonce",
       "title": "Nouvelle annonce",
+      "pinNow": "Épingler en haut du fil",
       "text": "Message",
       "publish": "Publier",
       "label": "Annonce",

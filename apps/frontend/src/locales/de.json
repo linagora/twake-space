@@ -423,6 +423,7 @@
     "announcement": {
       "menu": "Ankündigung",
       "title": "Neue Ankündigung",
+      "pinNow": "Oben im Feed anheften",
       "text": "Nachricht",
       "publish": "Veröffentlichen",
       "label": "Ankündigung",

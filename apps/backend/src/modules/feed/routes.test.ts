@@ -1836,7 +1836,7 @@ describe('announcements', () => {
   const announce = (send: ReturnType<typeof setUp>, body: string) =>
     send('POST', `/spaces/${DESIGN}/feed/posts`, 'alice', {
       body,
-      announcement: true
+      announcement: { pinned: true }
     })
   const pinned = async (send: ReturnType<typeof setUp>) =>
     (await send('GET', `/spaces/${DESIGN}/feed/pinned`, 'bob'))
@@ -1863,6 +1863,23 @@ describe('announcements', () => {
     const page = await send('GET', `/spaces/${DESIGN}/feed`)
     expect(page.json<Page>().items).toHaveLength(3)
     expect(live).toHaveBeenCalled()
+  })
+
+  it('leaves an announcement unpinned unless asked', async () => {
+    const send = setUp()
+
+    const plain = await send('POST', `/spaces/${DESIGN}/feed/posts`, 'alice', {
+      body: 'Offsite',
+      announcement: true
+    })
+    const titled = await send('POST', `/spaces/${DESIGN}/feed/posts`, 'alice', {
+      body: 'New office',
+      announcement: { title: 'Moving' }
+    })
+
+    expect(plain.json()).toMatchObject({ announcement: { pinnedAt: null } })
+    expect(titled.json()).toMatchObject({ announcement: { pinnedAt: null } })
+    expect(await pinned(send)).toEqual([])
   })
 
   it('stays pinned until its author unpins it, and pins again', async () => {

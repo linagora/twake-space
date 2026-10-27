@@ -272,10 +272,13 @@ describe('memoryFeed', () => {
     ).rejects.toMatchObject({ status: 403, code: 'cannot_post' })
   })
 
-  it('pins an announcement until its author unpins it', async () => {
+  it('pins an announcement when asked, until its author unpins it', async () => {
     const feed = feedFor('admin')
+    await feed.post('roadmap', 'Lunch at noon', [], {
+      announcement: { pinned: false }
+    })
     const post = await feed.post('roadmap', 'Closed Friday', [], {
-      announcement: {}
+      announcement: { pinned: true }
     })
     expect((await feed.pinned('roadmap')).map(item => item.id)).toEqual([
       post.id

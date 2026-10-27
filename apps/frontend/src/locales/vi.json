@@ -423,6 +423,7 @@
     "announcement": {
       "menu": "Thông báo",
       "title": "Thông báo mới",
+      "pinNow": "Ghim lên đầu bảng tin",
       "text": "Tin nhắn",
       "publish": "Đăng",
       "label": "Thông báo",
