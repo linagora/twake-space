@@ -1,11 +1,17 @@
 import { Box } from '@linagora/twake-mui'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState, type ReactElement } from 'react'
 import { useNavigate } from 'react-router'
 
 import { badgeLabel } from '@/application/badges'
 import { cardApp, type FeedItem } from '@/application/feed'
-import { rankSpaces, type SpaceSummary } from '@/application/spaces'
+import { rankSpaces, type Space, type SpaceSummary } from '@/application/spaces'
 import { itemPlace } from '@/application/spaceTabs'
+import {
+  taskPath,
+  tasksInSpaces,
+  type FoundTask
+} from '@/application/taskSearch'
 import { NameAvatar } from '@/ds/AppFrame'
 import { AppAvatar } from '@/ds/Feed'
 import { Spotlight, SpotlightEmpty, SpotlightOption } from '@/ds/Spotlight'
@@ -19,17 +25,20 @@ import {
   MIN_LENGTH,
   RESULTS
 } from '@/ui/space/FeedSearch'
-import { useFetchSpace, useSpaceList } from '@/ui/spaces/queries'
+import { useServices } from '@/ui/services/Services'
+import { useFetchSpace, useSpaceList, useSpaces } from '@/ui/spaces/queries'
 import { useDebounced } from '@/ui/useDebounced'
 
 type Option =
   | { kind: 'space'; space: SpaceSummary }
   | { kind: 'item'; space: SpaceSummary; item: FeedItem }
+  | { kind: 'task'; space: Space; task: FoundTask }
 
 // SpotSpace: Ctrl+K (⌘K on a Mac) anywhere, again to close it. The spaces
 // with news first, then the last opened; then what the feeds of all the
-// spaces hold. Enter opens the space, or the item where it lives. In the frame
-// of an app, the key goes to the app (Chat opens its own Spotchat).
+// spaces hold, then the tasks of their projects. Enter opens the space, or the
+// item where it lives. In the frame of an app, the key goes to the app (Chat
+// opens its own Spotchat).
 export function SpotSpace(): ReactElement | null {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -70,9 +79,21 @@ function Palette({ onClose }: { onClose: () => void }): ReactElement {
     q,
     RESULTS
   )
+  const tasks = useTaskSearch(q)
+  // The list holds no resources: the spaces tell their project once read.
+  const details = useSpaces(
+    spaces.map(space => space.id),
+    (tasks.data?.length ?? 0) > 0
+  )
   // Results for an older query would be picked by Enter.
   const stale = q !== typed
   const found = stale ? [] : results.items
+  const foundTasks = stale
+    ? []
+    : tasksInSpaces(
+        tasks.data ?? [],
+        details.flatMap(detail => (detail.data ? [detail.data] : []))
+      )
   const byId = new Map(spaces.map(space => [space.id, space]))
   const fetchSpace = useFetchSpace()
   const mounted = useRef(false)
@@ -90,17 +111,32 @@ function Palette({ onClose }: { onClose: () => void }): ReactElement {
     ...found.flatMap(({ spaceId, item }) => {
       const space = byId.get(spaceId)
       return space ? [{ kind: 'item' as const, space, item }] : []
-    })
+    }),
+    ...foundTasks.map(({ space, task }) => ({
+      kind: 'task' as const,
+      space,
+      task
+    }))
   ]
   const current = Math.min(active, options.length - 1)
   const optionId = (index: number): string => `${listId}-${String(index)}`
-  const searching = typed.length >= MIN_LENGTH && (stale || results.isFetching)
+  const searching =
+    typed.length >= MIN_LENGTH &&
+    (stale ||
+      results.isFetching ||
+      tasks.isFetching ||
+      details.some(detail => detail.isFetching))
 
   // Stays up while the space loads; closed meanwhile, nothing opens.
   const open = async (option: Option): Promise<void> => {
     if (option.kind === 'space') {
       onClose()
       await navigate(`/spaces/${option.space.id}`)
+      return
+    }
+    if (option.kind === 'task') {
+      onClose()
+      await navigate(taskPath(option.space, option.task))
       return
     }
     // The full space tells which tab a card opens in; without it, the feed.
@@ -170,6 +206,17 @@ function Palette({ onClose }: { onClose: () => void }): ReactElement {
                 void open(option)
               }}
             />
+          ) : option.kind === 'task' ? (
+            <TaskOption
+              key={`task/${option.task.boardId}/${option.task.key}`}
+              id={optionId(index)}
+              selected={index === current}
+              space={option.space}
+              task={option.task}
+              onClick={() => {
+                void open(option)
+              }}
+            />
           ) : (
             <ItemOption
               key={`${option.space.id}/${option.item.id}`}
@@ -198,6 +245,44 @@ function Palette({ onClose }: { onClose: () => void }): ReactElement {
         )
       )}
     </Spotlight>
+  )
+}
+
+// Without Twake Tasks, or when it refuses, the palette goes without tasks.
+function useTaskSearch(q: string) {
+  const { taskSearch } = useServices()
+  return useQuery({
+    queryKey: ['taskSearch', q],
+    queryFn: taskSearch && q !== '' ? () => taskSearch.search(q) : skipToken,
+    retry: false
+  })
+}
+
+function TaskOption({
+  id,
+  selected,
+  space,
+  task,
+  onClick
+}: {
+  id: string
+  selected: boolean
+  space: Space
+  task: FoundTask
+  onClick: () => void
+}): ReactElement {
+  const { t } = useI18n()
+  const appName = t('feed.apps.tasks')
+  return (
+    <SpotlightOption
+      id={id}
+      selected={selected}
+      avatar={<AppAvatar icon={APPS.tasks.icon} app="tasks" label={appName} />}
+      primary={task.title}
+      secondary={`${space.name} · ${task.key}`}
+      count={null}
+      onClick={onClick}
+    />
   )
 }
 

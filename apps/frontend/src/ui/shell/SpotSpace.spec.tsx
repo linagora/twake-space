@@ -200,5 +200,50 @@ describe('SpotSpace', () => {
       })
       expect(router.state.location.state).toEqual({ feedItem: 'post-1' })
     })
+
+    it('lists the tasks of the projects the spaces hold, and opens one on its board', async () => {
+      const service = spaces()
+      vi.mocked(service.get).mockImplementation(id =>
+        Promise.resolve(
+          id === design.id ? design : { ...design, id, resources: [] }
+        )
+      )
+      const found = (key: string, projectId: string) => ({
+        key,
+        title: `Plan ${key}`,
+        boardId: 'board-1',
+        projectId
+      })
+      const { router } = renderRoute('/', {
+        spaces: service,
+        taskSearch: {
+          search: () =>
+            Promise.resolve([
+              found('DES-4', 'project-1'),
+              found('OUT-1', 'project-9')
+            ])
+        }
+      })
+      await screen.findAllByRole('link', { name: 'Launch' })
+      pressCtrlK()
+      const dialog = screen.getByRole('dialog', { name: 'SpotSpace' })
+      fireEvent.change(within(dialog).getByRole('combobox'), {
+        target: { value: 'plan' }
+      })
+
+      const task = await within(dialog).findByRole('option', {
+        name: /Plan DES-4/
+      })
+      expect(task).toHaveTextContent('Design · DES-4')
+      expect(within(dialog).queryByText(/OUT-1/)).toBe(null)
+      fireEvent.click(task)
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(
+          '/spaces/space-1/tasks/boards/board-1'
+        )
+      })
+      expect(router.state.location.search).toBe('?task=DES-4')
+    })
   })
 })

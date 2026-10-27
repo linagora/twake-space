@@ -13,6 +13,7 @@ import { httpMeetings } from '@/adapters/http/httpMeetings'
 import { httpSettings } from '@/adapters/http/httpSettings'
 import { httpSpaces } from '@/adapters/http/httpSpaces'
 import { httpSuggestions } from '@/adapters/http/httpSuggestions'
+import { httpTaskSearch } from '@/adapters/http/httpTaskSearch'
 import { httpTokens } from '@/adapters/http/httpTokens'
 import { liveStream } from '@/adapters/http/liveStream'
 import { oidcSession, readSsoConfig } from '@/adapters/oidc/oidcSession'
@@ -40,6 +41,7 @@ const services = {
   notifications: browserNotifications(),
   suggestions: httpSuggestions(api),
   harness: window.HARNESS_URL ? httpHarness(window.HARNESS_URL) : null,
+  taskSearch: window.TASKS_URL ? httpTaskSearch(window.TASKS_URL) : null,
   feedback,
   apiUrl,
   tasksUrl: window.TASKS_URL ?? null,

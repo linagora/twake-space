@@ -64,6 +64,7 @@ const services = {
     approve: () => Promise.resolve(),
     refuse: () => Promise.resolve()
   },
+  taskSearch: null,
   feedback: null,
   apiUrl: new URL('/api/', window.location.origin).href,
   tasksUrl: window.TASKS_URL ?? null,
