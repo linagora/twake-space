@@ -1134,6 +1134,9 @@ export function FeedEditForm({
         event.preventDefault()
         onSubmit()
       }}
+      // The outlined field's label floats above its border, into the
+      // bubble's header unless the form leaves room for it.
+      sx={{ mt: 2, mb: 1 }}
     >
       <TextField
         multiline
