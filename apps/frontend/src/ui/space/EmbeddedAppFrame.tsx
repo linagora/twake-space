@@ -1,6 +1,7 @@
 import { expose } from 'comlink'
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactElement,
@@ -169,7 +170,9 @@ export function EmbeddedAppFrame({
     frameRef.current?.contentWindow?.postMessage(helloMessage(), origin)
   }, [frameRef, loads, origin])
 
-  useEffect(() => {
+  // In the commit that inserts the frame: it never sits in the page without
+  // its listener
+  useLayoutEffect(() => {
     const target = frameRef.current?.contentWindow
     if (!target) return
     const listening = new AbortController()
