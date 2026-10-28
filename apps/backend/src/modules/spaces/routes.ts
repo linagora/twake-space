@@ -162,9 +162,21 @@ export function registerSpaceRoutes(
   const provided = new Set(deps.apps.map(app => APP_KINDS[app]))
 
   async function withManages<T extends { id: string }>(
+    request: FastifyRequest,
     caller: Caller,
-    reached: T[]
+    reaching: PromiseLike<T[]>
   ) {
+    // Only events copy an organization role, and an account created with its
+    // role sends none. The menus can do without a fresh role, the writes check
+    // it again.
+    const [reached] = await Promise.all([
+      reaching,
+      liveOrganizationRole(db, organizationDirectory, caller).catch(
+        (error: unknown) => {
+          request.log.warn({ err: error }, 'organization role not refreshed')
+        }
+      )
+    ])
     const managed =
       reached.length === 0
         ? []
@@ -205,7 +217,7 @@ export function registerSpaceRoutes(
               manages: true
             })
           )
-        : await withManages(caller, await reachableSpaces(db, caller))
+        : await withManages(request, caller, reachableSpaces(db, caller))
       // The home cards show who is in each space.
       const members =
         reached.length === 0
@@ -299,8 +311,9 @@ export function registerSpaceRoutes(
       const caller = callerOf(request)
 
       const [space] = await withManages(
+        request,
         caller,
-        await reachableSpaces(db, caller, spaceId)
+        reachableSpaces(db, caller, spaceId)
       )
       if (!space) {
         return reply.code(404).send({ error: 'not_found' })
