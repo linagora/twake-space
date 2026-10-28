@@ -28,11 +28,15 @@ const REASONS = {
   }
 } as const
 
+// `time` is when the post took the text that names them: the feed marks
+// itself read with its items' times, and a mention stamped any later never
+// counts as seen.
 interface Post {
   id: string
   spaceId: string
   authorId: string
   body: string
+  time: Date
 }
 
 export const mentionMembers = (
@@ -83,7 +87,7 @@ async function notifyMembers(
     space: { id: post.spaceId, name: space.name }
   }
   const preview = Array.from(post.body).slice(0, 280).join('')
-  const time = new Date()
+  const { time } = post
   const fresh: { member: (typeof members)[number]; id: string }[] = []
   for (const member of members) {
     if (member.userId === author.userId) continue

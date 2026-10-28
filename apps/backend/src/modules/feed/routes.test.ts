@@ -1123,6 +1123,67 @@ describe('mentions', () => {
     })
   })
 
+  it('counts a mention or an approval request in the newest post as seen once the feed is read to it', async () => {
+    const send = setUp()
+    const mention = await send(
+      'POST',
+      `/spaces/${DESIGN}/feed/posts`,
+      'alice',
+      { body: '@Bob hello', mentions: [BOB] }
+    )
+    const approval = await send(
+      'POST',
+      `/spaces/${DESIGN}/feed/posts`,
+      'alice',
+      { body: 'Approve the Q4 budget?', approval: { approvers: [CAROL] } }
+    )
+
+    await send('PUT', `/spaces/${DESIGN}/feed/read`, 'bob', {
+      readAt: mention.json<{ time: string }>().time
+    })
+    await send('PUT', `/spaces/${DESIGN}/feed/read`, 'carol', {
+      readAt: approval.json<{ time: string }>().time
+    })
+
+    expect((await send('GET', '/feed/unread', 'bob')).json()).toEqual({
+      spaces: [{ spaceId: DESIGN, items: 1, mentions: 0 }]
+    })
+    expect((await send('GET', '/feed/unread', 'carol')).json()).toEqual({
+      spaces: []
+    })
+  })
+
+  it('counts a mention an edit adds as seen once the feed is read to the edit', async () => {
+    const send = setUp()
+    const created = await send(
+      'POST',
+      `/spaces/${DESIGN}/feed/posts`,
+      'alice',
+      { body: 'Hello' }
+    )
+    const post = created.json<{ id: string; time: string }>()
+    await send('PUT', `/spaces/${DESIGN}/feed/read`, 'bob', {
+      readAt: post.time
+    })
+
+    const edited = await send(
+      'PATCH',
+      `/spaces/${DESIGN}/feed/posts/${post.id}`,
+      'alice',
+      { body: 'Hello @Bob', mentions: [BOB] }
+    )
+
+    expect((await send('GET', '/feed/unread', 'bob')).json()).toEqual({
+      spaces: [{ spaceId: DESIGN, items: 0, mentions: 1 }]
+    })
+    await send('PUT', `/spaces/${DESIGN}/feed/read`, 'bob', {
+      readAt: edited.json<{ editedAt: string }>().editedAt
+    })
+    expect((await send('GET', '/feed/unread', 'bob')).json()).toEqual({
+      spaces: []
+    })
+  })
+
   const spentOnBob = (): MentionLimiter => {
     const limiter = fixedWindows()
     for (let i = 0; i < 20; i++) {
