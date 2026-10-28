@@ -171,6 +171,28 @@ describe('createMessageHandler', () => {
     expect(dedupe.keys).toEqual([])
   })
 
+  it('rejects an event Postgres refuses to park', async () => {
+    const { handle, activity, park } = setup()
+    activity.mockRejectedValueOnce(new NotYetKnownError('unknown space'))
+    park.mockRejectedValueOnce(
+      Object.assign(new Error('unsupported Unicode escape sequence'), {
+        code: '22P05'
+      })
+    )
+
+    expect(await handle(activityMessage(fileCreated))).toBe('rejected')
+  })
+
+  it('propagates a parking failure so the message is not acknowledged', async () => {
+    const { handle, activity, park } = setup()
+    activity.mockRejectedValueOnce(new NotYetKnownError('unknown space'))
+    park.mockRejectedValueOnce(new Error('db down'))
+
+    await expect(handle(activityMessage(fileCreated))).rejects.toThrow(
+      'db down'
+    )
+  })
+
   it('propagates a handler failure so the message is not acknowledged', async () => {
     const { handle, activity } = setup()
     activity.mockRejectedValueOnce(new Error('db down'))
