@@ -1,10 +1,11 @@
-import { Archive, Icon, Trash } from '@linagora/twake-icons'
+import { Archive, Icon, Magnifier, Trash } from '@linagora/twake-icons'
 import {
   List,
   ListItem,
   ListItemText,
   NavIcon,
   NavItem,
+  NavLink,
   NavText,
   SearchBar
 } from '@linagora/twake-mui'
@@ -64,6 +65,7 @@ export function AppShell(): ReactElement {
   const feed = useMatch('/spaces/:spaceId/feed/*') !== null
   // In the bottom bar the shelves join its one row
   const bottomBar = useBottomBar()
+  const [spotting, setSpotting] = useState(false)
 
   return (
     <CallProvider>
@@ -136,7 +138,12 @@ export function AppShell(): ReactElement {
                 />
               </SidebarSearch>
             )}
-            <AppNav shelves={bottomBar} />
+            <AppNav
+              bottomBar={bottomBar}
+              onSearch={() => {
+                setSpotting(true)
+              }}
+            />
             <SpaceList query={query ?? ''} />
             {!bottomBar && <ShelfLinks />}
           </>
@@ -149,7 +156,7 @@ export function AppShell(): ReactElement {
         </AssistantContext>
         <EmbeddedApps />
         <ChatFavourites />
-        <SpotSpace />
+        <SpotSpace isOpen={spotting} setIsOpen={setSpotting} />
         <NotificationPermissionPrompt />
         <CallWindow />
         <AppFeedback />
@@ -191,7 +198,14 @@ function RouteNavLink({
   )
 }
 
-function AppNav({ shelves }: { shelves: boolean }): ReactElement {
+// A phone has no Ctrl+K, so its bottom bar gets a Search entry
+function AppNav({
+  bottomBar,
+  onSearch
+}: {
+  bottomBar: boolean
+  onSearch: () => void
+}): ReactElement {
   const { t } = useI18n()
 
   return (
@@ -202,7 +216,17 @@ function AppNav({ shelves }: { shelves: boolean }): ReactElement {
           <NavText>{t('shell.allSpaces')}</NavText>
         </RouteNavLink>
       </NavItem>
-      {shelves && <ShelfItems />}
+      {bottomBar && (
+        <>
+          <ShelfItems />
+          <NavItem>
+            <NavLink onClick={onSearch}>
+              <NavIcon icon={Magnifier} />
+              <NavText>{t('shell.search')}</NavText>
+            </NavLink>
+          </NavItem>
+        </>
+      )}
     </SidebarNav>
   )
 }

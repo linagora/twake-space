@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Space } from '@/application/spaces'
 import { fakeSession, fakeUser } from '@/testing/fakeSession'
 import { fakeSpaces } from '@/testing/fakeSpaces'
+import { stubPhoneScreen } from '@/testing/phoneScreen'
 import { renderRoute } from '@/testing/renderWithProviders'
 
 const createSdk = vi.hoisted(() => vi.fn(() => ({ status: 'ready' })))
@@ -265,14 +266,7 @@ describe('AppShell', () => {
   })
 
   it('puts the Archives and the Bin in the bottom bar on phones', async () => {
-    vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: query.includes('max-width'),
-      media: query,
-      addListener: () => undefined,
-      removeListener: () => undefined,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined
-    }))
+    stubPhoneScreen()
     try {
       renderRoute('/bin', { spaces: spaces() })
 

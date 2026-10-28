@@ -67,6 +67,7 @@
     "allSpaces": "Все пространства",
     "spaceWithCount": "%{name}, новых: %{smart_count}",
     "searchSpaces": "Поиск по вашим пространствам",
+    "search": "Поиск",
     "spaceName": "Название пространства",
     "noSpaceFound": "Пространства не найдены",
     "notificationPermission": {

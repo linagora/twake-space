@@ -67,6 +67,7 @@
     "allSpaces": "Alle Spaces",
     "spaceWithCount": "%{name}, %{smart_count} neu",
     "searchSpaces": "Ihre Spaces durchsuchen",
+    "search": "Suchen",
     "spaceName": "Name des Space",
     "noSpaceFound": "Kein Space gefunden",
     "notificationPermission": {

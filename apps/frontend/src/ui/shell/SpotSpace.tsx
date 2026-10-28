@@ -1,6 +1,14 @@
 import { Box } from '@linagora/twake-mui'
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { useEffect, useId, useRef, useState, type ReactElement } from 'react'
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactElement,
+  type SetStateAction
+} from 'react'
 import { useNavigate } from 'react-router'
 
 import { badgeLabel } from '@/application/badges'
@@ -34,14 +42,18 @@ type Option =
   | { kind: 'item'; space: SpaceSummary; item: FeedItem }
   | { kind: 'task'; space: Space; task: FoundTask }
 
-// SpotSpace: Ctrl+K (⌘K on a Mac) anywhere, again to close it. The spaces
-// with news first, then the last opened; then what the feeds of all the
-// spaces hold, then the tasks of their projects. Enter opens the space, or the
-// item where it lives. In the frame of an app, the key goes to the app (Chat
-// opens its own Spotchat).
-export function SpotSpace(): ReactElement | null {
-  const [isOpen, setIsOpen] = useState(false)
-
+// SpotSpace: Ctrl+K (⌘K on a Mac) anywhere, again to close it; without a
+// keyboard, the shell's Search button. The spaces with news first, then the
+// last opened; then what the feeds of all the spaces hold, then the tasks of
+// their projects. Enter opens the space, or the item where it lives. In the
+// frame of an app, the key goes to the app (Chat opens its own Spotchat).
+export function SpotSpace({
+  isOpen,
+  setIsOpen
+}: {
+  isOpen: boolean
+  setIsOpen: Dispatch<SetStateAction<boolean>>
+}): ReactElement | null {
   useEffect(() => {
     const toggle = (event: KeyboardEvent): void => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -53,7 +65,7 @@ export function SpotSpace(): ReactElement | null {
     return () => {
       document.removeEventListener('keydown', toggle)
     }
-  }, [])
+  }, [setIsOpen])
 
   return isOpen ? (
     <Palette
