@@ -55,6 +55,10 @@ const CLOSING: PostKind[] = ['poll', 'yes_no', 'approval', 'feedback']
 
 // Postgres can neither store nor compare a NUL in text.
 const storableText = z.string().refine(value => !value.includes('\u0000'))
+const storableTime = z.iso
+  .datetime({ offset: true })
+  .transform(time => new Date(time))
+  .refine(storable)
 
 const feedQuery = z
   .object({
@@ -68,11 +72,7 @@ const feedQuery = z
         return z.NEVER
       })
       .optional(),
-    since: z.iso
-      .datetime({ offset: true })
-      .transform(time => new Date(time))
-      .refine(storable)
-      .optional(),
+    since: storableTime.optional(),
     q: storableText.trim().min(1).max(200).optional(),
     limit: z.coerce.number().int().min(1).max(50).default(20)
   })
@@ -93,11 +93,7 @@ const postBody = z.object({
   // Member ids: anyone else is left out.
   mentions: z.array(z.uuid()).max(50).default([])
 })
-const deadline = z.iso
-  .datetime({ offset: true })
-  .transform(t => new Date(t))
-  .refine(t => t > new Date())
-  .optional()
+const deadline = storableTime.refine(t => t > new Date()).optional()
 const newPostBody = postBody
   .extend({
     poll: z
@@ -176,7 +172,13 @@ const decisionBody = z.object({
   decision: z.enum(DECISIONS),
   comment: storableText.trim().max(1000).optional()
 })
-const readBody = z.object({ readAt: z.iso.datetime({ offset: true }) })
+// A time to come would hide every new item until then: it counts as now.
+const readBody = z.object({
+  readAt: z.iso
+    .datetime({ offset: true })
+    .transform(time => new Date(Math.min(Date.parse(time), Date.now())))
+    .refine(storable)
+})
 
 class Refusal extends Error {
   readonly status: number
@@ -508,16 +510,14 @@ export function registerFeedRoutes(
     }
   )
 
-  // Only moves forward: another tab still on older items leaves it alone. A
-  // time to come would hide every new item until then: it counts as now.
+  // Only moves forward: another tab still on older items leaves it alone.
   app.put(
     '/spaces/:spaceId/feed/read',
     { preHandler },
     async (request, reply) => {
       try {
         const { spaceId, userId } = await memberOf(request)
-        const sent = Date.parse(parse(readBody, request.body).readAt)
-        const readAt = new Date(Math.min(sent, Date.now()))
+        const { readAt } = parse(readBody, request.body)
         await db
           .insert(feedReads)
           .values({ spaceId, userId, readAt })
