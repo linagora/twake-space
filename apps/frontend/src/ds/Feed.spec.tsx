@@ -1,6 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { useState, type ReactElement } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   FeedComposer,
@@ -9,6 +9,7 @@ import {
   FeedMoreButton,
   ReactionPicker
 } from '@/ds/Feed'
+import { stubTouchScreen } from '@/testing/phoneScreen'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 
 const options = [
@@ -223,5 +224,58 @@ describe('FeedComposer', () => {
 
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     expect(onSend).toHaveBeenCalledTimes(1)
+  })
+
+  it('labels Return as send with a mouse', async () => {
+    renderWithProviders(<Composer onSend={vi.fn()} />)
+    const field = await screen.findByRole('textbox', { name: 'Text message' })
+
+    expect(field).toHaveAttribute('enterkeyhint', 'send')
+  })
+
+  it('keeps Enter for the word an input method is composing', async () => {
+    const onSend = vi.fn()
+    renderWithProviders(<Composer onSend={onSend} />)
+    const field = await screen.findByRole('textbox', { name: 'Text message' })
+    fireEvent.change(field, { target: { value: 'にほん' } })
+    fireEvent.keyDown(field, { key: 'Enter', isComposing: true })
+
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('keeps the Enter that commits a word in Safari', async () => {
+    const onSend = vi.fn()
+    renderWithProviders(<Composer onSend={onSend} />)
+    const field = await screen.findByRole('textbox', { name: 'Text message' })
+    fireEvent.change(field, { target: { value: 'にほん' } })
+    fireEvent.keyDown(field, { key: 'Enter', keyCode: 229 })
+
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  describe('on a touch screen', () => {
+    beforeEach(() => {
+      stubTouchScreen()
+    })
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('leaves Return to break the line and sends with the button', async () => {
+      const onSend = vi.fn()
+      renderWithProviders(<Composer onSend={onSend} />)
+      const field = await screen.findByRole('textbox', {
+        name: 'Text message'
+      })
+      fireEvent.change(field, { target: { value: 'Hello team' } })
+      const enter = fireEvent.keyDown(field, { key: 'Enter' })
+
+      expect(enter).toBe(true)
+      expect(field).toHaveAttribute('enterkeyhint', 'enter')
+      expect(onSend).not.toHaveBeenCalled()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+      expect(onSend).toHaveBeenCalledTimes(1)
+    })
   })
 })
