@@ -199,6 +199,12 @@ export function encodeCursor(cursor: Cursor): string {
   return Buffer.from(fields.join('|')).toString('base64url')
 }
 
+// Postgres refuses a year toISOString writes before 1 or after 9999.
+export function storable(date: Date): boolean {
+  const year = date.getUTCFullYear()
+  return year >= 1 && year <= 9999
+}
+
 export function decodeCursor(cursor: string): Cursor | null {
   const [time, id, order, ...rest] = Buffer.from(cursor, 'base64url')
     .toString()
@@ -206,7 +212,7 @@ export function decodeCursor(cursor: string): Cursor | null {
   if (!time || !id || rest.length > 0) return null
   if (order !== undefined && order !== 'activity') return null
   const date = new Date(time)
-  if (Number.isNaN(date.getTime())) return null
+  if (!storable(date)) return null
   if (!/^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(id)) return null
   return { order: order ?? 'time', time: date, id }
 }

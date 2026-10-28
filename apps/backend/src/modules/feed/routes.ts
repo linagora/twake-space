@@ -26,6 +26,7 @@ import {
   listItems,
   orderOf,
   pinnedItems,
+  storable,
   type Cursor,
   type FeedItem
 } from './items.ts'
@@ -67,11 +68,7 @@ const feedQuery = z
     since: z.iso
       .datetime({ offset: true })
       .transform(time => new Date(time))
-      // Postgres refuses a year toISOString writes before 1 or after 9999.
-      .refine(time => {
-        const year = time.getUTCFullYear()
-        return year >= 1 && year <= 9999
-      })
+      .refine(storable)
       .optional(),
     q: z.string().trim().min(1).max(200).optional(),
     limit: z.coerce.number().int().min(1).max(50).default(20)
