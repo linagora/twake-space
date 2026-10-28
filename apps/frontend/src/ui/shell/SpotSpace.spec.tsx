@@ -5,6 +5,7 @@ import type { FeedItem } from '@/application/feed'
 import type { Space, SpaceSummary } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeSpaces } from '@/testing/fakeSpaces'
+import { stubPhoneScreen } from '@/testing/phoneScreen'
 import { renderRoute } from '@/testing/renderWithProviders'
 
 const space = (
@@ -94,6 +95,30 @@ describe('SpotSpace', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'SpotSpace' })).toBe(null)
     })
+  })
+
+  it('opens from the Search entry of the bottom bar on phones', async () => {
+    stubPhoneScreen()
+    try {
+      renderRoute('/', { spaces: spaces() })
+      const nav = within(await screen.findByRole('navigation'))
+
+      fireEvent.click(nav.getByRole('button', { name: 'Search' }))
+
+      const dialog = screen.getByRole('dialog', { name: 'SpotSpace' })
+      expect(
+        within(dialog).getByRole('combobox', { name: 'SpotSpace' })
+      ).toHaveFocus()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('keeps the Search entry out of the sidebar of wide screens', async () => {
+    renderRoute('/', { spaces: spaces() })
+    const nav = within(await screen.findByRole('navigation'))
+
+    expect(nav.queryByRole('button', { name: 'Search' })).toBe(null)
   })
 
   describe('the feeds', () => {

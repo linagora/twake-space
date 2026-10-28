@@ -107,7 +107,9 @@ export function Spotlight({
           py: 1,
           borderTop: 1,
           borderColor: 'divider',
-          bgcolor: 'background.default'
+          bgcolor: 'background.default',
+          // Keys mean nothing on a touch screen
+          '@media (hover: none)': { display: 'none' }
         }}
       >
         {hints.map(hint => (
