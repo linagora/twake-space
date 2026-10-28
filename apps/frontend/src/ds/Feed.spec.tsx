@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   AnnouncementColors,
   FeedComposer,
+  FeedEditForm,
   FeedFilterMenu,
   FeedLayout,
   FeedMoreButton,
@@ -92,6 +93,28 @@ describe('AnnouncementColors', () => {
     expect(getComputedStyle(input).pointerEvents).toBe('none')
     expect(getComputedStyle(input).padding).toBe('0px')
     expect(getComputedStyle(input).borderTopWidth).toBe('0px')
+  })
+})
+
+describe('FeedEditForm', () => {
+  it('keeps its floating label clear of the bubble header above it', async () => {
+    const { container } = renderWithProviders(
+      <FeedEditForm
+        label="Edit"
+        value="test"
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        actions={null}
+      />
+    )
+    await screen.findByRole('textbox', { name: 'Edit' })
+    const form = container.querySelector('form')
+    if (!form) throw new Error('no form')
+
+    expect(getComputedStyle(form).marginTop).toBe(
+      'calc(2 * var(--twake-spacing))'
+    )
+    expect(getComputedStyle(form).marginBottom).toBe('var(--twake-spacing)')
   })
 })
 
