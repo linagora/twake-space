@@ -2341,7 +2341,15 @@ export function AnnouncementColors({
         onChange={(event: ChangeEvent<HTMLInputElement>) => {
           onChange(event.target.value.toLowerCase())
         }}
-        sx={{ position: 'absolute', width: 0, height: 0, opacity: 0 }}
+        sx={{
+          position: 'absolute',
+          width: 0,
+          height: 0,
+          p: 0,
+          border: 0,
+          opacity: 0,
+          pointerEvents: 'none'
+        }}
       />
     </Box>
   )

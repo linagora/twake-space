@@ -3,6 +3,7 @@ import { useState, type ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  AnnouncementColors,
   FeedComposer,
   FeedFilterMenu,
   FeedLayout,
@@ -71,6 +72,25 @@ describe('FeedLayout', () => {
     const toolbar = await screen.findByRole('button', { name: 'Toolbar' })
     const list = screen.getByRole('article', { name: 'First' })
     expect(toolbar.parentElement?.parentElement).toContainElement(list)
+  })
+})
+
+describe('AnnouncementColors', () => {
+  it('lets clicks through its hidden colour input to the swatch under it', async () => {
+    const { container } = renderWithProviders(
+      <AnnouncementColors
+        value="#ff0000"
+        labels={{ none: 'No banner', custom: 'Custom', color: hex => hex }}
+        onChange={vi.fn()}
+      />
+    )
+    await screen.findByRole('radio', { name: 'No banner' })
+    const input = container.querySelector('input[type="color"]')
+    if (!(input instanceof HTMLInputElement)) throw new Error('no input')
+
+    expect(getComputedStyle(input).pointerEvents).toBe('none')
+    expect(getComputedStyle(input).padding).toBe('0px')
+    expect(getComputedStyle(input).borderTopWidth).toBe('0px')
   })
 })
 
