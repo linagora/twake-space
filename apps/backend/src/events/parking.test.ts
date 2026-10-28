@@ -87,6 +87,19 @@ describe('parked events', () => {
     expect(await parked()).toEqual([])
   })
 
+  it('rejects an event whose body Postgres cannot store', async () => {
+    const { handle } = setup()
+    const message = memberAdded()
+
+    expect(
+      await handle({
+        ...message,
+        body: { spaceId: 'space-1', state: '\u0000' }
+      })
+    ).toBe('rejected')
+    expect(await parked()).toEqual([])
+  })
+
   it('keeps an event that still waits, or whose retry fails', async () => {
     const { handler, deadLetter, handle, retry } = setup()
     await handle(memberAdded())

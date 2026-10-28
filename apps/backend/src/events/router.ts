@@ -105,14 +105,19 @@ export function createMessageHandler(deps: {
       processed = await dedupe.once(dedupeKey, tx =>
         handler(parsed.event, tx, logger.child({ ...context, key }))
       )
-    } catch (error) {
+    } catch (caught) {
+      let error = caught
       if (error instanceof NotYetKnownError) {
-        await park(message, dedupeKey, error.message)
-        logger.info(
-          { ...context, key, ...dedupeKey, reason: error.message },
-          'event parked'
-        )
-        return 'parked'
+        try {
+          await park(message, dedupeKey, error.message)
+          logger.info(
+            { ...context, key, ...dedupeKey, reason: error.message },
+            'event parked'
+          )
+          return 'parked'
+        } catch (parkError) {
+          error = parkError
+        }
       }
       const reason =
         error instanceof RejectedEventError
