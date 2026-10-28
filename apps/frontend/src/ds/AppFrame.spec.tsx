@@ -3,7 +3,7 @@ import { TWAKE_BAR_HEIGHT } from '@linagora/twake-bar'
 import { useState, type ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { AppFrame } from '@/ds/AppFrame'
+import { AppFrame, NameAvatar } from '@/ds/AppFrame'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 
 async function barHeightOfFrame(): Promise<string> {
@@ -72,4 +72,21 @@ describe('AppFrame', () => {
     expect(screen.getByTitle('app')).toBe(frame)
     expect(onLoad).not.toHaveBeenCalled()
   })
+})
+
+describe('NameAvatar', () => {
+  it.each([
+    ['QA Solo <i>A</i>', 'QI'],
+    ['(Marketing) team', 'MT'],
+    ['#general', 'GE'],
+    ['R&D', 'RD'],
+    ['!!', '!!']
+  ])(
+    'makes the initials of « %s » from letters and digits',
+    async (name, initials) => {
+      renderWithProviders(<NameAvatar name={name} size="m" />)
+
+      expect(await screen.findByText(initials)).toBeInTheDocument()
+    }
+  )
 })
