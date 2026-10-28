@@ -151,13 +151,26 @@ interface Approval {
   closedAt: Date | null
 }
 
-// Everyone sees how many answered and their own answer; only the author sees
-// the answers, which are null for anyone else.
+// Everyone sees how many answered, the average rating and their own answer;
+// only the author sees the answers, which are null for anyone else. An answer
+// is a rating from 1 to 5, a comment, or both; an earlier answer has no rating.
 interface Feedback {
   count: number
+  // Its answers name no one, not even to its author.
+  anonymous: boolean
+  // Null before any rating.
+  average: number | null
+  // The viewer's comment, empty when they only rated, null until they answer.
   mine: string | null
+  myRating: number | null
   answers:
-    | { userId: string; name: string | null; text: string; answeredAt: Date }[]
+    | {
+        userId: string | null
+        name: string | null
+        rating: number | null
+        text: string
+        answeredAt: Date
+      }[]
     | null
   closedAt: Date | null
 }
@@ -421,7 +434,11 @@ async function loadItems(
   ])
   const asked = (post: (typeof posts)[number]['post']) =>
     post.kind === 'feedback' && viewer !== null && post.authorId === viewer
-  const askedIds = new Set(posts.filter(p => asked(p.post)).map(p => p.post.id))
+  const askedIds = new Set(
+    posts
+      .filter(p => asked(p.post) && !p.post.pollAnonymous)
+      .map(p => p.post.id)
+  )
   const announcementIds = new Set(
     posts.filter(p => p.post.kind === 'announcement').map(p => p.post.id)
   )
@@ -538,13 +555,22 @@ async function loadItems(
   const feedbackOf = (post: Post): Feedback | null => {
     if (post.kind !== 'feedback') return null
     const answers = votesOf.get(post.id) ?? []
+    const mine = answers.find(a => a.userId === viewer)
+    const ratings = answers.map(a => a.option).filter(rating => rating > 0)
     return {
       count: answers.length,
-      mine: answers.find(a => a.userId === viewer)?.comment ?? null,
+      anonymous: post.pollAnonymous,
+      average:
+        ratings.length > 0
+          ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
+          : null,
+      mine: mine ? (mine.comment ?? '') : null,
+      myRating: mine && mine.option > 0 ? mine.option : null,
       answers: asked(post)
         ? answers.map(a => ({
-            userId: a.userId,
-            name: names.get(a.userId) ?? null,
+            userId: post.pollAnonymous ? null : a.userId,
+            name: post.pollAnonymous ? null : (names.get(a.userId) ?? null),
+            rating: a.option > 0 ? a.option : null,
             text: a.comment ?? '',
             answeredAt: a.createdAt
           }))

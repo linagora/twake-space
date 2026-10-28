@@ -154,7 +154,8 @@ export const feedPollVotes = pgTable(
     userId: uuid('user_id').notNull(),
     // The index of the option in the post's poll options; on a yes/no
     // question 0 is yes, on an approval request 0 approves and 1 rejects, on
-    // a feedback request or an acknowledged announcement it is 0.
+    // a feedback request it is the rating from 1 to 5, 0 for none, and on an
+    // acknowledged announcement it is 0.
     option: integer().notNull(),
     // An approver's, with their decision, or a member's feedback answer.
     comment: text(),
