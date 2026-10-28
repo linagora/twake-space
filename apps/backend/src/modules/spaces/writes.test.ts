@@ -306,6 +306,38 @@ describe('space writes', () => {
     expect(calls).toEqual([])
   })
 
+  it.each([
+    ['POST', '/spaces', { name: 'a\u0000b' }],
+    ['POST', '/spaces', { name: 'a\u0007b' }],
+    ['POST', '/spaces', { name: 'Launch', description: 'a\u0000b' }],
+    ['PATCH', `/spaces/${DESIGN}`, { name: '\r\u0000' }],
+    ['PATCH', `/spaces/${DESIGN}`, { description: 'a\u0000b' }]
+  ] as const)(
+    'refuses %s %s with %j, which Postgres cannot store',
+    async (method, url, body) => {
+      const { calls, directory } = ldapRest()
+
+      const response = await setUp(directory)(method, url, body)
+
+      expect(response.statusCode).toBe(400)
+      expect(response.json()).toEqual({ error: 'invalid_request' })
+      expect(calls).toEqual([])
+    }
+  )
+
+  it('keeps line breaks in a description', async () => {
+    const { directory } = ldapRest()
+
+    const response = await setUp(directory)('PATCH', `/spaces/${DESIGN}`, {
+      description: 'First line\nSecond line'
+    })
+
+    expect(response.statusCode).toBe(204)
+    expect(await testDb.db.select().from(spaceSettings)).toMatchObject([
+      { spaceId: DESIGN, description: 'First line\nSecond line' }
+    ])
+  })
+
   it('lets only a space admin change it', async () => {
     const { calls, directory } = ldapRest()
 
