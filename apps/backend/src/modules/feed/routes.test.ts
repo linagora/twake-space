@@ -759,9 +759,13 @@ describe('/spaces/:spaceId/feed/read', () => {
     const url = `/spaces/${DESIGN}/feed/read`
 
     await send('PUT', url, 'alice', { readAt: '2999-01-01T00:00:00.000Z' })
+    const afterYear9999 = await send('PUT', url, 'alice', {
+      readAt: '9999-12-31T23:59:59-00:01'
+    })
     const read = await send('GET', url)
 
     const { readAt } = read.json<{ readAt: string }>()
+    expect(afterYear9999.statusCode).toBe(204)
     expect(Date.parse(readAt)).toBeLessThanOrEqual(Date.now())
   })
 
@@ -770,11 +774,15 @@ describe('/spaces/:spaceId/feed/read', () => {
     const url = `/spaces/${DESIGN}/feed/read`
 
     const bad = await send('PUT', url, 'alice', { readAt: 'yesterday' })
+    const beforeYearOne = await send('PUT', url, 'alice', {
+      readAt: '0001-01-01T00:00:00+00:01'
+    })
     const outside = await send('PUT', url, 'dan', {
       readAt: '2026-10-05T10:00:00.000Z'
     })
 
     expect(bad.statusCode).toBe(400)
+    expect(beforeYearOne.statusCode).toBe(400)
     expect(outside.statusCode).toBe(404)
   })
 })
@@ -1691,6 +1699,7 @@ describe('yes/no questions', () => {
     const soon = new Date(Date.now() + 60 * 60 * 1000)
 
     const past = await publish('2020-01-01T00:00:00Z')
+    const afterYear9999 = await publish('9999-12-31T23:59:59-00:01')
     const created = await publish(soon.toISOString())
     const id = created.json<Item>().id
     const vote = () =>
@@ -1707,6 +1716,7 @@ describe('yes/no questions', () => {
     const close = await send('POST', `/spaces/${DESIGN}/feed/posts/${id}/close`)
 
     expect(past.statusCode).toBe(400)
+    expect(afterYear9999.statusCode).toBe(400)
     expect(created.json()).toMatchObject({
       poll: { closesAt: soon.toISOString(), closedAt: null }
     })
