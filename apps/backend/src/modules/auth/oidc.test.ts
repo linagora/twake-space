@@ -162,6 +162,8 @@ describe('identify', () => {
   it.each([
     ['inactive', { active: false }],
     ['expired', { exp: now() - 1 }],
+    ['without exp', { exp: undefined }],
+    ['expiring beyond the Date range', { exp: 1e20 }],
     ['without aud', { aud: undefined }],
     ['for another audience', { aud: 'tmail' }],
     ['for another subject', { sub: 'bob@example.com' }]
