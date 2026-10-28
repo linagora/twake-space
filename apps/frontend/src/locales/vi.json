@@ -429,6 +429,7 @@
       "approved": "Đã phê duyệt",
       "rejected": "Đã từ chối",
       "waiting": "Đang chờ quyết định",
+      "noDecision": "Không có quyết định",
       "summary": "Đã phê duyệt %{approved}/%{total}",
       "closed": "Đã đóng",
       "close": "Đóng yêu cầu",

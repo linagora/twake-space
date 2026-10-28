@@ -429,6 +429,7 @@
       "approved": "Approvata",
       "rejected": "Rifiutata",
       "waiting": "In attesa di una decisione",
+      "noDecision": "Nessuna decisione",
       "summary": "%{approved} su %{total} approvato",
       "closed": "Chiusa",
       "close": "Chiudi la richiesta",

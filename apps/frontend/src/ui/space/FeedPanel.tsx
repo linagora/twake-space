@@ -1106,13 +1106,18 @@ function ApprovalDecisions({
     approved,
     total: approval.approvers.length
   })
+  const open = approval.closedAt === null && approval.state === 'pending'
   return (
     <>
       <FeedApproval
         question={post.body}
         state={{
           tone: approval.state,
-          label: t(`feed.approval.${approval.state}`)
+          label: t(
+            approval.state === 'pending' && !open
+              ? 'feed.approval.closed'
+              : `feed.approval.${approval.state}`
+          )
         }}
         approvers={approval.approvers.map(approver => {
           const member = space.members.find(m => m.id === approver.id)
@@ -1124,13 +1129,15 @@ function ApprovalDecisions({
             status: t(
               approver.decision
                 ? `feed.approval.${approver.decision}`
-                : 'feed.approval.waiting'
+                : open && approver.name !== null
+                  ? 'feed.approval.waiting'
+                  : 'feed.approval.noDecision'
             ),
             comment: approver.comment
           }
         })}
         decide={
-          mine?.decision === null && approval.closedAt === null
+          mine?.decision === null && open
             ? {
                 commentLabel: t('feed.approval.comment'),
                 approveLabel: t('feed.approval.approve'),
