@@ -42,6 +42,8 @@ export interface SpaceTokens {
   // The color of each app that sends feed cards: its avatar, and the band of
   // a calendar day
   appColors: Record<'tasks' | 'mail' | 'calendar' | 'drive', string>
+  // A filled star of a feedback rating
+  ratingStar: string
 }
 
 export const spaceThemeOptions = {
@@ -60,6 +62,7 @@ export const spaceThemeOptions = {
       calendar: '#f67e35',
       drive: '#5c9ce6'
     },
+    ratingStar: '#fdc22e',
     reactionCount: { light: '#69666a', dark: '#c9c5ca' },
     fileMeta: { light: '#5f6b78', dark: '#c4ced8' },
     menuShadow:
