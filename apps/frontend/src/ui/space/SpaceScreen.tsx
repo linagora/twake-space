@@ -200,7 +200,8 @@ export function SpaceScreen(): ReactElement {
             <Tabs
               narrowed
               variant="scrollable"
-              scrollButtons={false}
+              scrollButtons="auto"
+              allowScrollButtonsMobile
               value={current.tab}
               onChange={(_event, value: string) => {
                 void navigate(`/spaces/${spaceId}/${value}`)

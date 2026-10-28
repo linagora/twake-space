@@ -186,6 +186,34 @@ describe('SpaceScreen', () => {
     expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/drive')
   })
 
+  it('shows that the tabs scroll when they overflow, on a phone too', async () => {
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(
+          private readonly report: (
+            entries: Pick<IntersectionObserverEntry, 'isIntersecting'>[]
+          ) => void
+        ) {}
+        observe() {
+          this.report([{ isIntersecting: false }])
+        }
+        disconnect = vi.fn()
+      }
+    )
+    try {
+      renderAt('/spaces/a1/tasks')
+      const tabs = (await screen.findByRole('tablist')).closest('.MuiTabs-root')
+
+      await waitFor(() => {
+        expect(tabs?.querySelectorAll('.MuiTabs-scrollButtons')).toHaveLength(2)
+      })
+      expect(tabs?.querySelector('.MuiTabs-scrollButtonsHideMobile')).toBeNull()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('frames the board a Tasks link points at', async () => {
     renderAt('/spaces/a1/tasks/boards/b1?task=T-1')
 
