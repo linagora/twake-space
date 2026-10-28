@@ -16,7 +16,6 @@ import {
 
 import { badgeLabel, tabCount } from '@/application/badges'
 import { embeddedApp } from '@/application/embeddedApps'
-import { isRefusal } from '@/application/spaces'
 import { PREPARING_MS, spaceTabs } from '@/application/spaceTabs'
 import { NameAvatar } from '@/ds/AppFrame'
 import { CountedLabel } from '@/ds/CountedLabel'
@@ -39,7 +38,7 @@ import { FeedSearch } from '@/ui/space/FeedSearch'
 import { useFillPage } from '@/ui/space/FillPage'
 import { SpaceActions } from '@/ui/space/SpaceActions'
 import { SpaceHome } from '@/ui/space/SpaceHome'
-import { useMarkOpened, useSpace } from '@/ui/spaces/queries'
+import { spaceLoadErrorKey, useMarkOpened, useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
 function useNowAfter(at: number): number {
@@ -131,11 +130,7 @@ export function SpaceScreen(): ReactElement {
     return (
       <Page>
         <Alert severity="error" className="u-mb-1">
-          {t(
-            isRefusal(space.error) && space.error.status === 404
-              ? 'space.notFound'
-              : 'space.loadFailed'
-          )}
+          {t(spaceLoadErrorKey(space.error))}
         </Alert>
         <Link component={RouterLink} to="/">
           {t('space.back')}

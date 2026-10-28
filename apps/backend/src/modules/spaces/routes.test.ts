@@ -255,6 +255,25 @@ describe('archived spaces and the Bin', () => {
     expect((await get(`/spaces/${DESIGN}`)).statusCode).toBe(404)
   })
 
+  it('tells its members that a space was archived or moved to the Bin', async () => {
+    await moveTo(DESIGN, 'archived')
+    await moveTo(SALES, 'trashed')
+    const get = setUp(aTokenCaller({ userId: null, role: 'viewer' }))
+
+    const archived = await get(`/spaces/${DESIGN}`)
+    expect(archived.statusCode).toBe(404)
+    expect(archived.json()).toEqual({ error: 'archived' })
+    expect((await get(`/spaces/${SALES}`, 'tws_bot')).json()).toEqual({
+      error: 'trashed'
+    })
+    expect((await get(`/spaces/${SALES}`)).json()).toEqual({
+      error: 'not_found'
+    })
+    expect((await get(`/spaces/${OTHER_ORG}`, 'tws_bot')).json()).toEqual({
+      error: 'not_found'
+    })
+  })
+
   it('tells which spaces the caller manages', async () => {
     await testDb.db
       .update(spaces)

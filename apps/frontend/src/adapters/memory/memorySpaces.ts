@@ -72,7 +72,7 @@ export function memorySpaces(
       const space = find(id)
       return space
         ? Promise.resolve(structuredClone(space))
-        : refuse(404, 'not_found')
+        : refuse(404, states.get(id) ?? 'not_found')
     },
     // The organization's mail is off, as on a new space below.
     apps: () => Promise.resolve(['chat', 'tasks', 'drive', 'calendar']),
@@ -135,9 +135,11 @@ export function memorySpaces(
       else states.set(id, state)
     },
     emptyBin: () => {
-      spaces = spaces.filter(
-        space => !(space.manages && states.get(space.id) === 'trashed')
-      )
+      spaces = spaces.filter(space => {
+        const emptied = space.manages && states.get(space.id) === 'trashed'
+        if (emptied) states.delete(space.id)
+        return !emptied
+      })
       return Promise.resolve()
     },
     setPinned: (id, pinned) => {

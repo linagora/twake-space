@@ -104,6 +104,27 @@ describe('SpaceScreen', () => {
     expect(spaces.markOpened).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['archived', 'This space has been archived.'],
+    ['trashed', 'This space has been moved to the Bin.']
+  ])('tells a member that the space was %s', async (code, message) => {
+    const spaces = fakeSpaces()
+    vi.mocked(spaces.get).mockRejectedValue(
+      Object.assign(new Error(code), { status: 404, code })
+    )
+    renderWithProviders(
+      <Routes>
+        <Route path="/spaces/:spaceId/:tab?/*" element={<SpaceScreen />} />
+      </Routes>,
+      { spaces, path: '/spaces/a1/feed' }
+    )
+
+    expect(await screen.findByText(message)).toBeInTheDocument()
+    expect(
+      screen.queryByText('This space does not exist, or you are not in it.')
+    ).not.toBeInTheDocument()
+  })
+
   it('opens on the home, which every space has', async () => {
     renderAt('/spaces/a1', { ...roadmap, apps: ['chat', 'tasks'] })
 

@@ -141,6 +141,7 @@ Two more limits count something other than requests: `linkFetch` (30 a minute) t
 - Caller: session, or token with `space:read`.
 - Path: `id` is a UUID.
 - `404 {"error":"not_found"}` when `id` is not a UUID or the caller does not reach the space.
+- `404 {"error":"archived"}` or `404 {"error":"trashed"}` when the space is archived or in the Bin and the caller's account is a member of it. An organization token gets them for every space it covers.
 - `description` and `color` are what was picked at creation. `apps` is the tabs picked at creation or since, as stored: the client hides the tabs whose app this deployment or the organization does not provide. A space created outside twake-space has an empty description, no color and every tab.
 - `chat` and `mail` are the organization's chat and mail availability, false when the organization is unknown. `homeserverUrl` is the organization's Matrix homeserver, or null. `chatUrl` is the organization's Chat, which the Chat tab frames, or null when the deployment's `CHAT_URL` serves it.
 - `createdAt` is when the backend learned of the space.
