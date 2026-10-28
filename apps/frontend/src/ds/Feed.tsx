@@ -32,7 +32,8 @@ import {
   Radio,
   TextField,
   Tooltip,
-  Typography
+  Typography,
+  useMediaQuery
 } from '@linagora/twake-mui'
 import {
   createContext,
@@ -2677,6 +2678,8 @@ export function FeedComposer({
   tools?: ReactNode
 }): ReactElement {
   const empty = value.trim() === ''
+  // An on-screen keyboard has no Shift+Enter, so Return must break the line.
+  const touch = useMediaQuery('(pointer: coarse)')
   const field = useRef<HTMLTextAreaElement>(null)
   const [form, setForm] = useState<HTMLFormElement | null>(null)
   const listId = useId()
@@ -2756,6 +2759,7 @@ export function FeedComposer({
         inputProps={{
           'aria-label': label,
           maxLength: 4000,
+          enterKeyHint: touch ? 'enter' : 'send',
           'aria-autocomplete': 'list',
           'aria-controls': picking ? listId : undefined,
           'aria-activedescendant': picking
@@ -2775,7 +2779,13 @@ export function FeedComposer({
           setMention(null)
         }}
         onKeyDown={event => {
-          if (picking && !event.nativeEvent.isComposing) {
+          const composing =
+            event.nativeEvent.isComposing ||
+            // Safari ends the composition before the Enter that commits it,
+            // which then only shows as keyCode 229.
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
+            event.nativeEvent.keyCode === 229
+          if (picking && !composing) {
             const count = options.length
             if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
               event.preventDefault()
@@ -2796,7 +2806,12 @@ export function FeedComposer({
               return
             }
           }
-          if (event.key === 'Enter' && !event.shiftKey) {
+          if (
+            event.key === 'Enter' &&
+            !event.shiftKey &&
+            !touch &&
+            !composing
+          ) {
             event.preventDefault()
             event.currentTarget.closest('form')?.requestSubmit()
           }
