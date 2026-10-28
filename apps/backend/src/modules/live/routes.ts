@@ -42,7 +42,11 @@ export function registerLiveRoutes(
       clearTimeout(expiry)
       response.end()
     }
-    const expiry = setTimeout(close, identity.expiresAt.getTime() - Date.now())
+    // Node fires a delay past 2^31 - 1 ms (24.8 days) at once.
+    const expiry = setTimeout(
+      close,
+      Math.min(identity.expiresAt.getTime() - Date.now(), 2 ** 31 - 1)
+    )
     const remove = streams.add({
       sessionId: identity.sessionId,
       userId: identity.userId,

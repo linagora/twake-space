@@ -72,10 +72,11 @@ export async function discoverIdentityProvider(
       ])
       if (introspection.status === 'rejected') throw introspection.reason
       const token = introspection.value
+      const expiresAt = new Date((token.exp ?? NaN) * 1000)
       if (
         !token.active ||
-        token.exp === undefined ||
-        token.exp * 1000 <= Date.now() ||
+        // NaN when exp is missing or beyond the Date range.
+        !(expiresAt.getTime() > Date.now()) ||
         !hasAudience(token.aud, options.audience)
       ) {
         return null
@@ -91,7 +92,7 @@ export async function discoverIdentityProvider(
         userId: claims.uuid,
         email: claims.email,
         sessionId: claims.sid,
-        expiresAt: new Date(token.exp * 1000),
+        expiresAt,
         organizationId: claims.org_id ?? null
       }
     },

@@ -132,6 +132,25 @@ describe('GET /stream', () => {
     expect((await reader.read()).done).toBe(true)
   })
 
+  it('stays open for a token expiring in more than 24.8 days', async () => {
+    const { url } = await setUp(
+      anIdentity({ expiresAt: new Date(Date.now() + 2 ** 31) })
+    )
+    const { reader } = await open(url)
+    await reader.read()
+
+    const next = await Promise.race([
+      reader.read(),
+      new Promise(resolve =>
+        setTimeout(() => {
+          resolve('still open')
+        }, 100)
+      )
+    ])
+    expect(next).toBe('still open')
+    await reader.cancel()
+  })
+
   it('closes open streams when the server stops', async () => {
     const { url } = await setUp()
     const { reader } = await open(url)
