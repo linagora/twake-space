@@ -98,6 +98,27 @@ function postFromFrame(title: string, origin: string, data: unknown) {
   })
 }
 
+// jsdom applies no media query: read the height the rules below lg give.
+function phoneHeight(element: Element): string {
+  let height = ''
+  for (const sheet of Array.from(document.styleSheets)) {
+    for (const rule of Array.from(sheet.cssRules)) {
+      if (!(rule instanceof CSSMediaRule)) continue
+      if (!rule.conditionText.includes('max-width')) continue
+      for (const inner of Array.from(rule.cssRules)) {
+        if (
+          inner instanceof CSSStyleRule &&
+          element.matches(inner.selectorText) &&
+          inner.style.height
+        ) {
+          height = inner.style.height
+        }
+      }
+    }
+  }
+  return height
+}
+
 describe('AppShell', () => {
   it.each(['/', '/spaces/space-1'])(
     'shows the platform bar and signs out from it on %s',
@@ -136,6 +157,22 @@ describe('AppShell', () => {
       getComputedStyle(frame as Element).getPropertyValue('--topBarHeight')
     ).toBe('0px')
   })
+
+  it.each([
+    ['/spaces/space-1/feed', 'calc(100dvh - var(--topBarHeight))'],
+    ['/', 'auto']
+  ])(
+    'on a phone, gives %s the height %s: only the feed scrolls itself',
+    async (path, height) => {
+      renderRoute(path, { spaces: spaces() })
+
+      const frame = (await screen.findByRole('navigation')).closest(
+        'aside'
+      )?.parentElement
+      expect(frame).toBeTruthy()
+      expect(phoneHeight(frame as Element)).toBe(height)
+    }
+  )
 
   it('lists the pinned and recent spaces in the sidebar and marks the current one', async () => {
     renderRoute('/spaces/space-2/feed', { spaces: spaces() })

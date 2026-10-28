@@ -60,6 +60,7 @@ export function AppShell(): ReactElement {
   const spaceId = useMatch('/spaces/:spaceId/*')?.params.spaceId
   // A space's content may take the whole page, the platform bar's too
   const alone = useFillPage().space !== null
+  const feed = useMatch('/spaces/:spaceId/feed/*') !== null
 
   return (
     <CallProvider>
@@ -68,6 +69,7 @@ export function AppShell(): ReactElement {
         topBar={sdk ? <PlatformBar /> : undefined}
         bare={home}
         alone={alone}
+        fitScreen={feed}
         aside={
           assistantOpen &&
           spaceId !== undefined && (
