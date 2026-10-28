@@ -394,12 +394,31 @@ function Pinned({
   const location = useLocation()
   const pinned = usePinned(space.id)
   const unpin = usePin(space.id)
+  const unpinAll = useUnpinAll(space.id)
   const name = useActorNamer()
+  const posts = pinned.data ?? []
+  const mine = posts.filter(
+    post => post.author.type === 'user' && post.author.id === myId
+  )
   return (
     <>
       <FeedPinned
         label={t('feed.announcement.pinned')}
-        items={(pinned.data ?? []).map(post => ({
+        position={(index, total) =>
+          t('feed.announcement.pinnedPosition', { index, total })
+        }
+        listLabel={t('feed.announcement.pinnedList')}
+        unpinAll={
+          mine.length > 0
+            ? {
+                label: t('feed.announcement.unpinAll'),
+                onClick: () => {
+                  unpinAll.mutate(mine.map(post => post.id))
+                }
+              }
+            : null
+        }
+        items={posts.map(post => ({
           id: post.id,
           author: name(post.author) ?? t('feed.someone'),
           text: post.announcement?.title ?? post.body,
@@ -411,18 +430,20 @@ function Pinned({
               state: { feedItem: post.id }
             })
           },
-          unpin:
-            post.author.type === 'user' && post.author.id === myId
-              ? {
-                  label: t('feed.announcement.unpin'),
-                  onClick: () => {
-                    unpin.mutate({ postId: post.id, pinned: false })
-                  }
+          unpin: mine.includes(post)
+            ? {
+                label: t('feed.announcement.unpin'),
+                onClick: () => {
+                  unpin.mutate({ postId: post.id, pinned: false })
                 }
-              : null
+              }
+            : null
         }))}
       />
-      <FeedFailure error={unpin.error} message={t('feed.changeFailed')} />
+      <FeedFailure
+        error={latestError(unpin, unpinAll)}
+        message={t('feed.changeFailed')}
+      />
     </>
   )
 }
@@ -447,6 +468,24 @@ function usePin(spaceId: string) {
     mutationFn: ({ postId, pinned }: { postId: string; pinned: boolean }) =>
       feed.pin(spaceId, postId, pinned),
     onSuccess: replace
+  })
+}
+
+// Keeps what did unpin and still fails if any one did not.
+function useUnpinAll(spaceId: string) {
+  const { feed } = useServices()
+  const { replace } = useFeedCache(spaceId)
+  return useMutation({
+    mutationFn: async (postIds: string[]) => {
+      const results = await Promise.allSettled(
+        postIds.map(postId => feed.pin(spaceId, postId, false))
+      )
+      for (const result of results) {
+        if (result.status === 'fulfilled') replace(result.value)
+      }
+      const failed = results.find(result => result.status === 'rejected')
+      if (failed) throw failed.reason
+    }
   })
 }
 
