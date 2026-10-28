@@ -72,6 +72,7 @@ export function PollDialog({
   const [time, setTime] = useState(start.time)
   const closesAt = deadline ? fromInputs(date, time, zone) : null
   const options = fields.map(field => field.text.trim()).filter(Boolean)
+  const KindIcon = kind === 'yes_no' ? ThumbsUpDownIcon : PollIcon
   const valid =
     question.trim() !== '' &&
     (!deadline || (closesAt !== null && closesAt > new Date())) &&
@@ -109,13 +110,7 @@ export function PollDialog({
           id={titleId}
           title={t(kind === 'yes_no' ? 'feed.yesNo.title' : 'feed.poll.title')}
           {...(kind === 'choice' && { subtitle: t('feed.poll.subtitle') })}
-          icon={
-            kind === 'yes_no' ? (
-              <ThumbsUpDownIcon width={20} height={20} />
-            ) : (
-              <PollIcon width={20} height={20} />
-            )
-          }
+          icon={<KindIcon width={20} height={20} />}
           close={{ label: t('common.close'), onClick: onClose }}
         />
         <Divider />
