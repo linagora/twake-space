@@ -151,8 +151,9 @@ export interface TokenSpace {
 export const API_REFERENCE_URL =
   'https://github.com/linagora/twake-space/blob/main/docs/api.md'
 
+// The one route every token may call, whatever its scopes.
 export function curlExample(apiUrl: string, token: string): string {
-  return `curl -H "Authorization: Bearer ${token}" ${apiUrl.replace(/\/?$/, '/spaces')}`
+  return `curl -H "Authorization: Bearer ${token}" ${apiUrl.replace(/\/?$/, '/tokens/self')}`
 }
 
 // English on purpose: it is pasted into an agent's instructions, not read in
