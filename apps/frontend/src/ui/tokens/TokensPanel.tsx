@@ -36,7 +36,7 @@ export function TokensPanel({ owner }: { owner: TokenOwner }): ReactElement {
   const { t } = useI18n()
   const listId = useId()
   const tokens = useTokens(owner)
-  const [now] = useState(Date.now)
+  const now = tokens.dataUpdatedAt
   const [opened, setOpened] = useState<Opened | null>(null)
   const close = () => {
     setOpened(null)
@@ -146,10 +146,13 @@ function ExpiryChip({
       />
     )
   }
-  const days = Math.ceil((new Date(expiresAt).getTime() - now) / DAY_MS)
-  if (days <= 0) {
+  const left = new Date(expiresAt).getTime() - now
+  if (left <= 0) {
     return <Chip size="small" color="error" label={t('apiTokens.expired')} />
   }
+  // Rounded, not ceiled: the server stamps expiresAt with its own clock, so a
+  // client clock a few seconds behind would turn 30 days into 31.
+  const days = Math.max(1, Math.round(left / DAY_MS))
   const when = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' }).format(
     days,
     'day'
