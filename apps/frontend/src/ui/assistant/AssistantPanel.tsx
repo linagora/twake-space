@@ -13,7 +13,8 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type ReactElement
+  type ReactElement,
+  type ReactNode
 } from 'react'
 import { Link as RouterLink } from 'react-router'
 
@@ -26,6 +27,7 @@ import {
 } from '@/application/assistant'
 import type { Sdk, SdkStatus } from '@linagora/twake-sdk'
 
+import { AsideClosable } from '@/ds/AppFrame'
 import { EmbedFrame } from '@/ds/EmbedFrame'
 import { LoadingRows } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
@@ -156,20 +158,28 @@ export function AssistantPanel({
   }, [service, postLabel, theme, mutate, onClose])
 
   if (status === 'public') {
-    return <Typography className="u-p-1">{t('assistant.notSetUp')}</Typography>
+    return (
+      <Unavailable onClose={onClose}>
+        <Typography className="u-p-1">{t('assistant.notSetUp')}</Typography>
+      </Unavailable>
+    )
   }
   if (intent.status === 'pending') {
     return (
-      <div className="u-p-1">
-        <LoadingRows count={3} label={t('assistant.loading')} />
-      </div>
+      <Unavailable onClose={onClose}>
+        <div className="u-p-1">
+          <LoadingRows count={3} label={t('assistant.loading')} />
+        </div>
+      </Unavailable>
     )
   }
   if (!service) {
     return (
-      <Alert severity="error" className="u-m-1">
-        {t('assistant.failed')}
-      </Alert>
+      <Unavailable onClose={onClose}>
+        <Alert severity="error" className="u-m-1">
+          {t('assistant.failed')}
+        </Alert>
+      </Unavailable>
     )
   }
   return (
@@ -207,5 +217,25 @@ export function AssistantPanel({
         }
       />
     </>
+  )
+}
+
+// Without the embedded assistant and its own close, the panel brings one
+function Unavailable({
+  onClose,
+  children
+}: {
+  onClose: () => void
+  children: ReactNode
+}): ReactElement {
+  const { t } = useI18n()
+  return (
+    <AsideClosable
+      title={t('assistant.open')}
+      closeLabel={t('common.close')}
+      onClose={onClose}
+    >
+      {children}
+    </AsideClosable>
   )
 }

@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ASSISTANT_INTENT } from '@/application/assistant'
@@ -214,5 +214,33 @@ describe('AssistantPanel', () => {
       await screen.findByText('The assistant is not set up for TwakeSpace.')
     ).toBeInTheDocument()
     expect(createIntent).not.toHaveBeenCalled()
+  })
+
+  it('closes without the assistant, from its button or Escape', async () => {
+    const { onClose } = renderPanel(null)
+    await screen.findByText('The assistant is not set up for TwakeSpace.')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Close' }), {
+      key: 'Escape'
+    })
+    expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it('closes when the assistant could not be opened', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    // Strict mode creates it twice
+    createIntent
+      .mockRejectedValueOnce(new Error('no service'))
+      .mockRejectedValueOnce(new Error('no service'))
+    const { onClose } = renderPanel()
+    await screen.findByText('The assistant could not be opened.')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(onClose).toHaveBeenCalled()
+    error.mockRestore()
   })
 })

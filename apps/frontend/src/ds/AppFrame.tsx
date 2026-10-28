@@ -1,8 +1,10 @@
+import { CrossMedium, Icon } from '@linagora/twake-icons'
 import {
   Avatar,
   Box,
   Content,
   Divider,
+  IconButton,
   Layout,
   List,
   ListSubheader,
@@ -15,7 +17,7 @@ import {
   styled
 } from '@linagora/twake-mui'
 import { TWAKE_BAR_HEIGHT } from '@linagora/twake-bar'
-import type { ReactElement, ReactNode } from 'react'
+import { useEffect, useRef, type ReactElement, type ReactNode } from 'react'
 
 // Layout hands `sx` to a plain div, so it is styled here instead. The page
 // behind the panels is the mockups' soft gradient, lit from each corner.
@@ -70,6 +72,71 @@ const Aside = styled('aside')(({ theme }) => ({
     zIndex: theme.zIndex.modal
   }
 }))
+
+// The aside's own way out, for content that brings none: below lg the aside
+// covers the button that opened it. Focus goes in, so Escape reaches it, and
+// back to the opener when the close button goes, unless it moved on since.
+export function AsideClosable({
+  title,
+  closeLabel,
+  onClose,
+  children
+}: {
+  title: string
+  closeLabel: string
+  onClose: () => void
+  children: ReactNode
+}): ReactElement {
+  const close = useRef<HTMLButtonElement>(null)
+  const opener = useRef<Element | null>(null)
+  useEffect(() => {
+    // Strict mode runs this twice: the second time, focus is already ours
+    const from = (opener.current ??= document.activeElement)
+    close.current?.focus()
+    return () => {
+      const lost =
+        document.activeElement === null ||
+        document.activeElement === document.body
+      if (lost && from instanceof HTMLElement) from.focus()
+    }
+  }, [])
+  return (
+    <Box
+      onKeyDown={event => {
+        if (event.key === 'Escape') onClose()
+      }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          minHeight: 56,
+          pl: 2,
+          pr: 1
+        }}
+      >
+        <Typography
+          variant="h4"
+          component="h2"
+          sx={{ flex: '1 1 auto', minWidth: 0 }}
+        >
+          {title}
+        </Typography>
+        <IconButton
+          ref={close}
+          size="medium"
+          aria-label={closeLabel}
+          onClick={onClose}
+          sx={{ color: 'text.secondary' }}
+        >
+          <Icon icon={CrossMedium} />
+        </IconButton>
+      </Box>
+      {children}
+    </Box>
+  )
+}
 
 const TopBar = styled('div')({
   position: 'sticky',
