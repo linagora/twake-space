@@ -1331,7 +1331,7 @@ describe('FeedPanel', () => {
       renderFeed([
         request([
           approver('u-bob', 'Bob Durand', 'rejected'),
-          approver('u-carol', 'Carol Diaz')
+          approver('u-me', 'Alice Martin')
         ])
       ])
       const card = await screen.findByRole('group', { name: 'Ship the copy?' })
@@ -1339,6 +1339,24 @@ describe('FeedPanel', () => {
       expect(
         within(card).queryByText('Waiting for a decision')
       ).not.toBeInTheDocument()
+      expect(within(card).getByText('No decision')).toBeInTheDocument()
+      expect(
+        within(card).queryByRole('button', { name: 'Approve' })
+      ).not.toBeInTheDocument()
+    })
+
+    it('stops waiting on an approver who left the space', async () => {
+      renderFeed([
+        request([
+          approver('u-bob', 'Bob Durand'),
+          { ...approver('u-gone', 'Gone'), name: null }
+        ])
+      ])
+      const card = await screen.findByRole('group', { name: 'Ship the copy?' })
+
+      expect(within(card).getAllByText('Waiting for a decision')).toHaveLength(
+        1
+      )
       expect(within(card).getByText('No decision')).toBeInTheDocument()
     })
   })

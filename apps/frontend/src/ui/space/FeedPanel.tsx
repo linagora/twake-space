@@ -1116,7 +1116,7 @@ function ApprovalDecisions({
             status: t(
               approver.decision
                 ? `feed.approval.${approver.decision}`
-                : open
+                : open && approver.name !== null
                   ? 'feed.approval.waiting'
                   : 'feed.approval.noDecision'
             ),
@@ -1124,7 +1124,7 @@ function ApprovalDecisions({
           }
         })}
         decide={
-          mine?.decision === null && approval.closedAt === null
+          mine?.decision === null && open
             ? {
                 commentLabel: t('feed.approval.comment'),
                 approveLabel: t('feed.approval.approve'),
