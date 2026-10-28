@@ -87,8 +87,10 @@ beforeEach(async () => {
 })
 
 const organizationRoles = new Map<string, 'owner' | 'admin' | 'member'>()
+let directoryDown = false
 beforeEach(() => {
   organizationRoles.clear()
+  directoryDown = false
 })
 
 function setUp(
@@ -114,6 +116,7 @@ function setUp(
       ),
     organizationDirectory: {
       organizationRole: (organizationId, userId) => {
+        if (directoryDown) return Promise.reject(new Error('ldap-rest down'))
         const role = organizationRoles.get(userId)
         return Promise.resolve(
           organizationId === 'org-1' && role
@@ -280,6 +283,61 @@ describe('archived spaces and the Bin', () => {
     ])
     expect((await setUp()(`/spaces/${SALES}`)).json()).toMatchObject({
       role: 'viewer',
+      manages: true
+    })
+  })
+
+  it('tells an organization admin it manages spaces it only reads, before anything copied its role', async () => {
+    await testDb.db.insert(spaceMembers).values({
+      spaceId: SALES,
+      userId: ALICE,
+      username: 'alice',
+      email: 'alice@example.com',
+      role: 'viewer'
+    })
+    organizationRoles.set(ALICE, 'admin')
+    const request = setUp()
+
+    const manages = (body: { spaces: { id: string; manages: boolean }[] }) =>
+      body.spaces.map(({ id, manages }) => ({ id, manages }))
+    expect(manages((await request('/spaces')).json())).toEqual([
+      { id: DESIGN, manages: true },
+      { id: SALES, manages: true }
+    ])
+    await testDb.db.delete(organizationMembers)
+    expect((await request(`/spaces/${SALES}`)).json()).toMatchObject({
+      role: 'viewer',
+      manages: true
+    })
+  })
+
+  it('reads the copied organization role while ldap-rest is down', async () => {
+    await testDb.db.insert(spaceMembers).values({
+      spaceId: SALES,
+      userId: ALICE,
+      username: 'alice',
+      email: 'alice@example.com',
+      role: 'viewer'
+    })
+    await testDb.db.insert(organizationMembers).values({
+      organizationId: 'org-1',
+      userId: ALICE,
+      email: 'alice@example.com',
+      role: 'admin'
+    })
+    directoryDown = true
+    const request = setUp()
+
+    const response = await request('/spaces')
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      spaces: [
+        { id: DESIGN, manages: true },
+        { id: SALES, manages: true }
+      ]
+    })
+    expect((await request(`/spaces/${SALES}`)).json()).toMatchObject({
       manages: true
     })
   })
