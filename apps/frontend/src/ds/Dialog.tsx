@@ -1,5 +1,11 @@
 import { CrossMedium, Icon, Previous } from '@linagora/twake-icons'
-import { Box, IconButton, Switch, Typography } from '@linagora/twake-mui'
+import {
+  Box,
+  Checkbox,
+  IconButton,
+  Switch,
+  Typography
+} from '@linagora/twake-mui'
 import { useId, type ReactElement, type ReactNode } from 'react'
 
 interface HeaderAction {
@@ -99,6 +105,61 @@ export function DialogSwitch({
           onChange(on)
         }}
       />
+    </Box>
+  )
+}
+
+// An option the dialog applies: a checkbox, then its label over what it does.
+export function DialogCheckbox({
+  label,
+  description,
+  checked,
+  onChange
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}): ReactElement {
+  const labelId = useId()
+  const descriptionId = useId()
+  return (
+    <Box
+      component="label"
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 1.5,
+        px: 1,
+        py: 0.5,
+        cursor: 'pointer'
+      }}
+    >
+      <Checkbox
+        checked={checked}
+        slotProps={{
+          input: {
+            'aria-labelledby': labelId,
+            'aria-describedby': descriptionId
+          }
+        }}
+        onChange={(_event, on) => {
+          onChange(on)
+        }}
+      />
+      <Box sx={{ pt: 1 }}>
+        <Typography
+          id={labelId}
+          component="span"
+          variant="body1"
+          sx={{ display: 'block' }}
+        >
+          {label}
+        </Typography>
+        <Typography id={descriptionId} color="textSecondary" sx={CAPTION}>
+          {description}
+        </Typography>
+      </Box>
     </Box>
   )
 }

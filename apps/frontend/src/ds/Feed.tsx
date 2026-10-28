@@ -7,6 +7,8 @@ import {
   Icon,
   ListMin,
   Send,
+  Star,
+  StarOutline,
   Top,
   type IconProps
 } from '@linagora/twake-icons'
@@ -30,6 +32,7 @@ import {
   Popover,
   Popper,
   Radio,
+  Rating,
   TextField,
   Tooltip,
   Typography,
@@ -2001,36 +2004,43 @@ function Quote({ children }: { children: string }): ReactElement {
 }
 
 /**
- * A feedback request: the author reads the answers, a member writes theirs
- * and can change it while the request is open.
+ * A feedback request: a member rates it from 1 to 5 stars with an optional
+ * comment, and can change it while the request is open; then everyone sees the
+ * average, the author every comment.
  */
 export function FeedFeedback({
   question,
-  answers,
-  emptyLabel,
+  average,
+  comments,
   mine,
   answer,
   summary,
   close
 }: {
   question: string
-  /** For the author only. */
-  answers:
-    { id: string; name: string; avatar: string | null; text: string }[] | null
-  emptyLabel: string
-  mine: { label: string; text: string } | null
+  /** The average rating, null before any. */
+  average: { value: number; label: string; text: string } | null
+  comments: {
+    items: { id: string; name: string | null; text: string }[]
+    showAll: string
+    showLess: string
+  }
+  mine: { rating: number | null; text: string } | null
   /** For a member while the request is open. */
   answer: {
-    label: string
+    ratingLabel: string
+    starLabel: (stars: number) => string
+    commentLabel: string
     sendLabel: string
     editLabel: string
     maxLength: number
     disabled: boolean
-    onAnswer: (text: string) => void
+    onAnswer: (answer: { rating: number; text: string }) => void
   } | null
   summary: string
   close: { label: string; onClick: () => void } | null
 }): ReactElement {
+  const [rating, setRating] = useState<number | null>(null)
   const [text, setText] = useState('')
   const [editing, setEditing] = useState(false)
   const writing = answer !== null && (mine === null || editing)
@@ -2042,108 +2052,75 @@ export function FeedFeedback({
         display: 'flex',
         flexDirection: 'column',
         gap: 1.5,
-        width: 400,
+        width: 480,
         maxWidth: '100%',
         py: 0.5
       }}
     >
       <FeedTitle large>{question}</FeedTitle>
-      {answers &&
-        (answers.length === 0 ? (
-          <Typography variant="body2" color="textSecondary">
-            {emptyLabel}
-          </Typography>
-        ) : (
-          <Box
-            component="ul"
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 1.5,
-              m: 0,
-              p: 0,
-              listStyle: 'none'
-            }}
-          >
-            {answers.map(item => (
-              <Box
-                component="li"
-                key={item.id}
-                sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}
-              >
-                <NameAvatar name={item.name} size="m" src={item.avatar} />
-                <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {item.name}
-                  </Typography>
-                  <Quote>{item.text}</Quote>
-                </Box>
-              </Box>
-            ))}
-          </Box>
-        ))}
-      {mine && !writing && (
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography
-              variant="caption"
-              color="textSecondary"
-              sx={{ flex: '1 1 auto', letterSpacing: 0.4 }}
-            >
-              {mine.label}
-            </Typography>
-            {answer && (
-              <Button
-                size="small"
-                color="inherit"
-                onClick={() => {
-                  setText(mine.text)
-                  setEditing(true)
-                }}
-              >
-                {answer.editLabel}
-              </Button>
-            )}
-          </Box>
-          <Quote>{mine.text}</Quote>
-        </Box>
-      )}
-      {writing && (
+      {writing ? (
         <Box
           component="form"
-          sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}
           onSubmit={event => {
             event.preventDefault()
-            if (!text.trim()) return
-            answer.onAnswer(text.trim())
+            if (rating === null) return
+            answer.onAnswer({ rating, text: text.trim() })
             setEditing(false)
           }}
         >
-          <TextField
-            size="small"
+          <FeedStars
+            value={rating}
+            label={answer.ratingLabel}
+            starLabel={answer.starLabel}
+            onChange={setRating}
+          />
+          <InputBase
             fullWidth
             multiline
-            minRows={2}
-            maxRows={6}
-            label={answer.label}
+            minRows={3}
+            maxRows={8}
+            placeholder={answer.commentLabel}
             value={text}
-            slotProps={{ htmlInput: { maxLength: answer.maxLength } }}
+            inputProps={{
+              maxLength: answer.maxLength,
+              'aria-label': answer.commentLabel
+            }}
             onChange={event => {
               setText(event.target.value)
             }}
+            sx={{
+              bgcolor: 'background.paper',
+              borderRadius: '12px',
+              px: 1.75,
+              py: 1.5,
+              fontSize: 14,
+              lineHeight: '20px'
+            }}
           />
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Box>
             <Button
               type="submit"
               variant="contained"
-              disabled={answer.disabled || !text.trim()}
-              startIcon={<Icon icon={Send} size={16} />}
+              disabled={answer.disabled || rating === null}
               sx={{ borderRadius: '50px' }}
             >
               {answer.sendLabel}
             </Button>
           </Box>
         </Box>
+      ) : (
+        <>
+          {average && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FeedStars value={average.value} label={average.label} />
+              <Typography variant="body2" color="textSecondary" aria-hidden>
+                {average.text}
+              </Typography>
+            </Box>
+          )}
+          {comments.items.length > 0 && <FeedbackComments {...comments} />}
+        </>
       )}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography
@@ -2153,12 +2130,146 @@ export function FeedFeedback({
         >
           {summary}
         </Typography>
+        {answer && mine && !writing && (
+          <Button
+            variant="text"
+            size="small"
+            onClick={() => {
+              setRating(mine.rating)
+              setText(mine.text)
+              setEditing(true)
+            }}
+          >
+            {answer.editLabel}
+          </Button>
+        )}
         {close && (
-          <Button size="small" color="inherit" onClick={close.onClick}>
+          <Button variant="text" size="small" onClick={close.onClick}>
             {close.label}
           </Button>
         )}
       </Box>
+    </Box>
+  )
+}
+
+const STAR_SIZE = 28
+
+// Five stars: a radio group to rate with, or, without `onChange`, a picture of
+// a rating, filled to its tenth.
+function FeedStars({
+  value,
+  label,
+  starLabel,
+  onChange
+}: {
+  value: number | null
+  label: string
+  starLabel?: (stars: number) => string
+  onChange?: (value: number | null) => void
+}): ReactElement {
+  const name = useId()
+  return (
+    <Rating
+      name={name}
+      value={value}
+      precision={onChange ? 1 : 0.1}
+      readOnly={!onChange}
+      {...(onChange
+        ? {
+            'aria-label': label,
+            getLabelText: starLabel,
+            onChange: (_event, next) => {
+              onChange(next)
+            }
+          }
+        : { getLabelText: () => label })}
+      icon={<Icon icon={Star} size={STAR_SIZE} />}
+      emptyIcon={<Icon icon={StarOutline} size={STAR_SIZE} />}
+      sx={theme => ({
+        gap: 0.5,
+        '& .MuiRating-iconFilled': { color: theme.space.ratingStar },
+        '& .MuiRating-iconEmpty': { color: 'text.secondary' }
+      })}
+    />
+  )
+}
+
+const FOLDED_COMMENTS = 2
+
+// The comments on white, each after its author's name; past two, folded
+// behind a button, and unfolded, scrolled within.
+function FeedbackComments({
+  items,
+  showAll,
+  showLess
+}: {
+  items: { id: string; name: string | null; text: string }[]
+  showAll: string
+  showLess: string
+}): ReactElement {
+  const [open, setOpen] = useState(false)
+  const listId = useId()
+  const foldable = items.length > FOLDED_COMMENTS
+  const shown = foldable && !open ? items.slice(0, FOLDED_COMMENTS) : items
+  return (
+    <Box
+      sx={{
+        bgcolor: 'background.paper',
+        borderRadius: '12px',
+        px: 1.75,
+        py: 1.5,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1
+      }}
+    >
+      <Box
+        id={listId}
+        component="ul"
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          m: 0,
+          p: 0,
+          listStyle: 'none',
+          ...(open && { maxHeight: 200, overflowY: 'auto' })
+        }}
+      >
+        {shown.map(item => (
+          <Typography
+            key={item.id}
+            component="li"
+            variant="body2"
+            sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
+          >
+            {item.name !== null && (
+              <Box component="span" sx={{ fontWeight: 600 }}>
+                {`${item.name}: `}
+              </Box>
+            )}
+            {item.text}
+          </Typography>
+        ))}
+      </Box>
+      {foldable && (
+        <Box>
+          <Button
+            variant="text"
+            size="small"
+            aria-expanded={open}
+            aria-controls={listId}
+            endIcon={<Icon icon={ChevronDownIcon} size={16} />}
+            sx={{ '& .MuiButton-endIcon': open ? { rotate: '180deg' } : {} }}
+            onClick={() => {
+              setOpen(current => !current)
+            }}
+          >
+            {open ? showLess : showAll}
+          </Button>
+        </Box>
+      )}
     </Box>
   )
 }

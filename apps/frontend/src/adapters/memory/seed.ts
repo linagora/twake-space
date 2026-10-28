@@ -766,7 +766,15 @@ export function showcaseFeed(now: number): FeedItem[] {
       poll: null,
       approval: null,
       announcement: null,
-      feedback: { count: 2, mine: null, answers: null, closedAt: null },
+      feedback: {
+        count: 2,
+        anonymous: false,
+        average: 4,
+        mine: null,
+        myRating: null,
+        answers: null,
+        closedAt: null
+      },
       reactions: [],
       time: '',
       updatedAt: ''
@@ -782,18 +790,30 @@ export function showcaseFeed(now: number): FeedItem[] {
       approval: null,
       announcement: null,
       feedback: {
-        count: 2,
+        count: 3,
+        anonymous: false,
+        average: 4,
         mine: null,
+        myRating: null,
         answers: [
           {
             userId: 'uuid-bob',
             name: 'Bob Durand',
+            rating: 3,
             text: 'Smooth, but the second step asks for too much at once.',
             answeredAt: iso(now - 20 * MINUTE)
           },
           {
+            userId: 'uuid-carol',
+            name: 'Carol Petit',
+            rating: 4,
+            text: 'Clear, the short videos helped a lot.',
+            answeredAt: iso(now - 12 * MINUTE)
+          },
+          {
             userId: 'uuid-dave',
             name: 'Dave Moreau',
+            rating: 5,
             text: 'Loved the checklist.',
             answeredAt: iso(now - 8 * MINUTE)
           }

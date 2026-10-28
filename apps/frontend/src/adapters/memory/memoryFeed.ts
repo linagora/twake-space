@@ -197,7 +197,15 @@ export function memoryFeed(
             : null,
         feedback:
           ask && 'feedback' in ask
-            ? { count: 0, mine: null, answers: [], closedAt: null }
+            ? {
+                count: 0,
+                anonymous: ask.feedback.anonymous,
+                average: null,
+                mine: null,
+                myRating: null,
+                answers: [],
+                closedAt: null
+              }
             : null
       }
       itemsOf(spaceId).push(post)
@@ -245,18 +253,24 @@ export function memoryFeed(
         : null
       return structuredClone(post)
     },
-    answer: (spaceId, postId, text) => {
+    answer: (spaceId, postId, { rating, text }) => {
       const post = find(spaceId, postId)
       const feedback = post?.kind === 'post' ? post.feedback : null
       if (!feedback) return refuse(404, 'not_found')
       if (feedback.closedAt) return refuse(409, 'poll_closed')
-      if (!feedback.mine) feedback.count += 1
+      // As if every answer were rated: the seed keeps no one else's rating.
+      const others =
+        (feedback.average ?? 0) * feedback.count - (feedback.myRating ?? 0)
+      if (feedback.mine === null) feedback.count += 1
+      feedback.average = (others + rating) / feedback.count
       feedback.mine = text.trim()
+      feedback.myRating = rating
       feedback.answers = feedback.answers && [
         ...feedback.answers.filter(a => a.userId !== me.id),
         {
-          userId: me.id,
-          name: me.name,
+          userId: feedback.anonymous ? null : me.id,
+          name: feedback.anonymous ? null : me.name,
+          rating,
           text: feedback.mine,
           answeredAt: new Date().toISOString()
         }

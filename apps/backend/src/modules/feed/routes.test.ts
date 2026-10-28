@@ -2118,8 +2118,18 @@ describe('announcements', () => {
 describe('feedback requests', () => {
   interface Feedback {
     count: number
+    anonymous: boolean
+    average: number | null
     mine: string | null
-    answers: { userId: string; name: string | null; text: string }[] | null
+    myRating: number | null
+    answers:
+      | {
+          userId: string | null
+          name: string | null
+          rating: number | null
+          text: string
+        }[]
+      | null
     closedAt: string | null
   }
   const ask = (send: ReturnType<typeof setUp>) =>
@@ -2164,7 +2174,10 @@ describe('feedback requests', () => {
     })
     expect(await feedbackOf(send, id, 'carol')).toEqual({
       count: 2,
+      anonymous: false,
+      average: null,
       mine: 'Too long',
+      myRating: null,
       answers: null,
       closedAt: null
     })
@@ -2224,6 +2237,62 @@ describe('feedback requests', () => {
     expect(await feedbackOf(bot, id, 'tws_bot')).toMatchObject({
       count: 1,
       answers: null
+    })
+  })
+
+  it('takes a rating with or without a comment, and shows everyone the average', async () => {
+    const send = setUp()
+    const id = (await ask(send)).json<Item>().id
+    const rate = (token: string, body: object) =>
+      send('PUT', `/spaces/${DESIGN}/feed/posts/${id}/answer`, token, body)
+
+    expect((await rate('bob', { rating: 5, text: 'Super' })).statusCode).toBe(
+      204
+    )
+    expect((await rate('carol', { rating: 4 })).statusCode).toBe(204)
+    expect((await rate('bob', { rating: 6 })).statusCode).toBe(400)
+    expect((await rate('bob', { rating: 0 })).statusCode).toBe(400)
+    expect((await rate('bob', {})).statusCode).toBe(400)
+
+    expect(await feedbackOf(send, id, 'carol')).toEqual({
+      count: 2,
+      anonymous: false,
+      average: 4.5,
+      mine: '',
+      myRating: 4,
+      answers: null,
+      closedAt: null
+    })
+    expect(await feedbackOf(send, id, 'alice')).toMatchObject({
+      average: 4.5,
+      myRating: null,
+      answers: [
+        { userId: BOB, name: 'bob', rating: 5, text: 'Super' },
+        { userId: CAROL, name: 'carol', rating: 4, text: '' }
+      ]
+    })
+  })
+
+  it('hides who answered an anonymous request, even from its author', async () => {
+    const send = setUp()
+    const id = (
+      await send('POST', `/spaces/${DESIGN}/feed/posts`, 'alice', {
+        body: 'How was the offsite?',
+        feedback: { anonymous: true }
+      })
+    ).json<Item>().id
+    await send('PUT', `/spaces/${DESIGN}/feed/posts/${id}/answer`, 'bob', {
+      rating: 3,
+      text: 'Too long'
+    })
+
+    expect(await feedbackOf(send, id, 'alice')).toMatchObject({
+      anonymous: true,
+      answers: [{ userId: null, name: null, rating: 3, text: 'Too long' }]
+    })
+    expect(await feedbackOf(send, id, 'bob')).toMatchObject({
+      mine: 'Too long',
+      myRating: 3
     })
   })
 

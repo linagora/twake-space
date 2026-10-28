@@ -144,7 +144,12 @@ const newPostBody = postBody
         })
       ])
       .optional(),
-    feedback: z.literal(true).optional()
+    feedback: z
+      .union([
+        z.literal(true),
+        z.strictObject({ anonymous: z.boolean().default(false) })
+      ])
+      .optional()
   })
   .refine(
     ({ poll, approval, announcement, feedback }) =>
@@ -161,7 +166,12 @@ const unvoteQuery = z.object({
     .pipe(z.coerce.number<string>().int().min(0))
     .optional()
 })
-const answerBody = z.object({ text: z.string().trim().min(1).max(2000) })
+const answerBody = z
+  .object({
+    rating: z.int().min(1).max(5).optional(),
+    text: z.string().trim().max(2000).default('')
+  })
+  .refine(({ rating, text }) => rating !== undefined || text !== '')
 const decisionBody = z.object({
   decision: z.enum(DECISIONS),
   comment: z.string().trim().max(1000).optional()
@@ -574,6 +584,9 @@ export function registerFeedRoutes(
                 pollMultiple: poll.multiple,
                 pollAnonymous: poll.anonymous
               }),
+              ...(typeof feedback === 'object' && {
+                pollAnonymous: feedback.anonymous
+              }),
               pollClosesAt: poll?.closesAt ?? null,
               approverIds: approval?.approvers ?? null,
               ...(typeof announcement === 'object' && {
@@ -827,7 +840,10 @@ export function registerFeedRoutes(
       try {
         const { spaceId, userId } = await memberOf(request)
         const postId = itemOf(request)
-        const { text } = parse(answerBody, request.body)
+        const { rating, text } = parse(answerBody, request.body)
+        // The vote's option holds the rating, 0 for none.
+        const option = rating ?? 0
+        const comment = text || null
         await db.transaction(async tx => {
           const post = await openPoll(tx, spaceId, postId, ['feedback'])
           if (post.authorId === userId) {
@@ -835,11 +851,11 @@ export function registerFeedRoutes(
           }
           const [answered] = await tx
             .insert(feedPollVotes)
-            .values({ postId, userId, option: 0, comment: text })
+            .values({ postId, userId, option, comment })
             .onConflictDoUpdate({
               target: [feedPollVotes.postId, feedPollVotes.userId],
-              set: { comment: text, createdAt: new Date() },
-              setWhere: ne(feedPollVotes.comment, text)
+              set: { option, comment, createdAt: new Date() },
+              setWhere: sql`(${feedPollVotes.option}, ${feedPollVotes.comment}) is distinct from (${option}::integer, ${comment}::text)`
             })
             .returning({ postId: feedPollVotes.postId })
           if (answered) await tellFeed(tx, spaceId, postId, 'changed')
