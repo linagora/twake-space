@@ -382,9 +382,8 @@ export function approvalState(approvers: Approver[]): Approval['state'] {
 }
 
 /**
- * The body of an approval request: what needs approval, then its optional
- * details after a blank line. The API has a single body, so the request is
- * its first line.
+ * The API gives an approval request a single body: what needs approval is its
+ * first line, the optional details follow a blank line.
  */
 export function approvalBody(title: string, details: string): string {
   const more = details.trim()
