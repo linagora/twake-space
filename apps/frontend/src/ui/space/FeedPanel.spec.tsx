@@ -1321,6 +1321,25 @@ describe('FeedPanel', () => {
         await screen.findByText('0 of 1 approved · Closed')
       ).toBeInTheDocument()
       expect(feed.closePoll).toHaveBeenCalledWith('a1', 'post-1')
+      const card = screen.getByRole('group', { name: 'Ship the copy?' })
+      expect(within(card).queryByText('Pending')).not.toBeInTheDocument()
+      expect(within(card).getByText('Closed')).toBeInTheDocument()
+      expect(within(card).getByText('No decision')).toBeInTheDocument()
+    })
+
+    it('stops waiting on the others once one rejects', async () => {
+      renderFeed([
+        request([
+          approver('u-bob', 'Bob Durand', 'rejected'),
+          approver('u-carol', 'Carol Diaz')
+        ])
+      ])
+      const card = await screen.findByRole('group', { name: 'Ship the copy?' })
+
+      expect(
+        within(card).queryByText('Waiting for a decision')
+      ).not.toBeInTheDocument()
+      expect(within(card).getByText('No decision')).toBeInTheDocument()
     })
   })
 

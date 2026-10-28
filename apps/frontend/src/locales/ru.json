@@ -429,6 +429,7 @@
       "approved": "Согласовано",
       "rejected": "Отклонено",
       "waiting": "Ожидает решения",
+      "noDecision": "Нет решения",
       "summary": "Согласовано: %{approved} из %{total}",
       "closed": "Закрыт",
       "close": "Закрыть запрос",

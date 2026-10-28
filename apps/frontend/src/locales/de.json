@@ -429,6 +429,7 @@
       "approved": "Freigegeben",
       "rejected": "Abgelehnt",
       "waiting": "Wartet auf Entscheidung",
+      "noDecision": "Keine Entscheidung",
       "summary": "%{approved} von %{total} freigegeben",
       "closed": "Geschlossen",
       "close": "Anfrage schließen",
