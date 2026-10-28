@@ -20,15 +20,25 @@ describe('isPublicAddress', () => {
     '::ffff:a00:1',
     '::7f00:1',
     '64:ff9b::a00:1',
+    '3fff::1',
+    '3fff:fff::1',
+    '5f00::1',
+    '100:0:0:1::1',
+    '::ffff:0:7f00:1',
+    '::ffff:0:a00:1',
+    '::ffff:0:ac10:0',
+    '::ffff:0:0:0',
     'not an address'
   ])('refuses %s', address => {
     expect(isPublicAddress(address)).toBe(false)
   })
 
-  it.each(['93.184.215.14', '::ffff:93.184.215.14', '2606:4700::6810:84e5'])(
-    'takes %s',
-    address => {
-      expect(isPublicAddress(address)).toBe(true)
-    }
-  )
+  it.each([
+    '93.184.215.14',
+    '::ffff:93.184.215.14',
+    '2606:4700::6810:84e5',
+    '3fff:1000::1'
+  ])('takes %s', address => {
+    expect(isPublicAddress(address)).toBe(true)
+  })
 })
