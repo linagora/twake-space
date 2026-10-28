@@ -2686,7 +2686,7 @@ export function FeedComposer({
           .filter(
             p =>
               p.name.toLowerCase().includes(query) ||
-              p.email.toLowerCase().includes(query)
+              p.email.toLowerCase().replace(/@.*/, '').includes(query)
           )
           .slice(0, MENTION_OPTIONS)
   const picking = options.length > 0
