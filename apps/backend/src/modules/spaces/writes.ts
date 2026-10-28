@@ -34,7 +34,20 @@ import {
 } from './schema.ts'
 
 const role = z.enum(spaceRole.enumValues)
-const name = z.string().trim().min(1).max(255)
+// Postgres cannot store a NUL in text, so ldap-rest would take a write the copy
+// can never follow.
+const name = z
+  .string()
+  .trim()
+  .min(1)
+  .max(255)
+  // eslint-disable-next-line no-control-regex
+  .regex(/^[^\u0000-\u001f\u007f]*$/)
+const description = z
+  .string()
+  .trim()
+  .max(1000)
+  .refine(text => !text.includes('\u0000'))
 const spaceParams = z.object({ id: z.uuid() })
 const memberParams = spaceParams.extend({ userId: z.uuid() })
 const groupParams = spaceParams.extend({ groupId: z.uuid() })
@@ -247,7 +260,7 @@ export function registerSpaceWriteRoutes(
       const body = parse(
         z.object({
           name,
-          description: z.string().trim().max(1000).default(''),
+          description: description.default(''),
           color: z
             .string()
             .regex(/^#[0-9a-f]{6}$/i)
@@ -312,7 +325,7 @@ export function registerSpaceWriteRoutes(
         z
           .object({
             name: name.optional(),
-            description: z.string().trim().max(1000).optional(),
+            description: description.optional(),
             apps: z.array(z.enum(spaceTab.enumValues)).optional()
           })
           .refine(
