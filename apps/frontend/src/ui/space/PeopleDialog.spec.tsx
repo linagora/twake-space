@@ -243,6 +243,29 @@ describe('PeopleDialog', () => {
     ).toBeInTheDocument()
   })
 
+  it('says why removing a member held through a group was refused', async () => {
+    const spaces = fakeSpaces()
+    vi.mocked(spaces.removeMember).mockRejectedValue(
+      Object.assign(new Error('refused'), {
+        status: 409,
+        code: 'member_through_group'
+      })
+    )
+    renderWithProviders(<PeopleDialog space={admin} onClose={noop} />, {
+      spaces
+    })
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Remove Carol DANVERS' })
+    )
+
+    expect(
+      await screen.findByText(
+        'This person is in the space through a linked group. Remove the group, or remove them from the group.'
+      )
+    ).toBeInTheDocument()
+  })
+
   it('shows the code of a refusal it does not know', async () => {
     const spaces = fakeSpaces()
     vi.mocked(spaces.removeMember).mockRejectedValue(

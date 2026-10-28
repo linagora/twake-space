@@ -7,7 +7,8 @@ import { useI18n, type TranslationKey } from '@/ui/i18n/useI18n'
 const REFUSALS = new Map<string, TranslationKey>([
   ['LAST_ADMIN', 'members.refusal.lastAdmin'],
   ['MEMBER_EXISTS', 'members.refusal.memberExists'],
-  ['GROUP_ALREADY_LINKED', 'members.refusal.groupAlreadyLinked']
+  ['GROUP_ALREADY_LINKED', 'members.refusal.groupAlreadyLinked'],
+  ['member_through_group', 'members.refusal.memberThroughGroup']
 ])
 
 export function WriteError({
