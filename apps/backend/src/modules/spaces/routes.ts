@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, exists, inArray, ne, sql, type SQL } from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Db } from '../../infra/db.ts'
@@ -316,7 +316,32 @@ export function registerSpaceRoutes(
         reachableSpaces(db, caller, spaceId)
       )
       if (!space) {
-        return reply.code(404).send({ error: 'not_found' })
+        // Its members, and organization tokens covering it, are told it was
+        // archived or moved to the Bin; to anyone else it does not exist.
+        const [shelved] = await db
+          .select({ state: spaces.state })
+          .from(spaces)
+          .where(
+            and(
+              coveredBy(caller),
+              eq(spaces.spaceId, spaceId),
+              ne(spaces.state, 'active'),
+              caller.userId === null
+                ? undefined
+                : exists(
+                    db
+                      .select()
+                      .from(spaceMembers)
+                      .where(
+                        and(
+                          eq(spaceMembers.spaceId, spaces.spaceId),
+                          eq(spaceMembers.userId, caller.userId)
+                        )
+                      )
+                  )
+            )
+          )
+        return reply.code(404).send({ error: shelved?.state ?? 'not_found' })
       }
 
       const [members, groups, resources, [organization], [banner]] =

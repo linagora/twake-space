@@ -191,6 +191,10 @@ describe('memorySpaces', () => {
     await spaces.setState('roadmap', 'archived')
     expect(await spaces.list()).toEqual([])
     expect(ids(await spaces.shelved('archived'))).toEqual(['roadmap'])
+    await expect(spaces.get('roadmap')).rejects.toMatchObject({
+      status: 404,
+      code: 'archived'
+    })
     await expect(spaces.remove('roadmap')).rejects.toMatchObject({
       status: 409
     })

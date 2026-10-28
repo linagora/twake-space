@@ -225,6 +225,8 @@
     "back": "All spaces",
     "loading": "Loading the space…",
     "notFound": "This space does not exist, or you are not in it.",
+    "archived": "This space has been archived.",
+    "trashed": "This space has been moved to the Bin.",
     "loadFailed": "The space could not be loaded.",
     "chatOff": "Chat is not set up for your organization yet.",
     "mailOff": "Mail turns on once your organization's domain is validated.",

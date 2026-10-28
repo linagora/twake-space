@@ -11,19 +11,28 @@ import {
 } from '@tanstack/react-query'
 import { useEffect } from 'react'
 
-import type {
-  NewSpace,
-  ShelfState,
-  ShelvedSpace,
-  Space,
-  SpaceApp,
-  SpaceChange,
-  SpaceSummary,
-  SpacesService
+import {
+  isRefusal,
+  type NewSpace,
+  type ShelfState,
+  type ShelvedSpace,
+  type Space,
+  type SpaceApp,
+  type SpaceChange,
+  type SpaceSummary,
+  type SpacesService
 } from '@/application/spaces'
+import type { TranslationKey } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 
 export const SPACES = ['spaces']
+
+export function spaceLoadErrorKey(error: unknown): TranslationKey {
+  if (!isRefusal(error) || error.status !== 404) return 'space.loadFailed'
+  if (error.code === 'archived') return 'space.archived'
+  if (error.code === 'trashed') return 'space.trashed'
+  return 'space.notFound'
+}
 
 export function useSpaceList(): UseQueryResult<SpaceSummary[]> {
   const { spaces } = useServices()

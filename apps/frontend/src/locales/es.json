@@ -225,6 +225,8 @@
     "back": "Todos los espacios",
     "loading": "Cargando el espacio…",
     "notFound": "Este espacio no existe o no formas parte de él.",
+    "archived": "Este espacio se ha archivado.",
+    "trashed": "Este espacio se ha movido a la papelera.",
     "loadFailed": "No se pudo cargar el espacio.",
     "chatOff": "El chat aún no está configurado para tu organización.",
     "mailOff": "El correo se activará cuando se valide el dominio de tu organización.",

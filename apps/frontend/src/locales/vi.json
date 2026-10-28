@@ -225,6 +225,8 @@
     "back": "Tất cả không gian",
     "loading": "Đang tải không gian…",
     "notFound": "Không gian này không tồn tại hoặc bạn không phải thành viên.",
+    "archived": "Không gian này đã được lưu trữ.",
+    "trashed": "Không gian này đã được chuyển vào thùng rác.",
     "loadFailed": "Không thể tải không gian.",
     "chatOff": "Trò chuyện chưa được thiết lập cho tổ chức của bạn.",
     "mailOff": "Thư sẽ bật khi tên miền của tổ chức bạn được xác thực.",

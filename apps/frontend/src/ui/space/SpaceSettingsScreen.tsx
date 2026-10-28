@@ -35,7 +35,6 @@ import { Link as RouterLink, useParams } from 'react-router'
 
 import { avatarUrl } from '@/application/avatar'
 import {
-  isRefusal,
   SPACE_ROLES,
   type Space,
   type SpaceApp,
@@ -55,6 +54,7 @@ import { EditDialog, useConfirmedShelve } from '@/ui/space/SpaceMenu'
 import { WriteError } from '@/ui/space/WriteError'
 import { AppIcon } from '@/ui/spaces/AppPicker'
 import {
+  spaceLoadErrorKey,
   useEditSpace,
   useSpace,
   useSpaceApps,
@@ -100,11 +100,7 @@ export function SpaceSettingsScreen(): ReactElement {
     return (
       <Page>
         <Alert severity="error" className="u-mb-1">
-          {t(
-            isRefusal(space.error) && space.error.status === 404
-              ? 'space.notFound'
-              : 'space.loadFailed'
-          )}
+          {t(spaceLoadErrorKey(space.error))}
         </Alert>
         {back}
       </Page>
