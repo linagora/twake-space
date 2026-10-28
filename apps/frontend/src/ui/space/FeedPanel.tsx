@@ -237,9 +237,18 @@ export function FeedPanel({ space }: { space: Space }): ReactElement {
   const markId = ready && mark?.filter === filter ? mark.id : null
 
   // Seen once the person reaches the newest item. A filter leaves other
-  // categories unseen.
+  // categories unseen. An edit counts as seen too: a mention it adds dates
+  // from it.
   const [atEnd, setAtEnd] = useState(false)
-  const newest = items.at(-1)?.time
+  const newest = items
+    .map(item => (item.kind === 'post' ? item.updatedAt : item.time))
+    .reduce<string | undefined>(
+      (latest, time) =>
+        latest !== undefined && Date.parse(latest) >= Date.parse(time)
+          ? latest
+          : time,
+      undefined
+    )
   const marked = useRef<string | null>(null)
   useEffect(() => {
     if (!ready || !atEnd || filter !== 'all' || newest === undefined) return

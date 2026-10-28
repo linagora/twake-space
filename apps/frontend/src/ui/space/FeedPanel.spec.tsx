@@ -576,6 +576,18 @@ describe('FeedPanel', () => {
     expect(feed.markRead).toHaveBeenCalledTimes(1)
   })
 
+  it('remembers an edit seen, as a mention it adds dates from it', async () => {
+    const { feed } = renderFeed(
+      [post(1), post(2, { editedAt: at(7), updatedAt: at(7) }), post(5)],
+      { readAt: at(1) }
+    )
+    await screen.findByText('Message 5')
+
+    await waitFor(() => {
+      expect(feed.markRead).toHaveBeenCalledWith('a1', at(7))
+    })
+  })
+
   it('invites the team to a new space', async () => {
     renderFeed([], { space: { ...roadmap, role: 'admin' } })
 

@@ -585,7 +585,7 @@ export function registerFeedRoutes(
             .returning({ id: feedPosts.id })
           if (!post) throw new Error('the post insert returned no row')
           if (speaker) {
-            const sent = { id: post.id, spaceId, authorId: speaker, body }
+            const sent = { id: post.id, spaceId, authorId: speaker, body, time }
             // An approver hears once, of the request.
             await mentionMembers(
               tx,
@@ -625,14 +625,15 @@ export function registerFeedRoutes(
           }
           const { body, mentions } = parse(postBody, request.body)
           const speaker = mentioner(caller, mentions)
+          const editedAt = new Date()
           await tx
             .update(feedPosts)
-            .set({ body, editedAt: new Date() })
+            .set({ body, editedAt })
             .where(eq(feedPosts.id, postId))
           if (speaker) {
             await mentionMembers(
               tx,
-              { id: postId, spaceId, authorId: speaker, body },
+              { id: postId, spaceId, authorId: speaker, body, time: editedAt },
               mentions,
               mentionLimiter
             )
