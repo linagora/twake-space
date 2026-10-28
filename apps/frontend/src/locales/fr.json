@@ -217,7 +217,8 @@
       "lastAdmin": "Un espace a besoin d'au moins un admin. Nommez d'abord quelqu'un d'autre admin.",
       "memberExists": "Cette personne est déjà membre avec un autre rôle. Changez plutôt son rôle dans la liste.",
       "groupAlreadyLinked": "Ce groupe est déjà lié avec un autre rôle. Changez plutôt son rôle dans la liste.",
-      "memberThroughGroup": "Cette personne est dans l'espace par un groupe lié. Retirez le groupe, ou retirez-la du groupe."
+      "memberThroughGroup": "Cette personne est dans l'espace par un groupe lié. Retirez le groupe, ou retirez-la du groupe.",
+      "roleBelowGroup": "Un groupe lié donne à cette personne un rôle plus élevé. Changez le rôle du groupe, ou retirez-la du groupe."
     }
   },
   "space": {

@@ -8,7 +8,8 @@ const REFUSALS = new Map<string, TranslationKey>([
   ['LAST_ADMIN', 'members.refusal.lastAdmin'],
   ['MEMBER_EXISTS', 'members.refusal.memberExists'],
   ['GROUP_ALREADY_LINKED', 'members.refusal.groupAlreadyLinked'],
-  ['member_through_group', 'members.refusal.memberThroughGroup']
+  ['member_through_group', 'members.refusal.memberThroughGroup'],
+  ['role_below_group', 'members.refusal.roleBelowGroup']
 ])
 
 export function WriteError({

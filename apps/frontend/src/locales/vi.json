@@ -217,7 +217,8 @@
       "lastAdmin": "Một không gian cần ít nhất một quản trị viên. Hãy đặt người khác làm quản trị viên trước.",
       "memberExists": "Người này đã là thành viên với vai trò khác. Hãy đổi vai trò của họ trong danh sách.",
       "groupAlreadyLinked": "Nhóm này đã được liên kết với vai trò khác. Hãy đổi vai trò của nhóm trong danh sách.",
-      "memberThroughGroup": "Người này ở trong không gian thông qua một nhóm được liên kết. Hãy gỡ nhóm, hoặc gỡ họ khỏi nhóm."
+      "memberThroughGroup": "Người này ở trong không gian thông qua một nhóm được liên kết. Hãy gỡ nhóm, hoặc gỡ họ khỏi nhóm.",
+      "roleBelowGroup": "Một nhóm được liên kết cho người này vai trò cao hơn. Hãy đổi vai trò của nhóm, hoặc gỡ họ khỏi nhóm."
     }
   },
   "space": {

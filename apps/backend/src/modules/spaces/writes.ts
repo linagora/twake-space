@@ -52,9 +52,9 @@ class Refusal extends Error {
   }
 }
 
-function strongest(a: SpaceRole, b: SpaceRole): SpaceRole {
+function weaker(a: SpaceRole, b: SpaceRole) {
   const order = spaceRole.enumValues
-  return order.indexOf(a) > order.indexOf(b) ? a : b
+  return order.indexOf(a) < order.indexOf(b)
 }
 
 function callerOf(request: FastifyRequest) {
@@ -495,27 +495,25 @@ export function registerSpaceWriteRoutes(
       const { orgId, actor } = await administered(request, id)
       const member = await memberOf(id, userId)
       // ldap-rest knows only the members a space holds directly; one in
-      // through a linked group gets a role of their own, and keeps the
-      // strongest of it and their groups' roles.
-      const held = await ldapRest(() =>
+      // through a linked group gets a role of their own, which cannot take
+      // them below their groups' role.
+      await ldapRest(() =>
         directory.setMemberRole(orgId, id, member.username, body.role, actor)
-      ).then(
-        () => body.role,
-        async (error: unknown) => {
-          if (!(
-            error instanceof Refusal && error.message === 'MEMBER_NOT_FOUND'
-          ))
-            throw error
-          await ldapRest(() =>
-            directory.addMembers(orgId, id, [member.username], body.role, actor)
-          )
-          return strongest(body.role, member.role)
-        }
-      )
+      ).catch(async (error: unknown) => {
+        if (!(error instanceof Refusal && error.message === 'MEMBER_NOT_FOUND'))
+          throw error
+        if (weaker(body.role, member.role))
+          throw new Refusal(409, 'role_below_group')
+        await ldapRest(() =>
+          directory.addMembers(orgId, id, [member.username], body.role, actor)
+        )
+      })
       const at = new Date()
       await copy(request, () =>
         db.transaction(tx =>
-          upsertMembers(tx, request.log, id, at, [{ ...member, role: held }])
+          upsertMembers(tx, request.log, id, at, [
+            { ...member, role: body.role }
+          ])
         )
       )
       return reply.code(204).send()

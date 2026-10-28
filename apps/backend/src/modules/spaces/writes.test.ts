@@ -481,12 +481,9 @@ describe('space writes', () => {
     expect(await members()).toEqual([{ userId: ALICE, role: 'admin' }])
   })
 
-  it.each([
-    ['editor', 'editor'],
-    ['viewer', 'editor']
-  ] as const)(
-    'gives a member held through a group their own role, %s, and copies the strongest',
-    async (role, held) => {
+  it.each(['editor', 'admin'] as const)(
+    'gives a member held through a group their own role, %s',
+    async role => {
       const { calls, directory } = ldapRest()
       directory.setMemberRole = () =>
         Promise.reject(
@@ -507,9 +504,30 @@ describe('space writes', () => {
       expect(calls).toEqual([
         ['addMembers', 'org-1', DESIGN, ['bob'], role, 'alice@example.com']
       ])
-      expect(await members()).toContainEqual({ userId: BOB, role: held })
+      expect(await members()).toContainEqual({ userId: BOB, role })
     }
   )
+
+  it('refuses a role below the one a linked group gives', async () => {
+    const { calls, directory } = ldapRest()
+    directory.setMemberRole = () =>
+      Promise.reject(new NotFoundError('member not found', 'MEMBER_NOT_FOUND'))
+    await testDb.db
+      .update(spaceMembers)
+      .set({ role: 'editor' })
+      .where(eq(spaceMembers.userId, BOB))
+
+    const response = await setUp(directory)(
+      'PATCH',
+      `/spaces/${DESIGN}/members/${BOB}`,
+      { role: 'viewer' }
+    )
+
+    expect(response.statusCode).toBe(409)
+    expect(response.json()).toEqual({ error: 'role_below_group' })
+    expect(calls).toEqual([])
+    expect(await members()).toContainEqual({ userId: BOB, role: 'editor' })
+  })
 
   it('keeps the display names of the members it adds and changes', async () => {
     const write = setUp(ldapRest().directory)
