@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { ApiToken } from '@/application/tokens'
 import { fakeTokens } from '@/testing/fakeTokens'
@@ -34,6 +34,10 @@ const refusal = (status: number, reason: string) =>
   Object.assign(new Error('refused'), { status, code: 'forbidden', reason })
 
 describe('ApiTokensScreen', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('lists the personal tokens', async () => {
     renderRoute('/settings/api-tokens', {
       tokens: fakeTokens({ personal: [assistant] })
@@ -173,6 +177,53 @@ describe('ApiTokensScreen', () => {
     expect(
       await screen.findByRole('list', { name: 'Your tokens' })
     ).toHaveTextContent('Backup script')
+  })
+
+  it('counts the days left of a token created after the page opened', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-27T17:00:00.000Z'))
+    const tokens = fakeTokens()
+    const listed: ApiToken[] = []
+    vi.mocked(tokens.list).mockImplementation(() =>
+      Promise.resolve([...listed])
+    )
+    vi.mocked(tokens.create).mockImplementation((_owner, { name, scopes }) => {
+      const token = {
+        id: 't-9',
+        name,
+        scopes,
+        spaces: 'all' as const,
+        role: null,
+        expiresAt: new Date(Date.now() + 30 * 24 * 3600_000).toISOString()
+      }
+      listed.push({
+        ...token,
+        lastUsedAt: null,
+        createdAt: new Date().toISOString()
+      })
+      return Promise.resolve({ ...token, token: 'tws_t-9' })
+    })
+    renderRoute('/settings/api-tokens', { tokens })
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create a token' })
+    )
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'QA' }
+    })
+    vi.setSystemTime(new Date('2026-10-27T17:00:30.000Z'))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
+    fireEvent.click(
+      within(
+        await screen.findByRole('dialog', { name: 'QA is ready' })
+      ).getByRole('button', { name: 'Done' })
+    )
+
+    const list = await screen.findByRole('list', { name: 'Your tokens' })
+    expect(within(list).getByRole('listitem')).toHaveTextContent(
+      'Expires in 30 days'
+    )
   })
 
   it('shows how to call the API', async () => {
