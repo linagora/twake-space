@@ -122,7 +122,7 @@ function Composer({ onSend }: { onSend: () => void }): ReactElement {
       emojis={['😍', '🎉']}
       people={[
         { id: 'u1', name: 'Alice Martin', email: 'alice@x.org', avatar: null },
-        { id: 'u2', name: 'Bob Leroy', email: 'bob@x.org', avatar: null }
+        { id: 'u2', name: 'Bob Leroy', email: 'bleroy@x.org', avatar: null }
       ]}
       peopleLabel="Mention a member"
       value={value}
@@ -192,6 +192,21 @@ describe('FeedComposer', () => {
 
     fireEvent.keyDown(field, { key: 'Escape' })
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('matches the members on their email local part, not its domain', async () => {
+    renderWithProviders(<Composer onSend={vi.fn()} />)
+    const field = await screen.findByRole('textbox', { name: 'Text message' })
+    fireEvent.change(field, { target: { value: '@x' } })
+    fireEvent.select(field)
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+    fireEvent.change(field, { target: { value: '@bler' } })
+    fireEvent.select(field)
+    const options = await screen.findAllByRole('option')
+    expect(options).toHaveLength(1)
+    expect(options[0]).toHaveTextContent('Bob Leroy')
   })
 
   it('sends on Enter once the caret leaves the "@"', async () => {
