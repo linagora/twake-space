@@ -74,7 +74,8 @@ const Aside = styled('aside')(({ theme }) => ({
 }))
 
 // The aside's own way out, for content that brings none: below lg the aside
-// covers the button that opened it. Focus goes in, so Escape reaches it.
+// covers the button that opened it. Focus goes in, so Escape reaches it, and
+// back to the opener when the close button goes, unless it moved on since.
 export function AsideClosable({
   title,
   closeLabel,
@@ -87,8 +88,17 @@ export function AsideClosable({
   children: ReactNode
 }): ReactElement {
   const close = useRef<HTMLButtonElement>(null)
+  const opener = useRef<Element | null>(null)
   useEffect(() => {
+    // Strict mode runs this twice: the second time, focus is already ours
+    const from = (opener.current ??= document.activeElement)
     close.current?.focus()
+    return () => {
+      const lost =
+        document.activeElement === null ||
+        document.activeElement === document.body
+      if (lost && from instanceof HTMLElement) from.focus()
+    }
   }, [])
   return (
     <Box
