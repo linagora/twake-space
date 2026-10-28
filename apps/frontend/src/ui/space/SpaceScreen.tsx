@@ -1,12 +1,6 @@
 import { Icon } from '@linagora/twake-icons'
 import { Alert, Button, Link, Tab, Tabs, Typography } from '@linagora/twake-mui'
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactElement
-} from 'react'
+import { useEffect, useLayoutEffect, useRef, type ReactElement } from 'react'
 import {
   Navigate,
   Link as RouterLink,
@@ -41,22 +35,7 @@ import { SpaceActions } from '@/ui/space/SpaceActions'
 import { SpaceHome } from '@/ui/space/SpaceHome'
 import { useMarkOpened, useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
-
-function useNowAfter(at: number): number {
-  const [now, setNow] = useState(Date.now)
-  useEffect(() => {
-    const timer = setTimeout(
-      () => {
-        setNow(Date.now())
-      },
-      Math.max(0, at - Date.now())
-    )
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [at])
-  return now
-}
+import { useNowAfter } from '@/ui/useNowAfter'
 
 export function SpaceScreen(): ReactElement {
   const { t } = useI18n()

@@ -122,6 +122,7 @@ import { FeedFailure } from '@/ui/space/FeedFailure'
 import { PeopleDialog } from '@/ui/space/PeopleDialog'
 import { PollDialog } from '@/ui/space/PollDialog'
 import { TextPostDialog } from '@/ui/space/TextPostDialog'
+import { useNowAfter } from '@/ui/useNowAfter'
 
 const FILTERS: FeedFilter[] = ['all', ...FEED_CATEGORIES]
 
@@ -999,9 +1000,9 @@ function PollVotes({
     myId !== null && option.userIds.includes(myId)
   const total = poll.options.reduce((sum, o) => sum + o.count, 0)
   // No event comes at the deadline: past it, the card closes on its own.
-  const isClosed =
-    poll.closedAt !== null ||
-    (poll.closesAt !== null && new Date(poll.closesAt) <= new Date())
+  const deadline = poll.closesAt === null ? NaN : Date.parse(poll.closesAt)
+  const now = useNowAfter(deadline)
+  const isClosed = poll.closedAt !== null || now >= deadline
   const closed = (summary: string) =>
     isClosed ? `${summary} · ${t('feed.poll.closed')}` : summary
   const shared = {
@@ -1011,7 +1012,10 @@ function PollVotes({
       const option = poll.options[index]
       if (option) vote.mutate({ option: index, picked: !mine(option) })
     },
-    close: onClose && { label: t('feed.poll.close'), onClick: onClose }
+    close:
+      onClose && !isClosed
+        ? { label: t('feed.poll.close'), onClick: onClose }
+        : null
   }
   const choice = (option: PollOption, label: string) => ({
     label,

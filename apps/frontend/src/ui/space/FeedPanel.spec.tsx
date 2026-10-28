@@ -1095,6 +1095,47 @@ describe('FeedPanel', () => {
     expect(screen.getByText(/^By /)).toBeInTheDocument()
   })
 
+  it('closes a yes/no question when its deadline passes', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      renderFeed([
+        post(1, {
+          author: { type: 'user', id: 'u-me', name: 'Alice Martin' },
+          body: 'Ship today?',
+          poll: {
+            kind: 'yes_no',
+            multiple: false,
+            anonymous: false,
+            options: [
+              { label: 'Yes', count: 0, userIds: [] },
+              { label: 'No', count: 0, userIds: [] }
+            ],
+            closesAt: new Date(Date.now() + 60_000).toISOString(),
+            closedAt: null
+          }
+        })
+      ])
+      const poll = await screen.findByRole('group', { name: 'Ship today?' })
+      expect(
+        within(poll).getByRole('button', { name: 'Yes: 0 votes' })
+      ).toBeEnabled()
+
+      act(() => {
+        vi.advanceTimersByTime(60_000)
+      })
+
+      expect(screen.getByText('0 answered · Closed')).toBeInTheDocument()
+      expect(
+        within(poll).getByRole('button', { name: 'Yes: 0 votes' })
+      ).toBeDisabled()
+      expect(
+        screen.queryByRole('button', { name: 'Close the poll' })
+      ).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   describe('an approval request', () => {
     const bob = {
       id: 'u-bob',
