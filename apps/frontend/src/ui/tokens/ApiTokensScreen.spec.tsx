@@ -151,7 +151,7 @@ describe('ApiTokensScreen', () => {
     expect(
       within(secret).getByLabelText('Try it in a terminal').textContent
     ).toBe(
-      'curl -H "Authorization: Bearer tws_token-1" https://space.test/api/spaces'
+      'curl -H "Authorization: Bearer tws_token-1" https://space.test/api/tokens/self'
     )
     const brief = within(secret).getByLabelText(
       'Brief for an AI agent'

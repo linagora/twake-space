@@ -69,10 +69,10 @@ describe('agentBrief', () => {
 
 describe('curlExample', () => {
   it.each(['https://space.test/api', 'https://space.test/api/'])(
-    'keeps the API path of %s',
+    'calls the route every token may call, under the API path of %s',
     apiUrl => {
       expect(curlExample(apiUrl, 'tws_x')).toBe(
-        'curl -H "Authorization: Bearer tws_x" https://space.test/api/spaces'
+        'curl -H "Authorization: Bearer tws_x" https://space.test/api/tokens/self'
       )
     }
   )
