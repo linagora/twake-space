@@ -24,6 +24,7 @@ import { Fragment, useEffect, useRef, useState, type ReactElement } from 'react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
 
 import {
+  approvalText,
   cardAction,
   cardApp,
   FEED_CATEGORIES,
@@ -66,6 +67,7 @@ import {
   FeedCentered,
   FeedAnnouncement,
   FeedApproval,
+  FeedApprovalSummary,
   FeedComposer,
   FeedComposerMenu,
   FeedDetail,
@@ -818,6 +820,7 @@ function Post({
   const { feed } = useServices()
   const { replace, drop } = useFeedCache(space.id)
   const time = useTime()
+  const approvalSummary = useApprovalSummary()
   const author = useActorName(post.author) ?? t('feed.someone')
   const mine = post.author.type === 'user' && post.author.id === myId
   // An author made a viewer since may only take the post down.
@@ -880,6 +883,7 @@ function Post({
         what={[
           post.announcement && t('feed.announcement.posted'),
           post.poll?.kind === 'yes_no' && t('feed.yesNo.asked'),
+          post.approval && t('feed.approval.requested'),
           post.editedAt && t('feed.edited')
         ]
           .filter(Boolean)
@@ -930,7 +934,6 @@ function Post({
             approval={post.approval}
             space={space}
             myId={myId}
-            onClose={post.approval.closedAt ? null : closing}
           />
         ) : post.feedback ? (
           <FeedbackAnswers
@@ -983,10 +986,42 @@ function Post({
         message={t('feed.changeFailed')}
       />
       <FeedFooter time={time(post.time)}>
+        {post.approval && (
+          <FeedApprovalSummary
+            summary={approvalSummary(post.approval)}
+            close={
+              // Approved or rejected, it waits on no one: nothing to close.
+              post.approval.closedAt ||
+              post.approval.state !== 'pending' ||
+              !closing
+                ? null
+                : { label: t('feed.approval.close'), onClick: closing }
+            }
+          />
+        )}
         <Reactions item={post} spaceId={space.id} myId={myId} />
       </FeedFooter>
     </FeedRow>
   )
+}
+
+function useApprovalSummary(): (approval: Approval) => string {
+  const { t } = useI18n()
+  return approval => {
+    const approved = approval.approvers.filter(
+      approver => approver.decision === 'approved'
+    ).length
+    const status =
+      approval.state !== 'pending'
+        ? approval.state
+        : approval.closedAt
+          ? 'closed'
+          : 'open'
+    return `${t('feed.approval.summary', {
+      approved,
+      total: approval.approvers.length
+    })} · ${t(`feed.approval.${status}`)}`
+  }
 }
 
 function PostLink({ body }: { body: string }): ReactElement | null {
@@ -1113,14 +1148,12 @@ function ApprovalDecisions({
   post,
   approval,
   space,
-  myId,
-  onClose
+  myId
 }: {
   post: FeedPost
   approval: Approval
   space: Space
   myId: string | null
-  onClose: (() => void) | null
 }): ReactElement {
   const { t } = useI18n()
   const { feed } = useServices()
@@ -1128,72 +1161,60 @@ function ApprovalDecisions({
   const reread = () => feed.item(space.id, post.id).then(replace)
   // A decision is final: the post is reread from the server, failed or not.
   const decide = useMutation({
-    mutationFn: ({
-      decision,
-      comment
-    }: {
-      decision: Decision
-      comment: string
-    }) => feed.decide(space.id, post.id, decision, comment),
+    mutationFn: (decision: Decision) =>
+      feed.decide(space.id, post.id, decision, ''),
     onSettled: () => reread().catch(() => undefined)
   })
   const mine = approval.approvers.find(approver => approver.id === myId)
-  const approved = approval.approvers.filter(
-    approver => approver.decision === 'approved'
-  ).length
-  const summary = t('feed.approval.summary', {
-    approved,
-    total: approval.approvers.length
-  })
   const open = approval.closedAt === null && approval.state === 'pending'
+  const { title, details } = approvalText(post.body)
+  // Your own row first, so it stays in sight in a collapsed list.
+  const approvers = mine
+    ? [mine, ...approval.approvers.filter(approver => approver !== mine)]
+    : approval.approvers
   return (
     <>
       <FeedApproval
-        question={post.body}
-        state={{
-          tone: approval.state,
-          label: t(
-            approval.state === 'pending' && !open
-              ? 'feed.approval.closed'
-              : `feed.approval.${approval.state}`
-          )
-        }}
-        approvers={approval.approvers.map(approver => {
+        title={title}
+        details={details}
+        approvers={approvers.map(approver => {
           const member = space.members.find(m => m.id === approver.id)
+          const waiting = open && approver.name !== null
+          const name = approver.name ?? t('feed.someone')
           return {
             id: approver.id,
-            name: approver.name ?? t('feed.someone'),
+            name,
+            label: approver === mine ? t('feed.approval.you') : name,
             avatar: member ? avatarUrl(member.workplaceFqdn) : null,
-            tone: approver.decision ?? 'pending',
+            tone: approver.decision ?? (waiting ? 'pending' : 'none'),
             status: t(
               approver.decision
                 ? `feed.approval.${approver.decision}`
-                : open && approver.name !== null
-                  ? 'feed.approval.waiting'
+                : waiting
+                  ? 'feed.approval.pending'
                   : 'feed.approval.noDecision'
             ),
             comment: approver.comment
           }
         })}
+        more={{
+          showAll: t('feed.approval.showAll', {
+            count: approval.approvers.length
+          }),
+          showLess: t('feed.approval.showLess')
+        }}
         decide={
           mine?.decision === null && open
             ? {
-                commentLabel: t('feed.approval.comment'),
                 approveLabel: t('feed.approval.approve'),
                 rejectLabel: t('feed.approval.reject'),
                 disabled: decide.isPending,
-                onDecide: (decision, comment) => {
-                  decide.mutate({ decision, comment: comment.trim() })
+                onDecide: decision => {
+                  decide.mutate(decision)
                 }
               }
             : null
         }
-        summary={
-          approval.closedAt
-            ? `${summary} · ${t('feed.approval.closed')}`
-            : summary
-        }
-        close={onClose && { label: t('feed.approval.close'), onClick: onClose }}
       />
       <FeedFailure
         error={decide.error}

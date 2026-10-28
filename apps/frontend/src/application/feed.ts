@@ -142,6 +142,10 @@ export interface Approver {
 
 export const APPROVERS = { max: 20 }
 
+// Together under the 4000 characters of a post's body.
+export const APPROVAL_TITLE = { max: 200 }
+export const APPROVAL_DETAILS = { max: 3000 }
+
 /** What a new post asks of the members, beyond its text. */
 export type PostAsk =
   | { poll: { options: string[]; multiple: boolean; anonymous: boolean } }
@@ -375,6 +379,24 @@ export function approvalState(approvers: Approver[]): Approval['state'] {
   return approvers.every(a => a.decision === 'approved')
     ? 'approved'
     : 'pending'
+}
+
+/**
+ * The API gives an approval request a single body: what needs approval is its
+ * first line, the optional details follow a blank line.
+ */
+export function approvalBody(title: string, details: string): string {
+  const more = details.trim()
+  return more ? `${title.trim()}\n\n${more}` : title.trim()
+}
+
+export function approvalText(body: string): {
+  title: string
+  details: string | null
+} {
+  const end = body.indexOf('\n')
+  if (end === -1) return { title: body, details: null }
+  return { title: body.slice(0, end), details: body.slice(end).trim() || null }
 }
 
 /** The item once a user has added (`on`) or taken back a reaction. */

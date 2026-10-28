@@ -1,13 +1,13 @@
 import {
+  Bottom,
   Check,
-  CheckCircle,
   ClockOutline,
   Cross,
-  CrossCircle,
   Down,
   Icon,
   ListMin,
   Send,
+  Top,
   type IconProps
 } from '@linagora/twake-icons'
 import {
@@ -911,6 +911,7 @@ export function FeedFooter({
     >
       <Box
         sx={{
+          flex: '1 1 auto',
           display: 'flex',
           alignItems: 'center',
           flexWrap: 'wrap',
@@ -1751,220 +1752,229 @@ export function FeedYesNo({
   )
 }
 
-export type ApprovalTone = 'pending' | 'approved' | 'rejected'
+/** `none`: no decision, and none awaited any more. */
+export type ApproverTone = 'pending' | 'approved' | 'rejected' | 'none'
 
 const TONE_COLOR = {
   pending: 'text.secondary',
   approved: 'success.main',
-  rejected: 'error.main'
+  rejected: 'error.main',
+  none: 'text.secondary'
 } as const
 
-const TONE_PALETTE = {
-  pending: 'text',
-  approved: 'success',
-  rejected: 'error'
+const TONE_ICON = {
+  pending: ClockOutline,
+  approved: Check,
+  rejected: Cross,
+  none: null
 } as const
 
-function ApprovalStateChip({
-  tone,
-  label
+// A longer list shows its first two until asked: showing all but one hides
+// too little to be worth a click.
+const APPROVERS_SHOWN = 2
+
+/**
+ * An approval request: what needs approval and its details, each approver
+ * with what they decided, and the buttons of an approver who has not decided
+ * yet.
+ */
+export function FeedApproval({
+  title,
+  details,
+  approvers,
+  more,
+  decide
 }: {
-  tone: ApprovalTone
-  label: string
+  title: string
+  details: string | null
+  approvers: {
+    id: string
+    /** For the avatar; `label` is shown, "You" for the reader. */
+    name: string
+    label: string
+    avatar: string | null
+    tone: ApproverTone
+    status: string
+    comment: string | null
+  }[]
+  more: { showAll: string; showLess: string }
+  /** For an approver who has not decided while the request is open. */
+  decide: {
+    approveLabel: string
+    rejectLabel: string
+    disabled: boolean
+    onDecide: (decision: 'approved' | 'rejected') => void
+  } | null
 }): ReactElement {
+  const [expanded, setExpanded] = useState(false)
+  const collapsible = approvers.length > APPROVERS_SHOWN + 1
+  const shown =
+    collapsible && !expanded ? approvers.slice(0, APPROVERS_SHOWN) : approvers
   return (
     <Box
-      component="span"
-      sx={theme => ({
-        flex: '0 0 auto',
-        px: 1,
-        borderRadius: '12px',
-        fontSize: 12,
-        fontWeight: 500,
-        lineHeight: '24px',
-        letterSpacing: 0.4,
-        color: TONE_COLOR[tone],
-        bgcolor:
-          tone === 'pending'
-            ? theme.vars.palette.action.selected
-            : theme.alpha(theme.vars.palette[TONE_PALETTE[tone]].main, 0.12)
-      })}
+      role="group"
+      aria-label={title}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+        width: 480,
+        maxWidth: '100%',
+        pt: 0.5
+      }}
     >
-      {label}
+      <Box>
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}
+        >
+          {title}
+        </Typography>
+        {details && (
+          <Typography
+            variant="caption"
+            component="p"
+            color="textSecondary"
+            sx={{
+              mt: 0.5,
+              letterSpacing: 0.4,
+              overflowWrap: 'anywhere',
+              whiteSpace: 'pre-wrap'
+            }}
+          >
+            {details}
+          </Typography>
+        )}
+      </Box>
+      <Box
+        sx={{
+          bgcolor: 'background.paper',
+          borderRadius: '12px',
+          px: 1.5,
+          py: 1
+        }}
+      >
+        <Box
+          component="ul"
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            m: 0,
+            p: 0,
+            listStyle: 'none'
+          }}
+        >
+          {shown.map(approver => {
+            const icon = TONE_ICON[approver.tone]
+            return (
+              <Box
+                component="li"
+                key={approver.id}
+                aria-label={`${approver.label}: ${approver.status}`}
+                sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}
+              >
+                <NameAvatar
+                  name={approver.name}
+                  size="s"
+                  src={approver.avatar}
+                />
+                <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ lineHeight: '24px', overflowWrap: 'anywhere' }}
+                  >
+                    {approver.label}
+                  </Typography>
+                  {approver.comment && <Quote>{approver.comment}</Quote>}
+                </Box>
+                <Box
+                  sx={{
+                    flex: '0 0 auto',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    minHeight: 24,
+                    color: TONE_COLOR[approver.tone]
+                  }}
+                >
+                  <Typography variant="body2" sx={{ color: 'inherit' }}>
+                    {approver.status}
+                  </Typography>
+                  {icon && <Icon icon={icon} size={18} aria-hidden />}
+                </Box>
+              </Box>
+            )
+          })}
+        </Box>
+        {collapsible && (
+          <Button
+            size="small"
+            variant="text"
+            aria-expanded={expanded}
+            endIcon={<Icon icon={expanded ? Top : Bottom} size={12} />}
+            onClick={() => {
+              setExpanded(!expanded)
+            }}
+            sx={{ mt: 0.5, ml: -1 }}
+          >
+            {expanded ? more.showLess : more.showAll}
+          </Button>
+        )}
+      </Box>
+      {decide && (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            disabled={decide.disabled}
+            startIcon={<Icon icon={Cross} size={16} />}
+            onClick={() => {
+              decide.onDecide('rejected')
+            }}
+          >
+            {decide.rejectLabel}
+          </Button>
+          <Button
+            fullWidth
+            variant="contained"
+            disabled={decide.disabled}
+            startIcon={<Icon icon={Check} size={16} />}
+            onClick={() => {
+              decide.onDecide('approved')
+            }}
+          >
+            {decide.approveLabel}
+          </Button>
+        </Box>
+      )}
     </Box>
   )
 }
 
-/**
- * An approval request: each approver with what they decided, the overall
- * state, and the buttons of an approver who has not decided yet.
- */
-export function FeedApproval({
-  question,
-  state,
-  approvers,
-  decide,
+/** Under an approval request, beside its time: how far it got, and closing it. */
+export function FeedApprovalSummary({
   summary,
   close
 }: {
-  question: string
-  state: { tone: ApprovalTone; label: string }
-  approvers: {
-    id: string
-    name: string
-    avatar: string | null
-    tone: ApprovalTone
-    status: string
-    comment: string | null
-  }[]
-  /** For an approver who has not decided while the request is open. */
-  decide: {
-    commentLabel: string
-    approveLabel: string
-    rejectLabel: string
-    disabled: boolean
-    onDecide: (decision: 'approved' | 'rejected', comment: string) => void
-  } | null
   summary: string
   close: { label: string; onClick: () => void } | null
 }): ReactElement {
-  const [comment, setComment] = useState('')
   return (
-    <Box
-      role="group"
-      aria-label={question}
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 1.5,
-        width: 400,
-        maxWidth: '100%',
-        py: 0.5
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-        <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
-          <FeedTitle large>{question}</FeedTitle>
-        </Box>
-        <ApprovalStateChip {...state} />
-      </Box>
-      <Box
-        component="ul"
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1,
-          m: 0,
-          p: 0,
-          listStyle: 'none'
-        }}
+    <>
+      <Typography
+        variant="caption"
+        color="textSecondary"
+        sx={{ flex: '1 1 auto', fontWeight: 500, letterSpacing: 0.4 }}
       >
-        {approvers.map(approver => (
-          <Box
-            component="li"
-            key={approver.id}
-            sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}
-          >
-            <Badge
-              overlap="circular"
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-              sx={{ '& .MuiBadge-badge': { p: 0 } }}
-              invisible={approver.tone === 'pending'}
-              badgeContent={
-                approver.tone !== 'pending' && (
-                  <Box
-                    aria-hidden
-                    sx={{
-                      display: 'flex',
-                      borderRadius: '50%',
-                      bgcolor: 'background.paper',
-                      color: TONE_COLOR[approver.tone],
-                      p: '1px'
-                    }}
-                  >
-                    <Icon
-                      icon={
-                        approver.tone === 'approved' ? CheckCircle : CrossCircle
-                      }
-                      size={14}
-                    />
-                  </Box>
-                )
-              }
-            >
-              <NameAvatar name={approver.name} size="m" src={approver.avatar} />
-            </Badge>
-            <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
-              <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
-                {approver.name}
-              </Typography>
-              <Typography
-                variant="caption"
-                component="p"
-                sx={{ color: TONE_COLOR[approver.tone], letterSpacing: 0.4 }}
-              >
-                {approver.status}
-              </Typography>
-              {approver.comment && <Quote>{approver.comment}</Quote>}
-            </Box>
-          </Box>
-        ))}
-      </Box>
-      {decide && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <TextField
-            size="small"
-            fullWidth
-            multiline
-            maxRows={4}
-            label={decide.commentLabel}
-            value={comment}
-            slotProps={{ htmlInput: { maxLength: 1000 } }}
-            onChange={event => {
-              setComment(event.target.value)
-            }}
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-            <Button
-              variant="outlined"
-              color="error"
-              disabled={decide.disabled}
-              onClick={() => {
-                decide.onDecide('rejected', comment)
-              }}
-              sx={{ borderRadius: '50px' }}
-            >
-              {decide.rejectLabel}
-            </Button>
-            <Button
-              variant="contained"
-              color="success"
-              disabled={decide.disabled}
-              onClick={() => {
-                decide.onDecide('approved', comment)
-              }}
-              sx={{ borderRadius: '50px' }}
-            >
-              {decide.approveLabel}
-            </Button>
-          </Box>
-        </Box>
+        {summary}
+      </Typography>
+      {close && (
+        <Button size="small" variant="text" onClick={close.onClick}>
+          {close.label}
+        </Button>
       )}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography
-          variant="caption"
-          color="textSecondary"
-          sx={{ flex: '1 1 auto', fontWeight: 500, letterSpacing: 0.4 }}
-        >
-          {summary}
-        </Typography>
-        {close && (
-          <Button size="small" color="inherit" onClick={close.onClick}>
-            {close.label}
-          </Button>
-        )}
-      </Box>
-    </Box>
+    </>
   )
 }
 

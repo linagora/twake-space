@@ -1195,7 +1195,7 @@ describe('FeedPanel', () => {
         ...overrides
       })
 
-    it('asks the members picked to approve', async () => {
+    it('asks the members picked to approve, with details', async () => {
       const { feed } = renderFeed([post(0)], {
         space: { ...roadmap, members: [bob] }
       })
@@ -1203,29 +1203,39 @@ describe('FeedPanel', () => {
       fireEvent.click(
         screen.getByRole('menuitem', { name: 'Approval request' })
       )
-      const dialog = screen.getByRole('dialog', {
-        name: 'New approval request'
-      })
-      const send = within(dialog).getByRole('button', { name: 'Send' })
+      const dialog = screen.getByRole('dialog', { name: 'Approval request' })
+      expect(
+        within(dialog).getByText('Ask teammates to make a decision.')
+      ).toBeInTheDocument()
+      const send = within(dialog).getByRole('button', { name: 'Send request' })
 
       fireEvent.change(
         within(dialog).getByRole('textbox', { name: 'What needs approval?' }),
         { target: { value: ' Ship the copy? ' } }
       )
-      expect(send).toBeDisabled()
-      fireEvent.keyDown(
-        within(dialog).getByRole('combobox', { name: 'Approvers' }),
-        { key: 'ArrowDown' }
+      fireEvent.change(
+        within(dialog).getByRole('textbox', { name: 'Details (optional)' }),
+        { target: { value: 'Final copy is in Drive.' } }
       )
+      expect(send).toBeDisabled()
+      const approvers = within(dialog).getByRole('combobox', {
+        name: 'Approvers'
+      })
+      expect(approvers).toHaveAttribute('placeholder', 'Select approvers')
+      fireEvent.keyDown(approvers, { key: 'ArrowDown' })
       fireEvent.click(await screen.findByRole('option', { name: /Bob Durand/ }))
       fireEvent.click(send)
 
+      const card = await screen.findByRole('group', { name: 'Ship the copy?' })
       expect(
-        await screen.findByRole('group', { name: 'Ship the copy?' })
+        within(card).getByText('Final copy is in Drive.')
       ).toBeInTheDocument()
-      expect(feed.post).toHaveBeenCalledWith('a1', 'Ship the copy?', [], {
-        approval: { approvers: ['u-bob'] }
-      })
+      expect(feed.post).toHaveBeenCalledWith(
+        'a1',
+        'Ship the copy?\n\nFinal copy is in Drive.',
+        [],
+        { approval: { approvers: ['u-bob'] } }
+      )
     })
 
     it('offers no approval request without another member', async () => {
@@ -1306,7 +1316,7 @@ describe('FeedPanel', () => {
       ).toBeInTheDocument()
     })
 
-    it('lets an approver approve once, with a comment', async () => {
+    it('says who requested it, and lets an approver approve once', async () => {
       const { feed } = renderFeed([
         request([
           approver('u-me', 'Alice Martin'),
@@ -1314,31 +1324,59 @@ describe('FeedPanel', () => {
         ])
       ])
       const card = await screen.findByRole('group', { name: 'Ship the copy?' })
-      expect(within(card).getByText('Pending')).toBeInTheDocument()
+      expect(screen.getByText('requested approval')).toBeInTheDocument()
+      expect(screen.getByText('1 of 2 approved · Open')).toBeInTheDocument()
+      const you = within(card).getByRole('listitem', { name: 'You: Pending' })
+      expect(you).toBeInTheDocument()
       expect(
-        within(card).getByText('Waiting for a decision')
+        within(card).getByRole('listitem', { name: 'Carol Diaz: Approved' })
       ).toBeInTheDocument()
       expect(within(card).getByText('Clear')).toBeInTheDocument()
+      expect(within(card).queryByRole('textbox')).not.toBeInTheDocument()
 
-      fireEvent.change(
-        within(card).getByRole('textbox', { name: 'Comment (optional)' }),
-        { target: { value: ' Looks good ' } }
-      )
       fireEvent.click(within(card).getByRole('button', { name: 'Approve' }))
 
-      expect(await screen.findByText('2 of 2 approved')).toBeInTheDocument()
-      expect(feed.decide).toHaveBeenCalledWith(
-        'a1',
-        'post-1',
-        'approved',
-        'Looks good'
-      )
+      expect(
+        await screen.findByText('2 of 2 approved · Approved')
+      ).toBeInTheDocument()
+      expect(feed.decide).toHaveBeenCalledWith('a1', 'post-1', 'approved', '')
       const decided = screen.getByRole('group', { name: 'Ship the copy?' })
-      expect(within(decided).getByText('Looks good')).toBeInTheDocument()
-      expect(within(decided).getAllByText('Approved')).toHaveLength(3)
+      expect(within(decided).getAllByText('Approved')).toHaveLength(2)
       expect(
         within(decided).queryByRole('button', { name: 'Approve' })
       ).not.toBeInTheDocument()
+    })
+
+    it('shows the first two of a long list of approvers until asked', async () => {
+      renderFeed([
+        request(
+          ['Bob', 'Carol', 'Dave', 'Erin', 'Fred'].map(name =>
+            approver(`u-${name}`, name)
+          )
+        )
+      ])
+      const card = await screen.findByRole('group', { name: 'Ship the copy?' })
+      expect(within(card).getAllByRole('listitem')).toHaveLength(2)
+
+      fireEvent.click(
+        within(card).getByRole('button', { name: 'Show all 5 approvers' })
+      )
+      expect(within(card).getAllByRole('listitem')).toHaveLength(5)
+
+      fireEvent.click(within(card).getByRole('button', { name: 'Show less' }))
+      expect(within(card).getAllByRole('listitem')).toHaveLength(2)
+    })
+
+    it('shows three approvers without a toggle', async () => {
+      renderFeed([
+        request(
+          ['Bob', 'Carol', 'Dave'].map(name => approver(`u-${name}`, name))
+        )
+      ])
+      const card = await screen.findByRole('group', { name: 'Ship the copy?' })
+
+      expect(within(card).getAllByRole('listitem')).toHaveLength(3)
+      expect(within(card).queryByRole('button')).not.toBeInTheDocument()
     })
 
     it('is rejected by one, and offers nothing to decide to the others', async () => {
@@ -1350,7 +1388,8 @@ describe('FeedPanel', () => {
       ])
       const card = await screen.findByRole('group', { name: 'Ship the copy?' })
 
-      expect(within(card).getAllByText('Rejected')).toHaveLength(2)
+      expect(within(card).getByText('Rejected')).toBeInTheDocument()
+      expect(screen.getByText('0 of 2 approved · Rejected')).toBeInTheDocument()
       expect(within(card).getByText('Not yet')).toBeInTheDocument()
       expect(
         within(card).queryByRole('button', { name: 'Reject' })
@@ -1380,7 +1419,7 @@ describe('FeedPanel', () => {
       ])
       await screen.findByRole('group', { name: 'Ship the copy?' })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Close the request' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Close request' }))
 
       expect(
         await screen.findByText('0 of 1 approved · Closed')
@@ -1388,8 +1427,25 @@ describe('FeedPanel', () => {
       expect(feed.closePoll).toHaveBeenCalledWith('a1', 'post-1')
       const card = screen.getByRole('group', { name: 'Ship the copy?' })
       expect(within(card).queryByText('Pending')).not.toBeInTheDocument()
-      expect(within(card).getByText('Closed')).toBeInTheDocument()
       expect(within(card).getByText('No decision')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Close request' })
+      ).not.toBeInTheDocument()
+    })
+
+    it('offers its author nothing to close once decided', async () => {
+      renderFeed([
+        request([approver('u-bob', 'Bob Durand', 'approved')], {
+          author: { type: 'user', id: 'u-me', name: 'Alice Martin' }
+        })
+      ])
+
+      expect(
+        await screen.findByText('1 of 1 approved · Approved')
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Close request' })
+      ).not.toBeInTheDocument()
     })
 
     it('stops waiting on the others once one rejects', async () => {
@@ -1401,9 +1457,7 @@ describe('FeedPanel', () => {
       ])
       const card = await screen.findByRole('group', { name: 'Ship the copy?' })
 
-      expect(
-        within(card).queryByText('Waiting for a decision')
-      ).not.toBeInTheDocument()
+      expect(within(card).queryByText('Pending')).not.toBeInTheDocument()
       expect(within(card).getByText('No decision')).toBeInTheDocument()
       expect(
         within(card).queryByRole('button', { name: 'Approve' })
@@ -1419,9 +1473,7 @@ describe('FeedPanel', () => {
       ])
       const card = await screen.findByRole('group', { name: 'Ship the copy?' })
 
-      expect(within(card).getAllByText('Waiting for a decision')).toHaveLength(
-        1
-      )
+      expect(within(card).getAllByText('Pending')).toHaveLength(1)
       expect(within(card).getByText('No decision')).toBeInTheDocument()
     })
   })
