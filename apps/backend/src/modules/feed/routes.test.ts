@@ -494,6 +494,33 @@ describe('GET /spaces/:spaceId/feed', () => {
     ).toBe(400)
   })
 
+  it('refuses a cursor Postgres cannot read', async () => {
+    const get = setUp()
+    const cursor = (time: string) =>
+      Buffer.from(`${time}|${ALICE}`).toString('base64url')
+
+    for (const time of [
+      '+010000-01-01T00:00:00Z',
+      '-000001-01-01T00:00:00Z',
+      '0000-06-01T00:00:00Z',
+      '12345'
+    ]) {
+      expect(
+        (await get('GET', `/spaces/${DESIGN}/feed?before=${cursor(time)}`))
+          .statusCode
+      ).toBe(400)
+    }
+    for (const time of [
+      '0001-01-01T00:00:00.000Z',
+      '9999-12-31T23:59:59.999Z'
+    ]) {
+      expect(
+        (await get('GET', `/spaces/${DESIGN}/feed?before=${cursor(time)}`))
+          .statusCode
+      ).toBe(200)
+    }
+  })
+
   it('shows a deleted author as a deleted user', async () => {
     await testDb.db.insert(feedPosts).values({
       spaceId: DESIGN,
