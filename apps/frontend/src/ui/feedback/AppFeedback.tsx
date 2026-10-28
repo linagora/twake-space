@@ -1,9 +1,10 @@
 import { FeedbackButton, getFeedbackLabels } from '@linagora/twake-feedback'
-import { useColorScheme, useMediaQuery, useTheme } from '@linagora/twake-mui'
+import { useColorScheme } from '@linagora/twake-mui'
 import { useCallback, useEffect, type ReactElement } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { FeedbackService } from '@/application/feedback'
+import { useBottomBar } from '@/ds/AppFrame'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 
@@ -23,8 +24,7 @@ export function AppFeedback(): ReactElement | null {
 
 function Button({ feedback }: { feedback: FeedbackService }): ReactElement {
   const { lang } = useI18n()
-  const theme = useTheme()
-  const bottomBar = useMediaQuery(theme.breakpoints.down('lg'))
+  const bottomBar = useBottomBar()
   const { colorScheme = 'system' } = useColorScheme()
   useEffect(() => {
     feedback.setColorScheme(colorScheme)

@@ -264,6 +264,35 @@ describe('AppShell', () => {
     )
   })
 
+  it('puts the Archives and the Bin in the bottom bar on phones', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('max-width'),
+      media: query,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined
+    }))
+    try {
+      renderRoute('/bin', { spaces: spaces() })
+
+      const nav = within(await screen.findByRole('navigation'))
+      expect(nav.getByRole('link', { name: 'Archives' })).toHaveAttribute(
+        'href',
+        '/archives'
+      )
+      expect(nav.getByRole('link', { name: 'Bin' })).toHaveAttribute(
+        'aria-current',
+        'page'
+      )
+      expect(screen.queryByRole('list', { name: 'Archives and Bin' })).toBe(
+        null
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('follows the UI language', async () => {
     renderRoute('/', { lang: 'fr', spaces: spaces() })
 
