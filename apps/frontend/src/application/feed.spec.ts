@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  approvalBody,
   approvalState,
+  approvalText,
   cardAction,
   cardApp,
   fileExtension,
@@ -92,6 +94,26 @@ describe('approvalState', () => {
     expect(approvalState([approver('approved'), approver(null)])).toBe(
       'pending'
     )
+  })
+})
+
+describe('approvalBody and approvalText', () => {
+  it('keeps the details after a blank line under the request', () => {
+    expect(approvalBody(' Ship it? ', '  Final copy.\nBy Friday. ')).toBe(
+      'Ship it?\n\nFinal copy.\nBy Friday.'
+    )
+    expect(approvalText('Ship it?\n\nFinal copy.\nBy Friday.')).toEqual({
+      title: 'Ship it?',
+      details: 'Final copy.\nBy Friday.'
+    })
+  })
+
+  it('has no details without any', () => {
+    expect(approvalBody('Ship it?', '  ')).toBe('Ship it?')
+    expect(approvalText('Ship it?')).toEqual({
+      title: 'Ship it?',
+      details: null
+    })
   })
 })
 

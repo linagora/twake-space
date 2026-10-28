@@ -707,7 +707,7 @@ export function showcaseFeed(now: number): FeedItem[] {
       kind: 'post',
       category: 'messages',
       author: person('dave'),
-      body: 'Approve the new landing page copy before Monday?',
+      body: 'Approve the new landing page copy before Monday?\n\nThe final version is in the Drive. Please review it before Friday.',
       editedAt: null,
       poll: null,
       approval: {
