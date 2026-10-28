@@ -9,13 +9,13 @@ import {
   Divider,
   Stack,
   TextField,
-  Typography,
-  getInitials
+  Typography
 } from '@linagora/twake-mui'
 import { useId, useState, type ReactElement, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 
 import type { SpaceApp } from '@/application/spaces'
+import { initialsOf } from '@/ds/AppFrame'
 import { AvatarPicker, ColorSwatches } from '@/ds/AvatarPicker'
 import { DialogHeader } from '@/ds/Dialog'
 import { useI18n } from '@/ui/i18n/useI18n'
@@ -63,7 +63,7 @@ function DraftAvatar({
   if (color) {
     return (
       <Avatar size={size} color={color}>
-        {getInitials(name, '')}
+        {initialsOf(name)}
       </Avatar>
     )
   }

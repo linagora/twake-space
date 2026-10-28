@@ -331,6 +331,15 @@ export function SidebarSection({
   )
 }
 
+export function initialsOf(name: string): string {
+  const words = name
+    .split(/\s+/)
+    .map(word => word.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter(Boolean)
+  // A name made only of symbols, like an emoji, keeps them instead of going blank
+  return getInitials(words.length > 0 ? words.join(' ') : name, '')
+}
+
 // `label` names the person, in a tooltip and for assistive technology;
 // without it the avatar is decoration next to the name it stands for. The
 // initials show when there is no picture or it fails to load.
@@ -355,7 +364,7 @@ export function NameAvatar({
       alt=""
       aria-hidden={label === undefined}
     >
-      {getInitials(name, '')}
+      {initialsOf(name)}
     </Avatar>
   )
   return label === undefined ? (
