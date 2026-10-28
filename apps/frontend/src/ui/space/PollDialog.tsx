@@ -25,7 +25,7 @@ import {
   DialogSwitch
 } from '@/ds/Dialog'
 import { FeedPollOption } from '@/ds/Feed'
-import { PollIcon } from '@/ds/icons'
+import { PollIcon, ThumbsUpDownIcon } from '@/ds/icons'
 import { DayField, TimeField } from '@/ds/Pickers'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
@@ -109,7 +109,13 @@ export function PollDialog({
           id={titleId}
           title={t(kind === 'yes_no' ? 'feed.yesNo.title' : 'feed.poll.title')}
           {...(kind === 'choice' && { subtitle: t('feed.poll.subtitle') })}
-          icon={<PollIcon width={20} height={20} />}
+          icon={
+            kind === 'yes_no' ? (
+              <ThumbsUpDownIcon width={20} height={20} />
+            ) : (
+              <PollIcon width={20} height={20} />
+            )
+          }
           close={{ label: t('common.close'), onClick: onClose }}
         />
         <Divider />

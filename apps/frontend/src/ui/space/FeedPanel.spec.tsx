@@ -1083,6 +1083,18 @@ describe('FeedPanel', () => {
     expect(screen.getByText('1 answered')).toBeInTheDocument()
   })
 
+  it("heads the yes/no dialog with its menu item's icon", async () => {
+    renderFeed([post(0)])
+    fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
+    const item = screen.getByRole('menuitem', { name: 'Yes/no question' })
+    const icon = item.querySelector('svg path')?.getAttribute('d')
+    fireEvent.click(item)
+    const dialog = screen.getByRole('dialog', { name: 'New yes/no question' })
+
+    expect(icon).toBeTruthy()
+    expect(dialog.querySelector('svg path')?.getAttribute('d')).toBe(icon)
+  })
+
   it('asks a yes/no question until a deadline', async () => {
     const { feed } = renderFeed([post(0)])
     fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
