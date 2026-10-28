@@ -24,7 +24,8 @@ import {
   SidebarHeader,
   SidebarNav,
   SidebarSearch,
-  SidebarSection
+  SidebarSection,
+  useBottomBar
 } from '@/ds/AppFrame'
 import { FilterListIcon } from '@/ds/FilterListIcon'
 import { IconButton } from '@/ds/IconButton'
@@ -61,6 +62,8 @@ export function AppShell(): ReactElement {
   // A space's content may take the whole page, the platform bar's too
   const alone = useFillPage().space !== null
   const feed = useMatch('/spaces/:spaceId/feed/*') !== null
+  // In the bottom bar the shelves join its one row
+  const bottomBar = useBottomBar()
 
   return (
     <CallProvider>
@@ -133,9 +136,9 @@ export function AppShell(): ReactElement {
                 />
               </SidebarSearch>
             )}
-            <AppNav />
+            <AppNav shelves={bottomBar} />
             <SpaceList query={query ?? ''} />
-            <ShelfLinks />
+            {!bottomBar && <ShelfLinks />}
           </>
         }
       >
@@ -188,7 +191,7 @@ function RouteNavLink({
   )
 }
 
-function AppNav(): ReactElement {
+function AppNav({ shelves }: { shelves: boolean }): ReactElement {
   const { t } = useI18n()
 
   return (
@@ -199,6 +202,7 @@ function AppNav(): ReactElement {
           <NavText>{t('shell.allSpaces')}</NavText>
         </RouteNavLink>
       </NavItem>
+      {shelves && <ShelfItems />}
     </SidebarNav>
   )
 }
@@ -252,19 +256,28 @@ function ShelfLinks(): ReactElement {
     <>
       <SidebarDivider />
       <List aria-label={t('shell.shelves')}>
-        <NavItem>
-          <RouteNavLink to="/archives">
-            <NavIcon icon={Archive} />
-            <NavText>{t('shell.archives')}</NavText>
-          </RouteNavLink>
-        </NavItem>
-        <NavItem>
-          <RouteNavLink to="/bin">
-            <NavIcon icon={Trash} />
-            <NavText>{t('shell.bin')}</NavText>
-          </RouteNavLink>
-        </NavItem>
+        <ShelfItems />
       </List>
+    </>
+  )
+}
+
+function ShelfItems(): ReactElement {
+  const { t } = useI18n()
+  return (
+    <>
+      <NavItem>
+        <RouteNavLink to="/archives">
+          <NavIcon icon={Archive} />
+          <NavText>{t('shell.archives')}</NavText>
+        </RouteNavLink>
+      </NavItem>
+      <NavItem>
+        <RouteNavLink to="/bin">
+          <NavIcon icon={Trash} />
+          <NavText>{t('shell.bin')}</NavText>
+        </RouteNavLink>
+      </NavItem>
     </>
   )
 }

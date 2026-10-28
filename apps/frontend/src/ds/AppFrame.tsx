@@ -14,7 +14,9 @@ import {
   Tooltip,
   Typography,
   getInitials,
-  styled
+  styled,
+  useMediaQuery,
+  useTheme
 } from '@linagora/twake-mui'
 import { TWAKE_BAR_HEIGHT } from '@linagora/twake-bar'
 import { useEffect, useRef, type ReactElement, type ReactNode } from 'react'
@@ -211,6 +213,11 @@ export function AppFrame({
       </Frame>
     </>
   )
+}
+
+// Below lg the sidebar is the one-row bottom bar.
+export function useBottomBar(): boolean {
+  return useMediaQuery(useTheme().breakpoints.down('lg'))
 }
 
 export function SidebarHeader({
