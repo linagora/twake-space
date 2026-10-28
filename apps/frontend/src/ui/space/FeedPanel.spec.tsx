@@ -1651,6 +1651,115 @@ describe('FeedPanel', () => {
         within(strip).queryByRole('button', { name: 'Unpin' })
       ).not.toBeInTheDocument()
     })
+
+    describe('when several are pinned', () => {
+      const mine = { type: 'user' as const, id: 'u-me', name: 'Alice Martin' }
+      const pinnedThree = () =>
+        renderFeed([
+          post(1, {
+            body: 'Office closed Friday',
+            author: mine,
+            announcement: announcement({ pinnedAt: at(1) })
+          }),
+          post(2, {
+            body: 'New coffee machine',
+            announcement: announcement({ pinnedAt: at(2) })
+          }),
+          post(3, {
+            body: 'Release on Monday',
+            author: mine,
+            announcement: announcement({ pinnedAt: at(3) })
+          })
+        ])
+      const openList = async () => {
+        const strip = await pinnedStrip()
+        fireEvent.click(
+          within(strip).getByRole('button', { name: 'All pinned messages' })
+        )
+        return screen.findByRole('dialog', { name: 'All pinned messages' })
+      }
+
+      it('shows one banner with the latest and its place', async () => {
+        pinnedThree()
+        const strip = await pinnedStrip()
+
+        expect(
+          within(strip).getByText('Pinned message 1 of 3')
+        ).toBeInTheDocument()
+        expect(within(strip).getAllByRole('button')).toHaveLength(2)
+        expect(
+          within(strip).getByRole('button', {
+            name: 'Show the announcement: Release on Monday'
+          })
+        ).toBeInTheDocument()
+      })
+
+      it('moves to the next one once shown', async () => {
+        pinnedThree()
+        const strip = await pinnedStrip()
+
+        fireEvent.click(
+          within(strip).getByRole('button', {
+            name: 'Show the announcement: Release on Monday'
+          })
+        )
+
+        expect(
+          within(strip).getByText('Pinned message 2 of 3')
+        ).toBeInTheDocument()
+        expect(
+          within(strip).getByRole('button', {
+            name: 'Show the announcement: New coffee machine'
+          })
+        ).toBeInTheDocument()
+      })
+
+      it('lists them all, each mine unpinned on its own', async () => {
+        const { feed } = pinnedThree()
+        const list = await openList()
+
+        expect(within(list).getAllByRole('listitem')).toHaveLength(3)
+        const [first, ...rest] = within(list).getAllByRole('button', {
+          name: 'Unpin'
+        })
+        expect(rest).toHaveLength(1)
+        if (!first) throw new Error('no unpin button')
+        fireEvent.click(first)
+
+        await waitFor(() => {
+          expect(feed.pin).toHaveBeenCalledWith('a1', 'post-3', false)
+        })
+        expect(
+          await screen.findByText('Pinned message 1 of 2')
+        ).toBeInTheDocument()
+      })
+
+      it('unpins all of mine at once', async () => {
+        const { feed } = pinnedThree()
+        const list = await openList()
+
+        fireEvent.click(
+          within(list).getByRole('button', { name: 'Unpin all messages' })
+        )
+
+        await waitFor(() => {
+          expect(feed.pin).toHaveBeenCalledTimes(2)
+        })
+        expect(feed.pin).toHaveBeenCalledWith('a1', 'post-1', false)
+        expect(feed.pin).toHaveBeenCalledWith('a1', 'post-3', false)
+        const strip = await pinnedStrip()
+        await waitFor(() => {
+          expect(
+            within(strip).getByRole('button', {
+              name: 'Show the announcement: New coffee machine'
+            })
+          ).toBeInTheDocument()
+        })
+        expect(
+          within(strip).queryByText(/Pinned message/)
+        ).not.toBeInTheDocument()
+      })
+    })
   })
 
   describe('a feedback request', () => {

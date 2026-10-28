@@ -6,7 +6,7 @@ import {
   CrossCircle,
   Down,
   Icon,
-  Pin,
+  ListMin,
   Send,
   type IconProps
 } from '@linagora/twake-icons'
@@ -2551,91 +2551,227 @@ export function FeedAnnouncement({
   )
 }
 
-/** The pinned announcements over the feed, each opening its place in it. */
+export interface FeedPinnedItem {
+  id: string
+  author: string
+  text: string
+  openLabel: string
+  onOpen: () => void
+  unpin: { label: string; onClick: () => void } | null
+}
+
+/**
+ * One banner for all pinned announcements. With several, it shows one at a
+ * time with its position and a list of them all; opening one moves the banner
+ * on to the next.
+ */
 export function FeedPinned({
   label,
-  items
+  items,
+  position,
+  listLabel,
+  unpinAll
 }: {
   label: string
-  items: {
-    id: string
-    author: string
-    text: string
-    openLabel: string
-    onOpen: () => void
-    unpin: { label: string; onClick: () => void } | null
-  }[]
+  items: FeedPinnedItem[]
+  position: (index: number, total: number) => string
+  listLabel: string
+  unpinAll: { label: string; onClick: () => void } | null
 }): ReactElement | null {
-  if (items.length === 0) return null
+  const [shownId, setShownId] = useState<string | null>(null)
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const several = items.length > 1
+  // The list button unmounts once one pin is left: drop its stale anchor.
+  if (anchor && !several) setAnchor(null)
+  const shown = Math.max(
+    0,
+    items.findIndex(pinned => pinned.id === shownId)
+  )
+  const item = items[shown]
+  if (!item) return null
   return (
     <Box
       component="section"
       aria-label={label}
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0,
-        gap: 0.5,
-        maxHeight: 136,
-        overflowY: 'auto',
-        maxWidth: BUBBLE_WIDTH + 44,
-        pt: 1
-      }}
+      sx={{ flexShrink: 0, maxWidth: BUBBLE_WIDTH + 44, pt: 1 }}
     >
-      {items.map(item => (
+      <Box
+        sx={theme => ({
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
+          minHeight: 42,
+          pl: 2,
+          pr: 1,
+          py: 0.5,
+          borderRadius: '12px',
+          bgcolor: theme.alpha(theme.vars.palette.primary.main, 0.08)
+        })}
+      >
         <Box
-          key={item.id}
-          sx={theme => ({
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            minHeight: 40,
-            pl: 1.5,
-            pr: 0.5,
-            borderRadius: '12px',
-            borderLeft: 3,
-            borderColor: 'primary.main',
-            bgcolor: theme.alpha(theme.vars.palette.primary.main, 0.08)
-          })}
+          sx={{
+            alignSelf: 'stretch',
+            flexShrink: 0,
+            width: 3,
+            my: 0.25,
+            borderRadius: 3,
+            bgcolor: 'primary.main'
+          }}
+        />
+        <ButtonBase
+          aria-label={item.openLabel}
+          onClick={() => {
+            item.onOpen()
+            setShownId(items[(shown + 1) % items.length]?.id ?? null)
+          }}
+          sx={{
+            flex: '1 1 auto',
+            minWidth: 0,
+            alignSelf: 'stretch',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            px: 1,
+            borderRadius: 1,
+            textAlign: 'start'
+          }}
         >
-          <Box sx={{ display: 'flex', color: 'primary.main' }}>
-            <Icon icon={Pin} size={16} />
-          </Box>
-          <ButtonBase
-            aria-label={item.openLabel}
-            onClick={item.onOpen}
+          <Typography
+            component="span"
+            variant="body2"
+            noWrap
             sx={{
-              flex: '1 1 auto',
-              minWidth: 0,
-              alignSelf: 'stretch',
-              justifyContent: 'flex-start',
-              px: 0.5,
-              borderRadius: 1,
-              textAlign: 'start'
+              display: 'block',
+              maxWidth: '100%',
+              lineHeight: '16px',
+              color: several ? 'text.primary' : 'text.secondary'
             }}
           >
-            <Typography variant="body2" noWrap>
-              <Box component="span" sx={{ fontWeight: 600 }}>
-                {item.author}
-              </Box>{' '}
-              {item.text}
-            </Typography>
-          </ButtonBase>
-          {item.unpin && (
-            <Tooltip title={item.unpin.label}>
-              <IconButton
-                size="small"
-                aria-label={item.unpin.label}
-                onClick={item.unpin.onClick}
-                sx={{ color: 'text.secondary' }}
+            {several ? position(shown + 1, items.length) : item.author}
+          </Typography>
+          <Typography
+            component="span"
+            variant="body2"
+            noWrap
+            sx={{
+              display: 'block',
+              maxWidth: '100%',
+              lineHeight: '18px',
+              color: several ? 'text.secondary' : 'text.primary'
+            }}
+          >
+            {item.text}
+          </Typography>
+        </ButtonBase>
+        {several ? (
+          <Tooltip title={listLabel}>
+            <IconButton
+              size="small"
+              aria-label={listLabel}
+              aria-haspopup="dialog"
+              aria-expanded={anchor !== null}
+              onClick={event => {
+                setAnchor(event.currentTarget)
+              }}
+              sx={{ color: 'text.secondary' }}
+            >
+              <Icon icon={ListMin} size={16} />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          item.unpin && <PinnedUnpin unpin={item.unpin} />
+        )}
+      </Box>
+      <Popover
+        open={anchor !== null}
+        anchorEl={anchor}
+        onClose={() => {
+          setAnchor(null)
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{
+          paper: {
+            role: 'dialog',
+            'aria-label': listLabel,
+            sx: {
+              width: 360,
+              maxWidth: 'calc(100vw - 32px)',
+              borderRadius: '16px'
+            }
+          }
+        }}
+      >
+        <List sx={{ maxHeight: 320, overflowY: 'auto', py: 1 }}>
+          {items.map(pinned => (
+            <Box
+              component="li"
+              key={pinned.id}
+              sx={{ display: 'flex', alignItems: 'center', pr: 1 }}
+            >
+              <ListItemButton
+                aria-label={pinned.openLabel}
+                onClick={() => {
+                  setAnchor(null)
+                  setShownId(pinned.id)
+                  pinned.onOpen()
+                }}
+                sx={{ minWidth: 0, py: 0.5 }}
               >
-                <Icon icon={Cross} size={16} />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-      ))}
+                <ListItemText
+                  primary={pinned.author}
+                  secondary={pinned.text}
+                  slotProps={{
+                    primary: {
+                      noWrap: true,
+                      variant: 'body2',
+                      sx: { fontWeight: 500 }
+                    },
+                    secondary: { noWrap: true, variant: 'body2' }
+                  }}
+                />
+              </ListItemButton>
+              {pinned.unpin && <PinnedUnpin unpin={pinned.unpin} />}
+            </Box>
+          ))}
+        </List>
+        {unpinAll && (
+          <>
+            <Divider />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+              <Button
+                size="small"
+                onClick={() => {
+                  setAnchor(null)
+                  unpinAll.onClick()
+                }}
+              >
+                {unpinAll.label}
+              </Button>
+            </Box>
+          </>
+        )}
+      </Popover>
     </Box>
+  )
+}
+
+function PinnedUnpin({
+  unpin
+}: {
+  unpin: { label: string; onClick: () => void }
+}): ReactElement {
+  return (
+    <Tooltip title={unpin.label}>
+      <IconButton
+        size="small"
+        aria-label={unpin.label}
+        onClick={unpin.onClick}
+        sx={{ color: 'text.secondary' }}
+      >
+        <Icon icon={Cross} size={16} />
+      </IconButton>
+    </Tooltip>
   )
 }
 
