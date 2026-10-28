@@ -72,10 +72,8 @@ export function httpFeed(api: KyInstance): FeedService {
       const url = feed(spaceId, 'posts', postId, 'pin')
       return (pinned ? api.put(url) : api.delete(url)).json<FeedItem>()
     },
-    answer: (spaceId, postId, text) =>
-      send(
-        api.put(feed(spaceId, 'posts', postId, 'answer'), { json: { text } })
-      ),
+    answer: (spaceId, postId, answer) =>
+      send(api.put(feed(spaceId, 'posts', postId, 'answer'), { json: answer })),
     acknowledge: (spaceId, postId) =>
       send(api.put(feed(spaceId, 'posts', postId, 'acknowledgement'))),
     react: (spaceId, itemId, key) =>

@@ -295,17 +295,19 @@ describe('memoryFeed', () => {
   it('counts each member’s feedback once, and keeps their last answer', async () => {
     const feed = feedFor('admin')
     const post = await feed.post('roadmap', 'How was it?', [], {
-      feedback: true
+      feedback: { anonymous: false }
     })
 
-    await feed.answer('roadmap', post.id, 'Good')
-    await feed.answer('roadmap', post.id, 'Great')
+    await feed.answer('roadmap', post.id, { rating: 2, text: 'Good' })
+    await feed.answer('roadmap', post.id, { rating: 4, text: 'Great' })
 
     expect(await feed.item('roadmap', post.id)).toMatchObject({
       feedback: {
         count: 1,
+        average: 4,
         mine: 'Great',
-        answers: [{ userId: 'u-bob', text: 'Great' }]
+        myRating: 4,
+        answers: [{ userId: 'u-bob', rating: 4, text: 'Great' }]
       }
     })
   })

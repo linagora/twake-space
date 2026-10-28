@@ -1815,88 +1815,146 @@ describe('FeedPanel', () => {
   })
 
   describe('a feedback request', () => {
+    const feedback = {
+      count: 0,
+      anonymous: false,
+      average: null,
+      mine: null,
+      myRating: null,
+      answers: null,
+      closedAt: null
+    }
     const request = (overrides: Partial<FeedPost> = {}) =>
-      post(1, {
-        body: 'How was the offsite?',
-        feedback: { count: 0, mine: null, answers: null, closedAt: null },
-        ...overrides
-      })
+      post(1, { body: 'How was the offsite?', feedback, ...overrides })
+    const answers = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        userId: `u-${String(i)}`,
+        name: `Member ${String(i)}`,
+        rating: 4,
+        text: `Comment ${String(i)}`,
+        answeredAt: at(2)
+      }))
 
-    it('is published from the + menu', async () => {
+    it('is published from the + menu, anonymous if asked', async () => {
       const { feed } = renderFeed([post(0)])
       fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
       fireEvent.click(screen.getByRole('menuitem', { name: 'Feedback' }))
-      const dialog = screen.getByRole('dialog', { name: 'Ask for feedback' })
+      const dialog = screen.getByRole('dialog', { name: 'Feedback' })
+      const ask = within(dialog).getByRole('button', {
+        name: 'Ask for feedback'
+      })
+      expect(ask).toBeDisabled()
 
       fireEvent.change(
         within(dialog).getByRole('textbox', { name: 'Question' }),
         { target: { value: 'How was the offsite?' } }
       )
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Ask' }))
+      fireEvent.click(
+        within(dialog).getByRole('checkbox', { name: 'Anonymous responses' })
+      )
+      fireEvent.click(ask)
 
       expect(
         await screen.findByRole('group', { name: 'How was the offsite?' })
       ).toBeInTheDocument()
       expect(feed.post).toHaveBeenCalledWith('a1', 'How was the offsite?', [], {
-        feedback: true
+        feedback: { anonymous: true }
       })
     })
 
-    it('takes a viewer’s answer, and shows only its count', async () => {
+    it('takes a member’s rating and comment, then shows the average and their comment', async () => {
       const { feed } = renderFeed([request()], {
         space: { ...roadmap, role: 'viewer' }
       })
       const card = await screen.findByRole('group', {
         name: 'How was the offsite?'
       })
-      expect(within(card).getByText('0 answers')).toBeInTheDocument()
+      expect(within(card).getByText('0 responses · Open')).toBeInTheDocument()
+      const send = within(card).getByRole('button', { name: 'Send feedback' })
+      expect(send).toBeDisabled()
 
+      fireEvent.click(within(card).getByRole('radio', { name: '4 stars' }))
       fireEvent.change(
-        within(card).getByRole('textbox', { name: 'Your answer' }),
+        within(card).getByRole('textbox', { name: 'Add a comment (optional)' }),
         { target: { value: ' Great talks ' } }
       )
-      fireEvent.click(within(card).getByRole('button', { name: 'Send' }))
+      fireEvent.click(send)
 
-      expect(await within(card).findByText('1 answer')).toBeInTheDocument()
-      expect(feed.answer).toHaveBeenCalledWith('a1', 'post-1', 'Great talks')
+      expect(
+        await within(card).findByText('1 response · Open')
+      ).toBeInTheDocument()
+      expect(feed.answer).toHaveBeenCalledWith('a1', 'post-1', {
+        rating: 4,
+        text: 'Great talks'
+      })
+      expect(
+        within(card).getByRole('img', { name: 'Average rating: 4.0 out of 5' })
+      ).toBeInTheDocument()
       expect(within(card).getByText('Great talks')).toBeInTheDocument()
+      expect(within(card).getByText('You:')).toBeInTheDocument()
       expect(within(card).getByRole('button', { name: 'Edit' })).toBeVisible()
     })
 
-    it('shows its author every answer, and lets them close it', async () => {
+    it('shows its author every comment, folded past two, and lets them close it', async () => {
       const { feed } = renderFeed([
         request({
           author: { type: 'user', id: 'u-me', name: 'Alice Martin' },
+          feedback: { ...feedback, count: 3, average: 4, answers: answers(3) }
+        })
+      ])
+      const card = await screen.findByRole('group', {
+        name: 'How was the offsite?'
+      })
+      expect(within(card).getByText('Member 0:')).toBeInTheDocument()
+      expect(within(card).queryByText('Comment 2')).not.toBeInTheDocument()
+      expect(
+        within(card).queryByRole('radio', { name: '4 stars' })
+      ).not.toBeInTheDocument()
+
+      fireEvent.click(
+        within(card).getByRole('button', { name: 'Show all 3 comments' })
+      )
+      expect(within(card).getByText('Comment 2')).toBeInTheDocument()
+      fireEvent.click(within(card).getByRole('button', { name: 'Show less' }))
+      expect(within(card).queryByText('Comment 2')).not.toBeInTheDocument()
+
+      fireEvent.click(
+        within(card).getByRole('button', { name: 'Close feedback' })
+      )
+
+      expect(
+        await screen.findByText('3 responses · Closed')
+      ).toBeInTheDocument()
+      expect(feed.closePoll).toHaveBeenCalledWith('a1', 'post-1')
+    })
+
+    it('names no one beside the comments of an anonymous request', async () => {
+      renderFeed([
+        request({
+          author: { type: 'user', id: 'u-me', name: 'Alice Martin' },
           feedback: {
+            ...feedback,
+            anonymous: true,
             count: 1,
-            mine: null,
+            average: 2,
             answers: [
               {
-                userId: 'u-bob',
-                name: 'Bob Durand',
+                userId: null,
+                name: null,
+                rating: 2,
                 text: 'Too long',
                 answeredAt: at(2)
               }
-            ],
-            closedAt: null
+            ]
           }
         })
       ])
       const card = await screen.findByRole('group', {
         name: 'How was the offsite?'
       })
+
       expect(within(card).getByText('Too long')).toBeInTheDocument()
-      expect(within(card).getByText('Bob Durand')).toBeInTheDocument()
-      expect(
-        within(card).queryByRole('textbox', { name: 'Your answer' })
-      ).not.toBeInTheDocument()
-
-      fireEvent.click(
-        within(card).getByRole('button', { name: 'Close the request' })
-      )
-
-      expect(await screen.findByText('1 answer · Closed')).toBeInTheDocument()
-      expect(feed.closePoll).toHaveBeenCalledWith('a1', 'post-1')
+      expect(within(card).queryByText(/:$/)).not.toBeInTheDocument()
     })
   })
 

@@ -87,19 +87,30 @@ export interface Announcement {
 
 export const ANNOUNCEMENT_TITLE = { max: 120 }
 
-/** Everyone sees the count and their own answer; only the author, the answers. */
+/**
+ * Everyone sees the count, the average rating and their own answer; only the
+ * author, the answers. An answer is a rating from 1 to 5, a comment, or both.
+ */
 export interface Feedback {
   count: number
+  /** Its answers name no one, not even to its author. */
+  anonymous: boolean
+  /** Null before any rating. */
+  average: number | null
+  /** The user's comment, empty when they only rated, null until they answer. */
   mine: string | null
+  myRating: number | null
   /** Oldest first; null for anyone but the author. */
   answers: FeedbackAnswer[] | null
   closedAt: string | null
 }
 
 export interface FeedbackAnswer {
-  userId: string
-  /** Null once they left the space. */
+  /** Null on an anonymous request. */
+  userId: string | null
+  /** Null on an anonymous request, and once they left the space. */
   name: string | null
+  rating: number | null
   text: string
   answeredAt: string
 }
@@ -152,7 +163,7 @@ export type PostAsk =
   | { poll: { kind: 'yes_no'; closesAt?: string } }
   | { approval: { approvers: string[] } }
   | { announcement: { title?: string; color?: string; pinned: boolean } }
-  | { feedback: true }
+  | { feedback: { anonymous: boolean } }
 
 export interface PollOption {
   label: string
@@ -227,7 +238,11 @@ export interface FeedService {
   /** Its author only, for an announcement. */
   pin: (spaceId: string, postId: string, pinned: boolean) => Promise<FeedItem>
   /** Replaces the user's answer; `poll_closed` once the request is closed. */
-  answer: (spaceId: string, postId: string, text: string) => Promise<void>
+  answer: (
+    spaceId: string,
+    postId: string,
+    answer: { rating: number; text: string }
+  ) => Promise<void>
   /** Any member but its author, `cannot_acknowledge_own` for them. */
   acknowledge: (spaceId: string, postId: string) => Promise<void>
   /**

@@ -884,6 +884,7 @@ function Post({
           post.announcement && t('feed.announcement.posted'),
           post.poll?.kind === 'yes_no' && t('feed.yesNo.asked'),
           post.approval && t('feed.approval.requested'),
+          post.feedback && t('feed.feedback.asked'),
           post.editedAt && t('feed.edited')
         ]
           .filter(Boolean)
@@ -1237,11 +1238,12 @@ function FeedbackAnswers({
   mine: boolean
   onClose: (() => void) | null
 }): ReactElement {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const { feed } = useServices()
   const { replace } = useFeedCache(space.id)
   const answer = useMutation({
-    mutationFn: (text: string) => feed.answer(space.id, post.id, text),
+    mutationFn: (given: { rating: number; text: string }) =>
+      feed.answer(space.id, post.id, given),
     // Saved: a failed reread is no failed answer, the live change follows.
     onSuccess: () =>
       feed
@@ -1249,47 +1251,63 @@ function FeedbackAnswers({
         .then(replace)
         .catch(() => undefined)
   })
-  const summary = t('feed.feedback.count', { smart_count: feedback.count })
+  const averageOf = (value: number) => {
+    const average = value.toLocaleString(lang, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1
+    })
+    return {
+      value,
+      label: t('feed.feedback.averageLabel', { average }),
+      text: t('feed.feedback.average', { average })
+    }
+  }
+  // The author reads every comment, anyone else their own.
+  const comments = (
+    feedback.answers?.map((item, index) => ({
+      id: item.userId ?? String(index),
+      name: feedback.anonymous ? null : (item.name ?? t('feed.someone')),
+      text: item.text
+    })) ??
+    (feedback.mine === null
+      ? []
+      : [{ id: 'mine', name: t('feed.feedback.you'), text: feedback.mine }])
+  ).filter(item => item.text !== '')
   return (
     <>
       <FeedFeedback
         question={post.body}
-        answers={
-          feedback.answers?.map(item => {
-            const member = space.members.find(m => m.id === item.userId)
-            return {
-              id: item.userId,
-              name: item.name ?? t('feed.someone'),
-              avatar: member ? avatarUrl(member.workplaceFqdn) : null,
-              text: item.text
-            }
-          }) ?? null
-        }
-        emptyLabel={t('feed.feedback.none')}
+        average={feedback.average === null ? null : averageOf(feedback.average)}
+        comments={{
+          items: comments,
+          showAll: t('feed.feedback.showAll', { smart_count: comments.length }),
+          showLess: t('feed.feedback.showLess')
+        }}
         mine={
           feedback.mine === null
             ? null
-            : { label: t('feed.feedback.answer'), text: feedback.mine }
+            : { rating: feedback.myRating, text: feedback.mine }
         }
         answer={
           mine || feedback.closedAt !== null
             ? null
             : {
-                label: t('feed.feedback.answer'),
-                sendLabel: t('feed.send'),
+                ratingLabel: t('feed.feedback.rating'),
+                starLabel: stars =>
+                  t('feed.feedback.stars', { smart_count: stars }),
+                commentLabel: t('feed.feedback.comment'),
+                sendLabel: t('feed.feedback.send'),
                 editLabel: t('feed.edit'),
                 maxLength: FEEDBACK_ANSWER.max,
                 disabled: answer.isPending,
-                onAnswer: text => {
-                  answer.mutate(text)
+                onAnswer: given => {
+                  answer.mutate(given)
                 }
               }
         }
-        summary={
-          feedback.closedAt
-            ? `${summary} · ${t('feed.feedback.closed')}`
-            : summary
-        }
+        summary={`${t('feed.feedback.count', { smart_count: feedback.count })} · ${t(
+          feedback.closedAt ? 'feed.feedback.closed' : 'feed.feedback.open'
+        )}`}
         close={onClose && { label: t('feed.feedback.close'), onClick: onClose }}
       />
       <FeedFailure

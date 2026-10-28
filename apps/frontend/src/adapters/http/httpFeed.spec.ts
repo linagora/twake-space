@@ -177,10 +177,10 @@ describe('httpFeed', () => {
       body: null
     },
     {
-      write: () => feed.answer('a1', 'p1', 'Great'),
+      write: () => feed.answer('a1', 'p1', { rating: 4, text: 'Great' }),
       method: 'PUT',
       path: 'spaces/a1/feed/posts/p1/answer',
-      body: { text: 'Great' }
+      body: { rating: 4, text: 'Great' }
     },
     {
       write: () => feed.closePoll('a1', 'p1'),

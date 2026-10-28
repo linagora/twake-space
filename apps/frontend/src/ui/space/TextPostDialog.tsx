@@ -1,21 +1,26 @@
+import { Icon, StarOutline } from '@linagora/twake-icons'
 import {
   Button,
   Dialog,
   DialogActions,
-  DialogContent,
-  Stack,
+  Divider,
   TextField
 } from '@linagora/twake-mui'
 import { useMutation } from '@tanstack/react-query'
 import { useId, useState, type ReactElement } from 'react'
 
 import type { FeedItem } from '@/application/feed'
-import { DialogHeader } from '@/ds/Dialog'
+import {
+  DialogCheckbox,
+  DialogFields,
+  DialogHeader,
+  DialogSection
+} from '@/ds/Dialog'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
 import { FeedFailure } from '@/ui/space/FeedFailure'
 
-/** A new feedback request. */
+/** A new feedback request: a question to rate, its answers named or not. */
 export function TextPostDialog({
   spaceId,
   onClose,
@@ -28,9 +33,12 @@ export function TextPostDialog({
   const { t } = useI18n()
   const { feed } = useServices()
   const titleId = useId()
+  const questionId = useId()
   const [text, setText] = useState('')
+  const [anonymous, setAnonymous] = useState(false)
   const publish = useMutation({
-    mutationFn: () => feed.post(spaceId, text.trim(), [], { feedback: true }),
+    mutationFn: () =>
+      feed.post(spaceId, text.trim(), [], { feedback: { anonymous } }),
     onSuccess: onPublished
   })
 
@@ -46,28 +54,38 @@ export function TextPostDialog({
         <DialogHeader
           id={titleId}
           title={t('feed.feedback.title')}
+          subtitle={t('feed.feedback.subtitle')}
+          icon={<Icon icon={StarOutline} size={18} />}
           close={{ label: t('common.close'), onClick: onClose }}
         />
-        <DialogContent>
-          <Stack spacing={2}>
+        <Divider />
+        <DialogFields>
+          <DialogSection label={t('feed.feedback.text')} htmlFor={questionId}>
             <TextField
+              id={questionId}
               fullWidth
               multiline
-              minRows={1}
-              maxRows={12}
-              label={t('feed.feedback.text')}
-              helperText={t('feed.feedback.hint')}
+              maxRows={6}
+              required
+              placeholder={t('feed.feedback.placeholder')}
               value={text}
               slotProps={{ htmlInput: { maxLength: 4000 } }}
               onChange={event => {
                 setText(event.target.value)
               }}
             />
-            <FeedFailure error={publish.error} message={t('feed.postFailed')} />
-          </Stack>
-        </DialogContent>
+          </DialogSection>
+          <DialogCheckbox
+            label={t('feed.feedback.anonymous')}
+            description={t('feed.feedback.anonymousHint')}
+            checked={anonymous}
+            onChange={setAnonymous}
+          />
+          <FeedFailure error={publish.error} message={t('feed.postFailed')} />
+        </DialogFields>
+        <Divider />
         <DialogActions>
-          <Button variant="text" onClick={onClose}>
+          <Button variant="outlined" onClick={onClose}>
             {t('common.cancel')}
           </Button>
           <Button
