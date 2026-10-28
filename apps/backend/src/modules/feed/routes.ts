@@ -53,6 +53,9 @@ type PostKind = (typeof feedPostKind.enumValues)[number]
 
 const CLOSING: PostKind[] = ['poll', 'yes_no', 'approval', 'feedback']
 
+// Postgres can neither store nor compare a NUL in text.
+const storableText = z.string().refine(value => !value.includes('\u0000'))
+
 const feedQuery = z
   .object({
     category: z.enum(feedCategory.enumValues).optional(),
@@ -70,7 +73,7 @@ const feedQuery = z
       .transform(time => new Date(time))
       .refine(storable)
       .optional(),
-    q: z.string().trim().min(1).max(200).optional(),
+    q: storableText.trim().min(1).max(200).optional(),
     limit: z.coerce.number().int().min(1).max(50).default(20)
   })
   // A cursor pages the order of its page: by latest activity with since.
@@ -79,14 +82,14 @@ const feedQuery = z
 const spaceParams = z.object({ spaceId: z.uuid() })
 const itemParams = spaceParams.extend({ itemId: z.uuid() })
 const reactionParams = itemParams.extend({
-  key: z.string().refine(key => {
+  key: storableText.refine(key => {
     const length = Array.from(key).length
     return length >= 1 && length <= 16
   })
 })
 
 const postBody = z.object({
-  body: z.string().trim().min(1).max(4000),
+  body: storableText.trim().min(1).max(4000),
   // Member ids: anyone else is left out.
   mentions: z.array(z.uuid()).max(50).default([])
 })
@@ -102,7 +105,7 @@ const newPostBody = postBody
         z.object({
           kind: z.literal('choice').default('choice'),
           options: z
-            .array(z.string().trim().min(1).max(200))
+            .array(storableText.trim().min(1).max(200))
             .min(2)
             .max(10)
             .refine(
@@ -130,7 +133,7 @@ const newPostBody = postBody
       .union([
         z.literal(true),
         z.strictObject({
-          title: z.string().trim().min(1).max(120).optional(),
+          title: storableText.trim().min(1).max(120).optional(),
           // No colour, no banner.
           color: z
             .string()
@@ -166,12 +169,12 @@ const unvoteQuery = z.object({
 const answerBody = z
   .object({
     rating: z.int().min(1).max(5).optional(),
-    text: z.string().trim().max(2000).default('')
+    text: storableText.trim().max(2000).default('')
   })
   .refine(({ rating, text }) => rating !== undefined || text !== '')
 const decisionBody = z.object({
   decision: z.enum(DECISIONS),
-  comment: z.string().trim().max(1000).optional()
+  comment: storableText.trim().max(1000).optional()
 })
 const readBody = z.object({ readAt: z.iso.datetime({ offset: true }) })
 

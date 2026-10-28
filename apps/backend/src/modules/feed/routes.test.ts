@@ -330,6 +330,12 @@ describe('GET /spaces/:spaceId/feed', () => {
     expect(wildcard.json<Page>().items).toEqual([])
   })
 
+  it('refuses a search holding a NUL', async () => {
+    const response = await setUp()('GET', `/spaces/${DESIGN}/feed?q=a%00b`)
+
+    expect(response.statusCode).toBe(400)
+  })
+
   it('pages with the next cursor', async () => {
     await aCard('one', '2026-10-05T09:00:00Z')
     await aPost('two', '2026-10-05T10:00:00Z')
@@ -1021,6 +1027,24 @@ describe('posts', () => {
     )
     expect(
       (await send('POST', url, 'alice', { body: 'a'.repeat(4001) })).statusCode
+    ).toBe(400)
+  })
+
+  it('refuses a NUL in a body, a poll option or a title', async () => {
+    const send = setUp()
+    const url = `/spaces/${DESIGN}/feed/posts`
+    const post = (await send('POST', url, 'alice', { body: 'Hi' })).json<Item>()
+
+    for (const body of [
+      { body: 'a\u0000b' },
+      { body: 'Where?', poll: { options: ['Room 4', 'Cafe\u0000teria'] } },
+      { body: 'News', announcement: { title: 'a\u0000b' } }
+    ]) {
+      expect((await send('POST', url, 'alice', body)).statusCode).toBe(400)
+    }
+    expect(
+      (await send('PATCH', `${url}/${post.id}`, 'alice', { body: 'a\u0000b' }))
+        .statusCode
     ).toBe(400)
   })
 
@@ -1934,7 +1958,7 @@ describe('approvals', () => {
     expect(late.json()).toEqual({ error: 'poll_closed' })
   })
 
-  it('answers 404 to a decision on a poll, and refuses an unknown decision', async () => {
+  it('answers 404 to a decision on a poll, and refuses an unknown decision or a NUL', async () => {
     const poll = await aPost('Lunch?', '2026-10-05T10:00:00Z', ALICE, [
       'Pizza',
       'Sushi'
@@ -1947,6 +1971,14 @@ describe('approvals', () => {
     ).toBe(404)
     expect(
       (await decide(send, id, 'bob', { decision: 'maybe' })).statusCode
+    ).toBe(400)
+    expect(
+      (
+        await decide(send, id, 'bob', {
+          decision: 'approved',
+          comment: 'a\u0000b'
+        })
+      ).statusCode
     ).toBe(400)
   })
 
@@ -2219,6 +2251,7 @@ describe('feedback requests', () => {
     const id = (await ask(send)).json<Item>().id
 
     const empty = await answer(send, id, 'bob', '  ')
+    const nul = await answer(send, id, 'bob', 'a\u0000b')
     const closed = await send(
       'POST',
       `/spaces/${DESIGN}/feed/posts/${id}/close`
@@ -2226,6 +2259,7 @@ describe('feedback requests', () => {
     const late = await answer(send, id, 'bob', 'Late')
 
     expect(empty.statusCode).toBe(400)
+    expect(nul.statusCode).toBe(400)
     expect(closed.json()).toMatchObject({
       feedback: { closedAt: expect.any(String) as string }
     })
@@ -2386,5 +2420,21 @@ describe('reactions', () => {
 
     expect(elsewhere.statusCode).toBe(404)
     expect(long.statusCode).toBe(400)
+  })
+
+  it('refuses a key holding a NUL', async () => {
+    const post = await aPost('Hi', '2026-10-05T10:00:00Z')
+    const send = setUp()
+
+    for (const method of ['PUT', 'DELETE'] as const) {
+      expect(
+        (
+          await send(
+            method,
+            `/spaces/${DESIGN}/feed/items/${post}/reactions/%00`
+          )
+        ).statusCode
+      ).toBe(400)
+    }
   })
 })
