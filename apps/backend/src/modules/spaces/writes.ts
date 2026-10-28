@@ -529,7 +529,7 @@ export function registerSpaceWriteRoutes(
       const { id, userId } = parse(memberParams, request.params)
       const { orgId, actor } = await administered(request, id)
       const member = await memberOf(id, userId)
-      // Another admin removed them first; the copy just has not heard yet.
+      // Another admin removed them first, or they are in through a group.
       await ldapRest(() =>
         directory.removeMember(orgId, id, member.username, actor)
       ).catch((error: unknown) => {
@@ -539,12 +539,23 @@ export function registerSpaceWriteRoutes(
           throw error
         }
       })
-      const at = new Date()
-      await copy(request, () =>
-        db.transaction(tx =>
-          removeSpaceMembers(tx, request.log, id, at, [{ uuid: userId }])
+      // ldap-rest removes only a direct membership: a linked group still
+      // holds the person, and its next event would bring them back.
+      let held: SpaceRole | undefined
+      await copy(request, async () => {
+        held = (await directory.members(orgId, id)).find(
+          m => m.username === member.username
+        )?.role
+        const at = new Date()
+        await db.transaction(tx =>
+          held
+            ? upsertMembers(tx, request.log, id, at, [
+                { ...member, role: held }
+              ])
+            : removeSpaceMembers(tx, request.log, id, at, [{ uuid: userId }])
         )
-      )
+      })
+      if (held) throw new Refusal(409, 'member_through_group')
       return reply.code(204).send()
     })
   )

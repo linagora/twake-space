@@ -556,6 +556,57 @@ describe('space writes', () => {
     expect(await members()).toEqual([{ userId: ALICE, role: 'admin' }])
   })
 
+  it('refuses to remove a member who is in only through a linked group', async () => {
+    const { directory } = ldapRest(
+      new NotFoundError('member not found', 'MEMBER_NOT_FOUND')
+    )
+    directory.members = () =>
+      Promise.resolve([
+        { username: 'alice', role: 'admin', displayName: null },
+        { username: 'bob', role: 'viewer', displayName: null }
+      ])
+
+    const response = await setUp(directory)(
+      'DELETE',
+      `/spaces/${DESIGN}/members/${BOB}`
+    )
+
+    expect(response.statusCode).toBe(409)
+    expect(response.json()).toEqual({ error: 'member_through_group' })
+    expect(await members()).toContainEqual({ userId: BOB, role: 'viewer' })
+  })
+
+  it('keeps a removed member a linked group still holds, with its role', async () => {
+    const { calls, directory } = ldapRest()
+    directory.members = () =>
+      Promise.resolve([
+        { username: 'alice', role: 'admin', displayName: null },
+        { username: 'bob', role: 'editor', displayName: null }
+      ])
+
+    const response = await setUp(directory)(
+      'DELETE',
+      `/spaces/${DESIGN}/members/${BOB}`
+    )
+
+    expect(response.statusCode).toBe(409)
+    expect(response.json()).toEqual({ error: 'member_through_group' })
+    expect(calls.map(c => c[0])).toEqual(['removeMember'])
+    expect(await members()).toContainEqual({ userId: BOB, role: 'editor' })
+  })
+
+  it('answers 204 when the removal took but the member listing fails', async () => {
+    const { directory } = ldapRest()
+    directory.members = () => Promise.reject(new Error('ldap-rest is down'))
+
+    const response = await setUp(directory)(
+      'DELETE',
+      `/spaces/${DESIGN}/members/${BOB}`
+    )
+
+    expect(response.statusCode).toBe(204)
+  })
+
   it('answers 500 when ldap-rest refuses its own credentials', async () => {
     const { directory } = ldapRest(new AuthenticationError('bad signature'))
 

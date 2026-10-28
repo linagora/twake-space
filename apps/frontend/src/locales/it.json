@@ -216,7 +216,8 @@
     "refusal": {
       "lastAdmin": "Uno spazio ha bisogno di almeno un admin. Rendi prima admin qualcun altro.",
       "memberExists": "Questa persona è già membro con un altro ruolo. Cambia invece il suo ruolo nell'elenco.",
-      "groupAlreadyLinked": "Questo gruppo è già collegato con un altro ruolo. Cambia invece il suo ruolo nell'elenco."
+      "groupAlreadyLinked": "Questo gruppo è già collegato con un altro ruolo. Cambia invece il suo ruolo nell'elenco.",
+      "memberThroughGroup": "Questa persona è nello spazio tramite un gruppo collegato. Rimuovi il gruppo, o rimuovila dal gruppo."
     }
   },
   "space": {
