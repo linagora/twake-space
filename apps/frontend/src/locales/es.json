@@ -218,7 +218,8 @@
       "lastAdmin": "Un espacio necesita al menos un admin. Haz admin a otra persona primero.",
       "memberExists": "Esta persona ya es miembro con otro rol. Cambia su rol en la lista.",
       "groupAlreadyLinked": "Este grupo ya está vinculado con otro rol. Cambia su rol en la lista.",
-      "memberThroughGroup": "Esta persona está en el espacio a través de un grupo vinculado. Quita el grupo, o quítala del grupo."
+      "memberThroughGroup": "Esta persona está en el espacio a través de un grupo vinculado. Quita el grupo, o quítala del grupo.",
+      "roleBelowGroup": "Un grupo vinculado le da a esta persona un rol superior. Cambia el rol del grupo, o quítala del grupo."
     }
   },
   "space": {

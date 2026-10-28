@@ -266,6 +266,27 @@ describe('PeopleDialog', () => {
     ).toBeInTheDocument()
   })
 
+  it('says why a role below the one a group gives was refused', async () => {
+    const spaces = fakeSpaces()
+    vi.mocked(spaces.setMemberRole).mockRejectedValue(
+      Object.assign(new Error('refused'), {
+        status: 409,
+        code: 'role_below_group'
+      })
+    )
+    renderWithProviders(<PeopleDialog space={admin} onClose={noop} />, {
+      spaces
+    })
+
+    await pickRole('Role of alice', 'Viewer')
+
+    expect(
+      await screen.findByText(
+        "A linked group gives this person a higher role. Change the group's role, or remove them from the group."
+      )
+    ).toBeInTheDocument()
+  })
+
   it('shows the code of a refusal it does not know', async () => {
     const spaces = fakeSpaces()
     vi.mocked(spaces.removeMember).mockRejectedValue(

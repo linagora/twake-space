@@ -218,7 +218,8 @@
       "lastAdmin": "Ein Space braucht mindestens einen Admin. Machen Sie zuerst jemand anderen zum Admin.",
       "memberExists": "Diese Person ist bereits Mitglied mit einer anderen Rolle. Ändern Sie stattdessen ihre Rolle in der Liste.",
       "groupAlreadyLinked": "Diese Gruppe ist bereits mit einer anderen Rolle verknüpft. Ändern Sie stattdessen ihre Rolle in der Liste.",
-      "memberThroughGroup": "Diese Person ist über eine verknüpfte Gruppe im Space. Entfernen Sie die Gruppe oder entfernen Sie die Person aus der Gruppe."
+      "memberThroughGroup": "Diese Person ist über eine verknüpfte Gruppe im Space. Entfernen Sie die Gruppe oder entfernen Sie die Person aus der Gruppe.",
+      "roleBelowGroup": "Eine verknüpfte Gruppe gibt dieser Person eine höhere Rolle. Ändern Sie die Rolle der Gruppe oder entfernen Sie die Person aus der Gruppe."
     }
   },
   "space": {

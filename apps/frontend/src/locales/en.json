@@ -218,7 +218,8 @@
       "lastAdmin": "A space needs at least one admin. Make someone else an admin first.",
       "memberExists": "This person is already a member with another role. Change their role in the list instead.",
       "groupAlreadyLinked": "This group is already linked with another role. Change its role in the list instead.",
-      "memberThroughGroup": "This person is in the space through a linked group. Remove the group, or remove them from the group."
+      "memberThroughGroup": "This person is in the space through a linked group. Remove the group, or remove them from the group.",
+      "roleBelowGroup": "A linked group gives this person a higher role. Change the group's role, or remove them from the group."
     }
   },
   "space": {

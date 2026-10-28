@@ -762,7 +762,7 @@ Shared rules:
 
 - Body: `{"role":"..."}`.
 - `404 not_found` when `userId` is not a member of the space.
-- A person in the space only through a linked group is added as a direct member, and keeps the stronger of this role and their group's.
+- A person in the space only through a linked group is added as a direct member with this role. `409 role_below_group` when the role is below their group's.
 - Answers `204`.
 
 ### DELETE /spaces/:id/members/:userId
