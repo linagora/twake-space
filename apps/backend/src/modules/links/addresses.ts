@@ -22,12 +22,16 @@ for (const [network, prefix] of [
 }
 for (const [network, prefix] of [
   ['::', 96],
+  ['::ffff:0:0:0', 96], // IPv4-translated addresses, distinct from IPv4-mapped.
   ['64:ff9b::', 96],
   ['64:ff9b:1::', 48],
   ['100::', 64],
+  ['100:0:0:1::', 64],
   ['2001::', 23],
   ['2001:db8::', 32],
   ['2002::', 16],
+  ['3fff::', 20],
+  ['5f00::', 16],
   ['fc00::', 7],
   ['fe80::', 10],
   ['fec0::', 10],

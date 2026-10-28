@@ -20,6 +20,19 @@ describe('isPublicAddress', () => {
     '::ffff:a00:1',
     '::7f00:1',
     '64:ff9b::a00:1',
+    '100:0:0:1::',
+    '100:0:0:1:ffff:ffff:ffff:ffff',
+    '3fff::',
+    '3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff',
+    '5f00::',
+    '5f00:ffff:ffff:ffff:ffff:ffff:ffff:ffff',
+    '::ffff:0:127.0.0.1',
+    '::ffff:0:7f00:1',
+    '::ffff:0:a00:1',
+    '::ffff:0:ac10:0',
+    '::ffff:0:0:0',
+    '::ffff:0:93.184.215.14',
+    '0:0:0:0:ffff:0:c0a8:101',
     'not an address'
   ])('refuses %s', address => {
     expect(isPublicAddress(address)).toBe(false)
