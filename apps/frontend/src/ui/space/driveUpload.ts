@@ -8,7 +8,7 @@ export const UPLOAD_INTENT = { action: 'UPLOAD', type: 'io.cozy.files' }
 export const READY_TIMEOUT = 30_000
 
 // Drive's Upload intent stores files at the root of a shared drive:
-// linagora/twake-drive/docs/files-upload-intent.md. The files go in reply to the
+// linagora/twake-drive/docs/upload-intent.md. The files go in reply to the
 // frame's `ready`: the stack keeps intent data as JSON.
 export async function uploadToDrive(
   sdk: Sdk | null,
