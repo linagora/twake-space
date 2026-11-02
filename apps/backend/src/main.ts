@@ -31,7 +31,7 @@ import {
   setUpAuth
 } from './modules/auth/index.ts'
 import { activityRoute } from './modules/feed/activity.ts'
-import { registerMetrics } from './modules/feed/metrics.ts'
+import { createMetricsServer } from './modules/feed/metrics.ts'
 import { schedulePurge } from './modules/feed/retention.ts'
 import { registerFeedRoutes } from './modules/feed/routes.ts'
 import { registerLinkRoutes } from './modules/links/routes.ts'
@@ -180,8 +180,7 @@ registerSettingsRoutes(server, { db, authorize })
 const streams = createStreams()
 registerLiveRoutes(server, { authorize, streams })
 await server.listen({ host: config.HTTP_HOST, port: config.HTTP_PORT })
-const metrics = createServer({ logger, isReady: () => Promise.resolve(true) })
-registerMetrics(metrics, { db, consumer: consumerStatus })
+const metrics = createMetricsServer({ logger, db, consumer: consumerStatus })
 await metrics.listen({ host: config.HTTP_HOST, port: config.METRICS_PORT })
 
 const handlerDeps = {
