@@ -155,7 +155,7 @@ The browser reads `GET /settings` once signed in and again each time the tab com
 - `b2b.group.updated`: renames the group in every space.
 - `b2b.member.role.changed`: upserts the person's organization role.
 - `b2b.member.disabled`: revokes the account's tokens in that organization.
-- `domain.user.deleted`: names the person by `uuid` or `internalEmail`. Deletes their notifications, reactions, poll votes, feed reads, pins and visits, turns them into `deleted_user` on stored cards and posts, revokes their tokens, removes them from every space and organization, and forgets them as the creator of their spaces, so whoever gets the address next does not manage them. Its time is `timestamp`, or `deletedAt` (ISO 8601 or LDAP generalized time) when it has none, as ldap-rest sends it. An unreadable `deletedAt` leaves it without a time.
+- `domain.user.deleted`: names the person by `uuid` or `internalEmail`. Deletes their notifications, reactions, poll votes, feed reads, pins and visits, turns them into `deleted_user` on stored cards and posts, revokes their tokens, removes them from every space and organization, and forgets them as the creator of their spaces. Its time is `timestamp`, or `deletedAt` (ISO 8601 or LDAP generalized time) when it has none, as ldap-rest sends it. An unreadable `deletedAt` leaves it without a time.
 - `domain.organization.deleted`: revokes the organization's tokens.
 
 A person sent without a `uuid` (a deletion ldap-rest replays carries none) is matched in the copy by email, among space members and then among the organization roles (in the event's organization when it names one). `b2b.member.disabled` also falls back to the username, among space members only: organization roles hold no username.

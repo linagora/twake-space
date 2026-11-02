@@ -862,7 +862,7 @@ describe('archives and the bin', () => {
     expect(response.json()).toEqual({ error: 'not_space_manager' })
   })
 
-  it('lets the person who created the space manage it', async () => {
+  it('refuses a member who created the space but is not its admin', async () => {
     await testDb.db
       .update(spaces)
       .set({ createdBy: 'bob@example.com' })
@@ -874,8 +874,38 @@ describe('archives and the bin', () => {
       'bob'
     )
 
-    expect(response.statusCode).toBe(204)
+    expect(response.statusCode).toBe(403)
+    expect(response.json()).toEqual({ error: 'not_space_manager' })
+    expect(await readState()).toBe('active')
   })
+
+  it.each(['archived', 'trashed'] as const)(
+    'gives the person who created a space %s no say over it once out of it',
+    async state => {
+      await testDb.db
+        .update(spaces)
+        .set({ createdBy: 'carol@example.com' })
+        .where(eq(spaces.spaceId, DESIGN))
+      await stateOf(DESIGN, state)
+      const { calls, directory } = ldapRest()
+      const write = setUp(directory)
+
+      const restore = await moveTo(write, 'active', 'carol')
+      const remove = await write(
+        'DELETE',
+        `/spaces/${DESIGN}`,
+        undefined,
+        'carol'
+      )
+      const empty = await write('DELETE', '/spaces/bin', undefined, 'carol')
+
+      expect(restore.statusCode).toBe(404)
+      expect(remove.statusCode).toBe(404)
+      expect(empty.statusCode).toBe(204)
+      expect(calls).toEqual([])
+      expect(await readState()).toBe(state)
+    }
+  )
 
   it("lets the organization's admins restore a space they are not in", async () => {
     organizationRoles.set(CAROL, 'admin')

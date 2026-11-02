@@ -277,7 +277,7 @@ describe('archived spaces and the Bin', () => {
     })
   })
 
-  it('tells which spaces the caller manages', async () => {
+  it('tells which spaces the caller manages, created by it or not', async () => {
     await testDb.db
       .update(spaces)
       .set({ createdBy: 'alice@example.com' })
@@ -298,11 +298,11 @@ describe('archived spaces and the Bin', () => {
         .spaces.map(({ id, manages }) => ({ id, manages }))
     ).toEqual([
       { id: DESIGN, manages: true },
-      { id: SALES, manages: true }
+      { id: SALES, manages: false }
     ])
     expect((await setUp()(`/spaces/${SALES}`)).json()).toMatchObject({
       role: 'viewer',
-      manages: true
+      manages: false
     })
   })
 
@@ -375,6 +375,19 @@ describe('archived spaces and the Bin', () => {
       ]
     })
     expect(ids((await setUp()('/spaces?state=archived')).json())).toEqual([])
+  })
+
+  it('lists no archived or binned space to the person who created it, out of it', async () => {
+    await testDb.db
+      .update(spaces)
+      .set({ createdBy: 'alice@example.com' })
+      .where(eq(spaces.spaceId, SALES))
+    await moveTo(SALES, 'archived')
+    const request = setUp()
+
+    expect(ids((await request('/spaces?state=archived')).json())).toEqual([])
+    await moveTo(SALES, 'trashed')
+    expect(ids((await request('/spaces?state=trashed')).json())).toEqual([])
   })
 
   it('takes the organization role from ldap-rest, not from the copy', async () => {
