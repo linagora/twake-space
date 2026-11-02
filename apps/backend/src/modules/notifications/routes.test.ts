@@ -516,6 +516,20 @@ describe('POST /notifications/suggestions', () => {
     expect(twice.statusCode).toBe(404)
   })
 
+  it('lowers the localpart and the stored names the same way', async () => {
+    await testDb.db.update(spaceMembers).set({ username: 'ΟΔΥΣΣΕΑΣ' })
+    const send = setUp()
+
+    const created = await send(
+      'POST',
+      '/notifications/suggestions',
+      { ...suggestion, matrixUserId: '@ΟΔΥΣΣΕΑΣ:example.com' },
+      'tws_harness'
+    )
+
+    expect(created.statusCode).toBe(201)
+  })
+
   it('refuses a bad body with 400', async () => {
     const response = await setUp()(
       'POST',
