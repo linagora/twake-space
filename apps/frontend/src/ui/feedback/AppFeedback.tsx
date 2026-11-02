@@ -4,12 +4,8 @@ import { useCallback, useEffect, type ReactElement } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { FeedbackService } from '@/application/feedback'
-import { useBottomBar } from '@/ds/AppFrame'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
-
-// Height of the bottom bar the sidebar becomes below lg (--sidebarHeight).
-const MOBILE_BAR_HEIGHT = 52
 
 // The draggable feedback button, when feedback is on.
 export function AppFeedback(): ReactElement | null {
@@ -24,7 +20,6 @@ export function AppFeedback(): ReactElement | null {
 
 function Button({ feedback }: { feedback: FeedbackService }): ReactElement {
   const { lang } = useI18n()
-  const bottomBar = useBottomBar()
   const { colorScheme = 'system' } = useColorScheme()
   useEffect(() => {
     feedback.setColorScheme(colorScheme)
@@ -34,11 +29,5 @@ function Button({ feedback }: { feedback: FeedbackService }): ReactElement {
     [feedback, lang]
   )
 
-  return (
-    <FeedbackButton
-      attach={attach}
-      storageKey="twake-space"
-      bottomOffset={bottomBar ? MOBILE_BAR_HEIGHT : 0}
-    />
-  )
+  return <FeedbackButton attach={attach} storageKey="twake-space" />
 }

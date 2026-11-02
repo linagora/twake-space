@@ -1,9 +1,10 @@
-import { CrossMedium, Icon } from '@linagora/twake-icons'
+import { Burger, CrossMedium, Icon } from '@linagora/twake-icons'
 import {
   Avatar,
   Box,
   Content,
   Divider,
+  Drawer,
   IconButton,
   Layout,
   List,
@@ -11,25 +12,34 @@ import {
   Nav,
   nameToColor,
   Sidebar,
+  ThemeProvider,
   Tooltip,
   Typography,
+  createTheme,
   getInitials,
   styled,
   useMediaQuery,
   useTheme
 } from '@linagora/twake-mui'
+import type { Theme } from '@mui/material/styles'
 import { TWAKE_BAR_HEIGHT } from '@linagora/twake-bar'
-import { useEffect, useRef, type ReactElement, type ReactNode } from 'react'
+import {
+  createContext,
+  use,
+  useEffect,
+  useRef,
+  type ReactElement,
+  type ReactNode
+} from 'react'
 
 const SCREEN_HEIGHT = 'calc(100dvh - var(--topBarHeight))'
 
 // Layout hands `sx` to a plain div, so it is styled here instead. The page
 // behind the panels is the mockups' soft gradient, lit from each corner.
 const Frame = styled(Layout, {
-  shouldForwardProp: prop =>
-    prop !== 'belowBar' && prop !== 'alone' && prop !== 'fitScreen'
-})<{ belowBar: boolean; alone: boolean; fitScreen: boolean }>(
-  ({ theme, belowBar, alone, fitScreen }) => ({
+  shouldForwardProp: prop => prop !== 'belowBar' && prop !== 'fitScreen'
+})<{ belowBar: boolean; fitScreen: boolean }>(
+  ({ theme, belowBar, fitScreen }) => ({
     '--topBarHeight': belowBar ? TWAKE_BAR_HEIGHT : '0px',
     height: SCREEN_HEIGHT,
     backgroundColor: theme.space.page.light.base,
@@ -41,23 +51,96 @@ const Frame = styled(Layout, {
     [theme.breakpoints.down('lg')]: {
       height: fitScreen ? SCREEN_HEIGHT : 'auto',
       minHeight: SCREEN_HEIGHT,
-      flexDirection: 'column',
-      paddingBottom: alone ? 0 : 'var(--sidebarHeight)'
+      flexDirection: 'column'
     }
   })
 )
 
-// A frosted panel on the gradient; below lg it stays the bottom bar.
+// A frosted panel on the gradient, on wide screens only.
 const GlassSidebar = styled(Sidebar)(({ theme }) => ({
-  [theme.breakpoints.up('lg')]: {
-    margin: '12px 0 12px 12px',
-    borderRadius: '20px 0 0 20px',
-    backgroundColor: theme.alpha(theme.vars.palette.background.paper, 0.6),
-    backdropFilter: 'blur(20px)',
-    boxShadow:
-      '0 0 2px rgba(153, 153, 153, 0.1), 0 2px 4px rgba(153, 153, 153, 0.3)'
-  }
+  margin: '12px 0 12px 12px',
+  borderRadius: '20px 0 0 20px',
+  backgroundColor: theme.alpha(theme.vars.palette.background.paper, 0.6),
+  backdropFilter: 'blur(20px)',
+  boxShadow:
+    '0 0 2px rgba(153, 153, 153, 0.1), 0 2px 4px rgba(153, 153, 153, 0.3)'
 }))
+
+// twake-mui's sidebar and nav items turn into a bottom bar below lg. In the
+// menu they keep their wide screen look: lg starts at 0 there.
+function wideScreen(theme: Theme): Theme {
+  return {
+    ...theme,
+    breakpoints: createTheme({
+      breakpoints: { values: { ...theme.breakpoints.values, lg: 0 } }
+    }).breakpoints
+  }
+}
+
+interface MenuControl {
+  label: string
+  open: boolean
+  setOpen: (open: boolean) => void
+}
+
+const MenuContext = createContext<MenuControl | null>(null)
+
+// Opens the navigation menu, below lg; nothing on wide screens or on a page
+// given to its content.
+export function MenuButton(): ReactElement | null {
+  const menu = use(MenuContext)
+  if (!menu) return null
+  return (
+    <Box sx={{ display: { xs: 'flex', lg: 'none' }, mr: 1 }}>
+      <Tooltip title={menu.label}>
+        <IconButton
+          size="medium"
+          aria-label={menu.label}
+          aria-haspopup="dialog"
+          aria-expanded={menu.open}
+          onClick={() => {
+            menu.setOpen(true)
+          }}
+          sx={{ color: 'text.secondary', bgcolor: 'action.hover' }}
+        >
+          <Icon icon={Burger} size={20} aria-hidden />
+        </IconButton>
+      </Tooltip>
+    </Box>
+  )
+}
+
+function MenuDrawer({
+  menu,
+  children
+}: {
+  menu: MenuControl
+  children: ReactNode
+}): ReactElement {
+  return (
+    <Drawer
+      anchor="left"
+      open={menu.open}
+      onClose={() => {
+        menu.setOpen(false)
+      }}
+      slotProps={{
+        paper: {
+          role: 'dialog',
+          'aria-label': menu.label,
+          'aria-modal': true,
+          sx: {
+            width: 332,
+            maxWidth: 'calc(100% - 56px)',
+            bgcolor: 'background.default'
+          }
+        }
+      }}
+    >
+      <ThemeProvider theme={wideScreen}>{children}</ThemeProvider>
+    </Drawer>
+  )
+}
 
 // A panel beside the content, on wide screens; below lg it takes the screen.
 const Aside = styled('aside')(({ theme }) => ({
@@ -155,12 +238,14 @@ const TopBar = styled('div')({
 // which continues the sidebar. `aside` is a panel beside the content.
 // `alone` gives the whole page to the content, its aside kept: no top bar,
 // no sidebar, no margin. The content keeps its place in the tree, so the
-// frames it holds are not loaded again. Below lg the page scrolls as a whole,
-// unless `fitScreen` keeps it at the window height for content that scrolls
-// itself, like a feed that opens on its newest items.
+// frames it holds are not loaded again. Below lg the sidebar is the `menu`
+// drawer that `MenuButton` opens, and the page scrolls as a whole, unless
+// `fitScreen` keeps it at the window height for content that scrolls itself,
+// like a feed that opens on its newest items.
 export function AppFrame({
   topBar,
   sidebar,
+  menu,
   bare = false,
   aside,
   alone = false,
@@ -169,6 +254,7 @@ export function AppFrame({
 }: {
   topBar?: ReactNode
   sidebar: ReactNode
+  menu: MenuControl
   bare?: boolean
   aside?: ReactNode
   alone?: boolean
@@ -177,16 +263,17 @@ export function AppFrame({
 }): ReactElement {
   const margin = aside ? '12px 8px 12px 0' : '12px 12px 12px 0'
   const barShown = Boolean(topBar) && !alone
+  const narrow = useNarrowScreen()
   return (
     <>
       {barShown && <TopBar>{topBar}</TopBar>}
-      <Frame
-        withTopBar={false}
-        belowBar={barShown}
-        alone={alone}
-        fitScreen={fitScreen}
-      >
-        {!alone && <GlassSidebar>{sidebar}</GlassSidebar>}
+      <Frame withTopBar={false} belowBar={barShown} fitScreen={fitScreen}>
+        {!alone &&
+          (narrow ? (
+            <MenuDrawer menu={menu}>{sidebar}</MenuDrawer>
+          ) : (
+            <GlassSidebar>{sidebar}</GlassSidebar>
+          ))}
         {/* Content's own 100% height ignores its margins and scrolls the page */}
         <Content
           role={undefined}
@@ -207,7 +294,7 @@ export function AppFrame({
                 : { m: margin, borderRadius: '0 16px 16px 0' }
           })}
         >
-          {children}
+          <MenuContext value={alone ? null : menu}>{children}</MenuContext>
         </Content>
         {aside && <Aside>{aside}</Aside>}
       </Frame>
@@ -215,9 +302,10 @@ export function AppFrame({
   )
 }
 
-// Below lg the sidebar is the one-row bottom bar.
-export function useBottomBar(): boolean {
-  return useMediaQuery(useTheme().breakpoints.down('lg'))
+// Below lg the sidebar is a drawer. Read on the first render, so that a phone
+// never shows the wide sidebar for a frame.
+export function useNarrowScreen(): boolean {
+  return useMediaQuery(useTheme().breakpoints.down('lg'), { noSsr: true })
 }
 
 export function SidebarHeader({
@@ -230,7 +318,7 @@ export function SidebarHeader({
   return (
     <Box
       sx={{
-        display: { xs: 'none', lg: 'flex' },
+        display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         pt: 2,
@@ -245,11 +333,7 @@ export function SidebarHeader({
   )
 }
 
-// 16px from the header and the section around it, on wide screens; below lg
-// Nav keeps the bottom bar's own margins.
-const SpacedNav = styled(Nav)(({ theme }) => ({
-  [theme.breakpoints.up('lg')]: { margin: theme.spacing(2, 0) }
-}))
+const SpacedNav = styled(Nav)(({ theme }) => ({ margin: theme.spacing(2, 0) }))
 
 export function SidebarNav({
   children
@@ -263,17 +347,12 @@ export function SidebarDivider(): ReactElement {
   return <Divider sx={{ mx: 2, my: 1 }} />
 }
 
-// Under the header, on wide screens like the list it filters.
 export function SidebarSearch({
   children
 }: {
   children: ReactNode
 }): ReactElement {
-  return (
-    <Box sx={{ display: { xs: 'none', lg: 'flex' }, px: 2, pt: 1 }}>
-      {children}
-    </Box>
-  )
+  return <Box sx={{ display: 'flex', px: 2, pt: 1 }}>{children}</Box>
 }
 
 const sidebarBadge = {
@@ -292,8 +371,6 @@ const sidebarBadge = {
   }
 }
 
-// Phones get the bottom bar only; the section stays on wide screens. Sections
-// sit 16px apart.
 export function SidebarSection({
   label,
   children
@@ -320,7 +397,6 @@ export function SidebarSection({
         </ListSubheader>
       }
       sx={{
-        display: { xs: 'none', lg: 'block' },
         py: 0,
         mb: 2,
         ...sidebarBadge

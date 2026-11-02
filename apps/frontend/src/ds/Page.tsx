@@ -11,12 +11,14 @@ import { Icon, type IconProps } from '@linagora/twake-icons'
 import type { ReactElement, ReactNode } from 'react'
 
 import coverArt from '@/assets/space-cover.png'
+import { MenuButton } from '@/ds/AppFrame'
 
 // `fill` off leaves the rest of the content to what follows the page: the
 // frame of an embedded app, under the tabs. `compact` keeps a narrow edge,
 // on a page given to the content. The page scrolls itself, or content
 // overflowing a page shrunk to the screen would cover its bottom edge.
-// `head` is the first row; a compact page has none.
+// `head` shares the first row with the menu button of narrow screens; a
+// compact page has neither.
 export function Page({
   fill = true,
   compact = false,
@@ -51,6 +53,7 @@ export function Page({
             mb: { xs: 1, lg: 0 }
           }}
         >
+          <MenuButton />
           {head}
         </Box>
       )}

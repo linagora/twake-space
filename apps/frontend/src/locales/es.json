@@ -64,6 +64,7 @@
     "archives": "Archivados",
     "bin": "Papelera",
     "title": "Espacio",
+    "menu": "Menú",
     "allSpaces": "Todos los espacios",
     "spaceWithCount": "%{name}, %{smart_count} nuevo |||| %{name}, %{smart_count} nuevos",
     "searchSpaces": "Buscar en tus espacios",

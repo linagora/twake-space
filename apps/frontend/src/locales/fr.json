@@ -64,6 +64,7 @@
     "archives": "Archives",
     "bin": "Corbeille",
     "title": "Espace",
+    "menu": "Menu",
     "allSpaces": "Tous les espaces",
     "spaceWithCount": "%{name}, %{smart_count} nouveau |||| %{name}, %{smart_count} nouveaux",
     "searchSpaces": "Rechercher dans vos espaces",

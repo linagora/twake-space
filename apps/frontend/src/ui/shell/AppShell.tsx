@@ -10,7 +10,12 @@ import {
   SearchBar
 } from '@linagora/twake-mui'
 import { useState, type ReactElement, type ReactNode } from 'react'
-import { Outlet, NavLink as RouterNavLink, useMatch } from 'react-router'
+import {
+  Outlet,
+  NavLink as RouterNavLink,
+  useLocation,
+  useMatch
+} from 'react-router'
 
 import { badgeLabel } from '@/application/badges'
 import {
@@ -26,7 +31,7 @@ import {
   SidebarNav,
   SidebarSearch,
   SidebarSection,
-  useBottomBar
+  useNarrowScreen
 } from '@/ds/AppFrame'
 import { FilterListIcon } from '@/ds/FilterListIcon'
 import { IconButton } from '@/ds/IconButton'
@@ -63,15 +68,25 @@ export function AppShell(): ReactElement {
   // A space's content may take the whole page, the platform bar's too
   const alone = useFillPage().space !== null
   const feed = useMatch('/spaces/:spaceId/feed/*') !== null
-  // In the bottom bar the shelves join its one row
-  const bottomBar = useBottomBar()
+  const narrow = useNarrowScreen()
   const [spotting, setSpotting] = useState(false)
+  // The menu of narrow screens is open on the page it was opened from: it
+  // closes when another page opens.
+  const { key } = useLocation()
+  const [menuAt, setMenuAt] = useState<string | null>(null)
 
   return (
     <CallProvider>
       <AppFrame
         // Without a platform client there is no bar, and no room to leave for it
         topBar={sdk ? <PlatformBar /> : undefined}
+        menu={{
+          label: t('shell.menu'),
+          open: menuAt === key,
+          setOpen: open => {
+            setMenuAt(open ? key : null)
+          }
+        }}
         bare={home}
         alone={alone}
         fitScreen={feed}
@@ -107,6 +122,7 @@ export function AppShell(): ReactElement {
                     color="primary"
                     label={t('spaces.create')}
                     onClick={() => {
+                      setMenuAt(null)
                       setCreating(true)
                     }}
                   >
@@ -139,13 +155,14 @@ export function AppShell(): ReactElement {
               </SidebarSearch>
             )}
             <AppNav
-              bottomBar={bottomBar}
+              narrow={narrow}
               onSearch={() => {
+                setMenuAt(null)
                 setSpotting(true)
               }}
             />
             <SpaceList query={query ?? ''} />
-            {!bottomBar && <ShelfLinks />}
+            <ShelfLinks />
           </>
         }
       >
@@ -198,12 +215,12 @@ function RouteNavLink({
   )
 }
 
-// A phone has no Ctrl+K, so its bottom bar gets a Search entry
+// A phone has no Ctrl+K, so its menu gets a Search entry
 function AppNav({
-  bottomBar,
+  narrow,
   onSearch
 }: {
-  bottomBar: boolean
+  narrow: boolean
   onSearch: () => void
 }): ReactElement {
   const { t } = useI18n()
@@ -216,16 +233,13 @@ function AppNav({
           <NavText>{t('shell.allSpaces')}</NavText>
         </RouteNavLink>
       </NavItem>
-      {bottomBar && (
-        <>
-          <ShelfItems />
-          <NavItem>
-            <NavLink onClick={onSearch}>
-              <NavIcon icon={Magnifier} />
-              <NavText>{t('shell.search')}</NavText>
-            </NavLink>
-          </NavItem>
-        </>
+      {narrow && (
+        <NavItem>
+          <NavLink onClick={onSearch}>
+            <NavIcon icon={Magnifier} />
+            <NavText>{t('shell.search')}</NavText>
+          </NavLink>
+        </NavItem>
       )}
     </SidebarNav>
   )
@@ -280,28 +294,19 @@ function ShelfLinks(): ReactElement {
     <>
       <SidebarDivider />
       <List aria-label={t('shell.shelves')}>
-        <ShelfItems />
+        <NavItem>
+          <RouteNavLink to="/archives">
+            <NavIcon icon={Archive} />
+            <NavText>{t('shell.archives')}</NavText>
+          </RouteNavLink>
+        </NavItem>
+        <NavItem>
+          <RouteNavLink to="/bin">
+            <NavIcon icon={Trash} />
+            <NavText>{t('shell.bin')}</NavText>
+          </RouteNavLink>
+        </NavItem>
       </List>
-    </>
-  )
-}
-
-function ShelfItems(): ReactElement {
-  const { t } = useI18n()
-  return (
-    <>
-      <NavItem>
-        <RouteNavLink to="/archives">
-          <NavIcon icon={Archive} />
-          <NavText>{t('shell.archives')}</NavText>
-        </RouteNavLink>
-      </NavItem>
-      <NavItem>
-        <RouteNavLink to="/bin">
-          <NavIcon icon={Trash} />
-          <NavText>{t('shell.bin')}</NavText>
-        </RouteNavLink>
-      </NavItem>
     </>
   )
 }

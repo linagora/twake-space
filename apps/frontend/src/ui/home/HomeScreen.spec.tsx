@@ -305,7 +305,9 @@ describe('HomeScreen', () => {
     const { router } = renderRoute('/', { spaces })
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Create a space' })
+      await within(await screen.findByRole('main')).findByRole('button', {
+        name: 'Create a space'
+      })
     )
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('button', { name: 'Next' })).toBeDisabled()

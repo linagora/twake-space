@@ -64,6 +64,7 @@
     "archives": "Архив",
     "bin": "Корзина",
     "title": "Пространство",
+    "menu": "Меню",
     "allSpaces": "Все пространства",
     "spaceWithCount": "%{name}, новых: %{smart_count}",
     "searchSpaces": "Поиск по вашим пространствам",
