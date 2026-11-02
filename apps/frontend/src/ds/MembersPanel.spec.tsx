@@ -2,6 +2,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { MembersPanel } from '@/ds/MembersPanel'
+import { stubPhoneScreen } from '@/testing/phoneScreen'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 
 const members = [
@@ -111,5 +112,39 @@ describe('MembersPanel', () => {
       await screen.findByRole('button', { name: 'Hide the members' })
     )
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('takes the whole height of a phone, and closes on a tap beside it', async () => {
+    stubPhoneScreen()
+    try {
+      const onClose = vi.fn()
+      renderPanel({ onClose })
+      const panel = await screen.findByRole('complementary', {
+        name: 'Space members'
+      })
+      const drawer = panel.closest('.MuiDrawer-root')
+      expect(drawer).not.toBe(null)
+      expect(
+        screen.getByRole('dialog', { name: 'Space members' })
+      ).toContainElement(panel)
+
+      const backdrop = drawer?.querySelector('.MuiBackdrop-root')
+      expect(backdrop).not.toBe(null)
+      if (backdrop) fireEvent.click(backdrop)
+      expect(onClose).toHaveBeenCalledTimes(1)
+
+      fireEvent.keyDown(panel, { key: 'Escape' })
+      expect(onClose).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('stays beside the feed on a wide screen', async () => {
+    renderPanel()
+    const panel = await screen.findByRole('complementary', {
+      name: 'Space members'
+    })
+    expect(panel.closest('.MuiDrawer-root')).toBe(null)
   })
 })
