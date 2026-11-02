@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import type { Db } from '../../infra/db.ts'
+import { storableText, type Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import type { Authorize } from '../auth/index.ts'
 import { activityEvents } from '../feed/schema.ts'
@@ -28,11 +28,11 @@ const listQuery = z.object({
 const notificationParams = z.object({ id: z.uuid() })
 
 const suggestionBody = z.object({
-  matrixUserId: z.string().regex(/^@[^:]+:.+$/),
-  externalId: z.string().min(1).max(128),
-  text: z.string().min(1).max(500),
-  pendingCallId: z.string().min(1).max(64),
-  matrixRoomId: z.string().optional()
+  matrixUserId: storableText.regex(/^@[^:]+:.+$/),
+  externalId: storableText.min(1).max(128),
+  text: storableText.min(1).max(500),
+  pendingCallId: storableText.min(1).max(64),
+  matrixRoomId: storableText.optional()
 })
 
 const settingsBody = z.partialRecord(

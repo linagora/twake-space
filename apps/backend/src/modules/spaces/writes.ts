@@ -2,7 +2,7 @@ import { LdapRestError } from '@linagora/ldap-rest-client'
 import { and, eq, inArray } from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import type { Db, Tx } from '../../infra/db.ts'
+import { storableText, type Db, type Tx } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import type {
   Directory,
@@ -43,11 +43,7 @@ const name = z
   .max(255)
   // eslint-disable-next-line no-control-regex
   .regex(/^[^\u0000-\u001f\u007f]*$/)
-const description = z
-  .string()
-  .trim()
-  .max(1000)
-  .refine(text => !text.includes('\u0000'))
+const description = storableText.trim().max(1000)
 const spaceParams = z.object({ id: z.uuid() })
 const memberParams = spaceParams.extend({ userId: z.uuid() })
 const groupParams = spaceParams.extend({ groupId: z.uuid() })

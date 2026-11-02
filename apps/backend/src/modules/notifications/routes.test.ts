@@ -433,6 +433,27 @@ describe('POST /notifications/suggestions', () => {
     expect(await testDb.db.select().from(notifications)).toHaveLength(1)
   })
 
+  it.each([
+    { matrixUserId: '@a\u0000:example.com' },
+    { externalId: 'call\u0000' },
+    { text: 'Free\u0000' },
+    { text: 'Free\ud800' },
+    { pendingCallId: 'pc\u0000' },
+    { matrixRoomId: '!room\u0000:example.com' }
+  ])('refuses a string Postgres cannot store (%o) with 400', async field => {
+    const send = setUp()
+
+    const answer = await send(
+      'POST',
+      '/notifications/suggestions',
+      { ...suggestion, ...field },
+      'tws_harness'
+    )
+
+    expect(answer.statusCode).toBe(400)
+    expect(answer.json()).toMatchObject({ error: 'invalid_request' })
+  })
+
   it('needs the notifications:write scope', async () => {
     const send = setUp()
     for (const token of ['tws_bot', 'alice']) {
