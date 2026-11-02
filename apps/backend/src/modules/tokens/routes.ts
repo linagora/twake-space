@@ -6,6 +6,7 @@ import type { Db } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import type { Directory } from '../../infra/ldap-rest.ts'
 import { sha256 } from '../auth/authenticator.ts'
+import { storable } from '../feed/items.ts'
 import type { Authorize, Caller } from '../auth/index.ts'
 import { liveOrganizationRole } from '../spaces/managers.ts'
 import { spaceMembers, spaceRole, spaces } from '../spaces/schema.ts'
@@ -38,7 +39,14 @@ const createBody = z
     role: z.enum(spaceRole.enumValues).optional(),
     expiresInDays: z.literal([7, 30, 90, 365]).optional(),
     // Null for a token that never expires.
-    expiresAt: z.iso.datetime({ offset: true }).nullable().optional()
+    expiresAt: z.iso
+      .datetime({ offset: true })
+      .refine(
+        t => storable(new Date(t)),
+        'expiresAt is outside years 1 to 9999'
+      )
+      .nullable()
+      .optional()
   })
   .refine(
     body => body.expiresInDays === undefined || body.expiresAt === undefined,
