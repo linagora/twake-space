@@ -52,12 +52,21 @@ export function scopesOf(access: TokenAccess): TokenScope[] {
   })
 }
 
-/** The backend routes each scope opens to a token. */
+/**
+ * The backend routes each scope opens to a token. The organization token
+ * routes are left out: they pass the scope gate, then refuse every token.
+ */
 export const SCOPE_ROUTES: Record<TokenScope, string[]> = {
-  'space:read': ['GET /spaces', 'GET /spaces/apps', 'GET /spaces/:id'],
+  'space:read': [
+    'GET /spaces',
+    'GET /spaces/apps',
+    'GET /spaces/:id',
+    'GET /spaces/:id/banner'
+  ],
   'space:write': [
     'POST /spaces',
     'PATCH /spaces/:id',
+    'PUT /spaces/:id/banner',
     'PUT /spaces/:id/state',
     'DELETE /spaces/:id',
     'DELETE /spaces/bin'
@@ -72,11 +81,14 @@ export const SCOPE_ROUTES: Record<TokenScope, string[]> = {
   ],
   'feed:read': [
     'GET /spaces/:spaceId/feed',
-    'GET /spaces/:spaceId/feed/items/:itemId'
+    'GET /spaces/:spaceId/feed/items/:itemId',
+    'GET /spaces/:spaceId/feed/pinned'
   ],
   'feed:write': [
     'POST /spaces/:spaceId/feed/posts',
-    'PATCH, DELETE /spaces/:spaceId/feed/posts/:itemId'
+    'PATCH, DELETE /spaces/:spaceId/feed/posts/:itemId',
+    'POST /spaces/:spaceId/feed/posts/:itemId/close',
+    'PUT, DELETE /spaces/:spaceId/feed/posts/:itemId/pin'
   ],
   'tokens:write': [
     'GET, POST /tokens',
@@ -172,7 +184,7 @@ export function agentBrief(apiUrl: string, created: CreatedToken): string {
     ...created.scopes.flatMap(scope =>
       SCOPE_ROUTES[scope].map(route => `- ${route}`)
     ),
-    'Any other route answers 403 insufficient_scope.',
+    'Any other route answers 403.',
     ...(created.scopes.includes('feed:write')
       ? [`Posts are signed "${created.name}", never as a person.`]
       : []),
