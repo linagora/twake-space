@@ -17,6 +17,7 @@ import {
   spaceGroups,
   spaceMembers,
   spaceReconciliations,
+  spaceRole,
   spaces
 } from './schema.ts'
 
@@ -25,10 +26,13 @@ type Reader = Pick<SpaceDirectory, 'list' | 'members' | 'groups' | 'exists'>
 const CHECK_EVERY_MS = 60 * 60 * 1000
 const ACTOR = 'reconciliation'
 
+// ldap-rest's role is not checked at runtime; the copy's enum rejects others.
+const knownRole = (role: string) => spaceRole.enumValues.some(r => r === role)
+
 const readable = (
   m: ListedMember
 ): m is ListedMember & { uuid: string; email: string } =>
-  m.uuid !== undefined && m.email !== undefined
+  m.uuid !== undefined && m.email !== undefined && knownRole(m.role)
 
 // Repairs what lost events left behind. Each write is stamped with the time
 // taken before its read from ldap-rest, so an event applied since then wins.
@@ -90,8 +94,18 @@ async function reconcileSpace(
     throw error
   })
   if (!read) return
-  const [members, groups] = read
+  const [members, listedGroups] = read
   const people = members.filter(readable)
+  const groups = listedGroups.filter(g => knownRole(g.role))
+  const unknown = {
+    members: members.filter(m => !knownRole(m.role)).map(m => m.username),
+    groups: listedGroups.filter(g => !knownRole(g.role)).map(g => g.id)
+  }
+  if (unknown.members.length > 0 || unknown.groups.length > 0)
+    log.warn(
+      { organizationId, spaceId: id, ...unknown },
+      'ldap-rest lists a space role the copy does not know, kept as is'
+    )
   await db.transaction(async tx => {
     const [space] = await tx
       .select({ name: spaces.name })
@@ -170,9 +184,9 @@ async function reconcileSpace(
       return row?.role !== g.role || row.name !== g.name
     })
     if (changed.length > 0) await upsertGroups(tx, id, at, changed)
-    const listedGroups = new Set(groups.map(g => g.id))
+    const listedGroupIds = new Set(listedGroups.map(g => g.id))
     const unlinked = linked
-      .filter(g => !listedGroups.has(g.groupId))
+      .filter(g => !listedGroupIds.has(g.groupId))
       .map(g => g.groupId)
     if (unlinked.length > 0) await unlinkGroups(tx, id, at, unlinked)
     // Also when nothing changed: it repairs a drive whose command was lost.
