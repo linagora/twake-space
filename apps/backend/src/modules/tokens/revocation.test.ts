@@ -233,3 +233,35 @@ it('revokes tokens left with no space when a space is deleted', async () => {
       .where(eq(apiTokenSpaces.tokenId, both))
   ).toEqual([{ spaceId: SALES }])
 })
+
+it("drops a space from a removed member's tokens only", async () => {
+  await testDb.db.insert(spaceMembers).values({
+    spaceId: DESIGN,
+    userId: BOB,
+    username: 'bob',
+    email: 'bob@example.com',
+    role: 'editor'
+  })
+  await token('alice design', { accountId: ALICE }, { spaceIds: [DESIGN] })
+  const both = await token(
+    'alice both',
+    { accountId: ALICE },
+    { spaceIds: [DESIGN, SALES] }
+  )
+  await token('bob design', { accountId: BOB }, { spaceIds: [DESIGN] })
+  await token('org design', { role: 'editor' }, { spaceIds: [DESIGN] })
+
+  await handle('twake.space.member.removed', {
+    organizationId: 'org-1',
+    id: DESIGN,
+    members: [{ uuid: ALICE }]
+  })
+
+  expect(await active()).toEqual(['alice both', 'bob design', 'org design'])
+  expect(
+    await testDb.db
+      .select({ spaceId: apiTokenSpaces.spaceId })
+      .from(apiTokenSpaces)
+      .where(eq(apiTokenSpaces.tokenId, both))
+  ).toEqual([{ spaceId: SALES }])
+})

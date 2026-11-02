@@ -335,6 +335,7 @@ export async function deletedAfter(
 async function removeMembers(
   tx: Tx,
   at: Date | undefined,
+  actor: string,
   where: SQL | undefined,
   absent: string[] = []
 ) {
@@ -369,6 +370,12 @@ async function removeMembers(
       .where(
         and(eq(spaceMarks.spaceId, spaceId), inArray(spaceMarks.userId, left))
       )
+    await dropSpaceFromTokens(
+      tx,
+      spaceId,
+      { actor, reason: 'its account left its only space' },
+      left
+    )
     ensureDrive(tx, spaceId)
     tell(tx, 'spaces', left, { spaceId })
   }
@@ -538,7 +545,7 @@ const onMemberRemoved: Handler<PlatformEvent> = async (event, tx, log) => {
     event.routingKey
   )
   await lockSpace(tx, organizationId, id)
-  await removeSpaceMembers(tx, log, id, timestamp, members)
+  await removeSpaceMembers(tx, log, id, timestamp, members, event.routingKey)
 }
 
 export async function removeSpaceMembers(
@@ -546,12 +553,14 @@ export async function removeSpaceMembers(
   log: Logger,
   spaceId: string,
   at: Date | undefined,
-  people: Person[]
+  people: Person[],
+  actor: string
 ) {
   const identified = await withUserIds(tx, log, people)
   await removeMembers(
     tx,
     at,
+    actor,
     and(eq(spaceMembers.spaceId, spaceId), matching(log, people)),
     identified.map(p => memberKey(spaceId, p.uuid))
   )
@@ -703,6 +712,7 @@ const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
   await removeMembers(
     tx,
     timestamp,
+    event.routingKey,
     matching(log, [known ?? { uuid, email: internalEmail }])
   )
   await tx

@@ -79,17 +79,25 @@ export async function revokeOrganizationTokens(
   await revokeTokens(tx, eq(apiTokens.organizationId, organizationId), why)
 }
 
-// A token that covered only this space is revoked; the others lose it.
+// A token that covered only this space is revoked; the others lose it. With
+// `accountIds`, only the tokens of those accounts.
 export async function dropSpaceFromTokens(
   tx: Tx,
   spaceId: string,
-  why: Why
+  why: Why,
+  accountIds?: string[]
 ): Promise<void> {
   const covering = (
     await tx
       .select({ tokenId: apiTokenSpaces.tokenId })
       .from(apiTokenSpaces)
-      .where(eq(apiTokenSpaces.spaceId, spaceId))
+      .innerJoin(apiTokens, eq(apiTokens.id, apiTokenSpaces.tokenId))
+      .where(
+        and(
+          eq(apiTokenSpaces.spaceId, spaceId),
+          accountIds && inArray(apiTokens.accountId, accountIds)
+        )
+      )
   ).map(c => c.tokenId)
   if (covering.length === 0) return
   const elsewhere = new Set(
@@ -107,5 +115,12 @@ export async function dropSpaceFromTokens(
   )
   const only = covering.filter(id => !elsewhere.has(id))
   if (only.length > 0) await revokeTokens(tx, inArray(apiTokens.id, only), why)
-  await tx.delete(apiTokenSpaces).where(eq(apiTokenSpaces.spaceId, spaceId))
+  await tx
+    .delete(apiTokenSpaces)
+    .where(
+      and(
+        eq(apiTokenSpaces.spaceId, spaceId),
+        inArray(apiTokenSpaces.tokenId, covering)
+      )
+    )
 }
