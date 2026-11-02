@@ -34,6 +34,18 @@ const readable = (
 ): m is ListedMember & { uuid: string; email: string } =>
   m.uuid !== undefined && m.email !== undefined && knownRole(m.role)
 
+// A row matches its entry by uuid, so a username re-created under a new uuid
+// leaves its old row unlisted. An entry without a uuid keeps its row by
+// username.
+function unlistedIn(members: ListedMember[]) {
+  const ids = new Set(members.flatMap(m => m.uuid ?? []))
+  const usernames = new Set(
+    members.filter(m => m.uuid === undefined).map(m => m.username)
+  )
+  return (row: { userId: string; username: string }) =>
+    !ids.has(row.userId) && !usernames.has(row.username)
+}
+
 // Repairs what lost events left behind. Each write is stamped with the time
 // taken before its read from ldap-rest, so an event applied since then wins.
 export async function reconcileOrganization(
@@ -149,21 +161,12 @@ async function reconcileSpace(
         )
       })
     )
-    const listedIds = new Set(people.map(p => p.uuid))
-    const unreadable = new Set(
-      members.filter(m => !readable(m)).map(m => m.username)
-    )
-    const absent = copied.filter(
-      m => !listedIds.has(m.userId) && !unreadable.has(m.username)
-    )
+    const absent = copied.filter(unlistedIn(members))
     // A paged listing skips a member when one before it leaves mid-read.
-    const reread =
+    const gone =
       absent.length === 0
-        ? new Set<string>()
-        : new Set(
-            (await directory.members(organizationId, id)).map(m => m.username)
-          )
-    const gone = absent.filter(m => !reread.has(m.username))
+        ? []
+        : absent.filter(unlistedIn(await directory.members(organizationId, id)))
     if (gone.length > 0) {
       await removeSpaceMembers(
         tx,
