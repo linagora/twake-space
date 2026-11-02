@@ -1,10 +1,9 @@
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest'
 import { parkedEvents } from '../../events/schema.ts'
-import { createServer } from '../../infra/http.ts'
 import { consumerStats } from '../../infra/amqp.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
-import { registerMetrics } from './metrics.ts'
+import { createMetricsServer } from './metrics.ts'
 
 let testDb: TestDb
 beforeAll(async () => {
@@ -29,11 +28,11 @@ it('counts messages by outcome and the parked events', async () => {
   stats.ended(stats.started(), 'processed')
   stats.ended(stats.started(), 'processed')
   stats.ended(stats.started(), 'failed')
-  const app = createServer({
+  const app = createMetricsServer({
     logger: pino({ level: 'silent' }),
-    isReady: () => Promise.resolve(true)
+    db: testDb.db,
+    consumer: stats
   })
-  registerMetrics(app, { db: testDb.db, consumer: stats })
 
   const response = await app.inject({ method: 'GET', url: '/metrics' })
 
@@ -53,4 +52,10 @@ it('counts messages by outcome and the parked events', async () => {
       ''
     ].join('\n')
   )
+})
+
+it('offers the metrics only on a server of their own', async () => {
+  expect(Object.keys(await import('./metrics.ts'))).toEqual([
+    'createMetricsServer'
+  ])
 })
