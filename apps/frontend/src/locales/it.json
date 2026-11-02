@@ -9,7 +9,9 @@
     "news": "Dalla tua ultima visita",
     "noNews": "Niente di nuovo nei tuoi spazi",
     "newItems": "%{smart_count} nuovo elemento |||| %{smart_count} nuovi elementi",
-    "mentions": "%{smart_count} menzione |||| %{smart_count} menzioni"
+    "mentions": "%{smart_count} menzione |||| %{smart_count} menzioni",
+    "summarise": "Riassumi con Twake AI",
+    "summaryRequest": "Riassumi le novità nei miei spazi dalla mia ultima visita."
   },
   "spaceHome": {
     "users": "Membro dello spazio |||| Membri dello spazio",

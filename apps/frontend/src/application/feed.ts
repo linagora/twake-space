@@ -405,6 +405,20 @@ export function firstUnread(
   return items.find(item => Date.parse(item.time) > read) ?? null
 }
 
+/** The news of the spaces listed, their mentions first, then their items. */
+export function spaceNews<S extends { id: string }>(
+  news: SpaceNews[],
+  spaces: S[]
+): (SpaceNews & { space: S })[] {
+  const byId = new Map(spaces.map(space => [space.id, space]))
+  return news
+    .flatMap(entry => {
+      const space = byId.get(entry.spaceId)
+      return space ? [{ ...entry, space }] : []
+    })
+    .sort((a, b) => b.mentions - a.mentions || b.items - a.items)
+}
+
 /** What a search matches an item on, as the backend does. */
 export function searchedText(item: FeedItem): string[] {
   if (item.kind === 'post') {

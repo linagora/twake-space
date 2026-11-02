@@ -177,7 +177,7 @@ The feed is Twake Space's own: it reads no app and no homeserver from the browse
 
 Two separate pieces:
 
-- Twake Assistant: the panel of a space frames the assistant that the person's platform serves, through a platform intent (`io.cozy.ai.chat.conversations`). Its answer can be posted to the space's feed.
+- Twake Assistant: the panel of a space frames the assistant that the person's platform serves, through a platform intent (`io.cozy.ai.chat.conversations`). Its answer can be posted to the space's feed. On the home, the same panel gets the unread feed items of each space as its text, with a request to summarise them. The frontend reads them from the feed when the person opens the panel.
 - Twake Harness: the person's agent pushes suggestions to `POST /notifications/suggestions` with a technical account's API token. The frontend shows them top right, and its buttons call Harness at `HARNESS_URL` with the person's access token.
 
 ## Settings
