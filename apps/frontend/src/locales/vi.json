@@ -193,7 +193,8 @@
     "drive": "Drive",
     "mail": "Thư",
     "calendar": "Lịch",
-    "withCount": "%{app}, %{smart_count} mới"
+    "withCount": "%{app}, %{smart_count} mới",
+    "choose": "Chuyển đến một thẻ"
   },
   "members": {
     "members": "Thành viên",

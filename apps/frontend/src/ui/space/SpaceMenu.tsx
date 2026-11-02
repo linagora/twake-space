@@ -14,14 +14,19 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  Divider,
   Menu,
   Snackbar,
   Stack,
   TextField,
   Typography
 } from '@linagora/twake-mui'
-import { useEffect, useId, useState, type ReactElement } from 'react'
+import {
+  useEffect,
+  useId,
+  useState,
+  type MouseEvent,
+  type ReactElement
+} from 'react'
 import { useMatch, useNavigate } from 'react-router'
 
 import type {
@@ -33,7 +38,7 @@ import type {
 } from '@/application/spaces'
 import { DialogHeader } from '@/ds/Dialog'
 import { IconButton } from '@/ds/IconButton'
-import { MenuEntry } from '@/ds/Menu'
+import { menuEntries, type MenuAction } from '@/ds/Menu'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { PeopleDialog } from '@/ui/space/PeopleDialog'
 import { WriteError } from '@/ui/space/WriteError'
@@ -91,113 +96,155 @@ export function ShareLinkButton({ id }: { id: string }): ReactElement {
   )
 }
 
-// The "more" menu of a space, on its card and in its header. Every entry
-// does something today: the mockup's notification waits for its backend.
-export function SpaceMenu({
-  space
-}: {
-  space: Pick<SpaceSummary, 'id' | 'name' | 'role' | 'pinnedAt' | 'manages'>
-}): ReactElement {
+type MenuSpace = Pick<
+  SpaceSummary,
+  'id' | 'name' | 'role' | 'pinnedAt' | 'manages'
+>
+
+// Every entry does something today: the mockup's notification waits for its
+// backend.
+export function useSpaceMenu(space: MenuSpace): {
+  groups: MenuAction[][]
+  dialogs: ReactElement
+} {
   const { t } = useI18n()
   const navigate = useNavigate()
   const setPinned = useSetPinned(space.id)
   const { ask, notice: shelveNotice } = useConfirmedShelve(space)
   const pinned = space.pinnedAt !== null
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [people, setPeople] = useState(false)
   const { share, notice } = useShareLink(space.id)
   const isAdmin = space.role === 'admin'
-  const close = (): void => {
-    setAnchor(null)
-  }
   const closePeople = (): void => {
     setPeople(false)
   }
-  const item = (
-    key: string,
-    icon: typeof Dots,
-    label: string,
-    onClick: () => void,
-    danger = false
-  ) => (
-    <MenuEntry
-      key={key}
-      icon={<Icon icon={icon} />}
-      onClick={onClick}
-      danger={danger}
-    >
-      {label}
-    </MenuEntry>
-  )
+  const shelving: MenuAction[] = space.manages
+    ? [
+        {
+          key: 'archive',
+          icon: Archive,
+          label: t('spaceMenu.archive'),
+          onClick: () => {
+            ask('archived')
+          }
+        }
+      ]
+    : []
+  return {
+    groups: [
+      [
+        {
+          key: 'share',
+          icon: Link,
+          label: t('spaceMenu.shareLink'),
+          onClick: share
+        },
+        {
+          key: 'pin',
+          icon: Pin,
+          label: t(pinned ? 'spaceMenu.unpin' : 'spaceMenu.pin'),
+          onClick: () => {
+            setPinned.mutate(!pinned)
+          }
+        }
+      ],
+      [
+        {
+          key: 'people',
+          icon: People,
+          label: t(isAdmin ? 'spaceMenu.managePeople' : 'spaceMenu.members'),
+          onClick: () => {
+            setPeople(true)
+          }
+        },
+        ...(isAdmin
+          ? [
+              {
+                key: 'manage',
+                icon: Settings,
+                label: t('spaceMenu.manage'),
+                onClick: () => {
+                  void navigate(
+                    `/spaces/${encodeURIComponent(space.id)}/settings`
+                  )
+                }
+              }
+            ]
+          : []),
+        ...shelving
+      ],
+      space.manages
+        ? [
+            {
+              key: 'delete',
+              icon: Trash,
+              label: t('spaceActions.delete'),
+              onClick: () => {
+                ask('trashed')
+              },
+              danger: true
+            }
+          ]
+        : []
+    ],
+    dialogs: (
+      <>
+        {notice}
+        {shelveNotice}
+        {people && (
+          <WithSpace spaceId={space.id} onClose={closePeople}>
+            {full => <PeopleDialog space={full} onClose={closePeople} />}
+          </WithSpace>
+        )}
+      </>
+    )
+  }
+}
 
+// The "more" menu of a space, on its card and in its header.
+export function SpaceMenu({ space }: { space: MenuSpace }): ReactElement {
+  const { groups, dialogs } = useSpaceMenu(space)
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const close = (): void => {
+    setAnchor(null)
+  }
   return (
     <>
-      <IconButton
-        size="small"
-        label={t('spaceMenu.open', { name: space.name })}
-        aria-haspopup="menu"
-        aria-expanded={anchor !== null}
+      <SpaceMenuButton
+        name={space.name}
+        open={anchor !== null}
         onClick={event => {
           setAnchor(event.currentTarget)
         }}
-      >
-        <Icon icon={Dots} />
-      </IconButton>
+      />
       <Menu anchorEl={anchor} open={anchor !== null} onClose={close}>
-        {item('share', Link, t('spaceMenu.shareLink'), () => {
-          close()
-          share()
-        })}
-        {item(
-          'pin',
-          Pin,
-          t(pinned ? 'spaceMenu.unpin' : 'spaceMenu.pin'),
-          () => {
-            close()
-            setPinned.mutate(!pinned)
-          }
-        )}
-        <Divider />
-        {item(
-          'people',
-          People,
-          t(isAdmin ? 'spaceMenu.managePeople' : 'spaceMenu.members'),
-          () => {
-            close()
-            setPeople(true)
-          }
-        )}
-        {isAdmin &&
-          item('manage', Settings, t('spaceMenu.manage'), () => {
-            close()
-            void navigate(`/spaces/${encodeURIComponent(space.id)}/settings`)
-          })}
-        {space.manages &&
-          item('archive', Archive, t('spaceMenu.archive'), () => {
-            close()
-            ask('archived')
-          })}
-        {space.manages && <Divider />}
-        {space.manages &&
-          item(
-            'delete',
-            Trash,
-            t('spaceActions.delete'),
-            () => {
-              close()
-              ask('trashed')
-            },
-            true
-          )}
+        {menuEntries(groups, close)}
       </Menu>
-      {notice}
-      {shelveNotice}
-      {people && (
-        <WithSpace spaceId={space.id} onClose={closePeople}>
-          {full => <PeopleDialog space={full} onClose={closePeople} />}
-        </WithSpace>
-      )}
+      {dialogs}
     </>
+  )
+}
+
+export function SpaceMenuButton({
+  name,
+  open,
+  onClick
+}: {
+  name: string
+  open: boolean
+  onClick: (event: MouseEvent<HTMLElement>) => void
+}): ReactElement {
+  const { t } = useI18n()
+  return (
+    <IconButton
+      size="small"
+      label={t('spaceMenu.open', { name })}
+      aria-haspopup="menu"
+      aria-expanded={open}
+      onClick={onClick}
+    >
+      <Icon icon={Dots} />
+    </IconButton>
   )
 }
 

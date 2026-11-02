@@ -193,7 +193,8 @@
     "drive": "Drive",
     "mail": "Correo",
     "calendar": "Calendario",
-    "withCount": "%{app}, %{smart_count} nuevo |||| %{app}, %{smart_count} nuevos"
+    "withCount": "%{app}, %{smart_count} nuevo |||| %{app}, %{smart_count} nuevos",
+    "choose": "Ir a una pestaña"
   },
   "members": {
     "members": "Miembros",

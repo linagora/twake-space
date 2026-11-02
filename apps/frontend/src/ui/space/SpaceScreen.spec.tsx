@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -6,6 +6,7 @@ import type { FeedItem } from '@/application/feed'
 import type { Space } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeSpaces } from '@/testing/fakeSpaces'
+import { stubPhoneScreen } from '@/testing/phoneScreen'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { EmbeddedApps } from '@/ui/space/EmbeddedApps'
 import { SpaceScreen } from '@/ui/space/SpaceScreen'
@@ -186,7 +187,92 @@ describe('SpaceScreen', () => {
     expect(screen.getByLabelText('path')).toHaveTextContent('/spaces/a1/drive')
   })
 
-  it('shows that the tabs scroll when they overflow, on a phone too', async () => {
+  it('shows the open tab on a phone, and moves to another from a sheet', async () => {
+    stubPhoneScreen()
+    try {
+      renderAt('/spaces/a1/tasks')
+
+      const select = await screen.findByRole('button', {
+        name: 'Projects and tasks'
+      })
+      expect(screen.queryByRole('tablist')).toBe(null)
+      fireEvent.click(select)
+      const sheet = within(screen.getByRole('menu', { name: 'Go to a tab' }))
+      expect(
+        sheet.getAllByRole('menuitem').map(item => item.textContent)
+      ).toEqual([
+        'Home',
+        'Feed',
+        'Chat',
+        'Projects and tasks',
+        'Drive',
+        'Mail',
+        'Calendar'
+      ])
+      expect(
+        sheet.getByRole('menuitem', { name: 'Projects and tasks' })
+      ).toHaveClass('Mui-selected')
+      expect(sheet.getByRole('menuitem', { name: 'Chat' })).toHaveAttribute(
+        'aria-disabled',
+        'true'
+      )
+      fireEvent.click(sheet.getByRole('menuitem', { name: 'Drive' }))
+
+      expect(screen.getByLabelText('path')).toHaveTextContent(
+        '/spaces/a1/drive'
+      )
+      expect(screen.queryByRole('menu')).toBe(null)
+      expect(screen.getByRole('button', { name: 'Drive' })).toBeInTheDocument()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("names a framed tab's panel and keeps its place from the sheet on a phone", async () => {
+    stubPhoneScreen()
+    try {
+      renderAt('/spaces/a1/tasks/boards/b1')
+
+      expect(
+        await screen.findByRole('tabpanel', { name: 'Projects and tasks' })
+      ).toBeInTheDocument()
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Projects and tasks' })
+      )
+      fireEvent.click(
+        within(screen.getByRole('menu')).getByRole('menuitem', {
+          name: 'Projects and tasks'
+        })
+      )
+
+      expect(screen.queryByRole('menu')).toBe(null)
+      expect(screen.getByLabelText('path')).toHaveTextContent(
+        '/spaces/a1/tasks/boards/b1'
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('keeps full page and the menu in the header on a phone', async () => {
+    stubPhoneScreen()
+    try {
+      renderAt('/spaces/a1/home')
+
+      expect(
+        await screen.findByRole('button', { name: 'Full page' })
+      ).toBeInTheDocument()
+      expect(screen.getByRole('tabpanel', { name: 'Home' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'More actions for Roadmap' })
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Video meeting' })).toBe(null)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('shows that the tabs scroll when they overflow, on a touch screen too', async () => {
     vi.stubGlobal(
       'IntersectionObserver',
       class {

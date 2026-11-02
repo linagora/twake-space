@@ -1,9 +1,10 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes, useLocation } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Space } from '@/application/spaces'
 import { fakeSpaces } from '@/testing/fakeSpaces'
+import { stubPhoneScreen } from '@/testing/phoneScreen'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { SpaceActions } from '@/ui/space/SpaceActions'
 
@@ -206,5 +207,80 @@ describe('SpaceActions', () => {
 
     expect(menu.queryByRole('menuitem', { name: 'Archive' })).toBe(null)
     expect(menu.queryByRole('menuitem', { name: 'Delete space' })).toBe(null)
+  })
+
+  describe('on a phone', () => {
+    beforeEach(() => {
+      stubPhoneScreen()
+    })
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('keeps invite in the header and puts the rest in the sheet', async () => {
+      renderActions(space)
+
+      expect(
+        await screen.findByRole('button', { name: 'Invite people' })
+      ).toBeInTheDocument()
+      for (const name of ['Twake AI assistant', 'Share link']) {
+        expect(screen.queryByRole('button', { name })).toBe(null)
+      }
+      const menu = await openMenu()
+      expect(
+        menu.getAllByRole('menuitem').map(item => item.textContent)
+      ).toEqual([
+        'Twake AI assistant',
+        'Join a meeting',
+        'Share link',
+        'Pin',
+        'Manage people',
+        'Manage space',
+        'Archive',
+        'Delete space'
+      ])
+      expect(menu.getAllByRole('separator')).toHaveLength(2)
+    })
+
+    it('runs an entry of the sheet and closes it', async () => {
+      const spaces = renderActions(space)
+
+      fireEvent.click((await openMenu()).getByRole('menuitem', { name: 'Pin' }))
+
+      await waitFor(() => {
+        expect(spaces.setPinned).toHaveBeenCalledWith('a1', true)
+      })
+      expect(screen.queryByRole('menu')).toBe(null)
+    })
+
+    it('closes the sheet with Escape', async () => {
+      renderActions(space)
+
+      fireEvent.keyDown(
+        (await openMenu()).getByRole('menuitem', { name: 'Pin' }),
+        { key: 'Escape' }
+      )
+
+      expect(screen.queryByRole('menu')).toBe(null)
+    })
+
+    it('gives the focus back to its button once closed', async () => {
+      renderActions(space)
+      const button = await screen.findByRole('button', {
+        name: 'More actions for Roadmap'
+      })
+      button.focus()
+
+      fireEvent.click(button)
+      const first = await screen.findByRole('menuitem', {
+        name: 'Twake AI assistant'
+      })
+      await waitFor(() => {
+        expect(first).toHaveFocus()
+      })
+      fireEvent.keyDown(first, { key: 'Escape' })
+
+      expect(button).toHaveFocus()
+    })
   })
 })

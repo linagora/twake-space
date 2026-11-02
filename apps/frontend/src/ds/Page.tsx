@@ -208,16 +208,20 @@ export function SpaceCover({
   )
 }
 
+// `select` stands for the tabs on a phone: a row of its own, with no line
+// under it.
 export function SpaceHeader({
   avatar,
   title,
   tabs,
-  actions
+  actions,
+  select = false
 }: {
   avatar: ReactNode
   title: ReactNode
   tabs: ReactNode
   actions?: ReactNode
+  select?: boolean
 }): ReactElement {
   return (
     <Box>
@@ -245,12 +249,17 @@ export function SpaceHeader({
           </Typography>
         </Box>
         <Box
-          sx={{
-            minWidth: 0,
-            flex: '1 1 auto',
-            order: { xs: 1, md: 0 },
-            alignSelf: 'flex-end'
-          }}
+          sx={
+            select
+              ? // Out of the title's inset, as wide as the page
+                { order: 1, flex: '1 0 calc(100% + 12px)', ml: -1.5, mb: 1 }
+              : {
+                  minWidth: 0,
+                  flex: '1 1 auto',
+                  order: { xs: 1, md: 0 },
+                  alignSelf: 'flex-end'
+                }
+          }
         >
           {tabs}
         </Box>
@@ -259,7 +268,7 @@ export function SpaceHeader({
         )}
       </Box>
       {/* 16px from the card's edges, as in the mockup, out of the page's 24px */}
-      <Divider sx={{ mx: { lg: -1 } }} />
+      {!select && <Divider sx={{ mx: { lg: -1 } }} />}
     </Box>
   )
 }
