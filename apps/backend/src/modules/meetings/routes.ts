@@ -26,11 +26,19 @@ const ianaZone = (zone: string) => {
   }
 }
 
+// iCalendar TEXT forbids raw controls, and a lone surrogate is not UTF-8.
+const calendarText = (max: number, controls: RegExp) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .refine(text => text.isWellFormed() && !controls.test(text))
+
 const meetingBody = z
   .object({
     // Given again by a retry, so the calendar creates one meeting.
     uid: z.uuid().optional(),
-    title: z.string().trim().min(1).max(255),
+    title: calendarText(255, /\p{Cc}/u).min(1),
     start: z.iso.datetime({ offset: true }),
     end: z.iso.datetime({ offset: true }),
     timezone: z.string().transform((zone, ctx) => {
@@ -38,7 +46,8 @@ const meetingBody = z
       if (!name) ctx.addIssue({ code: 'custom', message: 'not a time zone' })
       return name ?? z.NEVER
     }),
-    description: z.string().trim().max(4000).optional()
+    // The schedule dialog's description is multi-line.
+    description: calendarText(4000, /[\p{Cc}--[\t\n]]/v).optional()
   })
   .refine(({ start, end }) => {
     const duration = Date.parse(end) - Date.parse(start)
