@@ -46,7 +46,6 @@ export function MembersPanel({
   closeLabel: string
   onClose: () => void
 }): ReactElement {
-  // A phone gets the panel over the whole screen, not just the feed.
   const phone = useMediaQuery(useTheme().breakpoints.down('md'))
   const [query, setQuery] = useState('')
   // The panel covers the screen on a phone: focus goes in when it
