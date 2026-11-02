@@ -33,11 +33,11 @@ function request(url: string, preview = vi.fn(), token = 'alice') {
 }
 
 describe('GET /link-preview', () => {
-  it("answers the link's preview, its fragment left out", async () => {
+  it("answers the link's preview, its fragment and credentials left out", async () => {
     const preview = vi.fn().mockResolvedValue(found)
 
     const response = await request(
-      `/link-preview?url=${encodeURIComponent('https://example.com/a#part')}`,
+      `/link-preview?url=${encodeURIComponent('https://user:secret@example.com/a#part')}`,
       preview
     )
 

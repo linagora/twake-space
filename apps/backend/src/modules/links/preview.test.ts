@@ -21,8 +21,10 @@ const PAGE = `<!doctype html><html><head>
 
 let server: Server
 let origin: string
+const authorizations: (string | undefined)[] = []
 beforeAll(async () => {
   server = createServer((request, response) => {
+    authorizations.push(request.headers.authorization)
     const send = (type: string, body: string | Buffer) => {
       response.writeHead(200, { 'content-type': type }).end(body)
     }
@@ -83,6 +85,16 @@ describe('fetchPreview', () => {
       site: 'Linagora',
       image: `data:image/png;base64,${PNG.toString('base64')}`
     })
+  })
+
+  it('sends no credentials from the address to the site', async () => {
+    authorizations.length = 0
+    const url = new URL('/page', origin)
+    url.username = 'user'
+    url.password = 'secret'
+
+    expect((await fetchPreview(url, local))?.url).toBe(`${origin}/page`)
+    expect(authorizations).toEqual([undefined, undefined])
   })
 
   it('follows a redirect and gives the page it lands on', async () => {

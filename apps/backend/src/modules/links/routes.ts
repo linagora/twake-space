@@ -14,6 +14,8 @@ const previewQuery = z.object({
     .transform(url => {
       const parsed = new URL(url)
       parsed.hash = ''
+      parsed.username = ''
+      parsed.password = ''
       return parsed
     })
 })
