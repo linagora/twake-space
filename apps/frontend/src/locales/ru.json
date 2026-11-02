@@ -9,7 +9,9 @@
     "news": "С вашего последнего визита",
     "noNews": "В ваших пространствах ничего нового",
     "newItems": "%{smart_count} новая запись |||| %{smart_count} новые записи |||| %{smart_count} новых записей",
-    "mentions": "%{smart_count} упоминание |||| %{smart_count} упоминания |||| %{smart_count} упоминаний"
+    "mentions": "%{smart_count} упоминание |||| %{smart_count} упоминания |||| %{smart_count} упоминаний",
+    "summarise": "Кратко с Twake AI",
+    "summaryRequest": "Кратко расскажи, что нового в моих пространствах с моего последнего визита."
   },
   "spaceHome": {
     "users": "участник |||| участника |||| участников",

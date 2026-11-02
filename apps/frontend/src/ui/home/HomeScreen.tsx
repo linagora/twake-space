@@ -1,9 +1,10 @@
-import { Icon, Plus } from '@linagora/twake-icons'
+import { Assistant, Icon, Plus } from '@linagora/twake-icons'
 import { Alert, Button, Chip, Typography } from '@linagora/twake-mui'
 import { useId, useState, type ReactElement } from 'react'
 import { Link as RouterLink } from 'react-router'
 
 import { avatarUrl } from '@/application/avatar'
+import { spaceNews } from '@/application/feed'
 import { pinnedAndRecent, type SpaceSummary } from '@/application/spaces'
 import spaceTile from '@/assets/space.svg'
 import { NameAvatar } from '@/ds/AppFrame'
@@ -16,11 +17,13 @@ import {
 } from '@/ds/Card'
 import { AddIcon } from '@/ds/icons'
 import { LoadingRows, Page, PhoneFab, TileEmpty } from '@/ds/Page'
+import { useAssistant } from '@/ui/assistant/AssistantPanel'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
 import { Greeting, GreetingHead } from '@/ui/home/Greeting'
 import { useFeedNews } from '@/ui/space/feedQueries'
 import { SpaceMenu } from '@/ui/space/SpaceMenu'
 import { useI18n } from '@/ui/i18n/useI18n'
+import { useSession } from '@/ui/session/SessionGate'
 import { useSpaceList } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 
@@ -139,19 +142,31 @@ function SpaceNewsSection({
   const { t } = useI18n()
   const news = useFeedNews()
   const id = useId()
+  const assistant = useAssistant()
+  // Without a platform there is no assistant to ask
+  const { sdk } = useSession()
   if (!news.data) return null
-  const byId = new Map(spaces.map(space => [space.id, space]))
-  const rows = news.data
-    .flatMap(entry => {
-      const space = byId.get(entry.spaceId)
-      return space ? [{ ...entry, space }] : []
-    })
-    .sort((a, b) => b.mentions - a.mentions || b.items - a.items)
+  const rows = spaceNews(news.data, spaces)
   return (
     <section aria-labelledby={id} className="u-mb-2">
-      <Typography id={id} variant="subtitle1" component="h2" className="u-mb-1">
-        {t('home.news')}
-      </Typography>
+      <div className="u-flex u-flex-items-center u-flex-wrap u-flex-justify-between u-mb-1">
+        <Typography id={id} variant="subtitle1" component="h2">
+          {t('home.news')}
+        </Typography>
+        {rows.length > 0 && sdk && (
+          <Button
+            variant="secondary"
+            size="small"
+            startIcon={<Icon icon={Assistant} />}
+            aria-pressed={assistant.open}
+            onClick={() => {
+              assistant.setOpen(!assistant.open)
+            }}
+          >
+            {t('home.summarise')}
+          </Button>
+        )}
+      </div>
       {rows.length === 0 ? (
         <Typography variant="body2" color="textSecondary">
           {t('home.noNews')}

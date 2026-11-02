@@ -9,7 +9,9 @@
     "news": "Seit Ihrem letzten Besuch",
     "noNews": "Nichts Neues in Ihren Spaces",
     "newItems": "%{smart_count} neuer Eintrag |||| %{smart_count} neue Einträge",
-    "mentions": "%{smart_count} Erwähnung |||| %{smart_count} Erwähnungen"
+    "mentions": "%{smart_count} Erwähnung |||| %{smart_count} Erwähnungen",
+    "summarise": "Mit Twake AI zusammenfassen",
+    "summaryRequest": "Fasse zusammen, was es seit meinem letzten Besuch in meinen Spaces Neues gibt."
   },
   "spaceHome": {
     "users": "Mitglied des Space |||| Mitglieder des Space",

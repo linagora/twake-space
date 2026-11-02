@@ -16,7 +16,8 @@ const post = (body: string): FeedPost => ({
   poll: null,
   approval: null,
   announcement: null,
-  feedback: null
+  feedback: null,
+  form: null
 })
 
 const card: FeedCard = {

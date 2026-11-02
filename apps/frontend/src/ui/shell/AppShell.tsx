@@ -44,6 +44,7 @@ import { Suggestions } from '@/ui/assistant/Suggestions'
 import { AppFeedback } from '@/ui/feedback/AppFeedback'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
+import { HomeAssistant } from '@/ui/home/HomeAssistant'
 import { PlatformBar } from '@/ui/shell/PlatformBar'
 import { SpotSpace } from '@/ui/shell/SpotSpace'
 import { useSpaceTotals } from '@/ui/space/Badges'
@@ -61,9 +62,11 @@ export function AppShell(): ReactElement {
   // Null while the search is closed.
   const [query, setQuery] = useState<string | null>(null)
   const home = useMatch('/') !== null
-  // The assistant is a space's: it shows beside a space, and stays open
-  // from one space to the next.
+  // The assistant stays open from one space to the next, and to the home.
   const [assistantOpen, setAssistantOpen] = useState(false)
+  const closeAssistant = (): void => {
+    setAssistantOpen(false)
+  }
   const spaceId = useMatch('/spaces/:spaceId/*')?.params.spaceId
   // A space's content may take the whole page, the platform bar's too
   const alone = useFillPage().space !== null
@@ -108,14 +111,11 @@ export function AppShell(): ReactElement {
         fitScreen={feed}
         aside={
           assistantOpen &&
-          spaceId !== undefined && (
-            <AssistantPanel
-              spaceId={spaceId}
-              onClose={() => {
-                setAssistantOpen(false)
-              }}
-            />
-          )
+          (spaceId !== undefined ? (
+            <AssistantPanel spaceId={spaceId} onClose={closeAssistant} />
+          ) : (
+            home && <HomeAssistant onClose={closeAssistant} />
+          ))
         }
         sidebar={
           <>
