@@ -51,8 +51,8 @@ describe('tokenResources', () => {
 })
 
 describe('SCOPE_ROUTES', () => {
-  // A hand copy of the backend's authorize(scope) routes, less those whose
-  // handler refuses every token (the organization token administration).
+  // A hand copy of the backend's authorize(scope) routes, less the
+  // organization token routes (see SCOPE_ROUTES).
   const opened: Record<TokenScope, string[]> = {
     'space:read': [
       'GET /spaces',
