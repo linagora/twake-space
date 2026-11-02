@@ -81,6 +81,8 @@ expect '/api/ goes to API_UPSTREAM without the prefix' "$(body "$BASE/api/health
 expect '/api/ takes a 5 MB banner' "$(docker exec "$NAME" grep -c 'client_max_body_size 6m;' /tmp/nginx/api.conf)" '1'
 expect 'X-Content-Type-Options' "$(header / X-Content-Type-Options)" 'nosniff'
 expect 'Referrer-Policy' "$(header / Referrer-Policy)" 'same-origin'
+expect 'Strict-Transport-Security' "$(header / Strict-Transport-Security)" 'max-age=31536000; includeSubDomains'
+expect 'Strict-Transport-Security on assets too' "$(header "$script" Strict-Transport-Security)" 'max-age=31536000; includeSubDomains'
 expect 'no nginx version disclosed' "$(header / Server)" 'nginx'
 expect 'callback query string not logged' \
   "$(curl -fsS -o /dev/null "$BASE/callback?code=secret-code" && sleep 0.2 && docker logs "$NAME" 2>&1 | grep -c secret-code || true)" '0'

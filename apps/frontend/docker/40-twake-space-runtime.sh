@@ -92,6 +92,7 @@ cat >"$OUT/security-headers.conf" <<EOF
 add_header Content-Security-Policy "$csp" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "same-origin" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 add_header Permissions-Policy "$permissions_policy" always;
 EOF
 

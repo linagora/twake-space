@@ -109,7 +109,7 @@ The script also writes the security headers, sent on every path except `/healthz
 - `frame-ancestors` is `CSP_FRAME_ANCESTORS` (default `'self'`). Set it when another app embeds Twake Space.
 - `img-src` is `'self' data: blob:` plus `CSP_IMG_SRC`. Set it to the origins of the avatars in Twake Workplace common settings, which each person's Cozy instance serves, such as `https://*.twake.example.com`.
 - `Permissions-Policy` is `PERMISSIONS_POLICY`, by default `accelerometer=(), geolocation=(), gyroscope=(), magnetometer=(), payment=(), usb=()`.
-- `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin` are fixed.
+- `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin` and `Strict-Transport-Security: max-age=31536000; includeSubDomains` are fixed. Browsers ignore HSTS over plain HTTP, so it only takes effect behind the TLS ingress.
 
 The CSP variables must not contain double quotes, backslashes, dollar signs, semicolons or commas, so they cannot add directives. The check runs on each whole directive, so an app URL above with such a character stops the container too. `PERMISSIONS_POLICY` follows the same rule, commas allowed.
 
