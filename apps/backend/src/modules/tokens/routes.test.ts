@@ -197,6 +197,19 @@ describe('POST /tokens', () => {
     expect(odd.statusCode).toBe(400)
   })
 
+  it('refuses an expiry after year 9999 in UTC', async () => {
+    const response = await setUp()(
+      'POST',
+      '/tokens',
+      create({ expiresAt: '9999-12-31T23:59:59-23:59' })
+    )
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json<{ message: string }>().message).toContain(
+      'outside years 1 to 9999'
+    )
+  })
+
   it('follows the organization policy', async () => {
     const post = setUp()
 
