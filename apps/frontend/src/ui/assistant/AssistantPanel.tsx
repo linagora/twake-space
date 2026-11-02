@@ -9,7 +9,9 @@ import { useMutation } from '@tanstack/react-query'
 import {
   createContext,
   use,
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -22,6 +24,7 @@ import {
   ASSISTANT_INTENT,
   assistantService,
   parseAssistantMessage,
+  type AnswerResult,
   type AssistantConfig,
   type AssistantService
 } from '@/application/assistant'
@@ -67,11 +70,85 @@ export function AssistantPanel({
   onClose: () => void
 }): ReactElement {
   const { t } = useI18n()
+  const { feed } = useServices()
+  const { add } = useFeedCache(spaceId)
+  const [posted, setPosted] = useState(false)
+  const post = useMutation({
+    mutationFn: (text: string) => feed.post(spaceId, text, []),
+    onSuccess: item => {
+      add(item)
+      setPosted(true)
+    }
+  })
+  const { mutate } = post
+  // While the space loads, the action stays: the feed refuses a viewer anyway
+  const canPost = useSpace(spaceId).data?.role !== 'viewer'
+  const postLabel = canPost ? t('assistant.post') : null
+  const config = useMemo(
+    () => ({
+      answerActions:
+        postLabel === null ? [] : [{ name: 'post', label: postLabel }]
+    }),
+    [postLabel]
+  )
+  const onResult = useCallback(
+    (result: AnswerResult) => {
+      if (result.answerAction === 'post') mutate(result.text)
+    },
+    [mutate]
+  )
+
+  return (
+    <AssistantFrame config={config} onResult={onResult} onClose={onClose}>
+      {post.isError && (
+        <Alert severity="error" className="u-m-1">
+          {t('assistant.postFailed')}
+        </Alert>
+      )}
+      <Snackbar
+        open={posted}
+        autoHideDuration={5000}
+        onClose={() => {
+          setPosted(false)
+        }}
+        message={t('assistant.posted')}
+        action={
+          <Button
+            variant="text"
+            size="small"
+            component={RouterLink}
+            to={`/spaces/${spaceId}/feed`}
+            onClick={() => {
+              setPosted(false)
+            }}
+          >
+            {t('assistant.openFeed')}
+          </Button>
+        }
+      />
+    </AssistantFrame>
+  )
+}
+
+/**
+ * Twake Assistant in a frame, sent `config` when it is ready. A null `config`
+ * keeps it loading. `children` show above the frame.
+ */
+export function AssistantFrame({
+  config,
+  onResult,
+  onClose,
+  children
+}: {
+  config: Omit<AssistantConfig, 'theme'> | null
+  onResult?: (result: AnswerResult) => void
+  onClose: () => void
+  children?: ReactNode
+}): ReactElement {
+  const { t } = useI18n()
   const { sdk } = useSession()
   const status = useSdkStatus(sdk)
   const ready = status === 'ready' ? sdk : null
-  const { feed } = useServices()
-  const { add } = useFeedCache(spaceId)
   const { colorScheme } = useColorScheme()
   const frame = useRef<HTMLIFrameElement>(null)
   // An intent serves one frame: this conversation's, for as long as it shows.
@@ -99,23 +176,11 @@ export function AssistantPanel({
     }
   }, [ready])
   const service = intent.status === 'ready' ? intent.service : null
-  const [posted, setPosted] = useState(false)
-  const post = useMutation({
-    mutationFn: (text: string) => feed.post(spaceId, text, []),
-    onSuccess: item => {
-      add(item)
-      setPosted(true)
-    }
-  })
-  const { mutate } = post
-  // While the space loads, the action stays: the feed refuses a viewer anyway
-  const canPost = useSpace(spaceId).data?.role !== 'viewer'
-  const postLabel = canPost ? t('assistant.post') : null
   const theme =
     colorScheme === 'light' || colorScheme === 'dark' ? colorScheme : null
 
   useEffect(() => {
-    if (!service) return
+    if (!service || config === null) return
     const onMessage = (event: MessageEvent): void => {
       if (
         event.origin !== service.origin ||
@@ -136,17 +201,13 @@ export function AssistantPanel({
             : typeof data
         console.warn('Assistant message ignored:', type)
       } else if (message.kind === 'ready') {
-        const config: AssistantConfig = {
-          answerActions:
-            postLabel === null ? [] : [{ name: 'post', label: postLabel }],
+        const full: AssistantConfig = {
+          ...config,
           ...(theme && { theme: { type: theme } })
         }
-        frame.current.contentWindow?.postMessage(config, service.origin)
-      } else if (
-        message.kind === 'result' &&
-        message.result.answerAction === 'post'
-      ) {
-        mutate(message.result.text)
+        frame.current.contentWindow?.postMessage(full, service.origin)
+      } else if (message.kind === 'result') {
+        onResult?.(message.result)
       } else if (message.kind === 'cancel') {
         onClose()
       }
@@ -155,7 +216,7 @@ export function AssistantPanel({
     return () => {
       window.removeEventListener('message', onMessage)
     }
-  }, [service, postLabel, theme, mutate, onClose])
+  }, [service, config, theme, onResult, onClose])
 
   if (status === 'public') {
     return (
@@ -164,7 +225,7 @@ export function AssistantPanel({
       </Unavailable>
     )
   }
-  if (intent.status === 'pending') {
+  if (intent.status === 'pending' || (service && config === null)) {
     return (
       <Unavailable onClose={onClose}>
         <div className="u-p-1">
@@ -184,37 +245,12 @@ export function AssistantPanel({
   }
   return (
     <>
-      {post.isError && (
-        <Alert severity="error" className="u-m-1">
-          {t('assistant.postFailed')}
-        </Alert>
-      )}
+      {children}
       <EmbedFrame
         frameRef={frame}
         src={service.href}
         title={t('assistant.title')}
         allow="clipboard-write"
-      />
-      <Snackbar
-        open={posted}
-        autoHideDuration={5000}
-        onClose={() => {
-          setPosted(false)
-        }}
-        message={t('assistant.posted')}
-        action={
-          <Button
-            variant="text"
-            size="small"
-            component={RouterLink}
-            to={`/spaces/${spaceId}/feed`}
-            onClick={() => {
-              setPosted(false)
-            }}
-          >
-            {t('assistant.openFeed')}
-          </Button>
-        }
       />
     </>
   )

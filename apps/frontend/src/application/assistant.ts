@@ -14,6 +14,8 @@ export const ASSISTANT_INTENT = {
 export interface AssistantConfig {
   content?: string
   answerActions?: { name: string; label?: string }[]
+  /** Chips above the composer; `instructions` are for the model, in English. */
+  suggestions?: { name: string; message: string; instructions?: string }[]
   theme?: { type: 'light' | 'dark' }
 }
 
