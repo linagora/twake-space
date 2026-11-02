@@ -69,7 +69,8 @@ const message = (minute: number): FeedItem => ({
   poll: null,
   approval: null,
   announcement: null,
-  feedback: null
+  feedback: null,
+  form: null
 })
 
 const file: FeedItem = {

@@ -337,7 +337,8 @@ function roadmapFeed(): FeedItem[] {
           poll: null,
           approval: null,
           announcement: null,
-          feedback: null
+          feedback: null,
+          form: null
         }
     }
   })
@@ -614,6 +615,7 @@ export function showcaseFeed(now: number): FeedItem[] {
       reactions: [],
       announcement: null,
       feedback: null,
+      form: null,
       time: '',
       updatedAt: ''
     },
@@ -633,6 +635,7 @@ export function showcaseFeed(now: number): FeedItem[] {
       ],
       announcement: null,
       feedback: null,
+      form: null,
       time: '',
       updatedAt: ''
     },
@@ -648,6 +651,7 @@ export function showcaseFeed(now: number): FeedItem[] {
       reactions: [],
       announcement: null,
       feedback: null,
+      form: null,
       time: '',
       updatedAt: ''
     },
@@ -674,6 +678,7 @@ export function showcaseFeed(now: number): FeedItem[] {
       reactions: [],
       announcement: null,
       feedback: null,
+      form: null,
       time: '',
       updatedAt: ''
     },
@@ -699,6 +704,7 @@ export function showcaseFeed(now: number): FeedItem[] {
       reactions: [],
       announcement: null,
       feedback: null,
+      form: null,
       time: '',
       updatedAt: ''
     },
@@ -733,6 +739,7 @@ export function showcaseFeed(now: number): FeedItem[] {
       reactions: [],
       announcement: null,
       feedback: null,
+      form: null,
       time: '',
       updatedAt: ''
     },
@@ -752,6 +759,7 @@ export function showcaseFeed(now: number): FeedItem[] {
         acknowledgedBy: ['uuid-bob', 'uuid-dave']
       },
       feedback: null,
+      form: null,
       reactions: [{ key: '🎉', userIds: ['uuid-bob', 'uuid-dave'] }],
       time: '',
       updatedAt: ''
@@ -775,6 +783,7 @@ export function showcaseFeed(now: number): FeedItem[] {
         answers: null,
         closedAt: null
       },
+      form: null,
       reactions: [],
       time: '',
       updatedAt: ''
@@ -820,6 +829,81 @@ export function showcaseFeed(now: number): FeedItem[] {
         ],
         closedAt: null
       },
+      form: null,
+      reactions: [],
+      time: '',
+      updatedAt: ''
+    },
+    {
+      id: 'post-form',
+      kind: 'post',
+      category: 'messages',
+      author: person('carol'),
+      body: 'Offsite sign-up',
+      editedAt: null,
+      poll: null,
+      approval: null,
+      announcement: null,
+      feedback: null,
+      form: {
+        fields: [
+          { label: 'Name on your badge', kind: 'text', options: null },
+          {
+            label: 'Lunch',
+            kind: 'choice',
+            options: ['Meat', 'Fish', 'Vegetarian']
+          },
+          { label: 'Anything we should know?', kind: 'text', options: null }
+        ],
+        anonymous: false,
+        count: 2,
+        mine: null,
+        responses: null,
+        closedAt: null
+      },
+      reactions: [],
+      time: '',
+      updatedAt: ''
+    },
+    {
+      id: 'post-form-mine',
+      kind: 'post',
+      category: 'messages',
+      author: person('alice'),
+      body: 'Hardware request',
+      editedAt: null,
+      poll: null,
+      approval: null,
+      announcement: null,
+      feedback: null,
+      form: {
+        fields: [
+          { label: 'What do you need?', kind: 'text', options: null },
+          {
+            label: 'How soon?',
+            kind: 'choice',
+            options: ['This week', 'This month', 'No rush']
+          }
+        ],
+        anonymous: false,
+        count: 2,
+        mine: null,
+        responses: [
+          {
+            userId: 'uuid-bob',
+            name: 'Bob Durand',
+            answers: ['A second screen', 1],
+            answeredAt: iso(now - 15 * MINUTE)
+          },
+          {
+            userId: 'uuid-dave',
+            name: 'Dave Moreau',
+            answers: ['A quieter keyboard', 2],
+            answeredAt: iso(now - 6 * MINUTE)
+          }
+        ],
+        closedAt: null
+      },
       reactions: [],
       time: '',
       updatedAt: ''
@@ -838,6 +922,8 @@ export function showcaseFeed(now: number): FeedItem[] {
     posts[5],
     posts[7],
     posts[8],
+    posts[9],
+    posts[10],
     posts[2]
   ].filter((item): item is FeedItem => item !== undefined)
   return all.map((item, i) => {

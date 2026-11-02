@@ -156,7 +156,8 @@ describe('itemPlace', () => {
     poll: null,
     approval: null,
     announcement: null,
-    feedback: null
+    feedback: null,
+    form: null
   }
 
   it("opens a card in its container's tab", () => {

@@ -40,6 +40,9 @@ import {
   type Decision,
   FEEDBACK_ANSWER,
   type Feedback,
+  type Form,
+  type FormAnswer,
+  FORM_ANSWER,
   type FeedCard,
   type FeedFilter,
   type FeedItem,
@@ -76,6 +79,7 @@ import {
   FeedFeedback,
   FeedFilterMenu,
   FeedFile,
+  FeedForm,
   FeedFooter,
   FeedHeader,
   FeedLayout,
@@ -99,6 +103,7 @@ import {
   CalendarIcon,
   CampaignIcon,
   FolderIcon,
+  FormIcon,
   OpenInNewIcon,
   PollIcon,
   ThumbsUpDownIcon
@@ -122,6 +127,7 @@ import {
 import { AnnouncementDialog } from '@/ui/space/AnnouncementDialog'
 import { ApprovalDialog } from '@/ui/space/ApprovalDialog'
 import { FeedFailure } from '@/ui/space/FeedFailure'
+import { FormDialog } from '@/ui/space/FormDialog'
 import { PeopleDialog } from '@/ui/space/PeopleDialog'
 import { PollDialog } from '@/ui/space/PollDialog'
 import { TextPostDialog } from '@/ui/space/TextPostDialog'
@@ -670,18 +676,26 @@ function Composer({ space }: { space: Space }): ReactElement {
           onPublished={published}
         />
       )}
+      {asking === 'form' && (
+        <FormDialog
+          spaceId={space.id}
+          onClose={stopAsking}
+          onPublished={published}
+        />
+      )}
     </>
   )
 }
 
-type Ask = Poll['kind'] | 'approval' | 'announcement' | 'feedback'
+type Ask = Poll['kind'] | 'approval' | 'announcement' | 'feedback' | 'form'
 
 const ASKS: { kind: Ask; label: TranslationKey; icon: IconProps['icon'] }[] = [
   { kind: 'choice', label: 'feed.poll.menu', icon: PollIcon },
   { kind: 'yes_no', label: 'feed.yesNo.menu', icon: ThumbsUpDownIcon },
   { kind: 'approval', label: 'feed.approval.menu', icon: CheckCircle },
   { kind: 'announcement', label: 'feed.announcement.menu', icon: CampaignIcon },
-  { kind: 'feedback', label: 'feed.feedback.menu', icon: Comment }
+  { kind: 'feedback', label: 'feed.feedback.menu', icon: Comment },
+  { kind: 'form', label: 'feed.form.menu', icon: FormIcon }
 ]
 
 function Setup({
@@ -886,6 +900,7 @@ function Post({
           post.poll?.kind === 'yes_no' && t('feed.yesNo.asked'),
           post.approval && t('feed.approval.requested'),
           post.feedback && t('feed.feedback.asked'),
+          post.form && t('feed.form.asked'),
           post.editedAt && t('feed.edited')
         ]
           .filter(Boolean)
@@ -894,7 +909,7 @@ function Post({
           mine && (
             <ItemMenu
               onEdit={
-                !canChange || post.approval || post.feedback
+                !canChange || post.approval || post.feedback || post.form
                   ? null
                   : () => {
                       setDraft(post.body)
@@ -944,6 +959,14 @@ function Post({
             space={space}
             mine={mine}
             onClose={post.feedback.closedAt ? null : closing}
+          />
+        ) : post.form ? (
+          <FormResponses
+            post={post}
+            form={post.form}
+            space={space}
+            mine={mine}
+            onClose={post.form.closedAt ? null : closing}
           />
         ) : post.announcement ? (
           <AnnouncementAcknowledgements
@@ -1314,6 +1337,82 @@ function FeedbackAnswers({
       <FeedFailure
         error={answer.error}
         message={t('feed.feedback.answerFailed')}
+      />
+    </>
+  )
+}
+
+function FormResponses({
+  post,
+  form,
+  space,
+  mine,
+  onClose
+}: {
+  post: FeedPost
+  form: Form
+  space: Space
+  mine: boolean
+  onClose: (() => void) | null
+}): ReactElement {
+  const { t } = useI18n()
+  const { feed } = useServices()
+  const { replace } = useFeedCache(space.id)
+  const respond = useMutation({
+    mutationFn: (answers: FormAnswer[]) =>
+      feed.respond(space.id, post.id, answers),
+    // Saved: a failed reread is no failed response, the live change follows.
+    onSuccess: () =>
+      feed
+        .item(space.id, post.id)
+        .then(replace)
+        .catch(() => undefined)
+  })
+  const responses = form.responses?.map((response, index) => ({
+    id: response.userId ?? String(index),
+    name: form.anonymous ? null : (response.name ?? t('feed.someone')),
+    answers: response.answers
+  }))
+  return (
+    <>
+      <FeedForm
+        kind={t('feed.form.chip')}
+        title={post.body}
+        fields={form.fields}
+        mine={form.mine}
+        respond={
+          mine || form.closedAt !== null
+            ? null
+            : {
+                placeholder: t('feed.form.answer'),
+                sendLabel: t('feed.form.send'),
+                editLabel: t('feed.edit'),
+                maxLength: FORM_ANSWER.max,
+                disabled: respond.isPending,
+                onRespond: answers => {
+                  respond.mutate(answers)
+                }
+              }
+        }
+        responses={
+          responses
+            ? {
+                items: responses,
+                showAll: t('feed.form.showAll', {
+                  smart_count: responses.length
+                }),
+                showLess: t('feed.form.showLess')
+              }
+            : null
+        }
+        summary={`${t('feed.form.count', { smart_count: form.count })} · ${t(
+          form.closedAt ? 'feed.form.closed' : 'feed.form.open'
+        )}`}
+        close={onClose && { label: t('feed.form.close'), onClick: onClose }}
+      />
+      <FeedFailure
+        error={respond.error}
+        message={t('feed.form.respondFailed')}
       />
     </>
   )

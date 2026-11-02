@@ -206,6 +206,21 @@ export function memoryFeed(
                 answers: [],
                 closedAt: null
               }
+            : null,
+        form:
+          ask && 'form' in ask
+            ? {
+                fields: ask.form.fields.map(field =>
+                  field.kind === 'choice'
+                    ? { ...field }
+                    : { ...field, options: null }
+                ),
+                anonymous: ask.form.anonymous,
+                count: 0,
+                mine: null,
+                responses: [],
+                closedAt: null
+              }
             : null
       }
       itemsOf(spaceId).push(post)
@@ -214,6 +229,7 @@ export function memoryFeed(
     edit: async (spaceId, postId, body) => {
       const post = await myPost(spaceId, postId)
       if (post.approval) return refuse(409, 'cannot_edit_approval')
+      if (post.form) return refuse(409, 'cannot_edit_form')
       post.body = body
       post.editedAt = post.updatedAt = new Date().toISOString()
       return structuredClone(post)
@@ -236,7 +252,7 @@ export function memoryFeed(
     },
     closePoll: async (spaceId, postId) => {
       const post = await myPost(spaceId, postId)
-      const closing = post.poll ?? post.approval ?? post.feedback
+      const closing = post.poll ?? post.approval ?? post.feedback ?? post.form
       if (!closing) return refuse(404, 'not_found')
       const deadline = post.poll?.closesAt
       closing.closedAt ??=
@@ -272,6 +288,27 @@ export function memoryFeed(
           name: feedback.anonymous ? null : me.name,
           rating,
           text: feedback.mine,
+          answeredAt: new Date().toISOString()
+        }
+      ]
+      return Promise.resolve()
+    },
+    respond: (spaceId, postId, answers) => {
+      const post = find(spaceId, postId)
+      const form = post?.kind === 'post' ? post.form : null
+      if (post?.kind !== 'post' || !form) return refuse(404, 'not_found')
+      if (form.closedAt) return refuse(409, 'poll_closed')
+      if (post.author.type === 'user' && post.author.id === me.id) {
+        return refuse(403, 'cannot_answer_own')
+      }
+      if (form.mine === null) form.count += 1
+      form.mine = answers
+      form.responses = form.responses && [
+        ...form.responses.filter(r => r.userId !== me.id),
+        {
+          userId: form.anonymous ? null : me.id,
+          name: form.anonymous ? null : me.name,
+          answers,
           answeredAt: new Date().toISOString()
         }
       ]
