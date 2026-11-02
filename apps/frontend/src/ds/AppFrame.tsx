@@ -37,24 +37,22 @@ const SCREEN_HEIGHT = 'calc(100dvh - var(--topBarHeight))'
 // Layout hands `sx` to a plain div, so it is styled here instead. The page
 // behind the panels is the mockups' soft gradient, lit from each corner.
 const Frame = styled(Layout, {
-  shouldForwardProp: prop => prop !== 'belowBar' && prop !== 'fitScreen'
-})<{ belowBar: boolean; fitScreen: boolean }>(
-  ({ theme, belowBar, fitScreen }) => ({
-    '--topBarHeight': belowBar ? TWAKE_BAR_HEIGHT : '0px',
-    height: SCREEN_HEIGHT,
-    backgroundColor: theme.space.page.light.base,
-    backgroundImage: theme.space.page.light.layers.join(', '),
-    ...theme.applyStyles('dark', {
-      backgroundColor: theme.space.page.dark.base,
-      backgroundImage: theme.space.page.dark.layers.join(', ')
-    }),
-    [theme.breakpoints.down('lg')]: {
-      height: fitScreen ? SCREEN_HEIGHT : 'auto',
-      minHeight: SCREEN_HEIGHT,
-      flexDirection: 'column'
-    }
-  })
-)
+  shouldForwardProp: prop => prop !== 'belowBar'
+})<{ belowBar: boolean }>(({ theme, belowBar }) => ({
+  '--topBarHeight': belowBar ? TWAKE_BAR_HEIGHT : '0px',
+  height: SCREEN_HEIGHT,
+  backgroundColor: theme.space.page.light.base,
+  backgroundImage: theme.space.page.light.layers.join(', '),
+  ...theme.applyStyles('dark', {
+    backgroundColor: theme.space.page.dark.base,
+    backgroundImage: theme.space.page.dark.layers.join(', ')
+  }),
+  [theme.breakpoints.down('lg')]: {
+    height: 'auto',
+    minHeight: SCREEN_HEIGHT,
+    flexDirection: 'column'
+  }
+}))
 
 // A frosted panel on the gradient, on wide screens only.
 const GlassSidebar = styled(Sidebar)(({ theme }) => ({
@@ -232,20 +230,21 @@ export function AsideClosable({
   )
 }
 
-const TopBar = styled('div')({
-  position: 'sticky',
-  top: 0,
-  zIndex: 1100
-})
+// Below lg the bar scrolls away with the page, leaving the screen to the content
+const TopBar = styled('div')(({ theme }) => ({
+  [theme.breakpoints.up('lg')]: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 1100
+  }
+}))
 
 // `bare` swaps the content's white panel for the dashboard's frosted one,
 // which continues the sidebar. `aside` is a panel beside the content.
 // `alone` gives the whole page to the content, its aside kept: no top bar,
 // no sidebar, no margin. The content keeps its place in the tree, so the
 // frames it holds are not loaded again. Below lg the sidebar is the `menu`
-// drawer that `MenuButton` opens, and the page scrolls as a whole, unless
-// `fitScreen` keeps it at the window height for content that scrolls itself,
-// like a feed that opens on its newest items.
+// drawer that `MenuButton` opens, and the page scrolls as a whole.
 export function AppFrame({
   topBar,
   sidebar,
@@ -253,7 +252,6 @@ export function AppFrame({
   bare = false,
   aside,
   alone = false,
-  fitScreen = false,
   children
 }: {
   topBar?: ReactNode
@@ -262,7 +260,6 @@ export function AppFrame({
   bare?: boolean
   aside?: ReactNode
   alone?: boolean
-  fitScreen?: boolean
   children: ReactNode
 }): ReactElement {
   const margin = aside ? '12px 8px 12px 0' : '12px 12px 12px 0'
@@ -271,7 +268,7 @@ export function AppFrame({
   return (
     <>
       {barShown && <TopBar>{topBar}</TopBar>}
-      <Frame withTopBar={false} belowBar={barShown} fitScreen={fitScreen}>
+      <Frame withTopBar={false} belowBar={barShown}>
         {!alone &&
           (narrow ? (
             <MenuDrawer menu={menu}>{sidebar}</MenuDrawer>

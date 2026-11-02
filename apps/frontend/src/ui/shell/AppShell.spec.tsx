@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Space } from '@/application/spaces'
 import { fakeSession, fakeUser } from '@/testing/fakeSession'
 import { fakeSpaces } from '@/testing/fakeSpaces'
-import { stubPhoneScreen } from '@/testing/phoneScreen'
+import { mediaStyle, stubPhoneScreen } from '@/testing/phoneScreen'
 import { renderRoute } from '@/testing/renderWithProviders'
 
 const createSdk = vi.hoisted(() => vi.fn(() => ({ status: 'ready' })))
@@ -99,27 +99,6 @@ function postFromFrame(title: string, origin: string, data: unknown) {
   })
 }
 
-// jsdom applies no media query: read the height the rules below lg give.
-function phoneHeight(element: Element): string {
-  let height = ''
-  for (const sheet of Array.from(document.styleSheets)) {
-    for (const rule of Array.from(sheet.cssRules)) {
-      if (!(rule instanceof CSSMediaRule)) continue
-      if (!rule.conditionText.includes('max-width')) continue
-      for (const inner of Array.from(rule.cssRules)) {
-        if (
-          inner instanceof CSSStyleRule &&
-          element.matches(inner.selectorText) &&
-          inner.style.height
-        ) {
-          height = inner.style.height
-        }
-      }
-    }
-  }
-  return height
-}
-
 describe('AppShell', () => {
   it.each(['/', '/spaces/space-1'])(
     'shows the platform bar and signs out from it on %s',
@@ -159,21 +138,45 @@ describe('AppShell', () => {
     ).toBe('0px')
   })
 
-  it.each([
-    ['/spaces/space-1/feed', 'calc(100dvh - var(--topBarHeight))'],
-    ['/', 'auto']
-  ])(
-    'on a phone, gives %s the height %s: only the feed scrolls itself',
-    async (path, height) => {
+  it.each(['/spaces/space-1/feed', '/spaces/space-1/chat', '/'])(
+    'on a phone, lets %s grow and scroll with the page',
+    async path => {
       renderRoute(path, { spaces: spaces() })
 
       const frame = (await screen.findByRole('navigation')).closest(
         'aside'
       )?.parentElement
       expect(frame).toBeTruthy()
-      expect(phoneHeight(frame as Element)).toBe(height)
+      expect(mediaStyle(frame as Element, 'height', 'max-width')).toBe('auto')
     }
   )
+
+  it('opens another screen at the top of the page', async () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo')
+    try {
+      renderRoute('/spaces/space-2/feed', { spaces: spaces() })
+      await screen.findByRole('link', { name: 'Launch' })
+      scrollTo.mockClear()
+
+      fireEvent.click(screen.getByRole('link', { name: 'All shared spaces' }))
+
+      await waitFor(() => {
+        expect(scrollTo).toHaveBeenCalledWith(0, 0)
+      })
+    } finally {
+      scrollTo.mockRestore()
+    }
+  })
+
+  it('on a phone, scrolls the platform bar away with the page', async () => {
+    const session = fakeSession(() => Promise.resolve(fakeUser('id-token')))
+    renderRoute('/spaces/space-1/feed', { session, spaces: spaces() })
+
+    const bar = (await screen.findByRole('banner')).parentElement
+    expect(bar).toBeTruthy()
+    expect(mediaStyle(bar as Element, 'position', 'min-width')).toBe('sticky')
+    expect(getComputedStyle(bar as Element).position).not.toBe('sticky')
+  })
 
   it('lists the pinned and recent spaces in the sidebar and marks the current one', async () => {
     renderRoute('/spaces/space-2/feed', { spaces: spaces() })

@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { useState, type ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -11,7 +11,7 @@ import {
   FeedMoreButton,
   ReactionPicker
 } from '@/ds/Feed'
-import { stubTouchScreen } from '@/testing/phoneScreen'
+import { stubPhoneScreen, stubTouchScreen } from '@/testing/phoneScreen'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 
 const options = [
@@ -74,6 +74,69 @@ describe('FeedLayout', () => {
     const toolbar = await screen.findByRole('button', { name: 'Toolbar' })
     const list = screen.getByRole('article', { name: 'First' })
     expect(toolbar.parentElement?.parentElement).toContainElement(list)
+  })
+
+  describe('scrolling', () => {
+    let scrollTo: ReturnType<typeof vi.fn>
+    beforeEach(() => {
+      Object.defineProperty(document.documentElement, 'scrollHeight', {
+        configurable: true,
+        value: 2000
+      })
+      scrollTo = vi.fn()
+      vi.stubGlobal('scrollTo', scrollTo)
+    })
+    afterEach(() => {
+      vi.unstubAllGlobals()
+      Reflect.deleteProperty(document.documentElement, 'scrollHeight')
+    })
+
+    function renderLayout(onNearTop: () => void) {
+      renderWithProviders(
+        <FeedLayout
+          toolbar={null}
+          composer={null}
+          placeKey="all"
+          latestLabel="Latest"
+          onNearTop={onNearTop}
+        >
+          <article aria-label="First" />
+        </FeedLayout>
+      )
+    }
+
+    it('on a phone, opens on the newest item by scrolling the page', async () => {
+      stubPhoneScreen()
+      renderLayout(vi.fn())
+
+      await waitFor(() => {
+        expect(scrollTo).toHaveBeenCalledWith(0, 2000)
+      })
+    })
+
+    it('on a phone, asks for older items once the page shows the top of the list', async () => {
+      stubPhoneScreen()
+      const onNearTop = vi.fn()
+      renderLayout(onNearTop)
+      await waitFor(() => {
+        expect(scrollTo).toHaveBeenCalled()
+      })
+
+      fireEvent.scroll(window)
+
+      expect(onNearTop).toHaveBeenCalled()
+    })
+
+    it('on a wide screen, scrolls the list and leaves the page alone', async () => {
+      const onNearTop = vi.fn()
+      renderLayout(onNearTop)
+      await screen.findByRole('article', { name: 'First' })
+
+      fireEvent.scroll(window)
+
+      expect(scrollTo).not.toHaveBeenCalled()
+      expect(onNearTop).not.toHaveBeenCalled()
+    })
   })
 })
 

@@ -46,7 +46,8 @@ export function MembersPanel({
   closeLabel: string
   onClose: () => void
 }): ReactElement {
-  const phone = useMediaQuery(useTheme().breakpoints.down('md'))
+  // Below lg the feed scrolls with the page, so the panel cannot sit beside it.
+  const phone = useMediaQuery(useTheme().breakpoints.down('lg'))
   const [query, setQuery] = useState('')
   // The panel covers the screen on a phone: focus goes in when it
   // opens, and the toolbar takes it back when it closes. A ref, not an
@@ -100,6 +101,8 @@ export function MembersPanel({
         flexDirection: 'column',
         gap: 2,
         overflowY: 'auto',
+        // Over the page below lg: its end does not scroll the feed behind
+        overscrollBehavior: 'contain',
         outline: 'none'
       }}
     >
