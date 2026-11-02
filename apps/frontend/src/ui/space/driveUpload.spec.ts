@@ -99,6 +99,19 @@ describe('uploadToDrive', () => {
     }
   })
 
+  it('opens no frame for a service whose address is not a web page', async () => {
+    createIntent.mockResolvedValueOnce({
+      id: 'i1',
+      action: 'UPLOAD',
+      type: 'io.cozy.files',
+      services: [{ slug: 'drive', href: 'javascript:alert(1)' }]
+    })
+
+    await expect(uploadToDrive(sdk, 'drive-1', [file])).rejects.toThrow(
+      'No service for the Upload intent'
+    )
+  })
+
   it('fails without a platform', async () => {
     await expect(uploadToDrive(null, 'drive-1', [file])).rejects.toThrow()
   })

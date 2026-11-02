@@ -54,6 +54,7 @@ import { avatarUrl } from '@/application/avatar'
 import { meetRoomUrl } from '@/application/meet'
 import type { Space } from '@/application/spaces'
 import { isTabReady, itemPlace } from '@/application/spaceTabs'
+import { isWebUrl } from '@/application/webUrl'
 import { NameAvatar } from '@/ds/AppFrame'
 import {
   AppAvatar,
@@ -1035,7 +1036,7 @@ function PostLink({ body }: { body: string }): ReactElement | null {
     staleTime: Infinity,
     retry: false
   })
-  if (!data) return null
+  if (!data || !isWebUrl(data.url)) return null
   return (
     <FeedLinkPreview
       href={data.url}
