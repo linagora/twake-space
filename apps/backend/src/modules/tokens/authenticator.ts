@@ -1,13 +1,11 @@
 import { and, eq, gt, isNull, lt, or, sql } from 'drizzle-orm'
 import type { Db } from '../../infra/db.ts'
-import type { Directory } from '../../infra/ldap-rest.ts'
 import { sha256 } from '../auth/authenticator.ts'
+import type { StillInOrganization } from '../auth/membership.ts'
 import type { spaceRole } from '../spaces/schema.ts'
 import { apiTokens, apiTokenSpaces, type tokenScope } from './schema.ts'
 
 export const API_TOKEN_PREFIX = 'tws_'
-
-const ACCOUNT_CHECK_TTL_MS = 5 * 60_000
 
 export type Scope = (typeof tokenScope.enumValues)[number]
 
@@ -28,32 +26,8 @@ export interface TokenCaller {
 
 export function apiTokenAuthenticator(
   db: Db,
-  directory: Pick<Directory, 'isTechnicalAccount' | 'isMember'>,
-  now: () => number = Date.now
+  stillInOrganization: StillInOrganization
 ) {
-  // Promises, so concurrent requests of one account share one ldap-rest call.
-  const checked = new Map<string, { exists: Promise<boolean>; until: number }>()
-  // No event covers every way out of an organization (a technical account
-  // sends none at all), so an account token re-checks its account.
-  function stillInOrganization(
-    organizationId: string,
-    accountId: string,
-    technical: boolean
-  ) {
-    const key = `${organizationId}|${accountId}`
-    const cached = checked.get(key)
-    if (cached && cached.until > now()) return cached.exists
-    const exists = technical
-      ? directory.isTechnicalAccount(organizationId, accountId)
-      : directory.isMember(organizationId, accountId)
-    const entry = { exists, until: now() + ACCOUNT_CHECK_TTL_MS }
-    checked.set(key, entry)
-    exists.catch(() => {
-      if (checked.get(key) === entry) checked.delete(key)
-    })
-    return exists
-  }
-
   return async (token: string): Promise<TokenCaller | null> => {
     const [row] = await db
       .select({

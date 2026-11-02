@@ -11,6 +11,7 @@ import {
 import type { Directory } from '../../infra/ldap-rest.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { sha256 } from '../auth/authenticator.ts'
+import { organizationMembership } from '../auth/membership.ts'
 import { apiTokenAuthenticator } from './authenticator.ts'
 import { apiTokens, apiTokenSpaces } from './schema.ts'
 
@@ -53,10 +54,13 @@ async function aToken(
 const member = () => Promise.resolve(true)
 
 const authenticate = (token: string) =>
-  apiTokenAuthenticator(testDb.db, {
-    isTechnicalAccount: () => Promise.reject(new Error('not technical')),
-    isMember: member
-  })(token)
+  apiTokenAuthenticator(
+    testDb.db,
+    organizationMembership({
+      isTechnicalAccount: () => Promise.reject(new Error('not technical')),
+      isMember: member
+    })
+  )(token)
 
 describe('accounts', () => {
   it('refuses the token once the account leaves the organization, checking every 5 minutes', async () => {
@@ -68,11 +72,13 @@ describe('accounts', () => {
     let now = 0
     const check = apiTokenAuthenticator(
       testDb.db,
-      {
-        isTechnicalAccount: () => Promise.reject(new Error('not technical')),
-        isMember
-      },
-      () => now
+      organizationMembership(
+        {
+          isTechnicalAccount: () => Promise.reject(new Error('not technical')),
+          isMember
+        },
+        () => now
+      )
     )
 
     const first = await check('tws_alice')
@@ -99,8 +105,10 @@ describe('technical accounts', () => {
     let now = 0
     const check = apiTokenAuthenticator(
       testDb.db,
-      { isTechnicalAccount, isMember: member },
-      () => now
+      organizationMembership(
+        { isTechnicalAccount, isMember: member },
+        () => now
+      )
     )
 
     const first = await check('tws_ci')
