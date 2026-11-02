@@ -715,7 +715,6 @@ const onUserDeleted: Handler<PlatformEvent> = async (event, tx, log) => {
           : eq(organizationMembers.email, internalEmail)
       )
     )
-  // So that whoever gets the address next does not manage these spaces.
   const email = known?.email ?? internalEmail
   if (email) {
     await tx

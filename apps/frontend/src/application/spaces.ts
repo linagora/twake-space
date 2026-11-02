@@ -25,8 +25,7 @@ export interface SpaceSummary {
   openedAt: string | null
   /**
    * Whether the person may archive it, move it to the Bin, restore it and
-   * delete it for good: its admins, the organization's owners and admins,
-   * and the person who created it.
+   * delete it for good: its admins and the organization's owners and admins.
    */
   manages: boolean
 }

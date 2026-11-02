@@ -38,9 +38,9 @@ const coveredBy = (caller: Caller) =>
       : undefined
   )
 
-// The managers of a space: its admins, the organization's owners and admins,
-// and the person who created it. An organization token acting as an admin
-// manages the spaces it covers.
+// The managers of a space: its admins and the organization's owners and
+// admins. An organization token acting as an admin manages the spaces it
+// covers.
 export function managedBy(caller: Caller): SQL {
   const { userId } = caller
   if (userId === null) {
@@ -48,19 +48,13 @@ export function managedBy(caller: Caller): SQL {
       ? sql`true`
       : sql`false`
   }
-  const email = caller.kind === 'session' ? caller.email.toLowerCase() : null
   return sql`(exists (select 1 from ${spaceMembers}
       where ${spaceMembers.spaceId} = ${spaces.spaceId}
       and ${spaceMembers.userId} = ${userId} and ${spaceMembers.role} = 'admin')
     or exists (select 1 from ${organizationMembers}
       where ${organizationMembers.organizationId} = ${spaces.organizationId}
       and ${organizationMembers.userId} = ${userId}
-      and ${organizationMembers.role} in ('owner', 'admin'))
-    or ${spaces.createdBy} = ${email}
-    or ${spaces.createdBy} in (select lower(${organizationMembers.email})
-      from ${organizationMembers}
-      where ${organizationMembers.organizationId} = ${spaces.organizationId}
-      and ${organizationMembers.userId} = ${userId}))`
+      and ${organizationMembers.role} in ('owner', 'admin')))`
 }
 
 // The spaces a caller manages, whatever their state, with its role in each

@@ -99,7 +99,7 @@ Two more limits count something other than requests: `linkFetch` (30 a minute) t
 - A member's `workplaceFqdn` is their Twake Workplace address from ldap-rest, where their avatar lives, or null when they have none or ldap-rest fails. It is cached for 10 minutes.
 - A session caller or an account token reaches the spaces its account is a member of. An organization token reaches every space of the organization and acts with its own role. A token that covers a list of spaces reaches only those.
 - `pinnedAt` is when the caller's account pinned the space and `openedAt` when it last opened it, both null when it did not. They are null for an organization token.
-- `manages` tells whether the caller manages the space: it is its admin, an owner or admin of the organization, or the person who created it. An organization token manages the spaces it covers when its role is `admin`.
+- `manages` tells whether the caller manages the space: it is its admin, or an owner or admin of the organization. Having created the space gives no say over it. An organization token manages the spaces it covers when its role is `admin`.
 - Only active spaces are listed, and `GET /spaces/:id` answers 404 for the others. `?state=archived` or `?state=trashed` lists instead the archived spaces, or those in the Bin, that the caller manages, member or not. There, `role` is null when the caller's account is not a member (an organization token keeps its own role), `manages` is always true, and `pinnedAt` and `openedAt` are always null. The caller's organization role is read from ldap-rest on each such call. Any other `state` answers `400 {"error":"invalid_request"}`.
 
 ```json
