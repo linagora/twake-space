@@ -193,7 +193,8 @@
     "drive": "Диск",
     "mail": "Почта",
     "calendar": "Календарь",
-    "withCount": "%{app}, новых: %{smart_count}"
+    "withCount": "%{app}, новых: %{smart_count}",
+    "choose": "Перейти на вкладку"
   },
   "members": {
     "members": "Участники",

@@ -193,7 +193,8 @@
     "drive": "Drive",
     "mail": "Mail",
     "calendar": "Kalender",
-    "withCount": "%{app}, %{smart_count} neu"
+    "withCount": "%{app}, %{smart_count} neu",
+    "choose": "Zu einem Tab wechseln"
   },
   "members": {
     "members": "Mitglieder",

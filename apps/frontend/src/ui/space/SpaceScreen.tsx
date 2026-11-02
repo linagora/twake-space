@@ -1,5 +1,13 @@
 import { Icon } from '@linagora/twake-icons'
-import { Alert, Button, Link, Tab, Tabs, Typography } from '@linagora/twake-mui'
+import {
+  Alert,
+  Button,
+  Link,
+  Tab,
+  Tabs,
+  Typography,
+  useBreakpoints
+} from '@linagora/twake-mui'
 import { useEffect, useLayoutEffect, useRef, type ReactElement } from 'react'
 import {
   Navigate,
@@ -32,6 +40,7 @@ import { FeedSearch } from '@/ui/space/FeedSearch'
 import { useFillPage } from '@/ui/space/FillPage'
 import { SpaceActions } from '@/ui/space/SpaceActions'
 import { SpaceHome } from '@/ui/space/SpaceHome'
+import { TabSheet } from '@/ui/space/TabSheet'
 import { spaceLoadErrorKey, useMarkOpened, useSpace } from '@/ui/spaces/queries'
 import { useDocumentTitle } from '@/ui/useDocumentTitle'
 import { useNowAfter } from '@/ui/useNowAfter'
@@ -41,6 +50,7 @@ export function SpaceScreen(): ReactElement {
   const navigate = useNavigate()
   const { spaceId = '', tab } = useParams()
   const badges = useBadges()
+  const { isMobile } = useBreakpoints()
   const space = useSpace(spaceId)
   const appUrls = useAppUrls(space.data?.chatUrl ?? null)
   useMarkOpened(spaceId, space.isSuccess)
@@ -178,6 +188,7 @@ export function SpaceScreen(): ReactElement {
             />
           }
           title={space.data.name}
+          select={isMobile}
           actions={
             <>
               <IconButton
@@ -197,45 +208,55 @@ export function SpaceScreen(): ReactElement {
             </>
           }
           tabs={
-            <Tabs
-              narrowed
-              variant="scrollable"
-              scrollButtons="auto"
-              allowScrollButtonsMobile
-              value={current.tab}
-              onChange={(_event, value: string) => {
-                void navigate(`/spaces/${spaceId}/${value}`)
-              }}
-            >
-              {tabs.map(item => {
-                const app = embeddedApp(item.tab)
-                const count = app ? tabCount(badges, space.data, app.app) : 0
-                const name = t(`tabs.${item.tab}`)
-                return (
-                  <Tab
-                    key={item.tab}
-                    value={item.tab}
-                    label={
-                      item.tab === 'home' ? (
-                        <Icon icon={Home} size={24} />
-                      ) : (
-                        <CountedLabel label={name} count={badgeLabel(count)} />
-                      )
-                    }
-                    aria-label={
-                      count > 0
-                        ? t('tabs.withCount', { app: name, smart_count: count })
-                        : item.tab === 'home'
-                          ? name
-                          : undefined
-                    }
-                    disabled={item.state === 'off'}
-                    id={`tab-${item.tab}`}
-                    aria-controls={`panel-${item.tab}`}
-                  />
-                )
-              })}
-            </Tabs>
+            isMobile ? (
+              <TabSheet space={space.data} tabs={tabs} current={current.tab} />
+            ) : (
+              <Tabs
+                narrowed
+                variant="scrollable"
+                scrollButtons="auto"
+                allowScrollButtonsMobile
+                value={current.tab}
+                onChange={(_event, value: string) => {
+                  void navigate(`/spaces/${spaceId}/${value}`)
+                }}
+              >
+                {tabs.map(item => {
+                  const app = embeddedApp(item.tab)
+                  const count = app ? tabCount(badges, space.data, app.app) : 0
+                  const name = t(`tabs.${item.tab}`)
+                  return (
+                    <Tab
+                      key={item.tab}
+                      value={item.tab}
+                      label={
+                        item.tab === 'home' ? (
+                          <Icon icon={Home} size={24} />
+                        ) : (
+                          <CountedLabel
+                            label={name}
+                            count={badgeLabel(count)}
+                          />
+                        )
+                      }
+                      aria-label={
+                        count > 0
+                          ? t('tabs.withCount', {
+                              app: name,
+                              smart_count: count
+                            })
+                          : item.tab === 'home'
+                            ? name
+                            : undefined
+                      }
+                      disabled={item.state === 'off'}
+                      id={`tab-${item.tab}`}
+                      aria-controls={`panel-${item.tab}`}
+                    />
+                  )
+                })}
+              </Tabs>
+            )
           }
         />
       )}
@@ -246,7 +267,10 @@ export function SpaceScreen(): ReactElement {
       )}
       {/* A framed tab's panel is the frame itself, under the shell */}
       {!framed && (
-        <TabPanel tab={current.tab} label={filled ? label : undefined}>
+        <TabPanel
+          tab={current.tab}
+          label={filled || isMobile ? label : undefined}
+        >
           {current.state === 'preparing' && (
             <Typography className="u-mt-1">
               {t('space.preparing', { app: label })}

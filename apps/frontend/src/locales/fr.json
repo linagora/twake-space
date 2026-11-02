@@ -193,7 +193,8 @@
     "drive": "Drive",
     "mail": "Mail",
     "calendar": "Agenda",
-    "withCount": "%{app}, %{smart_count} nouveau |||| %{app}, %{smart_count} nouveaux"
+    "withCount": "%{app}, %{smart_count} nouveau |||| %{app}, %{smart_count} nouveaux",
+    "choose": "Aller à un onglet"
   },
   "members": {
     "members": "Membres",

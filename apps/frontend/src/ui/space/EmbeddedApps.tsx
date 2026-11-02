@@ -1,3 +1,4 @@
+import { useBreakpoints } from '@linagora/twake-mui'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   createRef,
@@ -85,6 +86,8 @@ export function EmbeddedApps(): ReactElement | null {
   }
   const badges = useBadgeActions()
   const filled = useFillPage().space !== null
+  const { isMobile } = useBreakpoints()
+  const tabless = filled || isMobile
   const match = matchPath(SPACE_ROUTE, location.pathname)
   const spaceId = match?.params.spaceId ?? ''
   const space = useSpace(spaceId)
@@ -352,9 +355,9 @@ export function EmbeddedApps(): ReactElement | null {
       reachable={floating !== null}
       role="tabpanel"
       id={shown ? `panel-${shown.app}` : undefined}
-      // Without its tab, on a page given to it, the panel names itself
-      aria-label={shown && filled ? t(`tabs.${shown.app}`) : undefined}
-      aria-labelledby={shown && !filled ? `tab-${shown.app}` : undefined}
+      // Without its tab, on a page given to it or on a phone, the panel names itself
+      aria-label={shown && tabless ? t(`tabs.${shown.app}`) : undefined}
+      aria-labelledby={shown && !tabless ? `tab-${shown.app}` : undefined}
     >
       {mounted.map(app => {
         const frame = frames[app]
