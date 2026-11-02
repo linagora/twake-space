@@ -473,8 +473,10 @@ export interface EventState extends TimeRange {
 
 function toRsvp(value: unknown): EventState['rsvp'] {
   if (!isRecord(value)) return null
-  const count = (key: string) =>
-    typeof value[key] === 'number' ? value[key] : 0
+  const count = (key: string) => {
+    const n = value[key]
+    return typeof n === 'number' && Number.isSafeInteger(n) && n >= 0 ? n : 0
+  }
   return {
     accepted: count('accepted'),
     declined: count('declined'),
