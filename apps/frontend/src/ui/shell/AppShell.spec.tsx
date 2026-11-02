@@ -311,6 +311,24 @@ describe('AppShell', () => {
       expect(router.state.location.pathname).toBe('/archives')
     })
 
+    it('keeps the menu closed back on the page it was opened from', async () => {
+      const { router } = renderRoute('/bin', { spaces: spaces() })
+      fireEvent.click(await screen.findByRole('button', { name: 'Menu' }))
+      const menu = within(await screen.findByRole('dialog', { name: 'Menu' }))
+      fireEvent.click(menu.getByRole('link', { name: 'Archives' }))
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Menu' })).toBe(null)
+      })
+
+      await act(() => router.navigate(-1))
+
+      expect(router.state.location.pathname).toBe('/bin')
+      expect(
+        await screen.findByRole('button', { name: 'Menu' })
+      ).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByRole('dialog', { name: 'Menu' })).toBe(null)
+    })
+
     it('closes the menu on Escape, back to its button', async () => {
       renderRoute('/', { spaces: spaces() })
       const button = await screen.findByRole('button', { name: 'Menu' })

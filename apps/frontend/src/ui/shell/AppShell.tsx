@@ -74,6 +74,9 @@ export function AppShell(): ReactElement {
   // closes when another page opens.
   const { key } = useLocation()
   const [menuAt, setMenuAt] = useState<string | null>(null)
+  // Forgotten once left: going back to that page, or a screen narrowed again
+  // after widening, would open it on its own
+  if (menuAt !== null && (menuAt !== key || !narrow)) setMenuAt(null)
 
   return (
     <CallProvider>
