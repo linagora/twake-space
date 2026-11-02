@@ -87,6 +87,7 @@ sequenceDiagram
 - The frontend holds the tokens in the browser. The backend takes bearer tokens only, no cookies.
 - The `workplaceFqdn` claim names the person's platform. Without it the app runs without the top bar, the assistant and Drive.
 - Each app in a frame signs in on its own with the same SSO, silently. When it cannot, it posts `twake-embed:login-required` and the frontend signs in again.
+- Drive is the exception: its frame opens with a session code the frontend mints with the platform token (`POST /auth/session_code`), since the SSO's sign-in page does not work in a frame.
 - The SSO calls the backend's back-channel logout, which closes the session's live streams on every replica.
 
 [HTTP API](api.md#authentication) has the details, and API tokens.
