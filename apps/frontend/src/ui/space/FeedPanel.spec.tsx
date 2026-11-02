@@ -15,6 +15,7 @@ import {
 import type { Space } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeLive } from '@/testing/fakeLive'
+import { stubPhoneScreen } from '@/testing/phoneScreen'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { CallWindow } from '@/ui/call/CallWindow'
 import { useLiveUpdates } from '@/ui/live/useLiveUpdates'
@@ -727,6 +728,34 @@ describe('FeedPanel', () => {
     expect(
       screen.getByRole('button', { name: 'Show the members' })
     ).toHaveFocus()
+  })
+
+  it('moves the focus into the members panel and back on a phone too', async () => {
+    stubPhoneScreen()
+    try {
+      renderFeed([post(1)])
+      await screen.findByText('Message 1')
+      const button = screen.getByRole('button', { name: 'Show the members' })
+      button.focus()
+
+      fireEvent.click(button)
+      const panel = await screen.findByRole('complementary', {
+        name: 'Space members'
+      })
+      await waitFor(() => {
+        expect(panel).toHaveFocus()
+      })
+
+      fireEvent.keyDown(panel, { key: 'Escape' })
+      expect(
+        screen.queryByRole('complementary', { name: 'Space members' })
+      ).toBe(null)
+      expect(
+        screen.getByRole('button', { name: 'Show the members' })
+      ).toHaveFocus()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('says so when a category is empty', async () => {

@@ -2,12 +2,15 @@ import { Icon, Magnifier, PersonAdd } from '@linagora/twake-icons'
 import {
   Box,
   ButtonBase,
+  Drawer,
   IconButton,
   InputBase,
   Tooltip,
-  Typography
+  Typography,
+  useMediaQuery,
+  useTheme
 } from '@linagora/twake-mui'
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useState, type ReactElement } from 'react'
 
 import { NameAvatar } from '@/ds/AppFrame'
 import { SidePanelIcon } from '@/ds/icons'
@@ -43,12 +46,13 @@ export function MembersPanel({
   closeLabel: string
   onClose: () => void
 }): ReactElement {
+  const phone = useMediaQuery(useTheme().breakpoints.down('md'))
   const [query, setQuery] = useState('')
-  const panel = useRef<HTMLElement>(null)
-  // The panel covers the feed on a narrow screen: focus goes in when it
-  // opens, and the toolbar takes it back when it closes.
-  useEffect(() => {
-    panel.current?.focus()
+  // The panel covers the screen on a phone: focus goes in when it
+  // opens, and the toolbar takes it back when it closes. A ref, not an
+  // effect: on a phone the drawer's portal attaches the panel a render late.
+  const focusIn = useCallback((node: HTMLElement | null) => {
+    node?.focus()
   }, [])
   const needle = query.trim().toLowerCase()
   const shown = members.filter(m => m.name.toLowerCase().includes(needle))
@@ -73,26 +77,24 @@ export function MembersPanel({
     if (item instanceof HTMLElement) item.focus()
     return true
   }
-  return (
+  const aside = (
     <Box
       component="aside"
-      ref={panel}
+      ref={focusIn}
       tabIndex={-1}
       aria-label={title}
       onKeyDown={event => {
         if (event.key === 'Escape') onClose()
       }}
       sx={{
-        // Over the feed on a narrow screen, beside it on a wide one.
-        position: { xs: 'absolute', md: 'static' },
-        inset: 0,
-        zIndex: 2,
-        flex: '0 0 300px',
-        width: { xs: 'auto', md: 300 },
+        // The drawer's paper is a column: on a phone the main axis is height.
+        flex: phone ? '1 1 auto' : '0 0 300px',
+        minHeight: 0,
+        width: 300,
+        maxWidth: '100%',
         bgcolor: 'background.paper',
-        // In the same media query as the border, which resets its colour
-        borderLeft: { md: 1 },
-        borderLeftColor: { md: 'divider' },
+        borderLeft: phone ? 0 : 1,
+        borderLeftColor: 'divider',
         p: 2,
         display: 'flex',
         flexDirection: 'column',
@@ -220,5 +222,22 @@ export function MembersPanel({
         ))}
       </Box>
     </Box>
+  )
+  if (!phone) return aside
+  // Escape is the aside's own; focus goes back through the toolbar.
+  return (
+    <Drawer
+      anchor="right"
+      open
+      onClose={(_event, reason) => {
+        if (reason === 'backdropClick') onClose()
+      }}
+      disableAutoFocus
+      disableRestoreFocus
+      // The paper is the drawer's dialog, which needs a name of its own.
+      slotProps={{ paper: { 'aria-label': title } }}
+    >
+      {aside}
+    </Drawer>
   )
 }
