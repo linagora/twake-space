@@ -1,6 +1,26 @@
 import { describe, expect, it } from 'vitest'
 
-import { nextSlot, toInputs } from '@/application/meetings'
+import { meetingZone, nextSlot, toInputs } from '@/application/meetings'
+
+describe('meetingZone', () => {
+  const browser = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+  it('keeps an IANA zone, in its canonical case', () => {
+    expect(meetingZone('europe/paris')).toBe('Europe/Paris')
+  })
+
+  it('names a whole-hour offset', () => {
+    expect(meetingZone('+02:00')).toBe('Etc/GMT-2')
+    expect(meetingZone('-05:00')).toBe('Etc/GMT+5')
+    expect(meetingZone('+00:00')).toBe('UTC')
+  })
+
+  it('takes the browser zone when the offset has no IANA name', () => {
+    expect(meetingZone('+05:30')).toBe(browser)
+    expect(meetingZone('-13:00')).toBe(browser)
+    expect(meetingZone(null)).toBe(browser)
+  })
+})
 
 const slot = (iso: string, zone: string) =>
   toInputs(nextSlot(new Date(iso), zone, 30), zone)
