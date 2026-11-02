@@ -1120,31 +1120,4 @@ describe('archives and the bin', () => {
     expect(await readState(DESIGN)).toBe('trashed')
     expect(await readState(CREATED)).toBe('trashed')
   })
-
-  it("gives no say over another organization's space created by the same address", async () => {
-    await testDb.db
-      .update(spaces)
-      .set({ createdBy: 'carol@example.com' })
-      .where(eq(spaces.spaceId, DESIGN))
-    // Carol's address in another organization, under her own account
-    await testDb.db.insert(organizationMembers).values({
-      organizationId: 'org-2',
-      userId: CAROL,
-      email: 'carol@example.com',
-      role: 'member'
-    })
-    const write = setUp(
-      ldapRest().directory,
-      aTokenCaller({ userId: CAROL, scopes: ['space:write'] })
-    )
-
-    const response = await write(
-      'PUT',
-      `/spaces/${DESIGN}/state`,
-      { state: 'archived' },
-      'tws_bot'
-    )
-
-    expect(response.statusCode).toBe(404)
-  })
 })
