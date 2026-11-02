@@ -8,6 +8,7 @@ configure({ reactStrictMode: true, asyncUtilTimeout: 3000 })
 
 // jsdom lays nothing out, so it has no scrolling to do.
 Element.prototype.scrollIntoView = () => undefined
+window.scrollTo = () => undefined
 
 // Nor any resizing, which the bottom sheet's spring measures.
 globalThis.ResizeObserver = class {

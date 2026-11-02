@@ -9,7 +9,13 @@ import {
   NavText,
   SearchBar
 } from '@linagora/twake-mui'
-import { useRef, useState, type ReactElement, type ReactNode } from 'react'
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode
+} from 'react'
 import {
   Outlet,
   NavLink as RouterNavLink,
@@ -67,7 +73,6 @@ export function AppShell(): ReactElement {
   const spaceId = useMatch('/spaces/:spaceId/*')?.params.spaceId
   // A space's content may take the whole page, the platform bar's too
   const alone = useFillPage().space !== null
-  const feed = useMatch('/spaces/:spaceId/feed/*') !== null
   const narrow = useNarrowScreen()
   const [spotting, setSpotting] = useState(false)
   // The menu of narrow screens is open on the page it was opened from: it
@@ -105,7 +110,6 @@ export function AppShell(): ReactElement {
         }}
         bare={home}
         alone={alone}
-        fitScreen={feed}
         aside={
           assistantOpen &&
           spaceId !== undefined && (
@@ -187,6 +191,7 @@ export function AppShell(): ReactElement {
         <AssistantContext
           value={{ open: assistantOpen, setOpen: setAssistantOpen }}
         >
+          <PageTop />
           <Outlet />
         </AssistantContext>
         <EmbeddedApps />
@@ -206,6 +211,17 @@ export function AppShell(): ReactElement {
       </AppFrame>
     </CallProvider>
   )
+}
+
+// Below lg the page scrolls as a whole: another screen or tab opens at its
+// top. The path within a tab is the framed app's own. Before the outlet, so
+// a feed opening on its newest items scrolls after this.
+function PageTop(): null {
+  const screen = useLocation().pathname.split('/').slice(0, 4).join('/')
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0)
+  }, [screen])
+  return null
 }
 
 function RouteNavLink({

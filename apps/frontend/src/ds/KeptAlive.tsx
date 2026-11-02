@@ -44,7 +44,9 @@ export function KeptAlive({
 
 // The place of the frames, under the shell's content: in the flow, edge to
 // edge (an app keeps its own margins), while a framed tab shows; hidden over
-// the content otherwise, so the frames keep a real size.
+// the content otherwise, so the frames keep a real size. Below lg, where the
+// page scrolls as a whole, it is the screen's height above the bottom bar:
+// the header above scrolls away and leaves the whole screen to the app.
 export function KeptAliveStack({
   active,
   reachable = false,
@@ -67,7 +69,13 @@ export function KeptAliveStack({
       inert={hidden}
       sx={
         active
-          ? { position: 'relative', minHeight: 0 }
+          ? theme => ({
+              position: 'relative',
+              minHeight: 0,
+              [theme.breakpoints.down('lg')]: {
+                height: 'calc(100dvh - var(--sidebarHeight, 0px))'
+              }
+            })
           : {
               position: 'absolute',
               inset: 0,
