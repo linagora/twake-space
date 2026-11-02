@@ -22,7 +22,13 @@ import {
 const DAY_MS = 24 * 60 * 60 * 1000
 const DEFAULT_LIFETIME_DAYS = 30
 
-const name = z.string().trim().min(1).max(100)
+// Postgres cannot store a NUL in text.
+const name = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .refine(text => !text.includes('\u0000'))
 
 const createBody = z
   .object({

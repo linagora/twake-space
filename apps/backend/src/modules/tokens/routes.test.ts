@@ -389,6 +389,18 @@ describe('PATCH and DELETE /tokens/:id', () => {
     ).toBe(404)
     expect((await call('DELETE', `/tokens/${id}`)).statusCode).toBe(404)
   })
+
+  it('refuses a name PostgreSQL cannot store', async () => {
+    const call = setUp()
+    const created = await call('POST', '/tokens', create({ name: 'a\u0000b' }))
+    const { id } = (await call('POST', '/tokens', create())).json<{
+      id: string
+    }>()
+    const renamed = await call('PATCH', `/tokens/${id}`, { name: 'a\u0000b' })
+
+    expect(created.statusCode).toBe(400)
+    expect(renamed.statusCode).toBe(400)
+  })
 })
 
 const orgToken = (body: object = {}) => create({ role: 'editor', ...body })
