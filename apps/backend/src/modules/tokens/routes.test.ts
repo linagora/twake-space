@@ -3,6 +3,7 @@ import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createServer } from '../../infra/http.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
+import { organizationMembership } from '../auth/membership.ts'
 import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
 import { organizationMembers, spaceMembers, spaces } from '../spaces/schema.ts'
 import { apiTokenAuthenticator, type TokenCaller } from './authenticator.ts'
@@ -38,7 +39,7 @@ const roles = new Map<
   { email: string; role: 'owner' | 'admin' | 'member' }
 >()
 const authenticate = (token: string) =>
-  apiTokenAuthenticator(testDb.db, directory)(token)
+  apiTokenAuthenticator(testDb.db, organizationMembership(directory))(token)
 
 let testDb: TestDb
 beforeAll(async () => {
@@ -627,10 +628,13 @@ describe('technical account tokens', () => {
     const created = await setUp()('POST', url, create())
     const { token } = created.json<{ token: string }>()
 
-    const gone = await apiTokenAuthenticator(testDb.db, {
-      ...directory,
-      isTechnicalAccount: () => Promise.resolve(false)
-    })(token)
+    const gone = await apiTokenAuthenticator(
+      testDb.db,
+      organizationMembership({
+        ...directory,
+        isTechnicalAccount: () => Promise.resolve(false)
+      })
+    )(token)
 
     expect(gone).toBeNull()
   })

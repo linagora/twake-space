@@ -4,6 +4,7 @@ import type { Directory } from '../../infra/ldap-rest.ts'
 import { apiTokenAuthenticator } from '../tokens/authenticator.ts'
 import { createAuthenticator } from './authenticator.ts'
 import type { Limiter, Limits } from './limits.ts'
+import { organizationMembership } from './membership.ts'
 import { discoverIdentityProvider, type OidcOptions } from './oidc.ts'
 import { registerAuth, type Authorize } from './routes.ts'
 import { postgresAuthStore } from './store.ts'
@@ -36,16 +37,18 @@ export async function setUpAuth(
 ): Promise<Authorize> {
   const provider = await discoverIdentityProvider(deps.oidc)
   const store = postgresAuthStore(deps.db)
+  const stillInOrganization = organizationMembership(deps.directory)
   return registerAuth(app, {
     provider,
     store,
     authenticate: createAuthenticator({
       provider,
       store,
+      stillInOrganization,
       newTokenChecks: deps.newTokenChecks,
       newTokensWaiting: deps.newTokensWaiting
     }),
-    authenticateToken: apiTokenAuthenticator(deps.db, deps.directory),
+    authenticateToken: apiTokenAuthenticator(deps.db, stillInOrganization),
     limiter: deps.limiter,
     limits: deps.limits
   })

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { Directory } from '../../infra/ldap-rest.ts'
 import { createAuthenticator, gate } from './authenticator.ts'
+import { organizationMembership } from './membership.ts'
 import type { Identity, IdentityProvider } from './oidc.ts'
 import type { AuthStore } from './store.ts'
 import { anIdentity } from './testing.ts'
@@ -18,15 +20,25 @@ function setUp(
     isRevoked: sessionId => Promise.resolve(revoked.has(sessionId)),
     revoke: vi.fn()
   }
+  const isMember = vi.fn<Directory['isMember']>(() => Promise.resolve(true))
+  const now = () => clock
   const authenticate = createAuthenticator({
     provider,
     store,
-    now: () => clock,
+    stillInOrganization: organizationMembership(
+      {
+        isMember,
+        isTechnicalAccount: () => Promise.reject(new Error('not technical'))
+      },
+      now
+    ),
+    now,
     ...limits
   })
   return {
     authenticate,
     identify: provider.identify,
+    isMember,
     revoked,
     advance: (ms: number) => {
       clock += ms
@@ -141,6 +153,44 @@ describe('createAuthenticator', () => {
     await Promise.all(Array.from({ length: 20 }, () => authenticate('fresh')))
 
     expect(identify).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses the token once the account leaves the organization, checking every 5 minutes', async () => {
+    const { authenticate, isMember, advance } = setUp(
+      anIdentity({ expiresAt: new Date(Date.now() + 3_600_000) })
+    )
+    isMember.mockResolvedValueOnce(true).mockResolvedValue(false)
+
+    const first = await authenticate('token')
+    advance(4 * 60_000)
+    const cached = await authenticate('token')
+    advance(2 * 60_000)
+    const gone = await authenticate('token')
+
+    expect(first).not.toBeNull()
+    expect(cached).not.toBeNull()
+    expect(gone).toBeNull()
+    expect(isMember).toHaveBeenCalledTimes(2)
+    expect(isMember).toHaveBeenCalledWith(
+      'org-1',
+      '8f14e45f-ceea-467a-9575-1d1c2b0c4b2e'
+    )
+  })
+
+  it('fails when the directory cannot tell whether the account is still in the organization', async () => {
+    const { authenticate, isMember } = setUp()
+    isMember.mockRejectedValue(new Error('ldap-rest is down'))
+
+    await expect(authenticate('token')).rejects.toThrow('ldap-rest is down')
+  })
+
+  it('does not ask the directory for a token without an organization', async () => {
+    const { authenticate, isMember } = setUp(
+      anIdentity({ organizationId: null })
+    )
+
+    await expect(authenticate('token')).resolves.not.toBeNull()
+    expect(isMember).not.toHaveBeenCalled()
   })
 
   it('refuses a cached token once its session is revoked', async () => {

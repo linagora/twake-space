@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import type { StillInOrganization } from './membership.ts'
 import type { Identity, IdentityProvider } from './oidc.ts'
 import type { AuthStore } from './store.ts'
 
@@ -38,6 +39,7 @@ export function gate(running: number, waiting: number) {
 export function createAuthenticator(deps: {
   provider: IdentityProvider
   store: AuthStore
+  stillInOrganization: StillInOrganization
   now?: () => number
   newTokenChecks?: number
   newTokensWaiting?: number
@@ -112,7 +114,19 @@ export function createAuthenticator(deps: {
       }
       cache.set(key, entry)
     }
-    if (await deps.store.isRevoked(entry.identity.sessionId)) return null
-    return entry.identity
+    const { identity } = entry
+    if (await deps.store.isRevoked(identity.sessionId)) return null
+    // The org_id claim stays in the token until it expires.
+    if (
+      identity.organizationId &&
+      !(await deps.stillInOrganization(
+        identity.organizationId,
+        identity.userId,
+        false
+      ))
+    ) {
+      return null
+    }
+    return identity
   }
 }
