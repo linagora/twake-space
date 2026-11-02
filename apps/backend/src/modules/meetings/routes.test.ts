@@ -141,6 +141,16 @@ describe('POST /spaces/:spaceId/meetings', () => {
     expect(publish.mock.calls[0]?.[1]).toMatchObject({ data: { uid } })
   })
 
+  it('keeps the line breaks and tabs of a description', async () => {
+    const { post, publish } = setUp()
+    const description = 'Agenda:\n\t- mockups\n\t- copy 🎨'
+
+    const response = await post(DESIGN, { ...meeting, description })
+
+    expect(response.statusCode).toBe(202)
+    expect(publish.mock.calls[0]?.[1]).toMatchObject({ data: { description } })
+  })
+
   it('refuses a viewer', async () => {
     const { post, publish } = setUp()
 
@@ -174,7 +184,16 @@ describe('POST /spaces/:spaceId/meetings', () => {
     ['a meeting over a day', { end: '2026-10-09T13:00:00+02:00' }],
     ['an unknown time zone', { timezone: 'Mars/Olympus' }],
     ['an offset for a time zone', { timezone: '+02:00' }],
-    ['a blank title', { title: '  ' }]
+    ['a blank title', { title: '  ' }],
+    ['a title starting with a C1 control', { title: '\u0085Design review' }],
+    ['a title with a line break', { title: 'Design\r\nreview' }],
+    ['a title with a NUL', { title: 'Design\u0000review' }],
+    ['a title with a lone surrogate', { title: 'Design \ud800review' }],
+    ['a title with a tab', { title: 'Design\treview' }],
+    ['a description with a C1 control', { description: 'Last\u0085pass' }],
+    ['a description with a DEL', { description: 'Last pass\u007f' }],
+    ['a description with a carriage return', { description: 'Last\rpass' }],
+    ['a description with a lone surrogate', { description: 'Last \udc00pass' }]
   ])('refuses %s', async (_name, change) => {
     const { post, publish } = setUp()
 
