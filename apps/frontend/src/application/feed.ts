@@ -66,7 +66,7 @@ export interface FeedPost extends ItemBase {
   kind: 'post'
   author: Actor
   /** On a poll, a yes/no question, an approval or a feedback request, its
-   * question. */
+   * question; on a form, its title. */
   body: string
   editedAt: string | null
   poll: Poll | null
@@ -74,7 +74,44 @@ export interface FeedPost extends ItemBase {
   /** Pinned at the top of the feed until its author unpins it. */
   announcement: Announcement | null
   feedback: Feedback | null
+  form: Form | null
 }
+
+/** A choice field's answer is the index of its option. */
+export type FormField =
+  | { label: string; kind: 'text'; options: null }
+  | { label: string; kind: 'choice'; options: string[] }
+
+export type FormAnswer = string | number
+
+/**
+ * Like a feedback request: everyone sees the count and their own response;
+ * only the author, the responses. A response answers every field, in order.
+ */
+export interface Form {
+  fields: FormField[]
+  /** Its responses name no one, not even to its author. */
+  anonymous: boolean
+  count: number
+  /** Null until the user responds. */
+  mine: FormAnswer[] | null
+  /** Oldest first; null for anyone but the author. */
+  responses: FormResponse[] | null
+  closedAt: string | null
+}
+
+export interface FormResponse {
+  /** Null on an anonymous form. */
+  userId: string | null
+  /** Null on an anonymous form, and once they left the space. */
+  name: string | null
+  answers: FormAnswer[]
+  answeredAt: string
+}
+
+export const FORM_FIELDS = { max: 10 }
+export const FORM_LABEL = { max: 200 }
+export const FORM_ANSWER = { max: 2000 }
 
 export interface Announcement {
   title: string | null
@@ -164,6 +201,15 @@ export type PostAsk =
   | { approval: { approvers: string[] } }
   | { announcement: { title?: string; color?: string; pinned: boolean } }
   | { feedback: { anonymous: boolean } }
+  | {
+      form: {
+        fields: (
+          | { label: string; kind: 'text' }
+          | { label: string; kind: 'choice'; options: string[] }
+        )[]
+        anonymous: boolean
+      }
+    }
 
 export interface PollOption {
   label: string
@@ -233,7 +279,7 @@ export interface FeedService {
    * `poll_closed`. */
   vote: (spaceId: string, postId: string, option: number) => Promise<void>
   unvote: (spaceId: string, postId: string, option: number) => Promise<void>
-  /** Its author only, for a poll, an approval or a feedback request. */
+  /** Its author only, for a poll, an approval, a feedback request or a form. */
   closePoll: (spaceId: string, postId: string) => Promise<FeedItem>
   /** Its author only, for an announcement. */
   pin: (spaceId: string, postId: string, pinned: boolean) => Promise<FeedItem>
@@ -242,6 +288,12 @@ export interface FeedService {
     spaceId: string,
     postId: string,
     answer: { rating: number; text: string }
+  ) => Promise<void>
+  /** Replaces the user's response; `poll_closed` once the form is closed. */
+  respond: (
+    spaceId: string,
+    postId: string,
+    answers: FormAnswer[]
   ) => Promise<void>
   /** Any member but its author, `cannot_acknowledge_own` for them. */
   acknowledge: (spaceId: string, postId: string) => Promise<void>

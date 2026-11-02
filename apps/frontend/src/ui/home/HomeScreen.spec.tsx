@@ -213,7 +213,8 @@ describe('HomeScreen', () => {
       poll: null,
       approval: null,
       announcement: null,
-      feedback: null
+      feedback: null,
+      form: null
     })
 
     it('lists the spaces with news, those with mentions first, each opening the space', async () => {

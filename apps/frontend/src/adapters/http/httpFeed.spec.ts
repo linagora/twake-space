@@ -27,7 +27,8 @@ const post: FeedItem = {
   poll: null,
   approval: null,
   announcement: null,
-  feedback: null
+  feedback: null,
+  form: null
 }
 
 function requested(): Request {

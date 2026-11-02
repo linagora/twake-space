@@ -831,7 +831,8 @@ describe('SpaceScreen', () => {
         poll: null,
         approval: null,
         announcement: null,
-        feedback: null
+        feedback: null,
+        form: null
       },
       {
         id: 'card-1',
@@ -913,7 +914,8 @@ describe('SpaceScreen', () => {
         poll: null,
         approval: null,
         announcement: null,
-        feedback: null
+        feedback: null,
+        form: null
       }))
       renderAt('/spaces/a1/feed', roadmap, posts)
       await search('oldest')
