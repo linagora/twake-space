@@ -143,6 +143,10 @@ async function get(
 ): Promise<Fetched | null> {
   let url = start
   for (let hop = 0; hop <= REDIRECTS; hop++) {
+    // Node sends the userinfo of a URL as a Basic authorization header.
+    url = new URL(url)
+    url.username = ''
+    url.password = ''
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
     if (!options.anyPort && !['', '80', '443'].includes(url.port)) return null
     const got = await getOnce(url, accept, maxBytes, truncate, signal, options)
