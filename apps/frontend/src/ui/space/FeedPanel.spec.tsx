@@ -9,7 +9,8 @@ import {
   type FeedCard,
   type Announcement,
   type FeedItem,
-  type FeedPost
+  type FeedPost,
+  type Form
 } from '@/application/feed'
 import type { Space } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
@@ -67,6 +68,7 @@ const post = (minute: number, overrides: Partial<FeedPost> = {}): FeedPost => ({
   approval: null,
   announcement: null,
   feedback: null,
+  form: null,
   ...overrides
 })
 
@@ -1276,7 +1278,7 @@ describe('FeedPanel', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
       expect(
         screen.getAllByRole('menuitem').map(item => item.textContent)
-      ).toEqual(['Poll', 'Yes/no question', 'Announcement', 'Feedback'])
+      ).toEqual(['Poll', 'Yes/no question', 'Announcement', 'Feedback', 'Form'])
     })
 
     it('sends picked files to the space drive, above the asks, and keeps the draft', async () => {
@@ -1300,7 +1302,8 @@ describe('FeedPanel', () => {
         'Poll',
         'Yes/no question',
         'Announcement',
-        'Feedback'
+        'Feedback',
+        'Form'
       ])
 
       const opened = vi.spyOn(HTMLInputElement.prototype, 'click')
@@ -1988,6 +1991,130 @@ describe('FeedPanel', () => {
 
       expect(within(card).getByText('Too long')).toBeInTheDocument()
       expect(within(card).queryByText(/:$/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('a form', () => {
+    const form: Form = {
+      fields: [
+        { label: 'Name on your badge', kind: 'text', options: null },
+        { label: 'Lunch', kind: 'choice', options: ['Meat', 'Veggie'] }
+      ],
+      anonymous: false,
+      count: 0,
+      mine: null,
+      responses: null,
+      closedAt: null
+    }
+    const signUp = (overrides: Partial<FeedPost> = {}) =>
+      post(1, { body: 'Offsite sign-up', form, ...overrides })
+
+    it('is published from the + menu with text and choice questions', async () => {
+      const { feed } = renderFeed([post(0)])
+      fireEvent.click(await screen.findByRole('button', { name: 'Add' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Form' }))
+      const dialog = screen.getByRole('dialog', { name: 'New form' })
+      const send = within(dialog).getByRole('button', { name: 'Send form' })
+      expect(send).toBeDisabled()
+
+      fireEvent.change(within(dialog).getByRole('textbox', { name: 'Title' }), {
+        target: { value: 'Offsite sign-up' }
+      })
+      fireEvent.change(
+        within(dialog).getByRole('textbox', { name: 'Question 1' }),
+        { target: { value: 'Name on your badge' } }
+      )
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'Choice question' })
+      )
+      fireEvent.change(
+        within(dialog).getByRole('textbox', { name: 'Question 2' }),
+        { target: { value: 'Lunch' } }
+      )
+      fireEvent.change(
+        within(dialog).getByRole('textbox', { name: 'Question 2, option 1' }),
+        { target: { value: 'Meat' } }
+      )
+      expect(send).toBeDisabled()
+      fireEvent.change(
+        within(dialog).getByRole('textbox', { name: 'Question 2, option 2' }),
+        { target: { value: 'Veggie' } }
+      )
+      fireEvent.click(send)
+
+      expect(
+        await screen.findByRole('group', { name: 'Offsite sign-up' })
+      ).toBeInTheDocument()
+      expect(feed.post).toHaveBeenCalledWith('a1', 'Offsite sign-up', [], {
+        form: {
+          fields: [
+            { label: 'Name on your badge', kind: 'text' },
+            { label: 'Lunch', kind: 'choice', options: ['Meat', 'Veggie'] }
+          ],
+          anonymous: false
+        }
+      })
+    })
+
+    it('takes a member’s answer to every question, then shows it', async () => {
+      const { feed } = renderFeed([signUp()], {
+        space: { ...roadmap, role: 'viewer' }
+      })
+      const card = await screen.findByRole('group', { name: 'Offsite sign-up' })
+      expect(within(card).getByText('0 responses · Open')).toBeInTheDocument()
+      const send = within(card).getByRole('button', {
+        name: 'Send my response'
+      })
+
+      fireEvent.change(
+        within(card).getByRole('textbox', { name: 'Name on your badge' }),
+        { target: { value: ' Bobby ' } }
+      )
+      expect(send).toBeDisabled()
+      fireEvent.click(within(card).getByRole('radio', { name: 'Veggie' }))
+      fireEvent.click(send)
+
+      expect(
+        await within(card).findByText('1 response · Open')
+      ).toBeInTheDocument()
+      expect(feed.respond).toHaveBeenCalledWith('a1', 'post-1', ['Bobby', 1])
+      expect(within(card).getByText('Bobby')).toBeInTheDocument()
+      expect(within(card).getByText('Veggie')).toBeInTheDocument()
+      expect(within(card).queryByRole('radio')).not.toBeInTheDocument()
+      expect(within(card).getByRole('button', { name: 'Edit' })).toBeVisible()
+    })
+
+    it('shows its author every response and lets them close it', async () => {
+      const { feed } = renderFeed([
+        signUp({
+          author: { type: 'user', id: 'u-me', name: 'Alice Martin' },
+          form: {
+            ...form,
+            count: 1,
+            responses: [
+              {
+                userId: 'u-bob',
+                name: 'Bob Durand',
+                answers: ['Bobby', 0],
+                answeredAt: at(2)
+              }
+            ]
+          }
+        })
+      ])
+      const card = await screen.findByRole('group', { name: 'Offsite sign-up' })
+      expect(within(card).getByText('Bob Durand')).toBeInTheDocument()
+      expect(within(card).getByText('Meat')).toBeInTheDocument()
+      expect(
+        within(card).queryByRole('button', { name: 'Send my response' })
+      ).not.toBeInTheDocument()
+
+      fireEvent.click(
+        within(card).getByRole('button', { name: 'Close the form' })
+      )
+
+      expect(await screen.findByText('1 response · Closed')).toBeInTheDocument()
+      expect(feed.closePoll).toHaveBeenCalledWith('a1', 'post-1')
     })
   })
 
