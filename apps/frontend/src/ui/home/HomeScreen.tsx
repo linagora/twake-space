@@ -17,7 +17,7 @@ import {
 import { AddIcon } from '@/ds/icons'
 import { LoadingRows, Page, TileEmpty } from '@/ds/Page'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
-import { Greeting } from '@/ui/home/Greeting'
+import { Greeting, GreetingHead } from '@/ui/home/Greeting'
 import { useFeedNews } from '@/ui/space/feedQueries'
 import { SpaceMenu } from '@/ui/space/SpaceMenu'
 import { useI18n } from '@/ui/i18n/useI18n'
@@ -37,8 +37,8 @@ export function HomeScreen(): ReactElement {
   }
 
   return (
-    <Page>
-      <Greeting title={t('app.name')} />
+    <Page head={<GreetingHead title={t('app.name')} />}>
+      <Greeting />
       {spaces.isPending && (
         <LoadingRows count={4} label={t('spaces.loading')} />
       )}

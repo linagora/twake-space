@@ -16,13 +16,16 @@ import coverArt from '@/assets/space-cover.png'
 // frame of an embedded app, under the tabs. `compact` keeps a narrow edge,
 // on a page given to the content. The page scrolls itself, or content
 // overflowing a page shrunk to the screen would cover its bottom edge.
+// `head` is the first row; a compact page has none.
 export function Page({
   fill = true,
   compact = false,
+  head,
   children
 }: {
   fill?: boolean
   compact?: boolean
+  head?: ReactNode
   children: ReactNode
 }): ReactElement {
   return (
@@ -39,6 +42,18 @@ export function Page({
         pb: fill ? (compact ? 1 : 2) : 0
       }}
     >
+      {!compact && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            minWidth: 0,
+            mb: { xs: 1, lg: 0 }
+          }}
+        >
+          {head}
+        </Box>
+      )}
       {children}
     </Box>
   )
