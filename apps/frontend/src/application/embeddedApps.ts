@@ -29,6 +29,8 @@ export interface EmbeddedAppSpec {
   allow?: string
   // Whether the app may take the whole page (`twake-embed:fill-page`)
   canFillPage?: boolean
+  // Whether the frame opens with a session code of the person's platform
+  sessionCode?: boolean
 }
 
 export const EMBEDDED_APPS: Record<EmbeddedApp, EmbeddedAppSpec> = {
@@ -51,11 +53,14 @@ export const EMBEDDED_APPS: Record<EmbeddedApp, EmbeddedAppSpec> = {
   },
   // Twake Drive's embed of a shared drive, opened from its sharing id alone.
   // Drive routes in the hash: cozy-stack serves no other path than its files.
+  // Signed out, the stack sends its frame to the SSO, whose sign-in does not
+  // work in a frame: the frame opens with a session code instead.
   drive: {
     app: 'drive',
     resource: 'drive',
     embedPath: id => `/#/embed/sharings/${encodeURIComponent(id)}`,
-    overlayPath: '/embed/overlay.html'
+    overlayPath: '/embed/overlay.html',
+    sessionCode: true
   },
   mail: {
     app: 'mail',

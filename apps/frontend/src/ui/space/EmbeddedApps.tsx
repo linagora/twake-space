@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type ComponentProps,
   type ReactElement,
   type RefObject
 } from 'react'
@@ -33,7 +34,9 @@ import { isTabReady, spaceTabs } from '@/application/spaceTabs'
 import { KeptAlive, KeptAliveStack } from '@/ds/KeptAlive'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
+import { useSession } from '@/ui/session/SessionGate'
 import { useBadgeActions } from '@/ui/space/Badges'
+import { mintSessionCode, withSessionCode } from '@/ui/space/sessionCode'
 import { EmbeddedAppFrame } from '@/ui/space/EmbeddedAppFrame'
 import { useFillPage } from '@/ui/space/FillPage'
 import { useAppUrls } from '@/ui/space/useAppUrls'
@@ -366,8 +369,9 @@ export function EmbeddedApps(): ReactElement | null {
             active={shown?.app === app}
             reachable={floating === app}
           >
-            <EmbeddedAppFrame
+            <SignedInFrame
               key={frame.key}
+              sessionCode={EMBEDDED_APPS[app].sessionCode}
               app={app}
               appUrl={url}
               embedPath={EMBEDDED_APPS[app].embedPath(frame.resourceId)}
@@ -418,6 +422,31 @@ export function EmbeddedApps(): ReactElement | null {
       })}
     </KeptAliveStack>
   )
+}
+
+// The frame of an app, once its `src` has the session code it opens with:
+// a code goes once, so each frame mints its own.
+function SignedInFrame({
+  sessionCode = false,
+  src,
+  ...props
+}: ComponentProps<typeof EmbeddedAppFrame> & {
+  sessionCode?: boolean | undefined
+}): ReactElement | null {
+  const { sdk } = useSession()
+  const [signedIn, setSignedIn] = useState<string | null>(null)
+  useEffect(() => {
+    if (!sessionCode) return
+    let current = true
+    void mintSessionCode(sdk).then(code => {
+      if (current) setSignedIn(code === null ? src : withSessionCode(src, code))
+    })
+    return () => {
+      current = false
+    }
+  }, [sdk, sessionCode, src])
+  const shown = sessionCode ? signedIn : src
+  return shown === null ? null : <EmbeddedAppFrame {...props} src={shown} />
 }
 
 function withFrame(

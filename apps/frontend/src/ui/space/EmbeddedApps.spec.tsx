@@ -56,6 +56,17 @@ const other: Space = {
 
 const CHAT = 'https://chat.test'
 
+const platformFetch = vi.hoisted(() =>
+  vi.fn(() => Promise.resolve({ session_code: 'code-1' }))
+)
+vi.mock('@linagora/twake-sdk', () => ({
+  createSdk: () => ({
+    status: 'ready',
+    onStatusChange: () => () => undefined,
+    fetchJSON: platformFetch
+  })
+}))
+
 const notifications = {
   isWaiting: () => false,
   subscribe: () => () => undefined,
@@ -92,8 +103,9 @@ function renderAt(
   },
   {
     known = [roadmap, other],
-    chatUrl = `${CHAT}/`
-  }: { known?: Space[]; chatUrl?: string | null } = {}
+    chatUrl = `${CHAT}/`,
+    idToken = null
+  }: { known?: Space[]; chatUrl?: string | null; idToken?: string | null } = {}
 ) {
   const spaces = fakeSpaces(known)
   vi.mocked(spaces.get).mockImplementation(id => {
@@ -124,7 +136,7 @@ function renderAt(
       chatUrl,
       driveUrlTemplate: drive.template,
       session: fakeSession(() =>
-        Promise.resolve({ ...fakeUser(), workplaceFqdn: drive.fqdn })
+        Promise.resolve({ ...fakeUser(idToken), workplaceFqdn: drive.fqdn })
       )
     }
   )
@@ -620,6 +632,20 @@ describe('EmbeddedApps', () => {
       'src',
       'https://alice-drive.twake.test/embed/overlay.html'
     )
+  })
+
+  it('opens Drive signed in with a session code of the platform, not on the SSO in its frame', async () => {
+    renderAt('/spaces/a1/drive/f1', `${TASKS}/`, undefined, {
+      idToken: 'id-token'
+    })
+
+    expect(await screen.findByTitle('Drive')).toHaveAttribute(
+      'src',
+      'https://alice-drive.twake.test/?session_code=code-1#/embed/sharings/s%2F1/f1'
+    )
+    expect(platformFetch).toHaveBeenCalledWith('/auth/session_code', {
+      method: 'POST'
+    })
   })
 
   it.each([
