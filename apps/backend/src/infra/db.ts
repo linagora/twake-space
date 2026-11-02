@@ -3,9 +3,16 @@ import { timestamp } from 'drizzle-orm/pg-core'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
+import { z } from 'zod'
 
 export const timestamptz = (name: string) =>
   timestamp(name, { withTimezone: true })
+
+// Postgres can neither store nor compare a NUL in text, and a lone surrogate
+// is not UTF-8.
+export const storableText = z
+  .string()
+  .refine(value => value.isWellFormed() && !value.includes('\u0000'))
 
 function connect(url: string) {
   const sql = postgres(url, { onnotice: () => undefined })

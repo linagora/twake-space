@@ -11,7 +11,7 @@ import {
 } from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import type { Db, Tx } from '../../infra/db.ts'
+import { storableText, type Db, type Tx } from '../../infra/db.ts'
 import type { HttpServer } from '../../infra/http.ts'
 import type { Authorize } from '../auth/index.ts'
 import type { Caller } from '../auth/routes.ts'
@@ -53,8 +53,6 @@ type PostKind = (typeof feedPostKind.enumValues)[number]
 
 const CLOSING: PostKind[] = ['poll', 'yes_no', 'approval', 'feedback']
 
-// Postgres can neither store nor compare a NUL in text.
-const storableText = z.string().refine(value => !value.includes('\u0000'))
 const storableTime = z.iso
   .datetime({ offset: true })
   .transform(time => new Date(time))
