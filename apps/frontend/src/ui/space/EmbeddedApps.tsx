@@ -371,7 +371,7 @@ export function EmbeddedApps(): ReactElement | null {
           >
             <SignedInFrame
               key={frame.key}
-              sessionCode={EMBEDDED_APPS[app].sessionCode ?? false}
+              sessionCode={EMBEDDED_APPS[app].sessionCode}
               app={app}
               appUrl={url}
               embedPath={EMBEDDED_APPS[app].embedPath(frame.resourceId)}
@@ -427,11 +427,11 @@ export function EmbeddedApps(): ReactElement | null {
 // The frame of an app, once its `src` has the session code it opens with:
 // a code goes once, so each frame mints its own.
 function SignedInFrame({
-  sessionCode,
+  sessionCode = false,
   src,
   ...props
 }: ComponentProps<typeof EmbeddedAppFrame> & {
-  sessionCode: boolean
+  sessionCode?: boolean | undefined
 }): ReactElement | null {
   const { sdk } = useSession()
   const [signedIn, setSignedIn] = useState<string | null>(null)
