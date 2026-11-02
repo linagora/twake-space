@@ -296,6 +296,73 @@ describe('reconcileOrganization', () => {
       { userId: BOB, role: 'viewer' }
     ])
   })
+
+  it('skips a member whose role is unknown, and still repairs the space', async () => {
+    const { directory } = ldapRest([
+      {
+        id: DESIGN,
+        name: 'Design team',
+        members: [
+          { ...alice, role: 'admin' },
+          { ...carol, role: 'owner' as never }
+        ],
+        groups: []
+      }
+    ])
+
+    await reconcileOrganization(testDb.db, directory, log, 'org-1')
+
+    expect(await spaceNames()).toEqual(['Design team'])
+    expect(await membersOf(DESIGN)).toEqual([{ userId: ALICE, role: 'admin' }])
+  })
+
+  it('keeps a member whose role ldap-rest now lists as unknown', async () => {
+    const { directory } = ldapRest([
+      {
+        id: DESIGN,
+        name: 'Design',
+        members: [
+          { ...alice, role: 'admin' },
+          { ...bob, role: 'owner' as never }
+        ],
+        groups: []
+      }
+    ])
+
+    await reconcileOrganization(testDb.db, directory, log, 'org-1')
+
+    expect(await membersOf(DESIGN)).toEqual([
+      { userId: ALICE, role: 'admin' },
+      { userId: BOB, role: 'viewer' }
+    ])
+  })
+
+  it('keeps a group link whose role is unknown, and skips a new one', async () => {
+    const { directory } = ldapRest([
+      {
+        id: DESIGN,
+        name: 'Design team',
+        members: [
+          { ...alice, role: 'admin' },
+          { ...bob, role: 'viewer' }
+        ],
+        groups: [
+          { id: OLD_GROUP, name: 'Old', role: 'owner' as never },
+          { id: DESIGNERS, name: 'Designers', role: 'owner' as never }
+        ]
+      }
+    ])
+
+    await reconcileOrganization(testDb.db, directory, log, 'org-1')
+
+    expect(await spaceNames()).toEqual(['Design team'])
+    expect(
+      await testDb.db
+        .select({ groupId: spaceGroups.groupId, role: spaceGroups.role })
+        .from(spaceGroups)
+        .where(eq(spaceGroups.spaceId, DESIGN))
+    ).toEqual([{ groupId: OLD_GROUP, role: 'viewer' }])
+  })
 })
 
 describe('reconcileDue', () => {
