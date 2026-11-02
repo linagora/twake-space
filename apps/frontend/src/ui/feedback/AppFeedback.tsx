@@ -4,8 +4,12 @@ import { useCallback, useEffect, type ReactElement } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { FeedbackService } from '@/application/feedback'
+import { useNarrowScreen } from '@/ds/AppFrame'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
+
+// Room for a page's floating button below lg (PhoneFab): 56px and its edge.
+const PHONE_FAB_ROOM = 72
 
 // The draggable feedback button, when feedback is on.
 export function AppFeedback(): ReactElement | null {
@@ -20,6 +24,7 @@ export function AppFeedback(): ReactElement | null {
 
 function Button({ feedback }: { feedback: FeedbackService }): ReactElement {
   const { lang } = useI18n()
+  const narrow = useNarrowScreen()
   const { colorScheme = 'system' } = useColorScheme()
   useEffect(() => {
     feedback.setColorScheme(colorScheme)
@@ -29,5 +34,11 @@ function Button({ feedback }: { feedback: FeedbackService }): ReactElement {
     [feedback, lang]
   )
 
-  return <FeedbackButton attach={attach} storageKey="twake-space" />
+  return (
+    <FeedbackButton
+      attach={attach}
+      storageKey="twake-space"
+      bottomOffset={narrow ? PHONE_FAB_ROOM : 0}
+    />
+  )
 }

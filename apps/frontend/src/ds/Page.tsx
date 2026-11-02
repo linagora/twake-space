@@ -2,8 +2,10 @@ import {
   Box,
   Divider,
   Empty,
+  Fab,
   ListSkeleton,
   Stack,
+  Tooltip,
   Typography,
   type EmptyProps
 } from '@linagora/twake-mui'
@@ -58,6 +60,40 @@ export function Page({
         </Box>
       )}
       {children}
+    </Box>
+  )
+}
+
+// The page's main action, floating in the bottom right corner of narrow
+// screens. Its room at the end of the page keeps the last content clear.
+export function PhoneFab({
+  label,
+  onClick,
+  children
+}: {
+  label: string
+  onClick: () => void
+  children: ReactNode
+}): ReactElement {
+  return (
+    <Box
+      sx={{ display: { xs: 'block', lg: 'none' }, flex: 'none', height: 72 }}
+    >
+      <Tooltip title={label}>
+        <Fab
+          color="primary"
+          aria-label={label}
+          onClick={onClick}
+          sx={{
+            position: 'fixed',
+            right: 16,
+            bottom: 16,
+            zIndex: 'speedDial'
+          }}
+        >
+          {children}
+        </Fab>
+      </Tooltip>
     </Box>
   )
 }
