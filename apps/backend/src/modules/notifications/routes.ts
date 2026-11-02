@@ -59,7 +59,9 @@ export function registerNotificationRoutes(
   // whose username or e-mail gives its localpart, on the organization's homeserver.
   async function userOfMatrixId(organizationId: string, matrixUserId: string) {
     const at = matrixUserId.indexOf(':')
-    const name = matrixUserId.slice(1, at).toLowerCase()
+    // Lowered by PostgreSQL like the stored names: JavaScript lowers a final Σ
+    // to ς where PostgreSQL gives σ.
+    const name = sql`lower(${matrixUserId.slice(1, at)})`
     const members = await db
       .selectDistinct({ userId: spaceMembers.userId })
       .from(spaceMembers)
