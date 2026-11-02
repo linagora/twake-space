@@ -3,7 +3,7 @@ import {
   ConflictError,
   NotFoundError
 } from '@linagora/ldap-rest-client'
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, isNull } from 'drizzle-orm'
 import { pino } from 'pino'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { lastChanges } from '../../events/schema.ts'
@@ -12,6 +12,7 @@ import type { Person, SpaceDirectory } from '../../infra/ldap-rest.ts'
 import { createTestDb, type TestDb } from '../../infra/testing.ts'
 import { aTokenCaller, anIdentity, fakeAuth } from '../auth/testing.ts'
 import type { TokenCaller } from '../tokens/authenticator.ts'
+import { apiTokens, apiTokenSpaces, tokenAudit } from '../tokens/schema.ts'
 import { spacePlatformRoutes } from './events.ts'
 import {
   organizationMembers,
@@ -62,6 +63,9 @@ afterAll(() => testDb.drop())
 beforeEach(async () => {
   const { db } = testDb
   for (const table of [
+    tokenAudit,
+    apiTokenSpaces,
+    apiTokens,
     spaceMembers,
     spaceGroups,
     spaceSettings,
@@ -511,6 +515,38 @@ describe('space writes', () => {
     ])
     expect(afterChange).toContainEqual({ userId: BOB, role: 'editor' })
     expect(await members()).toEqual([{ userId: ALICE, role: 'admin' }])
+  })
+
+  it("revokes the removed member's tokens that covered only this space", async () => {
+    const tokens = await testDb.db
+      .insert(apiTokens)
+      .values(
+        [ALICE, BOB].map(accountId => ({
+          organizationId: 'org-1',
+          ownerKind: 'account' as const,
+          accountId,
+          name: accountId,
+          tokenHash: accountId,
+          scopes: ['space:read' as const],
+          createdBy: 'test'
+        }))
+      )
+      .returning({ id: apiTokens.id })
+    await testDb.db
+      .insert(apiTokenSpaces)
+      .values(tokens.map(({ id }) => ({ tokenId: id, spaceId: DESIGN })))
+
+    await setUp(ldapRest().directory)(
+      'DELETE',
+      `/spaces/${DESIGN}/members/${BOB}`
+    )
+
+    expect(
+      await testDb.db
+        .select({ accountId: apiTokens.accountId })
+        .from(apiTokens)
+        .where(isNull(apiTokens.revokedAt))
+    ).toEqual([{ accountId: ALICE }])
   })
 
   it.each(['editor', 'admin'] as const)(

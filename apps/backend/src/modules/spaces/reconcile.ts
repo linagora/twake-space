@@ -185,7 +185,8 @@ async function reconcileSpace(
         log,
         id,
         at,
-        gone.map(m => ({ uuid: m.userId }))
+        gone.map(m => ({ uuid: m.userId })),
+        ACTOR
       )
     }
 

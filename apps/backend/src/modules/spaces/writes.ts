@@ -559,7 +559,14 @@ export function registerSpaceWriteRoutes(
             ? upsertMembers(tx, request.log, id, at, [
                 { ...member, role: held }
               ])
-            : removeSpaceMembers(tx, request.log, id, at, [{ uuid: userId }])
+            : removeSpaceMembers(
+                tx,
+                request.log,
+                id,
+                at,
+                [{ uuid: userId }],
+                actor ?? `token:${orgId}`
+              )
         )
       })
       if (held) throw new Refusal(409, 'member_through_group')
