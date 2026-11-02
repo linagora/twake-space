@@ -51,7 +51,7 @@ import {
 
 type PostKind = (typeof feedPostKind.enumValues)[number]
 
-const CLOSING: PostKind[] = ['poll', 'yes_no', 'approval', 'feedback']
+const CLOSING: PostKind[] = ['poll', 'yes_no', 'approval', 'feedback', 'form']
 
 const storableTime = z.iso
   .datetime({ offset: true })
@@ -92,21 +92,26 @@ const postBody = z.object({
   mentions: z.array(z.uuid()).max(50).default([])
 })
 const deadline = storableTime.refine(t => t > new Date()).optional()
+const label = storableText.trim().min(1).max(200)
+const choices = z
+  .array(label)
+  .min(2)
+  .max(10)
+  .refine(
+    options =>
+      new Set(options.map(o => o.toLowerCase())).size === options.length
+  )
+const formField = z.discriminatedUnion('kind', [
+  z.strictObject({ label, kind: z.literal('text') }),
+  z.strictObject({ label, kind: z.literal('choice'), options: choices })
+])
 const newPostBody = postBody
   .extend({
     poll: z
       .union([
         z.object({
           kind: z.literal('choice').default('choice'),
-          options: z
-            .array(storableText.trim().min(1).max(200))
-            .min(2)
-            .max(10)
-            .refine(
-              options =>
-                new Set(options.map(o => o.toLowerCase())).size ===
-                options.length
-            ),
+          options: choices,
           multiple: z.boolean().default(false),
           anonymous: z.boolean().default(false),
           closesAt: deadline
@@ -143,11 +148,17 @@ const newPostBody = postBody
         z.literal(true),
         z.strictObject({ anonymous: z.boolean().default(false) })
       ])
+      .optional(),
+    form: z
+      .strictObject({
+        fields: z.array(formField).min(1).max(10),
+        anonymous: z.boolean().default(false)
+      })
       .optional()
   })
   .refine(
-    ({ poll, approval, announcement, feedback }) =>
-      [poll, approval, announcement, feedback].filter(Boolean).length <= 1
+    ({ poll, approval, announcement, feedback, form }) =>
+      [poll, approval, announcement, feedback, form].filter(Boolean).length <= 1
   )
 const voteBody = z.object({ option: z.int().min(0) })
 // Takes back the vote only while it is for that option, so a stale view
@@ -166,6 +177,13 @@ const answerBody = z
     text: storableText.trim().max(2000).default('')
   })
   .refine(({ rating, text }) => rating !== undefined || text !== '')
+// Checked against the form's fields once it is read.
+const responseBody = z.object({
+  answers: z
+    .array(z.union([storableText.trim().min(1).max(2000), z.int().min(0)]))
+    .min(1)
+    .max(10)
+})
 const decisionBody = z.object({
   decision: z.enum(DECISIONS),
   comment: storableText.trim().max(1000).optional()
@@ -202,10 +220,15 @@ function mentioner(caller: Caller, mentions: string[]): string | null {
   return caller.userId
 }
 
-// A token reads for its account, but the feedback answers go to the person.
+// A token reads for its account, but the feedback answers and the form
+// responses go to the person.
 const readBy = (caller: Caller) => (item: FeedItem) =>
-  caller.kind === 'token' && item.kind === 'post' && item.feedback
-    ? serialize({ ...item, feedback: { ...item.feedback, answers: null } })
+  caller.kind === 'token' && item.kind === 'post'
+    ? serialize({
+        ...item,
+        feedback: item.feedback && { ...item.feedback, answers: null },
+        form: item.form && { ...item.form, responses: null }
+      })
     : serialize(item)
 
 const serialize = (item: FeedItem) => ({
@@ -239,6 +262,15 @@ const serialize = (item: FeedItem) => ({
           answeredAt: answer.answeredAt.toISOString()
         })) ?? null,
       closedAt: item.feedback.closedAt?.toISOString() ?? null
+    },
+    form: item.form && {
+      ...item.form,
+      responses:
+        item.form.responses?.map(response => ({
+          ...response,
+          answeredAt: response.answeredAt.toISOString()
+        })) ?? null,
+      closedAt: item.form.closedAt?.toISOString() ?? null
     }
   })
 })
@@ -328,6 +360,7 @@ export function registerFeedRoutes(
         options: feedPosts.pollOptions,
         multiple: feedPosts.pollMultiple,
         approverIds: feedPosts.approverIds,
+        formFields: feedPosts.formFields,
         closedAt: feedPosts.pollClosedAt,
         closesAt: feedPosts.pollClosesAt
       })
@@ -540,7 +573,7 @@ export function registerFeedRoutes(
         const { caller, space } = await reach(request)
         const spaceId = space.id
         if (space.role === 'viewer') throw new Refusal(403, 'cannot_post')
-        const { body, poll, approval, announcement, feedback, mentions } =
+        const { body, poll, approval, announcement, feedback, form, mentions } =
           parse(newPostBody, request.body)
         const speaker = mentioner(caller, mentions)
         // The approvers hear from a person, as a mention does.
@@ -551,17 +584,22 @@ export function registerFeedRoutes(
         if (feedback && caller.kind !== 'session') {
           throw new Refusal(403, 'cannot_ask_feedback')
         }
+        if (form && caller.kind !== 'session') {
+          throw new Refusal(403, 'cannot_ask_form')
+        }
         const kind: PostKind = approval
           ? 'approval'
           : announcement
             ? 'announcement'
             : feedback
               ? 'feedback'
-              : poll?.kind === 'yes_no'
-                ? 'yes_no'
-                : poll
-                  ? 'poll'
-                  : 'text'
+              : form
+                ? 'form'
+                : poll?.kind === 'yes_no'
+                  ? 'yes_no'
+                  : poll
+                    ? 'poll'
+                    : 'text'
         const time = new Date()
         const item = await db.transaction(async tx => {
           if (approval && speaker) {
@@ -584,6 +622,10 @@ export function registerFeedRoutes(
               }),
               ...(typeof feedback === 'object' && {
                 pollAnonymous: feedback.anonymous
+              }),
+              ...(form && {
+                formFields: form.fields,
+                pollAnonymous: form.anonymous
               }),
               pollClosesAt: poll?.closesAt ?? null,
               approverIds: approval?.approvers ?? null,
@@ -634,6 +676,7 @@ export function registerFeedRoutes(
           if (kind === 'feedback') {
             throw new Refusal(409, 'cannot_edit_feedback')
           }
+          if (kind === 'form') throw new Refusal(409, 'cannot_edit_form')
           const { body, mentions } = parse(postBody, request.body)
           const speaker = mentioner(caller, mentions)
           const editedAt = new Date()
@@ -782,7 +825,7 @@ export function registerFeedRoutes(
         })
         if (
           item?.kind !== 'post' ||
-          (!item.poll && !item.approval && !item.feedback)
+          (!item.poll && !item.approval && !item.feedback && !item.form)
         ) {
           throw new Refusal(404, 'not_found')
         }
@@ -857,6 +900,48 @@ export function registerFeedRoutes(
             })
             .returning({ postId: feedPollVotes.postId })
           if (answered) await tellFeed(tx, spaceId, postId, 'changed')
+        })
+        return await reply.code(204).send()
+      } catch (error) {
+        return refused(error, reply)
+      }
+    }
+  )
+
+  // Responding again replaces the response.
+  app.put(
+    '/spaces/:spaceId/feed/posts/:itemId/response',
+    { preHandler, config: { limit: 'feedAnswer' } },
+    async (request, reply) => {
+      try {
+        const { spaceId, userId } = await memberOf(request)
+        const postId = itemOf(request)
+        const { answers } = parse(responseBody, request.body)
+        await db.transaction(async tx => {
+          const post = await openPoll(tx, spaceId, postId, ['form'])
+          if (post.authorId === userId) {
+            throw new Refusal(403, 'cannot_answer_own')
+          }
+          const fields = post.formFields ?? []
+          const fits =
+            answers.length === fields.length &&
+            fields.every((field, index) => {
+              const answer = answers[index]
+              return field.kind === 'text'
+                ? typeof answer === 'string'
+                : typeof answer === 'number' && answer < field.options.length
+            })
+          if (!fits) throw new Refusal(400, 'invalid_request')
+          const [responded] = await tx
+            .insert(feedPollVotes)
+            .values({ postId, userId, option: 0, answers })
+            .onConflictDoUpdate({
+              target: [feedPollVotes.postId, feedPollVotes.userId],
+              set: { answers, createdAt: new Date() },
+              setWhere: sql`${feedPollVotes.answers} is distinct from ${JSON.stringify(answers)}::jsonb`
+            })
+            .returning({ postId: feedPollVotes.postId })
+          if (responded) await tellFeed(tx, spaceId, postId, 'changed')
         })
         return await reply.code(204).send()
       } catch (error) {

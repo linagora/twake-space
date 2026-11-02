@@ -25,7 +25,9 @@ import {
   feedPollVotes,
   feedPosts,
   type Actor,
-  type feedCategory
+  type feedCategory,
+  type FormAnswer,
+  type FormField
 } from './schema.ts'
 
 export type Category = (typeof feedCategory.enumValues)[number]
@@ -110,6 +112,7 @@ export type FeedItem =
       approval: Approval | null
       announcement: Announcement | null
       feedback: Feedback | null
+      form: Form | null
     })
 
 interface Announcement {
@@ -169,6 +172,24 @@ interface Feedback {
         name: string | null
         rating: number | null
         text: string
+        answeredAt: Date
+      }[]
+    | null
+  closedAt: Date | null
+}
+
+// Like a feedback request: everyone sees how many responded and their own
+// response, only the author reads the responses.
+interface Form {
+  fields: { label: string; kind: FormField['kind']; options: string[] | null }[]
+  anonymous: boolean
+  count: number
+  mine: FormAnswer[] | null
+  responses:
+    | {
+        userId: string | null
+        name: string | null
+        answers: FormAnswer[]
         answeredAt: Date
       }[]
     | null
@@ -421,6 +442,7 @@ async function loadItems(
             userId: feedPollVotes.userId,
             option: feedPollVotes.option,
             comment: feedPollVotes.comment,
+            answers: feedPollVotes.answers,
             createdAt: feedPollVotes.createdAt
           })
           .from(feedPollVotes)
@@ -439,7 +461,9 @@ async function loadItems(
           .orderBy(asc(feedPollChoices.createdAt), asc(feedPollChoices.userId))
   ])
   const asked = (post: (typeof posts)[number]['post']) =>
-    post.kind === 'feedback' && viewer !== null && post.authorId === viewer
+    (post.kind === 'feedback' || post.kind === 'form') &&
+    viewer !== null &&
+    post.authorId === viewer
   const askedIds = new Set(
     posts
       .filter(p => asked(p.post) && !p.post.pollAnonymous)
@@ -584,6 +608,30 @@ async function loadItems(
       closedAt: post.pollClosedAt
     }
   }
+  const formOf = (post: Post): Form | null => {
+    if (post.kind !== 'form' || !post.formFields) return null
+    const responses = votesOf.get(post.id) ?? []
+    const mine = responses.find(r => r.userId === viewer)
+    return {
+      fields: post.formFields.map(field => ({
+        label: field.label,
+        kind: field.kind,
+        options: field.kind === 'choice' ? field.options : null
+      })),
+      anonymous: post.pollAnonymous,
+      count: responses.length,
+      mine: mine ? (mine.answers ?? []) : null,
+      responses: asked(post)
+        ? responses.map(r => ({
+            userId: post.pollAnonymous ? null : r.userId,
+            name: post.pollAnonymous ? null : (names.get(r.userId) ?? null),
+            answers: r.answers ?? [],
+            answeredAt: r.createdAt
+          }))
+        : null,
+      closedAt: post.pollClosedAt
+    }
+  }
   for (const { post, tokenName } of posts) {
     items.set(post.id, {
       id: post.id,
@@ -618,6 +666,7 @@ async function loadItems(
             }
           : null,
       feedback: feedbackOf(post),
+      form: formOf(post),
       reactions: reactionsOf(post.id)
     })
   }

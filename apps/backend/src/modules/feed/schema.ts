@@ -97,8 +97,16 @@ export const feedPostKind = pgEnum('feed_post_kind', [
   'yes_no',
   'approval',
   'announcement',
-  'feedback'
+  'feedback',
+  'form'
 ])
+
+// A choice field's answer is the index of its option.
+export type FormField =
+  | { label: string; kind: 'text' }
+  | { label: string; kind: 'choice'; options: string[] }
+
+export type FormAnswer = string | number
 
 export const feedPosts = pgTable(
   'feed_posts',
@@ -111,7 +119,7 @@ export const feedPosts = pgTable(
     authorTokenId: uuid('author_token_id').references(() => apiTokens.id),
     kind: feedPostKind().notNull().default('text'),
     // On a poll, a yes/no question, an approval or a feedback request, its
-    // question.
+    // question; on a form, its title.
     body: text().notNull(),
     // Written from a JS Date, at the milliseconds the feed cursor carries.
     time: timestamptz('time').notNull(),
@@ -122,7 +130,10 @@ export const feedPosts = pgTable(
     pollMultiple: boolean('poll_multiple').notNull().default(false),
     // Its votes count, but no one sees who cast them.
     pollAnonymous: boolean('poll_anonymous').notNull().default(false),
-    // Closes a poll, a yes/no question, an approval or a feedback request.
+    // Set on a form only.
+    formFields: jsonb('form_fields').$type<FormField[]>(),
+    // Closes a poll, a yes/no question, an approval, a feedback request or a
+    // form.
     pollClosedAt: timestamptz('poll_closed_at'),
     // A poll's deadline: past it, the poll is closed without anyone closing it.
     pollClosesAt: timestamptz('poll_closes_at'),
@@ -159,6 +170,8 @@ export const feedPollVotes = pgTable(
     option: integer().notNull(),
     // An approver's, with their decision, or a member's feedback answer.
     comment: text(),
+    // A member's response to a form, one answer per field; its option is 0.
+    answers: jsonb().$type<FormAnswer[]>(),
     createdAt: timestamptz('created_at').notNull().defaultNow()
   },
   table => [primaryKey({ columns: [table.postId, table.userId] })]

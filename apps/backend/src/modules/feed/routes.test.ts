@@ -279,6 +279,7 @@ describe('GET /spaces/:spaceId/feed', () => {
           approval: null,
           announcement: null,
           feedback: null,
+          form: null,
           reactions: []
         },
         {
@@ -2381,6 +2382,191 @@ describe('feedback requests', () => {
 
     expect(own.json()).toEqual({ error: 'cannot_answer_own' })
     expect(edited.json()).toEqual({ error: 'cannot_edit_feedback' })
+  })
+})
+
+describe('forms', () => {
+  interface Form {
+    fields: { label: string; kind: string; options: string[] | null }[]
+    anonymous: boolean
+    count: number
+    mine: (string | number)[] | null
+    responses:
+      | {
+          userId: string | null
+          name: string | null
+          answers: (string | number)[]
+        }[]
+      | null
+    closedAt: string | null
+  }
+  const FIELDS = [
+    { label: 'Your name on the badge', kind: 'text' },
+    { label: 'Lunch', kind: 'choice', options: ['Meat', 'Veggie'] }
+  ]
+  const publish = (send: ReturnType<typeof setUp>, form: object) =>
+    send('POST', `/spaces/${DESIGN}/feed/posts`, 'alice', {
+      body: 'Offsite sign-up',
+      form
+    })
+  const respond = (
+    send: ReturnType<typeof setUp>,
+    id: string,
+    token: string,
+    answers: unknown[]
+  ) =>
+    send('PUT', `/spaces/${DESIGN}/feed/posts/${id}/response`, token, {
+      answers
+    })
+  const formOf = async (
+    send: ReturnType<typeof setUp>,
+    id: string,
+    token: string
+  ) =>
+    (await send('GET', `/spaces/${DESIGN}/feed/items/${id}`, token)).json<{
+      form: Form
+    }>().form
+
+  it('publishes a form, whose responses only its author reads', async () => {
+    const send = setUp()
+    const created = await publish(send, { fields: FIELDS })
+    const id = created.json<Item>().id
+
+    expect(created.statusCode).toBe(201)
+    expect(created.json()).toMatchObject({
+      body: 'Offsite sign-up',
+      form: {
+        fields: [
+          { label: 'Your name on the badge', kind: 'text', options: null },
+          { label: 'Lunch', kind: 'choice', options: ['Meat', 'Veggie'] }
+        ],
+        anonymous: false,
+        count: 0,
+        mine: null,
+        responses: [],
+        closedAt: null
+      }
+    })
+    expect((await respond(send, id, 'bob', ['Bobby', 1])).statusCode).toBe(204)
+    await respond(send, id, 'carol', ['Carol', 0])
+    await respond(send, id, 'bob', ['Bob', 1])
+
+    expect(await formOf(send, id, 'alice')).toMatchObject({
+      count: 2,
+      responses: [
+        { userId: CAROL, name: 'carol', answers: ['Carol', 0] },
+        { userId: BOB, name: 'bob', answers: ['Bob', 1] }
+      ]
+    })
+    expect(await formOf(send, id, 'carol')).toMatchObject({
+      count: 2,
+      mine: ['Carol', 0],
+      responses: null
+    })
+  })
+
+  it('refuses no field, more than 10, a choice with fewer than 2 options, and a NUL', async () => {
+    const send = setUp()
+    const text = { label: 'Why?', kind: 'text' }
+
+    for (const form of [
+      { fields: [] },
+      { fields: Array.from({ length: 11 }, () => text) },
+      { fields: [{ label: 'Lunch', kind: 'choice', options: ['Meat'] }] },
+      { fields: [{ label: 'Lunch', kind: 'choice', options: ['A', 'a'] }] },
+      { fields: [{ label: 'a\u0000b', kind: 'text' }] },
+      { fields: [{ label: 'When?', kind: 'date' }] }
+    ]) {
+      expect((await publish(send, form)).statusCode).toBe(400)
+    }
+    const both = await send('POST', `/spaces/${DESIGN}/feed/posts`, 'alice', {
+      body: 'Sign up',
+      form: { fields: [text] },
+      feedback: true
+    })
+    expect(both.statusCode).toBe(400)
+  })
+
+  it('takes a response with an answer to every field, until closed', async () => {
+    const send = setUp()
+    const id = (await publish(send, { fields: FIELDS })).json<Item>().id
+
+    for (const answers of [
+      ['Bob'],
+      ['Bob', 2],
+      ['Bob', 'Meat'],
+      ['  ', 0],
+      [1, 0],
+      ['Bob', 0, 'extra']
+    ]) {
+      expect((await respond(send, id, 'bob', answers)).statusCode).toBe(400)
+    }
+    await send('POST', `/spaces/${DESIGN}/feed/posts/${id}/close`)
+
+    expect((await respond(send, id, 'bob', ['Bob', 0])).statusCode).toBe(409)
+    expect(await formOf(send, id, 'alice')).toMatchObject({
+      count: 0,
+      closedAt: expect.any(String) as string
+    })
+  })
+
+  it('takes no response from its author, and no edit', async () => {
+    const send = setUp()
+    const id = (await publish(send, { fields: FIELDS })).json<Item>().id
+
+    const own = await respond(send, id, 'alice', ['Alice', 0])
+    const edited = await send(
+      'PATCH',
+      `/spaces/${DESIGN}/feed/posts/${id}`,
+      'alice',
+      { body: 'Offsite', mentions: [] }
+    )
+
+    expect(own.json()).toEqual({ error: 'cannot_answer_own' })
+    expect(edited.json()).toEqual({ error: 'cannot_edit_form' })
+  })
+
+  it('takes no response on a post that is not a form', async () => {
+    const send = setUp()
+    const id = await aPost('Hello', '2026-10-05T10:00:00Z')
+
+    expect((await respond(send, id, 'bob', ['Hi'])).statusCode).toBe(404)
+  })
+
+  it('hides who responded to an anonymous form, even from its author', async () => {
+    const send = setUp()
+    const id = (
+      await publish(send, { fields: FIELDS, anonymous: true })
+    ).json<Item>().id
+    await respond(send, id, 'bob', ['Bob', 1])
+
+    expect(await formOf(send, id, 'alice')).toMatchObject({
+      anonymous: true,
+      responses: [{ userId: null, name: null, answers: ['Bob', 1] }]
+    })
+  })
+
+  it("cannot be published by a token, nor read through its author's tokens", async () => {
+    const send = setUp()
+    const id = (await publish(send, { fields: FIELDS })).json<Item>().id
+    await respond(send, id, 'bob', ['Bob', 1])
+    await aToken()
+    const bot = setUp(
+      aTokenCaller({ userId: ALICE, scopes: ['feed:read', 'feed:write'] })
+    )
+
+    const published = await bot(
+      'POST',
+      `/spaces/${DESIGN}/feed/posts`,
+      'tws_bot',
+      { body: 'Sign up', form: { fields: FIELDS } }
+    )
+
+    expect(published.json()).toEqual({ error: 'cannot_ask_form' })
+    expect(await formOf(bot, id, 'tws_bot')).toMatchObject({
+      count: 1,
+      responses: null
+    })
   })
 })
 
