@@ -483,10 +483,21 @@ function toRsvp(value: unknown): EventState['rsvp'] {
   }
 }
 
-function toRange(value: unknown): TimeRange | null {
+// Apps send the state unchecked: a time the panel cannot format would throw
+// while rendering, so keep only those that read as a date.
+function isTime(value: unknown, allDay: boolean): value is string {
+  if (typeof value !== 'string') return false
+  if (!allDay) return !Number.isNaN(Date.parse(value))
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    !Number.isNaN(Date.parse(`${value}T00:00:00`))
+  )
+}
+
+function toRange(value: unknown, allDay: boolean): TimeRange | null {
   return isRecord(value) &&
-    typeof value.start === 'string' &&
-    typeof value.end === 'string'
+    isTime(value.start, allDay) &&
+    isTime(value.end, allDay)
     ? { start: value.start, end: value.end }
     : null
 }
@@ -494,15 +505,16 @@ function toRange(value: unknown): TimeRange | null {
 export function toEventState(
   state: Record<string, unknown>
 ): EventState | null {
-  const range = toRange(state)
+  const allDay = state.allDay === true
+  const range = toRange(state, allDay)
   if (!range) return null
-  const proposed = toRange(state.proposed)
+  const proposed = toRange(state.proposed, allDay)
   const by = isRecord(state.proposed) ? state.proposed.by : null
   return {
     ...range,
-    allDay: state.allDay === true,
+    allDay,
     location: typeof state.location === 'string' ? state.location : null,
-    previous: toRange(state.previous),
+    previous: toRange(state.previous, allDay),
     proposed: proposed && typeof by === 'string' ? { ...proposed, by } : null,
     rsvp: toRsvp(state.rsvp),
     room:

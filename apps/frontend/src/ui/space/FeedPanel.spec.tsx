@@ -216,6 +216,39 @@ describe('FeedPanel', () => {
     ).toHaveAttribute('href', '/spaces/a1/calendar/events/e-1')
   })
 
+  it.each([
+    { start: '1900-00-00', end: '1900-00-00', allDay: true },
+    {
+      start: '2026-10-08T09:00:00Z',
+      end: '2026-10-08T10:00:00Z',
+      allDay: true
+    },
+    { start: 'tomorrow', end: 'tomorrow', allDay: false }
+  ])('shows a calendar card whose times do not parse (%o)', async state => {
+    renderFeed([{ ...event, state }])
+
+    expect(await screen.findByText('Roadmap review')).toBeInTheDocument()
+  })
+
+  it('shows the time of an event whose previous time does not parse', async () => {
+    renderFeed([
+      {
+        ...event,
+        state: {
+          start: '2026-10-09T09:00:00Z',
+          end: '2026-10-09T10:00:00Z',
+          previous: { start: '+275760-00-00', end: '1900-00-00' }
+        }
+      }
+    ])
+
+    const eventCard = await screen.findByRole('article', {
+      name: 'Someone: Roadmap review'
+    })
+    expect(within(eventCard).getByText(/1 hour/)).toBeInTheDocument()
+    expect(within(eventCard).queryByText(/Moved from/)).not.toBeInTheDocument()
+  })
+
   describe('a Drive file', () => {
     const driveSpace: Space = {
       ...roadmap,
