@@ -32,18 +32,36 @@ export function cachedPreviews(fetch: Fetch, now = Date.now): Preview {
     string,
     { until: number; preview: Promise<LinkPreview | null> }
   >()
+  // Wrapped so awaiting the limiter's answer does not also await the fetch.
+  const asking = new Map<
+    string,
+    Promise<{ preview: Promise<LinkPreview | null> } | null>
+  >()
   return async (url, mayFetch) => {
     const key = url.href
     const cached = () => {
       const hit = cache.get(key)
       return hit && hit.until > now() ? hit.preview : null
     }
-    const hit = cached()
-    if (hit) return hit
-    if (!(await mayFetch())) return 'limited'
-    // Another request may have started the fetch while this one waited.
-    const started = cached()
-    if (started) return started
+    for (;;) {
+      const hit = cached()
+      if (hit) return hit
+      const other = asking.get(key)
+      if (!other) break
+      // Share the fetch of the request already asking; only its refusal or
+      // failure sends this one to its own limiter.
+      const served = await other.catch(() => null)
+      if (served) return served.preview
+    }
+    const asked = mayFetch()
+      .then(allowed => (allowed ? { preview: start(key, url) } : null))
+      .finally(() => asking.delete(key))
+    asking.set(key, asked)
+    const started = await asked
+    return started ? started.preview : 'limited'
+  }
+
+  function start(key: string, url: URL) {
     cache.delete(key)
     const preview = fetch(url).catch(() => null)
     const entry = { until: now() + CACHED_MS, preview }

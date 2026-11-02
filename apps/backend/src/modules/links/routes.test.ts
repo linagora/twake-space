@@ -175,4 +175,66 @@ describe('cachedPreviews', () => {
     ).toBe('limited')
     expect(fetch).toHaveBeenCalledTimes(1)
   })
+
+  it('asks the limiter once for two requests missing the cache together', async () => {
+    let resolve: (preview: LinkPreview) => void = () => {}
+    const fetch = vi.fn(
+      () =>
+        new Promise<LinkPreview>(done => {
+          resolve = done
+        })
+    )
+    const preview = cachedPreviews(fetch)
+    const url = new URL('https://example.com/a')
+    const mayFetch = vi.fn(() => Promise.resolve(true))
+    const refused = vi.fn(() => Promise.resolve(false))
+
+    const first = preview(url, mayFetch)
+    const second = preview(url, mayFetch)
+    const third = preview(url, refused)
+    await vi.waitFor(() => {
+      expect(fetch).toHaveBeenCalled()
+    })
+    resolve(found)
+
+    expect(await Promise.all([first, second, third])).toEqual([
+      found,
+      found,
+      found
+    ])
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(mayFetch).toHaveBeenCalledTimes(1)
+    expect(refused).not.toHaveBeenCalled()
+  })
+
+  it('lets the next request ask its own limiter when the first is refused', async () => {
+    const fetch = vi.fn().mockResolvedValue(found)
+    const preview = cachedPreviews(fetch)
+    const url = new URL('https://example.com/a')
+    const refused = vi.fn(() => Promise.resolve(false))
+    const allowed = vi.fn(() => Promise.resolve(true))
+
+    const first = preview(url, refused)
+    const second = preview(url, allowed)
+
+    expect(await Promise.all([first, second])).toEqual(['limited', found])
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(allowed).toHaveBeenCalledTimes(1)
+  })
+
+  it('lets the next request ask its own limiter when the first limiter fails', async () => {
+    const fetch = vi.fn().mockResolvedValue(found)
+    const preview = cachedPreviews(fetch)
+    const url = new URL('https://example.com/a')
+    const failing = vi.fn(() => Promise.reject(new Error('down')))
+    const allowed = vi.fn(() => Promise.resolve(true))
+
+    const first = preview(url, failing)
+    const second = preview(url, allowed)
+
+    await expect(first).rejects.toThrow('down')
+    expect(await second).toEqual(found)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(allowed).toHaveBeenCalledTimes(1)
+  })
 })
