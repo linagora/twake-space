@@ -13,6 +13,7 @@ import {
   upsertGroups,
   upsertMembers
 } from './events.ts'
+import { lockSpace } from './locks.ts'
 import {
   spaceGroups,
   spaceMembers,
@@ -119,8 +120,9 @@ async function reconcileSpace(
       'ldap-rest lists a space role the copy does not know, kept as is'
     )
   await db.transaction(async tx => {
+    await lockSpace(tx, organizationId, id)
     const [space] = await tx
-      .select({ name: spaces.name })
+      .select({ name: spaces.name, organizationId: spaces.organizationId })
       .from(spaces)
       .where(eq(spaces.spaceId, id))
     if (!space) {
@@ -139,6 +141,8 @@ async function reconcileSpace(
       )
       return
     }
+    if (space.organizationId !== organizationId)
+      throw new Error(`the copy holds the space for ${space.organizationId}`)
     if (space.name !== name) await renameSpace(tx, id, name, listedAt)
 
     const copied = await tx

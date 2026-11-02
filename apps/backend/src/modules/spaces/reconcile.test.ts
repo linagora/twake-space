@@ -413,6 +413,40 @@ describe('reconcileOrganization', () => {
         .where(eq(spaceGroups.spaceId, DESIGN))
     ).toEqual([{ groupId: OLD_GROUP, role: 'viewer' }])
   })
+
+  it("never touches another organization's space", async () => {
+    await testDb.db
+      .insert(spaces)
+      .values({ spaceId: SALES, organizationId: 'org-2', name: 'Elsewhere' })
+    await testDb.db
+      .insert(spaceMembers)
+      .values({ ...copyRow(bob), spaceId: SALES, role: 'admin' })
+    const { directory } = ldapRest([
+      {
+        id: SALES,
+        name: 'Hijacked',
+        members: [{ ...carol, role: 'admin' }],
+        groups: [{ id: DESIGNERS, name: 'Designers', role: 'editor' }]
+      }
+    ])
+
+    await expect(
+      reconcileOrganization(testDb.db, directory, log, 'org-1')
+    ).rejects.toThrow('1 spaces failed to reconcile')
+
+    const [sales] = await testDb.db
+      .select()
+      .from(spaces)
+      .where(eq(spaces.spaceId, SALES))
+    expect(sales).toMatchObject({ organizationId: 'org-2', name: 'Elsewhere' })
+    expect(await membersOf(SALES)).toEqual([{ userId: BOB, role: 'admin' }])
+    expect(
+      await testDb.db
+        .select()
+        .from(spaceGroups)
+        .where(eq(spaceGroups.spaceId, SALES))
+    ).toEqual([])
+  })
 })
 
 describe('reconcileDue', () => {
