@@ -62,6 +62,7 @@ import {
   CampaignIcon,
   ChevronDownIcon,
   EmojiIcon,
+  FormIcon,
   MoreVertIcon,
   SidePanelIcon,
   ThumbDownIcon,
@@ -2251,6 +2252,346 @@ function FeedbackComments({
             )}
             {item.text}
           </Typography>
+        ))}
+      </Box>
+      {foldable && (
+        <Box>
+          <Button
+            variant="text"
+            size="small"
+            aria-expanded={open}
+            aria-controls={listId}
+            endIcon={<Icon icon={ChevronDownIcon} size={16} />}
+            sx={{ '& .MuiButton-endIcon': open ? { rotate: '180deg' } : {} }}
+            onClick={() => {
+              setOpen(current => !current)
+            }}
+          >
+            {open ? showLess : showAll}
+          </Button>
+        </Box>
+      )}
+    </Box>
+  )
+}
+
+/**
+ * A form: a member answers every question, a text or one of its options, and
+ * can change their response while the form is open; the author reads every
+ * response.
+ */
+export function FeedForm({
+  kind,
+  title,
+  fields,
+  mine,
+  respond,
+  responses,
+  summary,
+  close
+}: {
+  kind: string
+  title: string
+  fields: { label: string; options: string[] | null }[]
+  /** The reader's answers, an option's index for a choice; null until sent. */
+  mine: (string | number)[] | null
+  /** For a member while the form is open. */
+  respond: {
+    placeholder: string
+    sendLabel: string
+    editLabel: string
+    maxLength: number
+    disabled: boolean
+    onRespond: (answers: (string | number)[]) => void
+  } | null
+  /** For its author: each response's answers, in field order. */
+  responses: {
+    items: { id: string; name: string | null; answers: (string | number)[] }[]
+    showAll: string
+    showLess: string
+  } | null
+  summary: string
+  close: { label: string; onClick: () => void } | null
+}): ReactElement {
+  const [answers, setAnswers] = useState<(string | number | null)[]>([])
+  const [editing, setEditing] = useState(false)
+  const name = useId()
+  const writing = respond !== null && (mine === null || editing)
+  const answerOf = (index: number) => answers[index] ?? null
+  const complete = fields.every((field, index) => {
+    const answer = answerOf(index)
+    return field.options
+      ? typeof answer === 'number'
+      : typeof answer === 'string' && answer.trim() !== ''
+  })
+  const set = (index: number, answer: string | number) => {
+    setAnswers(current => {
+      const next = fields.map((_, i) => current[i] ?? null)
+      next[index] = answer
+      return next
+    })
+  }
+  return (
+    <Box
+      role="group"
+      aria-label={title}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 1.5,
+        width: 480,
+        maxWidth: '100%',
+        py: 0.5
+      }}
+    >
+      <FeedKindChip icon={FormIcon} label={kind} />
+      <FeedTitle large>{title}</FeedTitle>
+      {writing ? (
+        <Box
+          component="form"
+          sx={{
+            alignSelf: 'stretch',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2
+          }}
+          onSubmit={event => {
+            event.preventDefault()
+            if (!complete) return
+            respond.onRespond(
+              fields.map((field, index) => {
+                const answer = answerOf(index)
+                return typeof answer === 'string'
+                  ? answer.trim()
+                  : (answer ?? 0)
+              })
+            )
+            setEditing(false)
+          }}
+        >
+          {fields.map((field, index) => {
+            const answer = answerOf(index)
+            return (
+              <Box
+                key={index}
+                role={field.options ? 'radiogroup' : 'group'}
+                aria-label={field.label}
+                sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}
+              >
+                <Typography
+                  variant="body2"
+                  aria-hidden
+                  sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}
+                >
+                  {field.label}
+                </Typography>
+                {field.options ? (
+                  field.options.map((option, optionIndex) => (
+                    <Box
+                      key={option}
+                      component="label"
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        minHeight: 40,
+                        pl: 2,
+                        pr: 1,
+                        py: 0.5,
+                        borderRadius: '80px',
+                        bgcolor: 'background.paper',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Radio
+                        size="small"
+                        name={`${name}-${String(index)}`}
+                        checked={answer === optionIndex}
+                        onChange={() => {
+                          set(index, optionIndex)
+                        }}
+                        sx={{ p: 0.5, m: -0.5 }}
+                      />
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontWeight: 500,
+                          letterSpacing: 0.5,
+                          overflowWrap: 'anywhere'
+                        }}
+                      >
+                        {option}
+                      </Typography>
+                    </Box>
+                  ))
+                ) : (
+                  <InputBase
+                    fullWidth
+                    multiline
+                    maxRows={6}
+                    placeholder={respond.placeholder}
+                    value={typeof answer === 'string' ? answer : ''}
+                    inputProps={{
+                      maxLength: respond.maxLength,
+                      'aria-label': field.label
+                    }}
+                    onChange={event => {
+                      set(index, event.target.value)
+                    }}
+                    sx={{
+                      bgcolor: 'background.paper',
+                      borderRadius: '12px',
+                      px: 1.75,
+                      py: 1.25,
+                      fontSize: 14,
+                      lineHeight: '20px'
+                    }}
+                  />
+                )}
+              </Box>
+            )
+          })}
+          <Box>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={respond.disabled || !complete}
+              sx={{ borderRadius: '50px' }}
+            >
+              {respond.sendLabel}
+            </Button>
+          </Box>
+        </Box>
+      ) : (
+        <>
+          {mine && (
+            <FormResponses
+              items={[{ id: 'mine', name: null, answers: mine }]}
+              fields={fields}
+              showAll=""
+              showLess=""
+            />
+          )}
+          {responses && responses.items.length > 0 && (
+            <FormResponses {...responses} fields={fields} />
+          )}
+        </>
+      )}
+      <Box
+        sx={{
+          alignSelf: 'stretch',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}
+      >
+        <Typography
+          variant="caption"
+          color="textSecondary"
+          sx={{ flex: '1 1 auto', fontWeight: 500, letterSpacing: 0.4 }}
+        >
+          {summary}
+        </Typography>
+        {respond && mine && !writing && (
+          <Button
+            variant="text"
+            size="small"
+            onClick={() => {
+              setAnswers(mine)
+              setEditing(true)
+            }}
+          >
+            {respond.editLabel}
+          </Button>
+        )}
+        {close && (
+          <Button variant="text" size="small" onClick={close.onClick}>
+            {close.label}
+          </Button>
+        )}
+      </Box>
+    </Box>
+  )
+}
+
+// Each response on white, its answers under their questions; past two, folded
+// behind a button, and unfolded, scrolled within.
+function FormResponses({
+  items,
+  fields,
+  showAll,
+  showLess
+}: {
+  items: { id: string; name: string | null; answers: (string | number)[] }[]
+  fields: { label: string; options: string[] | null }[]
+  showAll: string
+  showLess: string
+}): ReactElement {
+  const [open, setOpen] = useState(false)
+  const listId = useId()
+  const foldable = items.length > FOLDED_COMMENTS
+  const shown = foldable && !open ? items.slice(0, FOLDED_COMMENTS) : items
+  return (
+    <Box
+      sx={{
+        alignSelf: 'stretch',
+        bgcolor: 'background.paper',
+        borderRadius: '12px',
+        px: 1.75,
+        py: 1.5,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1
+      }}
+    >
+      <Box
+        id={listId}
+        component="ul"
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          m: 0,
+          p: 0,
+          listStyle: 'none',
+          ...(open && { maxHeight: 320, overflowY: 'auto' })
+        }}
+      >
+        {shown.map(item => (
+          <Box
+            key={item.id}
+            component="li"
+            sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}
+          >
+            {item.name !== null && (
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {item.name}
+              </Typography>
+            )}
+            {fields.map((field, index) => {
+              const answer = item.answers[index]
+              return (
+                <Box key={index}>
+                  <Typography
+                    variant="caption"
+                    color="textSecondary"
+                    sx={{ display: 'block', overflowWrap: 'anywhere' }}
+                  >
+                    {field.label}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
+                  >
+                    {field.options && typeof answer === 'number'
+                      ? field.options[answer]
+                      : answer}
+                  </Typography>
+                </Box>
+              )
+            })}
+          </Box>
         ))}
       </Box>
       {foldable && (
