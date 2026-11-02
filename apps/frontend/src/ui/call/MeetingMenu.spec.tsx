@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { MeetingsService } from '@/application/meetings'
 import type { Space } from '@/application/spaces'
+import { fakeSettings } from '@/testing/fakeSettings'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { CallWindow } from '@/ui/call/CallWindow'
 import { MeetingMenu } from '@/ui/call/MeetingMenu'
@@ -206,6 +207,32 @@ describe('MeetingMenu', () => {
     expect(first?.[1].start).toMatch(/^2026-10-14T10:00:00[+-]\d\d:\d\d$/)
     expect(first?.[1].end).toMatch(/^2026-10-14T10:30:00[+-]\d\d:\d\d$/)
     expect(second?.[1].uid).toBe(first?.[1].uid)
+  })
+
+  it('sends the IANA name of a whole-hour offset from the common settings', async () => {
+    vi.useFakeTimers({
+      toFake: ['Date'],
+      now: new Date('2026-10-01T08:00:00Z')
+    })
+    const schedule = vi
+      .fn<MeetingsService['schedule']>()
+      .mockResolvedValue(undefined)
+    renderWithProviders(<MeetingMenu space={withCalendar} />, {
+      meetings: { schedule },
+      settings: fakeSettings({ timezone: '+02:00' }),
+      path: '/spaces/a1'
+    })
+
+    await choose('Schedule a meeting')
+    const dialog = screen.getByRole('dialog', { name: 'Schedule a meeting' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Schedule' }))
+
+    await waitFor(() => {
+      expect(schedule).toHaveBeenCalled()
+    })
+    const request = schedule.mock.calls[0]?.[1]
+    expect(request?.timezone).toBe('Etc/GMT-2')
+    expect(request?.start).toBe('2026-10-01T10:30:00+02:00')
   })
 
   it('starts at the next half hour, and takes a typed time to come', async () => {

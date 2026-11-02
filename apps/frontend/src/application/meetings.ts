@@ -21,6 +21,29 @@ export interface MeetingsService {
 
 export const MINUTE = 60_000
 
+const resolved = (zone: string) =>
+  new Intl.DateTimeFormat('en', { timeZone: zone }).resolvedOptions().timeZone
+
+/**
+ * The calendar refuses offsets such as +02:00. A whole-hour offset has an IANA
+ * name, Etc/GMT with the sign flipped; any other falls back to the browser's zone.
+ */
+export function meetingZone(zone: string | null): string {
+  const browser = Intl.DateTimeFormat().resolvedOptions().timeZone
+  if (!zone) return browser
+  const named = resolved(zone)
+  if (!/^[+-]/.test(named)) return named
+  const hours = /^([+-])(\d\d):00$/.exec(named)
+  if (!hours) return browser
+  try {
+    return resolved(
+      `Etc/GMT${hours[1] === '+' ? '-' : '+'}${String(Number(hours[2]))}`
+    )
+  } catch {
+    return browser
+  }
+}
+
 const pad = (value: number) => String(value).padStart(2, '0')
 
 // Minutes `zone` is ahead of UTC at `instant`.

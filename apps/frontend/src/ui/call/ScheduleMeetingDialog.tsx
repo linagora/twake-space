@@ -14,6 +14,7 @@ import { useId, useState, type ReactElement } from 'react'
 import {
   fromInputs,
   MEETING_MINUTES,
+  meetingZone,
   MINUTE,
   nextSlot,
   toInputs,
@@ -46,8 +47,7 @@ export function ScheduleMeetingDialog({
   const { meetings } = useServices()
   // The calendar shows times in the Twake Workplace time zone, not the browser's
   const { settings } = useCommonSettings()
-  const zone =
-    settings.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  const zone = meetingZone(settings.timezone)
   const [opened] = useState(() => new Date())
   const today = toInputs(opened, zone)
   // A slot of the time list, at least half an hour ahead
