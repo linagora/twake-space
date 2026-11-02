@@ -9,7 +9,8 @@ import { renderWithProviders } from '@/testing/renderWithProviders'
 const menu = {
   label: 'Menu',
   open: false,
-  setOpen: () => undefined
+  setOpen: () => undefined,
+  onClosed: () => undefined
 }
 
 async function barHeightOfFrame(): Promise<string> {

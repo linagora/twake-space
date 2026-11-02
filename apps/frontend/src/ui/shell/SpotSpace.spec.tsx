@@ -106,12 +106,12 @@ describe('SpotSpace', () => {
 
       fireEvent.click(nav.getByRole('button', { name: 'Search' }))
 
+      // Once the menu has gone, so that it keeps the focus
+      const dialog = await screen.findByRole('dialog', { name: 'SpotSpace' })
+      expect(screen.queryByRole('dialog', { name: 'Menu' })).toBe(null)
       expect(
-        await screen.findByRole('dialog', { name: 'SpotSpace' })
-      ).toBeInTheDocument()
-      await waitFor(() => {
-        expect(screen.queryByRole('dialog', { name: 'Menu' })).toBe(null)
-      })
+        within(dialog).getByRole('combobox', { name: 'SpotSpace' })
+      ).toHaveFocus()
     } finally {
       vi.unstubAllGlobals()
     }

@@ -77,10 +77,13 @@ function wideScreen(theme: Theme): Theme {
   }
 }
 
+// `onClosed` runs once the menu has gone: a dialog opened from it waits for
+// that, or the menu would take the focus back from it.
 interface MenuControl {
   label: string
   open: boolean
   setOpen: (open: boolean) => void
+  onClosed: () => void
 }
 
 const MenuContext = createContext<MenuControl | null>(null)
@@ -125,6 +128,7 @@ function MenuDrawer({
         menu.setOpen(false)
       }}
       slotProps={{
+        transition: { onExited: menu.onClosed },
         paper: {
           role: 'dialog',
           'aria-label': menu.label,

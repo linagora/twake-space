@@ -9,7 +9,7 @@ import {
   NavText,
   SearchBar
 } from '@linagora/twake-mui'
-import { useState, type ReactElement, type ReactNode } from 'react'
+import { useRef, useState, type ReactElement, type ReactNode } from 'react'
 import {
   Outlet,
   NavLink as RouterNavLink,
@@ -77,6 +77,15 @@ export function AppShell(): ReactElement {
   // Forgotten once left: going back to that page, or a screen narrowed again
   // after widening, would open it on its own
   if (menuAt !== null && (menuAt !== key || !narrow)) setMenuAt(null)
+  const afterMenu = useRef<(() => void) | null>(null)
+  const fromMenu = (open: () => void): void => {
+    if (menuAt === key) {
+      afterMenu.current = open
+      setMenuAt(null)
+    } else {
+      open()
+    }
+  }
 
   return (
     <CallProvider>
@@ -88,6 +97,10 @@ export function AppShell(): ReactElement {
           open: menuAt === key,
           setOpen: open => {
             setMenuAt(open ? key : null)
+          },
+          onClosed: () => {
+            afterMenu.current?.()
+            afterMenu.current = null
           }
         }}
         bare={home}
@@ -125,8 +138,9 @@ export function AppShell(): ReactElement {
                     color="primary"
                     label={t('spaces.create')}
                     onClick={() => {
-                      setMenuAt(null)
-                      setCreating(true)
+                      fromMenu(() => {
+                        setCreating(true)
+                      })
                     }}
                   >
                     <Icon icon={AddIcon} size={24} />
@@ -160,8 +174,9 @@ export function AppShell(): ReactElement {
             <AppNav
               narrow={narrow}
               onSearch={() => {
-                setMenuAt(null)
-                setSpotting(true)
+                fromMenu(() => {
+                  setSpotting(true)
+                })
               }}
             />
             <SpaceList query={query ?? ''} />
