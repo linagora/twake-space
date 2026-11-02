@@ -359,9 +359,17 @@ export function LoadingRows({
   )
 }
 
-// Empty sizes its icon for 128px illustrations; an app tile is 64px.
+// Every empty-state illustration is this size, in place of the 96 to 128px
+// Empty picks by screen width.
+const ILLUSTRATION = { width: 100, height: 100, mb: 3 }
+
 export function TileEmpty(props: EmptyProps): ReactElement {
-  return <Empty {...props} sx={{ '& .Empty-icon': { height: 64, mb: 3 } }} />
+  return (
+    <Empty
+      {...props}
+      sx={{ '& .Empty-icon': { ...ILLUSTRATION, objectFit: 'contain' } }}
+    />
+  )
 }
 
 export function IconEmpty({
@@ -375,16 +383,14 @@ export function IconEmpty({
     <Empty
       icon={
         <Box aria-hidden>
-          <Icon icon={icon} size={124} />
+          <Icon icon={icon} size={62} />
         </Box>
       }
       title={title}
       componentsProps={{ title: { component: 'h2' } }}
       sx={{
         '& .Empty-icon': {
-          width: 200,
-          height: 200,
-          mb: 5,
+          ...ILLUSTRATION,
           display: 'grid',
           placeItems: 'center',
           borderRadius: '33%',
@@ -392,7 +398,7 @@ export function IconEmpty({
           color: 'background.paper'
         },
         '& .Empty-icon svg': {
-          filter: 'drop-shadow(0 2px 10px rgb(0 0 0 / 10%))'
+          filter: 'drop-shadow(0 1px 5px rgb(0 0 0 / 10%))'
         }
       }}
     />
