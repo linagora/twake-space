@@ -297,6 +297,56 @@ describe('reconcileOrganization', () => {
     ])
   })
 
+  it('drops the row of a member re-created under a new uuid', async () => {
+    const NEW_ALICE = 'e4da3b7f-bbce-4345-9d77-7c1a2b3c4d5e'
+    const { directory } = ldapRest([
+      {
+        id: DESIGN,
+        name: 'Design',
+        members: [
+          { ...alice, uuid: NEW_ALICE, role: 'admin' },
+          { ...bob, role: 'viewer' }
+        ],
+        groups: []
+      }
+    ])
+
+    await reconcileOrganization(testDb.db, directory, log, 'org-1')
+
+    expect(await membersOf(DESIGN)).toEqual([
+      { userId: NEW_ALICE, role: 'admin' },
+      { userId: BOB, role: 'viewer' }
+    ])
+  })
+
+  it('keeps a member the first listing skipped but ldap-rest still has', async () => {
+    const { directory } = ldapRest([])
+    const reads: ListedMember[][] = [
+      [{ ...alice, role: 'admin' }],
+      [
+        { ...alice, role: 'admin' },
+        { ...bob, role: 'viewer' }
+      ]
+    ]
+
+    await reconcileOrganization(
+      testDb.db,
+      {
+        ...directory,
+        list: () => Promise.resolve([{ id: DESIGN, name: 'Design' }]),
+        exists: () => Promise.resolve(true),
+        members: () => Promise.resolve(reads.shift() ?? [])
+      },
+      log,
+      'org-1'
+    )
+
+    expect(await membersOf(DESIGN)).toEqual([
+      { userId: ALICE, role: 'admin' },
+      { userId: BOB, role: 'viewer' }
+    ])
+  })
+
   it('skips a member whose role is unknown, and still repairs the space', async () => {
     const { directory } = ldapRest([
       {
