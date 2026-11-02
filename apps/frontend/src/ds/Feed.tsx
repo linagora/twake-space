@@ -69,7 +69,7 @@ import {
   ThumbUpIcon,
   Videocam
 } from '@/ds/icons'
-import { NameAvatar } from '@/ds/AppFrame'
+import { NameAvatar, useNarrowScreen } from '@/ds/AppFrame'
 import type { SpaceTokens } from '@/ds/theme'
 
 // How close to the newest item still counts as being there, and how close to
@@ -83,11 +83,41 @@ const BUBBLE_WIDTH = 600
 
 const RevealContext = createContext<(row: HTMLElement) => void>(() => undefined)
 
+// Where the rows scroll: the list itself, or the whole page below lg. `edge`
+// is the top of the visible area on the screen.
+interface ScrollView {
+  top: number
+  height: number
+  client: number
+  edge: number
+}
+
+function scrollView(
+  list: HTMLElement | null,
+  page: boolean
+): ScrollView | null {
+  if (!list) return null
+  return page
+    ? {
+        top: window.scrollY,
+        height: document.documentElement.scrollHeight,
+        client: window.innerHeight,
+        edge: 0
+      }
+    : {
+        top: list.scrollTop,
+        height: list.scrollHeight,
+        client: list.clientHeight,
+        edge: list.getBoundingClientRect().top
+      }
+}
+
 // The feed reads like a chat: the oldest item on top, the newest right above
 // the composer. `placeKey` is null while the list loads; on each new one, the
 // list opens on the `FeedNewMark`, or else on the newest item. It follows the
 // newest items while the person is there, and otherwise keeps the rows in view
-// still while rows come in above or below.
+// still while rows come in above or below. Below lg the list scrolls with the
+// page, so the space's header goes up and away with it.
 export function FeedLayout({
   toolbar,
   pinned,
@@ -99,7 +129,7 @@ export function FeedLayout({
   onNearTop
 }: {
   toolbar: ReactNode
-  /** Held over the list, out of its scroll. */
+  /** Held over the list, out of its scroll on wide screens. */
   pinned?: ReactNode
   children: ReactNode
   composer: ReactNode
@@ -108,6 +138,8 @@ export function FeedLayout({
   onAtEndChange?: (atEnd: boolean) => void
   onNearTop?: () => void
 }): ReactElement {
+  const pageScrolls = useNarrowScreen()
+  const root = useRef<HTMLDivElement>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const atEnd = useRef(true)
@@ -127,67 +159,95 @@ export function FeedLayout({
     if (placeKey !== null) reportAtEnd(atEnd.current)
   }, [placeKey, behind])
 
+  // Read by the handlers below: the media query as last rendered
+  const onPage = useRef(pageScrolls)
+
+  const view = () => scrollView(scroller.current, onPage.current)
   const scrollTo = (top: number) => {
     const list = scroller.current
-    if (!list) return
-    const before = list.scrollTop
-    list.scrollTop = top
-    if (list.scrollTop !== before) ownScroll.current = true
+    const before = scrollView(list, onPage.current)?.top
+    if (!list || before === undefined) return
+    if (onPage.current) window.scrollTo(0, top)
+    else list.scrollTop = top
+    if (scrollView(list, onPage.current)?.top !== before) {
+      ownScroll.current = true
+    }
   }
   const measure = (keepAnchor = false) => {
     const list = scroller.current
-    if (!list) return
-    atEnd.current =
-      list.scrollHeight - list.scrollTop - list.clientHeight <= AT_END
+    const at = scrollView(list, onPage.current)
+    if (!list || !at) return
+    atEnd.current = at.height - at.top - at.client <= AT_END
     setBehind(!atEnd.current)
     if (keepAnchor) return
-    const top = list.getBoundingClientRect().top
     const row = Array.from(list.querySelectorAll('article')).find(
-      item => item.getBoundingClientRect().bottom > top
+      item => item.getBoundingClientRect().bottom > at.edge
     )
     anchor.current = row ? { row, top: row.getBoundingClientRect().top } : null
   }
   const keepPlace = useEffectEvent((rowsChanged: boolean) => {
-    const list = scroller.current
-    if (!list) return
+    const at = view()
+    if (!at) return
     const kept = anchor.current
     if (atEnd.current) {
-      scrollTo(list.scrollHeight)
+      scrollTo(at.height)
     } else if (
       kept?.row.isConnected &&
       // At the very top, the list resizing pushes the first rows down like a
       // page, instead of hiding them.
-      (rowsChanged || list.scrollTop > 0)
+      (rowsChanged || at.top > 0)
     ) {
-      scrollTo(list.scrollTop + kept.row.getBoundingClientRect().top - kept.top)
+      scrollTo(at.top + kept.row.getBoundingClientRect().top - kept.top)
     }
     measure()
   })
+  const scrolled = () => {
+    const own = ownScroll.current
+    ownScroll.current = false
+    // The event of a scroll the layout made lands a frame late, when
+    // the rows may have moved again: the anchor it set still holds.
+    measure(own)
+    const at = view()
+    const rows = content.current
+    if (at && rows && at.edge - rows.getBoundingClientRect().top < NEAR_TOP) {
+      onNearTop?.()
+    }
+  }
+  const pageScrolled = useEffectEvent(scrolled)
+  // Crossing lg (a tablet turned) moves the rows to the other scroller
+  useLayoutEffect(() => {
+    if (onPage.current === pageScrolls) return
+    onPage.current = pageScrolls
+    keepPlace(true)
+  }, [pageScrolls])
   // At once, not smoothly: the list resizing on the way would stop a smooth
   // scroll short of the end.
   const toEnd = () => {
     atEnd.current = true
-    scrollTo(scroller.current?.scrollHeight ?? 0)
+    scrollTo(view()?.height ?? 0)
     measure()
   }
   const reveal = useCallback((row: HTMLElement) => {
-    const list = scroller.current
-    if (!list) return
-    const top = list.getBoundingClientRect().top
+    const at = scrollView(scroller.current, onPage.current)
+    if (!at) return
     const box = row.getBoundingClientRect()
-    scrollTo(
-      list.scrollTop + box.top - top - (list.clientHeight - box.height) / 2
-    )
+    scrollTo(at.top + box.top - at.edge - (at.client - box.height) / 2)
     measure()
   }, [])
 
   useLayoutEffect(() => {
+    const whole = root.current
     const list = scroller.current
     const rows = content.current
-    if (!list || !rows || typeof ResizeObserver === 'undefined') return
+    if (!whole || !list || !rows || typeof ResizeObserver === 'undefined') {
+      return
+    }
     const observer = new ResizeObserver(entries => {
       keepPlace(entries.some(entry => entry.target === rows))
     })
+    // The whole layout too: on the page, the pinned items above the list
+    // move its rows without resizing them
+    observer.observe(whole)
     observer.observe(list)
     observer.observe(rows)
     return () => {
@@ -195,22 +255,35 @@ export function FeedLayout({
     }
   }, [])
 
+  useEffect(() => {
+    if (!pageScrolls) return
+    const listening = new AbortController()
+    window.addEventListener(
+      'scroll',
+      () => {
+        pageScrolled()
+      },
+      { signal: listening.signal }
+    )
+    return () => {
+      listening.abort()
+    }
+  }, [pageScrolls])
+
   useLayoutEffect(() => {
     const list = scroller.current
-    if (placeKey === null || !list) return
+    const at = scrollView(list, onPage.current)
+    if (placeKey === null || !list || !at) return
     const mark = list.querySelector('[data-feed-new]')
     scrollTo(
-      mark
-        ? list.scrollTop +
-            mark.getBoundingClientRect().top -
-            list.getBoundingClientRect().top
-        : list.scrollHeight
+      mark ? at.top + mark.getBoundingClientRect().top - at.edge : at.height
     )
     measure()
   }, [placeKey])
 
   return (
     <Box
+      ref={root}
       sx={{
         display: 'flex',
         flexDirection: 'column',
@@ -244,20 +317,15 @@ export function FeedLayout({
           sx={{
             flex: '1 1 auto',
             minHeight: 0,
-            overflowY: 'auto',
-            // The cards fade out under the top edge instead of being cut.
-            maskImage: `linear-gradient(to bottom, transparent 0, #000 ${String(FADE)}px)`,
             // The layout keeps its rows in place itself, the same everywhere.
-            overflowAnchor: 'none'
+            overflowAnchor: 'none',
+            ...(!pageScrolls && {
+              overflowY: 'auto',
+              // The cards fade out under the top edge instead of being cut.
+              maskImage: `linear-gradient(to bottom, transparent 0, #000 ${String(FADE)}px)`
+            })
           }}
-          onScroll={event => {
-            const own = ownScroll.current
-            ownScroll.current = false
-            // The event of a scroll the layout made lands a frame late, when
-            // the rows may have moved again: the anchor it set still holds.
-            measure(own)
-            if (event.currentTarget.scrollTop < NEAR_TOP) onNearTop?.()
-          }}
+          onScroll={pageScrolls ? undefined : scrolled}
         >
           <Box
             ref={content}
@@ -277,9 +345,14 @@ export function FeedLayout({
             size="small"
             startIcon={<Icon icon={Down} size={16} />}
             onClick={toEnd}
+            // On the page the list's bottom can be off screen: hold it above
+            // the bottom bar instead
             sx={{
-              position: 'absolute',
-              bottom: 16,
+              position: pageScrolls ? 'fixed' : 'absolute',
+              bottom: pageScrolls
+                ? 'calc(var(--sidebarHeight, 0px) + 16px)'
+                : 16,
+              zIndex: pageScrolls ? 'appBar' : undefined,
               left: '50%',
               transform: 'translateX(-50%)',
               borderRadius: 100,
