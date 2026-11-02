@@ -32,7 +32,7 @@ export function cachedPreviews(fetch: Fetch, now = Date.now): Preview {
     string,
     { until: number; preview: Promise<LinkPreview | null> }
   >()
-  // Wrapped so that the pending preview is not flattened into the answer.
+  // Wrapped so awaiting the limiter's answer does not also await the fetch.
   const asking = new Map<
     string,
     Promise<{ preview: Promise<LinkPreview | null> } | null>
@@ -48,9 +48,8 @@ export function cachedPreviews(fetch: Fetch, now = Date.now): Preview {
       if (hit) return hit
       const other = asking.get(key)
       if (!other) break
-      // Another request is asking its limiter for this link: its fetch serves
-      // this one too, and only its refusal or failure sends this one to its own
-      // limiter.
+      // Share the fetch of the request already asking; only its refusal or
+      // failure sends this one to its own limiter.
       const served = await other.catch(() => null)
       if (served) return served.preview
     }
