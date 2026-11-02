@@ -233,6 +233,29 @@ describe('toEventState', () => {
   it('has nothing to show without times', () => {
     expect(toEventState({})).toBeNull()
   })
+
+  it.each([
+    { start: '1900-00-00', end: '1900-00-00', allDay: true },
+    {
+      start: '2026-10-08T09:00:00Z',
+      end: '2026-10-08T10:00:00Z',
+      allDay: true
+    },
+    { start: 'tomorrow', end: 'tomorrow', allDay: false }
+  ])('has nothing to show when the times do not parse (%o)', state => {
+    expect(toEventState(state)).toBeNull()
+  })
+
+  it('drops a previous or proposed time that does not parse', () => {
+    expect(
+      toEventState({
+        start: '2026-10-09T09:00:00Z',
+        end: '2026-10-09T10:00:00Z',
+        previous: { start: '+275760-00-00', end: '1900-00-00' },
+        proposed: { start: 'tomorrow', end: 'later', by: 'bob@acme' }
+      })
+    ).toMatchObject({ previous: null, proposed: null })
+  })
 })
 
 describe('fileExtension', () => {
