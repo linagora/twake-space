@@ -230,6 +230,16 @@ describe('toEventState', () => {
     })
   })
 
+  it('counts an answer total that is not a whole non-negative number as 0', () => {
+    expect(
+      toEventState({
+        start: '2026-10-08T09:00:00Z',
+        end: '2026-10-08T10:00:00Z',
+        rsvp: { accepted: 10, declined: -3, tentative: 0.5, pending: 1e21 }
+      })?.rsvp
+    ).toEqual({ accepted: 10, declined: 0, tentative: 0, pending: 0 })
+  })
+
   it('has nothing to show without times', () => {
     expect(toEventState({})).toBeNull()
   })
