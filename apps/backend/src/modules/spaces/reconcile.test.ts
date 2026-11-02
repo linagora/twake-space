@@ -447,6 +447,69 @@ describe('reconcileOrganization', () => {
         .where(eq(spaceGroups.spaceId, SALES))
     ).toEqual([])
   })
+
+  it('settles on the last entry of an id listed twice', async () => {
+    const { directory } = ldapRest([
+      {
+        id: DESIGN,
+        name: 'Design',
+        members: [
+          { ...alice, role: 'viewer' },
+          { ...alice, role: 'admin' },
+          { ...bob, role: 'viewer' }
+        ],
+        groups: [
+          { id: DESIGNERS, name: 'Designers', role: 'admin' },
+          { id: DESIGNERS, name: 'Designers', role: 'editor' }
+        ]
+      }
+    ])
+
+    for (let night = 0; night < 3; night++) {
+      await reconcileOrganization(testDb.db, directory, log, 'org-1')
+      expect(await membersOf(DESIGN)).toEqual([
+        { userId: ALICE, role: 'admin' },
+        { userId: BOB, role: 'viewer' }
+      ])
+      expect(
+        await testDb.db
+          .select({ groupId: spaceGroups.groupId, role: spaceGroups.role })
+          .from(spaceGroups)
+          .where(eq(spaceGroups.spaceId, DESIGN))
+      ).toEqual([{ groupId: DESIGNERS, role: 'editor' }])
+    }
+  })
+
+  it('keeps a row as is when the last entry of an id has an unknown role', async () => {
+    const { directory } = ldapRest([
+      {
+        id: DESIGN,
+        name: 'Design',
+        members: [
+          { ...alice, role: 'viewer' },
+          { ...alice, role: 'owner' as never },
+          { ...bob, role: 'viewer' }
+        ],
+        groups: [
+          { id: OLD_GROUP, name: 'Old', role: 'admin' },
+          { id: OLD_GROUP, name: 'Old', role: 'owner' as never }
+        ]
+      }
+    ])
+
+    await reconcileOrganization(testDb.db, directory, log, 'org-1')
+
+    expect(await membersOf(DESIGN)).toEqual([
+      { userId: ALICE, role: 'admin' },
+      { userId: BOB, role: 'viewer' }
+    ])
+    expect(
+      await testDb.db
+        .select({ groupId: spaceGroups.groupId, role: spaceGroups.role })
+        .from(spaceGroups)
+        .where(eq(spaceGroups.spaceId, DESIGN))
+    ).toEqual([{ groupId: OLD_GROUP, role: 'viewer' }])
+  })
 })
 
 describe('reconcileDue', () => {

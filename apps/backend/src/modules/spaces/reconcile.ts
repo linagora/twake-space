@@ -47,6 +47,10 @@ function unlistedIn(members: ListedMember[]) {
     !ids.has(row.userId) && !usernames.has(row.username)
 }
 
+const lastById = <T>(entries: T[], id: (entry: T) => string) => [
+  ...new Map(entries.map(e => [id(e), e])).values()
+]
+
 // Repairs what lost events left behind. Each write is stamped with the time
 // taken before its read from ldap-rest, so an event applied since then wins.
 export async function reconcileOrganization(
@@ -108,8 +112,12 @@ async function reconcileSpace(
   })
   if (!read) return
   const [members, listedGroups] = read
-  const people = members.filter(readable)
-  const groups = listedGroups.filter(g => knownRole(g.role))
+  // An id listed twice keeps its last entry, as the upserts do; comparing every
+  // entry to the copy instead flips it between them each night.
+  const people = lastById(members, m => m.username).filter(readable)
+  const groups = lastById(listedGroups, g => g.id).filter(g =>
+    knownRole(g.role)
+  )
   const unknown = {
     members: members.filter(m => !knownRole(m.role)).map(m => m.username),
     groups: listedGroups.filter(g => !knownRole(g.role)).map(g => g.id)
