@@ -15,9 +15,9 @@ import {
   SpaceCard
 } from '@/ds/Card'
 import { AddIcon } from '@/ds/icons'
-import { LoadingRows, Page, TileEmpty } from '@/ds/Page'
+import { LoadingRows, Page, PhoneFab, TileEmpty } from '@/ds/Page'
 import { CreateSpaceDialog } from '@/ui/home/CreateSpaceDialog'
-import { Greeting } from '@/ui/home/Greeting'
+import { Greeting, GreetingHead } from '@/ui/home/Greeting'
 import { useFeedNews } from '@/ui/space/feedQueries'
 import { SpaceMenu } from '@/ui/space/SpaceMenu'
 import { useI18n } from '@/ui/i18n/useI18n'
@@ -37,8 +37,8 @@ export function HomeScreen(): ReactElement {
   }
 
   return (
-    <Page>
-      <Greeting title={t('app.name')} />
+    <Page head={<GreetingHead title={t('app.name')} />}>
+      <Greeting />
       {spaces.isPending && (
         <LoadingRows count={4} label={t('spaces.loading')} />
       )}
@@ -84,7 +84,7 @@ export function HomeScreen(): ReactElement {
           >
             {t('spaces.pinned')}
           </Typography>
-          <CardGrid maxColumns={4}>
+          <CardGrid maxColumns={4} phoneColumns={1}>
             {pinned.map(space => (
               <SpaceItem key={space.id} space={space} pinned />
             ))}
@@ -101,7 +101,7 @@ export function HomeScreen(): ReactElement {
           >
             {t('spaces.all')}
           </Typography>
-          <CardGrid>
+          <CardGrid phoneColumns={2}>
             <CreateCard
               icon={<Icon icon={AddIcon} size={24} />}
               title={t('spaces.createCard')}
@@ -113,6 +113,11 @@ export function HomeScreen(): ReactElement {
             ))}
           </CardGrid>
         </section>
+      )}
+      {spaces.data && spaces.data.length > 0 && (
+        <PhoneFab label={t('spaces.create')} onClick={startCreating}>
+          <Icon icon={AddIcon} size={24} />
+        </PhoneFab>
       )}
       {creating && (
         <CreateSpaceDialog

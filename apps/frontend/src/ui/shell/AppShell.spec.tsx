@@ -1,7 +1,7 @@
 import type { TwakeBarProps } from '@linagora/twake-bar'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Space } from '@/application/spaces'
 import { fakeSession, fakeUser } from '@/testing/fakeSession'
@@ -265,26 +265,84 @@ describe('AppShell', () => {
     )
   })
 
-  it('puts the Archives and the Bin in the bottom bar on phones', async () => {
-    stubPhoneScreen()
-    try {
+  describe('on phones', () => {
+    beforeEach(stubPhoneScreen)
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('keeps the navigation in a menu that the menu button opens', async () => {
       renderRoute('/bin', { spaces: spaces() })
 
-      const nav = within(await screen.findByRole('navigation'))
-      expect(nav.getByRole('link', { name: 'Archives' })).toHaveAttribute(
-        'href',
-        '/archives'
+      const button = await screen.findByRole('button', { name: 'Menu' })
+      expect(screen.queryByRole('navigation')).toBe(null)
+      expect(button).toHaveAttribute('aria-expanded', 'false')
+
+      fireEvent.click(button)
+
+      const menu = within(await screen.findByRole('dialog', { name: 'Menu' }))
+      expect(
+        menu.getByRole('link', { name: 'All shared spaces' })
+      ).toHaveAttribute('href', '/')
+      const pinned = within(menu.getByRole('list', { name: 'Pinned' }))
+      expect(pinned.getByRole('link', { name: 'Design' })).toBeInTheDocument()
+      const shelves = within(
+        menu.getByRole('list', { name: 'Archives and Bin' })
       )
-      expect(nav.getByRole('link', { name: 'Bin' })).toHaveAttribute(
+      expect(shelves.getByRole('link', { name: 'Bin' })).toHaveAttribute(
         'aria-current',
         'page'
       )
-      expect(screen.queryByRole('list', { name: 'Archives and Bin' })).toBe(
-        null
-      )
-    } finally {
-      vi.unstubAllGlobals()
-    }
+      expect(
+        menu.getByRole('button', { name: 'Create a space' })
+      ).toBeInTheDocument()
+    })
+
+    it('closes the menu on the page a link of it opens', async () => {
+      const { router } = renderRoute('/bin', { spaces: spaces() })
+      fireEvent.click(await screen.findByRole('button', { name: 'Menu' }))
+      const menu = within(await screen.findByRole('dialog', { name: 'Menu' }))
+
+      fireEvent.click(menu.getByRole('link', { name: 'Archives' }))
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Menu' })).toBe(null)
+      })
+      expect(router.state.location.pathname).toBe('/archives')
+    })
+
+    it('keeps the menu closed back on the page it was opened from', async () => {
+      const { router } = renderRoute('/bin', { spaces: spaces() })
+      fireEvent.click(await screen.findByRole('button', { name: 'Menu' }))
+      const menu = within(await screen.findByRole('dialog', { name: 'Menu' }))
+      fireEvent.click(menu.getByRole('link', { name: 'Archives' }))
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Menu' })).toBe(null)
+      })
+
+      await act(() => router.navigate(-1))
+
+      expect(router.state.location.pathname).toBe('/bin')
+      expect(
+        await screen.findByRole('button', { name: 'Menu' })
+      ).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByRole('dialog', { name: 'Menu' })).toBe(null)
+    })
+
+    it('closes the menu on Escape, back to its button', async () => {
+      renderRoute('/', { spaces: spaces() })
+      const button = await screen.findByRole('button', { name: 'Menu' })
+      button.focus()
+      fireEvent.click(button)
+      const menu = await screen.findByRole('dialog', { name: 'Menu' })
+
+      fireEvent.keyDown(menu, { key: 'Escape' })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Menu' })).toBe(null)
+      })
+      expect(button).toHaveFocus()
+    })
   })
 
   it('follows the UI language', async () => {

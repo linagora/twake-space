@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-// Every max-width query matches, so the shell shows its phone bottom bar.
+// Every max-width query matches, so the shell keeps its navigation in a menu.
 export function stubPhoneScreen(): void {
   stubMediaQueries(query => query.includes('max-width'))
 }

@@ -130,6 +130,29 @@ describe('HomeScreen', () => {
     ).toHaveAttribute('href', '/spaces/a1')
   })
 
+  it('creates a space from the floating button', async () => {
+    const spaces = fakeSpaces([
+      {
+        id: 'a1',
+        name: 'Design Sprint',
+        role: 'admin',
+        color: null,
+        description: '',
+        pinnedAt: null,
+        openedAt: null,
+        manages: true,
+        members: []
+      }
+    ])
+    renderWithProviders(<HomeScreen />, { spaces })
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create a space' })
+    )
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
   it('shows the pinned spaces above all spaces, which keep them', async () => {
     const spaces = fakeSpaces([
       {
@@ -306,7 +329,9 @@ describe('HomeScreen', () => {
     const { router } = renderRoute('/', { spaces })
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Create a space' })
+      await within(await screen.findByRole('main')).findByRole('button', {
+        name: 'Create a space'
+      })
     )
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('button', { name: 'Next' })).toBeDisabled()

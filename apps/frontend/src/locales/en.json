@@ -64,6 +64,7 @@
     "archives": "Archives",
     "bin": "Bin",
     "title": "Space",
+    "menu": "Menu",
     "allSpaces": "All shared spaces",
     "spaceWithCount": "%{name}, %{smart_count} new",
     "searchSpaces": "Search your spaces",

@@ -6,6 +6,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { AppFrame, NameAvatar } from '@/ds/AppFrame'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 
+const menu = {
+  label: 'Menu',
+  open: false,
+  setOpen: () => undefined,
+  onClosed: () => undefined
+}
+
 async function barHeightOfFrame(): Promise<string> {
   const frame = (await screen.findByText('nav')).closest('aside')?.parentElement
   if (!frame) throw new Error('no frame')
@@ -19,6 +26,7 @@ function Switchable({ onLoad }: { onLoad: () => void }): ReactElement {
     <AppFrame
       topBar={<p>bar</p>}
       sidebar={<span>nav</span>}
+      menu={menu}
       aside={<p>aside</p>}
       alone={alone}
     >
@@ -37,7 +45,7 @@ function Switchable({ onLoad }: { onLoad: () => void }): ReactElement {
 describe('AppFrame', () => {
   it('leaves room for the platform bar above it', async () => {
     renderWithProviders(
-      <AppFrame topBar={<div />} sidebar={<span>nav</span>}>
+      <AppFrame topBar={<div />} sidebar={<span>nav</span>} menu={menu}>
         page
       </AppFrame>
     )
@@ -46,7 +54,11 @@ describe('AppFrame', () => {
   })
 
   it('takes the whole window without a bar', async () => {
-    renderWithProviders(<AppFrame sidebar={<span>nav</span>}>page</AppFrame>)
+    renderWithProviders(
+      <AppFrame sidebar={<span>nav</span>} menu={menu}>
+        page
+      </AppFrame>
+    )
 
     expect(await barHeightOfFrame()).toBe('0px')
   })

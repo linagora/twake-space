@@ -41,28 +41,33 @@ export function useGreeting(): { date: string; greeting: string } {
   }
 }
 
-export function Greeting({ title }: { title: ReactNode }): ReactElement {
-  const { date, greeting } = useGreeting()
+export function GreetingHead({ title }: { title: ReactNode }): ReactElement {
+  const { date } = useGreeting()
 
   return (
-    <>
-      <div className="u-flex u-flex-wrap u-flex-items-center u-flex-justify-between">
-        {/* Below lg the mobile bar already shows the app name */}
-        <Typography variant="h3" component="p" className="u-dn-m">
-          {title}
-        </Typography>
-        <Typography
-          variant="subtitle1"
-          component="p"
-          className="u-flex u-flex-items-center u-ml-auto"
-        >
-          <Icon icon={CalendarIcon} size={16} className="u-mr-half" />
-          {date}
-        </Typography>
-      </div>
-      <Typography variant="h2" component="h1" className="u-mt-1 u-mb-1-half">
-        {greeting}
+    <div className="u-flex u-flex-auto u-flex-wrap u-flex-items-center u-flex-justify-between">
+      {/* Below lg the platform bar already shows the app name */}
+      <Typography variant="h3" component="p" className="u-dn-m">
+        {title}
       </Typography>
-    </>
+      <Typography
+        variant="subtitle1"
+        component="p"
+        className="u-flex u-flex-items-center u-ml-auto"
+      >
+        <Icon icon={CalendarIcon} size={16} className="u-mr-half" />
+        {date}
+      </Typography>
+    </div>
+  )
+}
+
+export function Greeting(): ReactElement {
+  const { greeting } = useGreeting()
+
+  return (
+    <Typography variant="h2" component="h1" className="u-mt-1 u-mb-1-half">
+      {greeting}
+    </Typography>
   )
 }

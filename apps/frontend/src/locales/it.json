@@ -64,6 +64,7 @@
     "archives": "Archivio",
     "bin": "Cestino",
     "title": "Spazio",
+    "menu": "Menu",
     "allSpaces": "Tutti gli spazi",
     "spaceWithCount": "%{name}, %{smart_count} nuovo |||| %{name}, %{smart_count} nuovi",
     "searchSpaces": "Cerca nei tuoi spazi",

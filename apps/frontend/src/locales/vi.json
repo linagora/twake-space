@@ -64,6 +64,7 @@
     "archives": "Lưu trữ",
     "bin": "Thùng rác",
     "title": "Không gian",
+    "menu": "Menu",
     "allSpaces": "Tất cả không gian",
     "spaceWithCount": "%{name}, %{smart_count} mới",
     "searchSpaces": "Tìm trong không gian của bạn",

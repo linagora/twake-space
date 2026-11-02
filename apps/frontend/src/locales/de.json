@@ -64,6 +64,7 @@
     "archives": "Archiv",
     "bin": "Papierkorb",
     "title": "Space",
+    "menu": "Menü",
     "allSpaces": "Alle Spaces",
     "spaceWithCount": "%{name}, %{smart_count} neu",
     "searchSpaces": "Ihre Spaces durchsuchen",

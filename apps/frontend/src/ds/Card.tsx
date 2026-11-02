@@ -31,24 +31,33 @@ const LINKED_CARD = {
 
 // `maxColumns` caps the columns of a wide screen: no card is narrower than
 // its share of the row, the 16px gaps left out, less a pixel so that
-// rounding never drops a column.
+// rounding never drops a column. `phoneColumns` sets them below sm instead.
 export function CardGrid({
   maxColumns,
+  phoneColumns,
   children
 }: {
   maxColumns?: number
+  phoneColumns?: number
   children: ReactNode
 }): ReactElement {
   const min =
     maxColumns === undefined
       ? '200px'
       : `max(200px, calc((100% - ${String(maxColumns - 1)} * 16px) / ${String(maxColumns)} - 1px))`
+  const columns = `repeat(auto-fill, minmax(${min}, 1fr))`
   return (
     <Box
       component="ul"
       sx={{
         display: 'grid',
-        gridTemplateColumns: `repeat(auto-fill, minmax(${min}, 1fr))`,
+        gridTemplateColumns:
+          phoneColumns === undefined
+            ? columns
+            : {
+                xs: `repeat(${String(phoneColumns)}, minmax(0, 1fr))`,
+                sm: columns
+              },
         gap: 2,
         m: 0,
         p: 0,
@@ -82,7 +91,8 @@ export function SpaceCard({
     <Card
       component="li"
       sx={{
-        height: 192,
+        // On phones as tall as its content, the row's cards alike
+        height: { xs: 'auto', sm: 192 },
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
@@ -612,7 +622,10 @@ export function CreateCard({
   onClick: () => void
 }): ReactElement {
   return (
-    <Card component="li" sx={{ height: 192, borderRadius: RADIUS }}>
+    <Card
+      component="li"
+      sx={{ height: { xs: 'auto', sm: 192 }, borderRadius: RADIUS }}
+    >
       <CardActionArea
         onClick={onClick}
         sx={{

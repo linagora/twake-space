@@ -97,15 +97,18 @@ describe('SpotSpace', () => {
     })
   })
 
-  it('opens from the Search entry of the bottom bar on phones', async () => {
+  it('opens from the Search entry of the menu on phones', async () => {
     stubPhoneScreen()
     try {
       renderRoute('/', { spaces: spaces() })
+      fireEvent.click(await screen.findByRole('button', { name: 'Menu' }))
       const nav = within(await screen.findByRole('navigation'))
 
       fireEvent.click(nav.getByRole('button', { name: 'Search' }))
 
-      const dialog = screen.getByRole('dialog', { name: 'SpotSpace' })
+      // Once the menu has gone, so that it keeps the focus
+      const dialog = await screen.findByRole('dialog', { name: 'SpotSpace' })
+      expect(screen.queryByRole('dialog', { name: 'Menu' })).toBe(null)
       expect(
         within(dialog).getByRole('combobox', { name: 'SpotSpace' })
       ).toHaveFocus()
