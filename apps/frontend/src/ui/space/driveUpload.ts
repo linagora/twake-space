@@ -1,5 +1,7 @@
 import type { Sdk } from '@linagora/twake-sdk'
 
+import { isWebUrl } from '@/application/webUrl'
+
 export const UPLOAD_INTENT = { action: 'UPLOAD', type: 'io.cozy.files' }
 
 // A frame that never says `ready` (Drive missing, signed out, unreachable)
@@ -18,7 +20,9 @@ export async function uploadToDrive(
   if (!sdk) throw new Error('No platform to upload to')
   const intent = await sdk.createIntent(UPLOAD_INTENT)
   const href = intent.services[0]?.href
-  if (href === undefined) throw new Error('No service for the Upload intent')
+  if (href === undefined || !isWebUrl(href)) {
+    throw new Error('No service for the Upload intent')
+  }
   const origin = new URL(href).origin
   const frame = document.createElement('iframe')
   frame.hidden = true

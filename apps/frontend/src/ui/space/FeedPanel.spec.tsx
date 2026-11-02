@@ -2163,4 +2163,25 @@ describe('FeedPanel', () => {
       'https://example.com/plan'
     )
   })
+
+  it('shows no preview whose address is not a web page', async () => {
+    const { feed } = renderFeed([
+      post(5, { body: 'Plan: https://example.com/plan' }),
+      post(6)
+    ])
+    const preview = Promise.resolve({
+      url: 'javascript:alert(1)',
+      title: 'The plan',
+      description: null,
+      image: null,
+      site: 'Example'
+    })
+    vi.mocked(feed.linkPreview).mockReturnValue(preview)
+
+    await waitFor(() => {
+      expect(feed.linkPreview).toHaveBeenCalled()
+    })
+    await act(() => preview)
+    expect(screen.queryByText('The plan')).not.toBeInTheDocument()
+  })
 })

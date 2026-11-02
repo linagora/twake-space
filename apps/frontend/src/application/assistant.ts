@@ -3,6 +3,8 @@
 // creates the intent; the handshake with its frame is the cozy intents'
 // postMessage protocol.
 
+import { isWebUrl } from '@/application/webUrl'
+
 export const ASSISTANT_INTENT = {
   action: 'OPEN',
   type: 'io.cozy.ai.chat.conversations'
@@ -27,12 +29,8 @@ export function assistantService(intent: {
   services: { href: string }[]
 }): AssistantService | null {
   const href = intent.services[0]?.href
-  if (href === undefined) return null
-  try {
-    return { intentId: intent.id, href, origin: new URL(href).origin }
-  } catch {
-    return null
-  }
+  if (href === undefined || !isWebUrl(href)) return null
+  return { intentId: intent.id, href, origin: new URL(href).origin }
 }
 
 export interface AnswerResult {

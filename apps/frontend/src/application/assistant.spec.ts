@@ -24,6 +24,12 @@ describe('assistantService', () => {
     expect(
       assistantService({ id: 'i1', services: [{ href: 'not a url' }] })
     ).toBe(null)
+    expect(
+      assistantService({
+        id: 'i1',
+        services: [{ href: 'javascript:alert(1)' }]
+      })
+    ).toBe(null)
   })
 })
 
