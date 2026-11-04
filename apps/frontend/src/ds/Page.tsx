@@ -40,7 +40,9 @@ export function Page({
         flexDirection: 'column',
         flex: fill ? '1 1 auto' : '0 0 auto',
         minHeight: 0,
-        overflow: 'hidden auto',
+        // Below lg the window scrolls: a scroll box here would hold the
+        // header and composer that stick to the screen
+        overflow: { xs: 'clip visible', lg: 'hidden auto' },
         px: compact ? 1 : { xs: 2, lg: 3 },
         pt: compact ? 1 : 2,
         pb: fill ? (compact ? 1 : 2) : 0

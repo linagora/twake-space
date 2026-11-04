@@ -66,6 +66,7 @@ describe('FeedLayout', () => {
         composer={null}
         placeKey="all"
         latestLabel="Latest"
+        topLabel="Back to top"
       >
         <article aria-label="First" />
       </FeedLayout>
@@ -95,9 +96,10 @@ describe('FeedLayout', () => {
       renderWithProviders(
         <FeedLayout
           toolbar={null}
-          composer={null}
+          composer={<input aria-label="Message" />}
           placeKey="all"
           latestLabel="Latest"
+          topLabel="Back to top"
           onNearTop={onNearTop}
         >
           <article aria-label="First" />
@@ -125,6 +127,35 @@ describe('FeedLayout', () => {
       fireEvent.scroll(window)
 
       expect(onNearTop).toHaveBeenCalled()
+    })
+
+    it('on a phone, holds the composer at the bottom of the screen', async () => {
+      stubPhoneScreen()
+      renderLayout(vi.fn())
+
+      const composer = await screen.findByRole('textbox', { name: 'Message' })
+
+      expect(getComputedStyle(composer.parentElement as Element).position).toBe(
+        'sticky'
+      )
+    })
+
+    it('on a phone, goes back to the top once the person scrolls far down', async () => {
+      stubPhoneScreen()
+      vi.stubGlobal('scrollY', 1500)
+      renderLayout(vi.fn())
+      await waitFor(() => {
+        expect(scrollTo).toHaveBeenCalled()
+      })
+      expect(screen.queryByRole('button', { name: 'Back to top' })).toBe(null)
+
+      fireEvent.scroll(window)
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Back to top' })
+      )
+
+      expect(scrollTo).toHaveBeenLastCalledWith(0, 0)
+      expect(screen.queryByRole('button', { name: 'Back to top' })).toBe(null)
     })
 
     it('on a wide screen, scrolls the list and leaves the page alone', async () => {

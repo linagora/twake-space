@@ -324,6 +324,7 @@ export function FeedPanel({ space }: { space: Space }): ReactElement {
         composer={space.role !== 'viewer' && <Composer space={space} />}
         placeKey={ready ? filter : null}
         latestLabel={t('feed.latest')}
+        topLabel={t('feed.top')}
         onAtEndChange={setAtEnd}
         onNearTop={() => {
           if (ready && hasNextPage && !isFetchingNextPage) void fetchNextPage()
