@@ -150,8 +150,11 @@ export function SpaceScreen(): ReactElement {
   // The children keep their places whether the tab has the page or not, so
   // that the panel is not mounted again
   return (
-    <Page fill={!framed} compact={filled}>
-      {!filled && <FeedSearch key={spaceId} space={space.data} />}
+    <Page
+      fill={!framed}
+      compact={filled}
+      head={<FeedSearch key={spaceId} space={space.data} />}
+    >
       {filled ? (
         <CompactSpaceHeader
           back={

@@ -103,7 +103,11 @@ export function PageSearch({
 }: {
   children: ReactNode
 }): ReactElement {
-  return <Box sx={{ maxWidth: 834, mb: 2 }}>{children}</Box>
+  return (
+    <Box sx={{ flex: '1 1 auto', minWidth: 0, maxWidth: 834, mb: { lg: 2 } }}>
+      {children}
+    </Box>
+  )
 }
 
 // `label` names the panel when its tab is not shown, on a page given to it

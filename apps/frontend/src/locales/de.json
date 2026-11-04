@@ -11,6 +11,7 @@
     "newItems": "%{smart_count} neuer Eintrag |||| %{smart_count} neue Einträge",
     "mentions": "%{smart_count} Erwähnung |||| %{smart_count} Erwähnungen",
     "summarise": "Mit Twake AI zusammenfassen",
+    "summariseShort": "Zusammenfassen",
     "summaryRequest": "Fasse zusammen, was es seit meinem letzten Besuch in meinen Spaces Neues gibt."
   },
   "spaceHome": {

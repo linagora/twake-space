@@ -332,6 +332,19 @@ describe('AppShell', () => {
       expect(screen.queryByRole('dialog', { name: 'Menu' })).toBe(null)
     })
 
+    it("puts a space's search on the menu button's row", async () => {
+      const service = spaces()
+      vi.mocked(service.get).mockResolvedValue(
+        detail('space-1', 'Design', 'design@acme')
+      )
+      renderRoute('/spaces/space-1/feed', { spaces: service })
+
+      const search = await screen.findByPlaceholderText('Search')
+      const row = screen.getByRole('button', { name: 'Menu' }).parentElement
+        ?.parentElement
+      expect(row).toContainElement(search)
+    })
+
     it('closes the menu on Escape, back to its button', async () => {
       renderRoute('/', { spaces: spaces() })
       const button = await screen.findByRole('button', { name: 'Menu' })
