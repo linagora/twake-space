@@ -46,6 +46,32 @@ export const SANDBOX =
 // whole screen (the page of TwakeSpace is another thing, `fill-page`)
 const ALLOW = 'clipboard-read; clipboard-write; fullscreen'
 
+const SIGN_IN_COOLDOWN_MS = 5 * 60_000
+
+// A frame that still asks right after its sign-in would loop the page through
+// the SSO (Chat, when Synapse has a page to show that a frame cannot show).
+// Within the cooldown the frame stays signed out and offers its own sign-in.
+// Without storage (private mode) there is no guard.
+async function signInOnce(
+  app: string,
+  signIn: () => Promise<void>
+): Promise<void> {
+  const key = `twake-space:${app}:frame-sign-in`
+  try {
+    const elapsed = Date.now() - Number(sessionStorage.getItem(key))
+    if (elapsed >= 0 && elapsed < SIGN_IN_COOLDOWN_MS) return
+    sessionStorage.setItem(key, String(Date.now()))
+  } catch {
+    return signIn()
+  }
+  try {
+    await signIn()
+  } catch (error) {
+    sessionStorage.removeItem(key)
+    throw error
+  }
+}
+
 // The frame of an app, and what every embedded app gets from TwakeSpace:
 // - its path reported to the host (`twake-embed:path`, or the legacy
 //   `twake-tasks:path` and cozy-external-bridge's `updateHistory`),
@@ -186,7 +212,7 @@ export function EmbeddedAppFrame({
       event => {
         if (!fromFrame(event)) return
         if (isLoginRequired(event.data)) {
-          void signIn()
+          void signInOnce(app, signIn)
           return
         }
         const reported = parseOverlayRegionMessage(event.data)
@@ -250,7 +276,7 @@ export function EmbeddedAppFrame({
           )
           if (path !== null) report.current(path)
         },
-        notifyLoginRequired: signIn
+        notifyLoginRequired: () => signInOnce(app, signIn)
       },
       {
         postMessage: (message: unknown, transfer?: Transferable[]) => {
