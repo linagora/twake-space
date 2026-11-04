@@ -10,14 +10,20 @@ import {
   type EmptyProps
 } from '@linagora/twake-mui'
 import { Icon, type IconProps } from '@linagora/twake-icons'
-import type { ReactElement, ReactNode } from 'react'
+import {
+  useEffect,
+  useState,
+  type ReactElement,
+  type ReactNode,
+  type RefObject
+} from 'react'
 
 import coverArt from '@/assets/space-cover.png'
-import { MenuButton } from '@/ds/AppFrame'
+import { MenuButton, useNarrowScreen } from '@/ds/AppFrame'
 
 // `fill` off leaves the rest of the content to what follows the page: the
 // frame of an embedded app, under the tabs. `compact` keeps a narrow edge,
-// on a page given to the content. The page scrolls itself, or content
+// on a page given to the content. From lg the page scrolls itself, or content
 // overflowing a page shrunk to the screen would cover its bottom edge.
 // `head` shares the first row with the menu button of narrow screens; a
 // compact page has neither.
@@ -329,6 +335,73 @@ export function SpaceHeader({
       </Box>
       {/* 16px from the card's edges, as in the mockup, out of the page's 24px */}
       {!select && <Divider sx={{ mx: { lg: -1 } }} />}
+    </Box>
+  )
+}
+
+export const PINNED_HEADER_HEIGHT = 56
+
+// Below lg, where the page scrolls as a whole: the space's header on one line,
+// held at the top of the screen once `header` has gone up out of it.
+export function PinnedSpaceHeader({
+  header,
+  label,
+  avatar,
+  tab,
+  actions
+}: {
+  header: RefObject<HTMLElement | null>
+  label: string
+  avatar: ReactNode
+  tab: ReactNode
+  actions: ReactNode
+}): ReactElement | null {
+  const narrow = useNarrowScreen()
+  const [away, setAway] = useState(false)
+  useEffect(() => {
+    const watched = header.current
+    if (!narrow || !watched || typeof IntersectionObserver === 'undefined') {
+      return
+    }
+    // A batch can hold several changes of the header: the last one holds
+    const observer = new IntersectionObserver(entries => {
+      setAway(entries.at(-1)?.isIntersecting === false)
+    })
+    observer.observe(watched)
+    return () => {
+      observer.disconnect()
+    }
+  }, [narrow, header])
+  if (!narrow || !away) return null
+  return (
+    <Box
+      component="section"
+      aria-label={label}
+      sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 'appBar',
+        height: PINNED_HEADER_HEIGHT,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        px: 2,
+        bgcolor: 'background.paper',
+        borderBottom: 1,
+        borderColor: 'divider'
+      }}
+    >
+      <MenuButton />
+      {avatar}
+      <Typography variant="subtitle1" noWrap sx={{ minWidth: 0 }}>
+        {label}
+      </Typography>
+      <Box sx={{ flexShrink: 0 }}>{tab}</Box>
+      <Box sx={{ display: 'flex', gap: 1, ml: 'auto', flexShrink: 0 }}>
+        {actions}
+      </Box>
     </Box>
   )
 }

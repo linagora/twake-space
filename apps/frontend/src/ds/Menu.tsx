@@ -127,20 +127,23 @@ export function SheetSelect({
   icon,
   open,
   onClick,
+  compact = false,
   'aria-label': ariaLabel,
   children
 }: {
   icon: ReactNode
   open: boolean
   onClick: () => void
+  /** Borderless and only as wide as its label, for a one line header. */
+  compact?: boolean
   'aria-label'?: string | undefined
   children: ReactNode
 }): ReactElement {
   return (
     <Button
-      variant="outlined"
+      variant={compact ? 'text' : 'outlined'}
       color="inherit"
-      fullWidth
+      fullWidth={!compact}
       aria-haspopup="menu"
       aria-expanded={open}
       aria-label={ariaLabel}
@@ -149,12 +152,15 @@ export function SheetSelect({
       onClick={onClick}
       sx={{
         justifyContent: 'flex-start',
-        minHeight: 48,
-        px: 2,
+        minHeight: compact ? 40 : 48,
+        px: compact ? 1 : 2,
         borderRadius: '4px',
         borderColor: 'divider',
         fontWeight: 400,
-        '& .MuiButton-endIcon': { ml: 'auto', color: 'text.secondary' },
+        '& .MuiButton-endIcon': {
+          ml: compact ? 0.5 : 'auto',
+          color: 'text.secondary'
+        },
         '& .MuiButton-startIcon': { color: 'text.secondary' }
       }}
     >

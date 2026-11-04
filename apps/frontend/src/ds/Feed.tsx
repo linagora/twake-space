@@ -70,6 +70,7 @@ import {
   Videocam
 } from '@/ds/icons'
 import { NameAvatar, useNarrowScreen } from '@/ds/AppFrame'
+import { PINNED_HEADER_HEIGHT } from '@/ds/Page'
 import type { SpaceTokens } from '@/ds/theme'
 
 // How close to the newest item still counts as being there, and how close to
@@ -84,7 +85,8 @@ const BUBBLE_WIDTH = 600
 const RevealContext = createContext<(row: HTMLElement) => void>(() => undefined)
 
 // Where the rows scroll: the list itself, or the whole page below lg. `edge`
-// is the top of the visible area on the screen.
+// is the top of the visible area on the screen: on the page, under the
+// space's pinned header.
 interface ScrollView {
   top: number
   height: number
@@ -102,7 +104,7 @@ function scrollView(
         top: window.scrollY,
         height: document.documentElement.scrollHeight,
         client: window.innerHeight,
-        edge: 0
+        edge: PINNED_HEADER_HEIGHT
       }
     : {
         top: list.scrollTop,

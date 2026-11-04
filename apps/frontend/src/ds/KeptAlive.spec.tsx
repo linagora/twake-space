@@ -6,7 +6,7 @@ import { mediaStyle } from '@/testing/phoneScreen'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 
 describe('KeptAliveStack', () => {
-  it('on a phone, takes the screen above the bottom bar, so the header scrolls away', async () => {
+  it('on a phone, takes the screen between the pinned header and the bottom bar', async () => {
     renderWithProviders(
       <KeptAliveStack active role="tabpanel" aria-label="Chat">
         <iframe title="Chat" />
@@ -15,7 +15,7 @@ describe('KeptAliveStack', () => {
 
     const stack = await screen.findByRole('tabpanel', { name: 'Chat' })
     expect(mediaStyle(stack, 'height', 'max-width')).toBe(
-      'calc(100dvh - var(--sidebarHeight, 0px))'
+      'calc(100dvh - var(--sidebarHeight, 0px) - 56px)'
     )
   })
 
