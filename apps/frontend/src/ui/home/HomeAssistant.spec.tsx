@@ -6,6 +6,7 @@ import type { SpaceSummary } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeSession, fakeUser } from '@/testing/fakeSession'
 import { fakeSpaces } from '@/testing/fakeSpaces'
+import { stubPhoneScreen } from '@/testing/phoneScreen'
 import { renderRoute, renderWithProviders } from '@/testing/renderWithProviders'
 import { HomeAssistant } from '@/ui/home/HomeAssistant'
 
@@ -140,5 +141,22 @@ describe('HomeAssistant', () => {
     )
 
     expect(await screen.findByTitle('Ask Twake AI')).toBeInTheDocument()
+  })
+
+  it('opens from a shorter button on a phone', async () => {
+    stubPhoneScreen()
+    try {
+      renderRoute('/', options())
+
+      const button = await screen.findByRole('button', {
+        name: 'Summarise with Twake AI'
+      })
+      expect(button).toHaveTextContent(/^Summarise$/)
+      fireEvent.click(button)
+
+      expect(await screen.findByTitle('Ask Twake AI')).toBeInTheDocument()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

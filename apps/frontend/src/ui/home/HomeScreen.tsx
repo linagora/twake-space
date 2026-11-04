@@ -1,5 +1,11 @@
 import { Assistant, Icon, Plus } from '@linagora/twake-icons'
-import { Alert, Button, Chip, Typography } from '@linagora/twake-mui'
+import {
+  Alert,
+  Button,
+  Chip,
+  Typography,
+  useBreakpoints
+} from '@linagora/twake-mui'
 import { useId, useState, type ReactElement } from 'react'
 import { Link as RouterLink } from 'react-router'
 
@@ -145,6 +151,7 @@ function SpaceNewsSection({
   const assistant = useAssistant()
   // Without a platform there is no assistant to ask
   const { sdk } = useSession()
+  const { isMobile } = useBreakpoints()
   if (!news.data) return null
   const rows = spaceNews(news.data, spaces)
   return (
@@ -158,12 +165,13 @@ function SpaceNewsSection({
             variant="secondary"
             size="small"
             startIcon={<Icon icon={Assistant} />}
+            aria-label={t('home.summarise')}
             aria-pressed={assistant.open}
             onClick={() => {
               assistant.setOpen(!assistant.open)
             }}
           >
-            {t('home.summarise')}
+            {t(isMobile ? 'home.summariseShort' : 'home.summarise')}
           </Button>
         )}
       </div>

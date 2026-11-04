@@ -11,6 +11,7 @@
     "newItems": "%{smart_count} новая запись |||| %{smart_count} новые записи |||| %{smart_count} новых записей",
     "mentions": "%{smart_count} упоминание |||| %{smart_count} упоминания |||| %{smart_count} упоминаний",
     "summarise": "Кратко с Twake AI",
+    "summariseShort": "Кратко",
     "summaryRequest": "Кратко расскажи, что нового в моих пространствах с моего последнего визита."
   },
   "spaceHome": {

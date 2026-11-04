@@ -11,6 +11,7 @@
     "newItems": "%{smart_count} new item |||| %{smart_count} new items",
     "mentions": "%{smart_count} mention |||| %{smart_count} mentions",
     "summarise": "Summarise with Twake AI",
+    "summariseShort": "Summarise",
     "summaryRequest": "Summarise what is new in my spaces since my last visit."
   },
   "spaceHome": {

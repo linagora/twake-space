@@ -11,6 +11,7 @@
     "newItems": "%{smart_count} mục mới",
     "mentions": "%{smart_count} lượt nhắc đến",
     "summarise": "Tóm tắt với Twake AI",
+    "summariseShort": "Tóm tắt",
     "summaryRequest": "Tóm tắt những gì mới trong các không gian của tôi kể từ lần truy cập trước."
   },
   "spaceHome": {

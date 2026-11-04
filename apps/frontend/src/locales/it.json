@@ -11,6 +11,7 @@
     "newItems": "%{smart_count} nuovo elemento |||| %{smart_count} nuovi elementi",
     "mentions": "%{smart_count} menzione |||| %{smart_count} menzioni",
     "summarise": "Riassumi con Twake AI",
+    "summariseShort": "Riassumi",
     "summaryRequest": "Riassumi le novità nei miei spazi dalla mia ultima visita."
   },
   "spaceHome": {
