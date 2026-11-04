@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import type { Badge } from '@linagora/twake-embed'
 import { createRef } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { EmbedPath } from '@/application/embeddedApps'
 import type { SessionService } from '@/application/session'
@@ -121,6 +121,10 @@ function reportedBadges(): (readonly Badge[])[] {
 }
 
 describe('EmbeddedAppFrame', () => {
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
   it('frames the app in a sandbox, named for its overlay', async () => {
     await renderFrame()
     await appReady()
@@ -214,6 +218,38 @@ describe('EmbeddedAppFrame', () => {
     await waitFor(() => {
       postFromFrame({ type: 'twake-embed:login-required' })
       expect(session.signIn).toHaveBeenCalledOnce()
+    })
+  })
+
+  it('signs in again once when the embed still asks after that sign-in', async () => {
+    const session = fakeSession()
+    await renderFrame(session)
+    await waitFor(() => {
+      postFromFrame({ type: 'twake-embed:login-required' })
+      expect(session.signIn).toHaveBeenCalledOnce()
+    })
+    // Back from the SSO: the page and its frame load again
+    unmountFrame()
+    await renderFrame(session)
+
+    postFromFrame({ type: 'twake-embed:login-required' })
+    bridgeCall('notifyLoginRequired')
+
+    expect(session.signIn).toHaveBeenCalledOnce()
+  })
+
+  it('signs in again when the sign-in it asked for failed', async () => {
+    const session = fakeSession()
+    vi.mocked(session.signIn).mockRejectedValueOnce(new Error('sso down'))
+    await renderFrame(session)
+
+    await waitFor(() => {
+      bridgeCall('notifyLoginRequired')
+      expect(session.signIn).toHaveBeenCalledOnce()
+    })
+    await waitFor(() => {
+      bridgeCall('notifyLoginRequired')
+      expect(session.signIn).toHaveBeenCalledTimes(2)
     })
   })
 
