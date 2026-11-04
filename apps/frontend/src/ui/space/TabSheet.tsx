@@ -33,11 +33,13 @@ const TAB_ICONS: Record<Tab, IconProps['icon']> = {
 export function TabSheet({
   space,
   tabs,
-  current
+  current,
+  compact = false
 }: {
   space: Space
   tabs: { tab: Tab; state: TabState }[]
   current: Tab
+  compact?: boolean
 }): ReactElement {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -64,6 +66,7 @@ export function TabSheet({
       <SheetSelect
         icon={<Icon icon={TAB_ICONS[current]} />}
         open={open}
+        compact={compact}
         aria-label={shown.ariaLabel}
         onClick={() => {
           setOpen(true)

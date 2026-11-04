@@ -272,6 +272,48 @@ describe('SpaceScreen', () => {
     }
   })
 
+  it('holds a one line header at the top on a phone once the header has scrolled away', async () => {
+    stubPhoneScreen()
+    let report: (
+      entries: Pick<IntersectionObserverEntry, 'isIntersecting'>[]
+    ) => void = () => undefined
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(
+          callback: (
+            entries: Pick<IntersectionObserverEntry, 'isIntersecting'>[]
+          ) => void
+        ) {
+          report = callback
+        }
+        observe() {
+          report([{ isIntersecting: true }])
+        }
+        disconnect = vi.fn()
+      }
+    )
+    try {
+      renderAt('/spaces/a1/feed')
+      expect(
+        await screen.findAllByRole('button', { name: 'Feed' })
+      ).toHaveLength(1)
+
+      // Two changes in one batch: the last one holds
+      act(() => {
+        report([{ isIntersecting: true }, { isIntersecting: false }])
+      })
+
+      const pinned = screen.getByRole('region', { name: 'Roadmap' })
+      expect(within(pinned).getByRole('button', { name: 'Feed' })).toBeVisible()
+      expect(
+        within(pinned).getByRole('button', { name: 'More actions for Roadmap' })
+      ).toBeInTheDocument()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('shows that the tabs scroll when they overflow, on a touch screen too', async () => {
     vi.stubGlobal(
       'IntersectionObserver',

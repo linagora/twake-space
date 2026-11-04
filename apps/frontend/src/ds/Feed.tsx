@@ -70,6 +70,7 @@ import {
   Videocam
 } from '@/ds/icons'
 import { NameAvatar, useNarrowScreen } from '@/ds/AppFrame'
+import { PINNED_HEADER_HEIGHT } from '@/ds/Page'
 import type { SpaceTokens } from '@/ds/theme'
 
 // How close to the newest item still counts as being there, and how close to
@@ -84,7 +85,8 @@ const BUBBLE_WIDTH = 600
 const RevealContext = createContext<(row: HTMLElement) => void>(() => undefined)
 
 // Where the rows scroll: the list itself, or the whole page below lg. `edge`
-// is the top of the visible area on the screen.
+// is the top of the visible area on the screen: on the page, under the
+// space's pinned header.
 interface ScrollView {
   top: number
   height: number
@@ -102,7 +104,7 @@ function scrollView(
         top: window.scrollY,
         height: document.documentElement.scrollHeight,
         client: window.innerHeight,
-        edge: 0
+        edge: PINNED_HEADER_HEIGHT
       }
     : {
         top: list.scrollTop,
@@ -125,6 +127,7 @@ export function FeedLayout({
   composer,
   placeKey,
   latestLabel,
+  topLabel,
   onAtEndChange,
   onNearTop
 }: {
@@ -135,6 +138,7 @@ export function FeedLayout({
   composer: ReactNode
   placeKey: string | null
   latestLabel: string
+  topLabel: string
   onAtEndChange?: (atEnd: boolean) => void
   onNearTop?: () => void
 }): ReactElement {
@@ -144,11 +148,15 @@ export function FeedLayout({
   const content = useRef<HTMLDivElement>(null)
   const atEnd = useRef(true)
   const [behind, setBehind] = useState(false)
+  const [down, setDown] = useState(false)
   // The first row in view, and where it sits on the screen: when the list
   // grows above or shrinks, the rows hold still under the eye.
   const anchor = useRef<{ row: Element; top: number } | null>(null)
   // A scroll this layout made itself is not the person scrolling.
   const ownScroll = useRef(false)
+  // Back to top holds the page there while older rows come in above, until
+  // the person scrolls.
+  const atTop = useRef(false)
 
   const reportAtEnd = useEffectEvent((value: boolean) => {
     onAtEndChange?.(value)
@@ -191,6 +199,8 @@ export function FeedLayout({
     const kept = anchor.current
     if (atEnd.current) {
       scrollTo(at.height)
+    } else if (atTop.current) {
+      scrollTo(0)
     } else if (
       kept?.row.isConnected &&
       // At the very top, the list resizing pushes the first rows down like a
@@ -208,6 +218,11 @@ export function FeedLayout({
     // the rows may have moved again: the anchor it set still holds.
     measure(own)
     const at = view()
+    // Back to top waits for the person to scroll: the feed opens far down
+    if (!own && at) {
+      atTop.current = false
+      setDown(at.top > at.client / 2)
+    }
     const rows = content.current
     if (at && rows && at.edge - rows.getBoundingClientRect().top < NEAR_TOP) {
       onNearTop?.()
@@ -224,12 +239,20 @@ export function FeedLayout({
   // scroll short of the end.
   const toEnd = () => {
     atEnd.current = true
+    atTop.current = false
     scrollTo(view()?.height ?? 0)
+    measure()
+  }
+  const toTop = () => {
+    atTop.current = true
+    setDown(false)
+    scrollTo(0)
     measure()
   }
   const reveal = useCallback((row: HTMLElement) => {
     const at = scrollView(scroller.current, onPage.current)
     if (!at) return
+    atTop.current = false
     const box = row.getBoundingClientRect()
     scrollTo(at.top + box.top - at.edge - (at.client - box.height) / 2)
     measure()
@@ -274,6 +297,7 @@ export function FeedLayout({
     const list = scroller.current
     const at = scrollView(list, onPage.current)
     if (placeKey === null || !list || !at) return
+    atTop.current = false
     const mark = list.querySelector('[data-feed-new]')
     scrollTo(
       mark ? at.top + mark.getBoundingClientRect().top - at.edge : at.height
@@ -340,32 +364,69 @@ export function FeedLayout({
             <RevealContext value={reveal}>{children}</RevealContext>
           </Box>
         </Box>
-        {behind && (
-          <Button
-            size="small"
-            startIcon={<Icon icon={Down} size={16} />}
-            onClick={toEnd}
-            // On the page the list's bottom can be off screen: hold it above
-            // the bottom bar instead
-            sx={{
-              position: pageScrolls ? 'fixed' : 'absolute',
-              bottom: pageScrolls
-                ? 'calc(var(--sidebarHeight, 0px) + 16px)'
-                : 16,
-              zIndex: pageScrolls ? 'appBar' : undefined,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              borderRadius: 100,
-              boxShadow: 2
-            }}
-          >
-            {latestLabel}
-          </Button>
-        )}
       </Box>
       {/* Sending a message brings the person back to the newest items. */}
-      <Box onSubmitCapture={toEnd}>{composer}</Box>
+      <Box
+        onSubmitCapture={toEnd}
+        sx={
+          pageScrolls
+            ? {
+                position: 'sticky',
+                bottom: 'var(--sidebarHeight, 0px)',
+                zIndex: 1,
+                ...(composer ? { py: 1, bgcolor: 'background.paper' } : {})
+              }
+            : { position: 'relative' }
+        }
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 'calc(100% + 16px)',
+            left: 0,
+            right: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 1,
+            pointerEvents: 'none',
+            '& > *': { pointerEvents: 'auto' }
+          }}
+        >
+          {pageScrolls && down && (
+            <JumpButton icon={Top} onClick={toTop}>
+              {topLabel}
+            </JumpButton>
+          )}
+          {behind && (
+            <JumpButton icon={Down} onClick={toEnd}>
+              {latestLabel}
+            </JumpButton>
+          )}
+        </Box>
+        {composer}
+      </Box>
     </Box>
+  )
+}
+
+function JumpButton({
+  icon,
+  onClick,
+  children
+}: {
+  icon: IconProps['icon']
+  onClick: () => void
+  children: ReactNode
+}): ReactElement {
+  return (
+    <Button
+      size="small"
+      startIcon={<Icon icon={icon} size={16} />}
+      onClick={onClick}
+      sx={{ borderRadius: 100, boxShadow: 2 }}
+    >
+      {children}
+    </Button>
   )
 }
 

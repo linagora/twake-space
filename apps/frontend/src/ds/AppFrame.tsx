@@ -281,6 +281,7 @@ export function AppFrame({
           sx={theme => ({
             height: 'auto',
             position: 'relative',
+            [theme.breakpoints.down('lg')]: { overflow: 'clip visible' },
             [theme.breakpoints.up('lg')]: alone
               ? { m: 0, borderRadius: 0 }
               : bare

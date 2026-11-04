@@ -358,6 +358,7 @@
     "loadOlder": "Tải cũ hơn",
     "new": "Mới",
     "latest": "Đến mới nhất",
+    "top": "Lên đầu trang",
     "loadOlderFailed": "Không thể tải các mục cũ hơn.",
     "filter": "Lọc theo",
     "filters": {

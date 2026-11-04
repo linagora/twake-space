@@ -358,6 +358,7 @@
     "loadOlder": "Load older",
     "new": "New",
     "latest": "Jump to latest",
+    "top": "Back to top",
     "loadOlderFailed": "Could not load older entries.",
     "filter": "Filter by",
     "filters": {

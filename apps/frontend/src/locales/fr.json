@@ -358,6 +358,7 @@
     "loadOlder": "Charger les plus anciens",
     "new": "Nouveau",
     "latest": "Aller aux plus récents",
+    "top": "Revenir en haut",
     "loadOlderFailed": "Impossible de charger les plus anciens.",
     "filter": "Filtrer par",
     "filters": {

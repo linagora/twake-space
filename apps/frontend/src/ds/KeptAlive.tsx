@@ -1,6 +1,8 @@
 import { Box } from '@linagora/twake-mui'
 import type { HTMLAttributes, ReactElement, ReactNode } from 'react'
 
+import { PINNED_HEADER_HEIGHT } from '@/ds/Page'
+
 // Holds what must survive while hidden (an app's frame): hidden, it keeps its
 // size and its state, out of the layout and out of reach (`inert`). Not
 // `display: none`, which would size the app to nothing. `reachable` keeps it
@@ -45,8 +47,9 @@ export function KeptAlive({
 // The place of the frames, under the shell's content: in the flow, edge to
 // edge (an app keeps its own margins), while a framed tab shows; hidden over
 // the content otherwise, so the frames keep a real size. Below lg, where the
-// page scrolls as a whole, it is the screen's height above the bottom bar:
-// the header above scrolls away and leaves the whole screen to the app.
+// page scrolls as a whole, it is the screen's height between the space's
+// pinned header and the bottom bar: the full header above scrolls away and
+// leaves the rest of the screen to the app.
 export function KeptAliveStack({
   active,
   reachable = false,
@@ -73,7 +76,7 @@ export function KeptAliveStack({
               position: 'relative',
               minHeight: 0,
               [theme.breakpoints.down('lg')]: {
-                height: 'calc(100dvh - var(--sidebarHeight, 0px))'
+                height: `calc(100dvh - var(--sidebarHeight, 0px) - ${String(PINNED_HEADER_HEIGHT)}px)`
               }
             })
           : {

@@ -1,6 +1,7 @@
 import { Icon } from '@linagora/twake-icons'
 import {
   Alert,
+  Box,
   Button,
   Link,
   Tab,
@@ -27,6 +28,7 @@ import {
   CompactSpaceHeader,
   LoadingRows,
   Page,
+  PinnedSpaceHeader,
   SpaceHeader,
   TabPanel
 } from '@/ds/Page'
@@ -101,6 +103,7 @@ export function SpaceScreen(): ReactElement {
   // back onto the button that gave the page
   const fillButton = useRef<HTMLButtonElement>(null)
   const leaveButton = useRef<HTMLButtonElement>(null)
+  const header = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const next = focusNext.current
     if (next === null) return
@@ -182,86 +185,116 @@ export function SpaceScreen(): ReactElement {
           tab={label}
         />
       ) : (
-        <SpaceHeader
-          avatar={
-            <NameAvatar
-              name={space.data.name}
-              color={space.data.color}
-              size="m"
+        <>
+          <PinnedSpaceHeader
+            header={header}
+            label={space.data.name}
+            avatar={
+              <NameAvatar
+                name={space.data.name}
+                color={space.data.color}
+                size="s"
+              />
+            }
+            tab={
+              <TabSheet
+                space={space.data}
+                tabs={tabs}
+                current={current.tab}
+                compact
+              />
+            }
+            actions={<SpaceActions space={space.data} />}
+          />
+          <Box ref={header}>
+            <SpaceHeader
+              avatar={
+                <NameAvatar
+                  name={space.data.name}
+                  color={space.data.color}
+                  size="m"
+                />
+              }
+              title={space.data.name}
+              select={isMobile}
+              actions={
+                <>
+                  <IconButton
+                    ref={fillButton}
+                    size="small"
+                    label={t('space.fullPage')}
+                    onClick={() => {
+                      focusNext.current = 'leave'
+                      // The page given to the tab has no button to close the assistant with
+                      assistant.setOpen(false)
+                      fillPage.fill(spaceId)
+                    }}
+                  >
+                    <Icon icon={OpenInFullIcon} />
+                  </IconButton>
+                  <SpaceActions space={space.data} />
+                </>
+              }
+              tabs={
+                isMobile ? (
+                  <TabSheet
+                    space={space.data}
+                    tabs={tabs}
+                    current={current.tab}
+                  />
+                ) : (
+                  <Tabs
+                    narrowed
+                    variant="scrollable"
+                    scrollButtons="auto"
+                    allowScrollButtonsMobile
+                    value={current.tab}
+                    onChange={(_event, value: string) => {
+                      void navigate(`/spaces/${spaceId}/${value}`)
+                    }}
+                  >
+                    {tabs.map(item => {
+                      const app = embeddedApp(item.tab)
+                      const count = app
+                        ? tabCount(badges, space.data, app.app)
+                        : 0
+                      const name = t(`tabs.${item.tab}`)
+                      return (
+                        <Tab
+                          key={item.tab}
+                          value={item.tab}
+                          label={
+                            item.tab === 'home' ? (
+                              <Icon icon={Home} size={24} />
+                            ) : (
+                              <CountedLabel
+                                label={name}
+                                count={badgeLabel(count)}
+                              />
+                            )
+                          }
+                          aria-label={
+                            count > 0
+                              ? t('tabs.withCount', {
+                                  app: name,
+                                  smart_count: count
+                                })
+                              : item.tab === 'home'
+                                ? name
+                                : undefined
+                          }
+                          disabled={item.state === 'off'}
+                          id={`tab-${item.tab}`}
+                          aria-controls={`panel-${item.tab}`}
+                        />
+                      )
+                    })}
+                  </Tabs>
+                )
+              }
             />
-          }
-          title={space.data.name}
-          select={isMobile}
-          actions={
-            <>
-              <IconButton
-                ref={fillButton}
-                size="small"
-                label={t('space.fullPage')}
-                onClick={() => {
-                  focusNext.current = 'leave'
-                  // The page given to the tab has no button to close the assistant with
-                  assistant.setOpen(false)
-                  fillPage.fill(spaceId)
-                }}
-              >
-                <Icon icon={OpenInFullIcon} />
-              </IconButton>
-              <SpaceActions space={space.data} />
-            </>
-          }
-          tabs={
-            isMobile ? (
-              <TabSheet space={space.data} tabs={tabs} current={current.tab} />
-            ) : (
-              <Tabs
-                narrowed
-                variant="scrollable"
-                scrollButtons="auto"
-                allowScrollButtonsMobile
-                value={current.tab}
-                onChange={(_event, value: string) => {
-                  void navigate(`/spaces/${spaceId}/${value}`)
-                }}
-              >
-                {tabs.map(item => {
-                  const app = embeddedApp(item.tab)
-                  const count = app ? tabCount(badges, space.data, app.app) : 0
-                  const name = t(`tabs.${item.tab}`)
-                  return (
-                    <Tab
-                      key={item.tab}
-                      value={item.tab}
-                      label={
-                        item.tab === 'home' ? (
-                          <Icon icon={Home} size={24} />
-                        ) : (
-                          <CountedLabel
-                            label={name}
-                            count={badgeLabel(count)}
-                          />
-                        )
-                      }
-                      aria-label={
-                        count > 0
-                          ? t('tabs.withCount', {
-                              app: name,
-                              smart_count: count
-                            })
-                          : item.tab === 'home'
-                            ? name
-                            : undefined
-                      }
-                      disabled={item.state === 'off'}
-                      id={`tab-${item.tab}`}
-                      aria-controls={`panel-${item.tab}`}
-                    />
-                  )
-                })}
-              </Tabs>
-            )
-          }
-        />
+          </Box>
+        </>
       )}
       {!filled && appsOff && (
         <Alert severity="info" className="u-mt-1 u-mb-1">
