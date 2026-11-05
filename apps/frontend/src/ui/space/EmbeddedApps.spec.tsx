@@ -504,12 +504,29 @@ describe('EmbeddedApps', () => {
     })
   })
 
-  it("floats Chat's call in a window while Chat asks for the page, from its frame only", async () => {
+  it("keeps Chat's call in the Chat tab, where its room shows beside it", async () => {
+    renderAt('/spaces/a1/chat')
+    await screen.findByTitle('Chat')
+    const chat = frame('Chat')
+    await waitFor(() => {
+      fillPage(true)
+      expect(getComputedStyle(chat).position).not.toBe('fixed')
+    })
+
+    expect(
+      screen.queryByRole('region', { name: 'Video meeting' })
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('tabpanel')).toContainElement(chat)
+  })
+
+  it("floats Chat's call in a window on another tab while Chat asks for the page, from its frame only", async () => {
     renderAt('/spaces/a1/chat')
     await screen.findByTitle('Chat')
     const chat = frame('Chat')
     const callWindow = () =>
       screen.queryByRole('region', { name: 'Video meeting' })
+    fireEvent.click(screen.getByRole('tab', { name: 'Feed' }))
+    await screen.findByRole('tab', { name: 'Feed', selected: true })
 
     await waitFor(() => {
       fillPage(true)
@@ -539,24 +556,32 @@ describe('EmbeddedApps', () => {
     expect(callWindow()).not.toBeInTheDocument()
   })
 
-  it("keeps Chat's call within reach on another tab, and the same frame", async () => {
+  it("keeps Chat's call within reach on another tab, and the same frame, back in its tab on Chat", async () => {
     renderAt('/spaces/a1/chat')
     await screen.findByTitle('Chat')
     const chat = frame('Chat')
-    await waitFor(() => {
-      fillPage(true)
-      expect(getComputedStyle(chat).position).toBe('fixed')
-    })
+    fillPage(true)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Feed' }))
     await screen.findByRole('tab', { name: 'Feed', selected: true })
 
     expect(frame('Chat')).toBe(chat)
-    expect(getComputedStyle(chat).position).toBe('fixed')
+    await waitFor(() => {
+      expect(getComputedStyle(chat).position).toBe('fixed')
+    })
     expect(getComputedStyle(chat).visibility).toBe('visible')
     expect(chat.closest('[inert]')).toBeNull()
     expect(chat.closest('[aria-hidden]')).toBeNull()
     expect(outOfViewport(chat)).toBe(false)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Chat' }))
+    await screen.findByRole('tab', { name: 'Chat', selected: true })
+
+    expect(frame('Chat')).toBe(chat)
+    expect(getComputedStyle(chat).position).not.toBe('fixed')
+    expect(
+      screen.queryByRole('region', { name: 'Video meeting' })
+    ).not.toBeInTheDocument()
   })
 
   it("keeps Chat's call in its conversation on another space until it ends", async () => {
@@ -564,16 +589,16 @@ describe('EmbeddedApps', () => {
     await screen.findByTitle('Chat')
     const chat = frame('Chat')
     postFromFrame(embedPath('!s:acme', '', true), CHAT, 'Chat')
-    await waitFor(() => {
-      fillPage(true)
-      expect(getComputedStyle(chat).position).toBe('fixed')
-    })
+    fillPage(true)
     const post = spyOnFrame('Chat')
 
     go('/spaces/b2/tasks')
     await screen.findByRole('tab', {
       name: 'Projects and tasks',
       selected: true
+    })
+    await waitFor(() => {
+      expect(getComputedStyle(chat).position).toBe('fixed')
     })
     expect(post).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: 'twake-embed:load' }),
