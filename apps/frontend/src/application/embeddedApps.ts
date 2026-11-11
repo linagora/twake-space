@@ -4,6 +4,7 @@ import {
   navigateMessage,
   parseAppMessage,
   pathBelow,
+  staysBelow,
   type LoadMessage,
   type NavigateMessage
 } from '@linagora/twake-embed'
@@ -130,6 +131,7 @@ export function parseEmbedPath(
   const message = parseAppMessage(data)
   if (message?.type === 'twake-embed:path') {
     const { resourceId, path, replace } = message
+    if (!staysBelow(embedPath, path)) return null
     return { dialect: 'embed', resourceId, path, replace }
   }
   if (
@@ -147,7 +149,7 @@ export function legacyEmbedPath(
   embedPath: string
 ): EmbedPath | null {
   const path = pathBelow(embedPath, framePath)
-  return path === null
+  return path === null || !staysBelow(embedPath, path)
     ? null
     : { dialect: 'legacy', resourceId: null, path, replace: true }
 }
