@@ -11,6 +11,7 @@ import {
   use,
   useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -22,16 +23,15 @@ import { Link as RouterLink } from 'react-router'
 
 import {
   ASSISTANT_INTENT,
-  assistantService,
-  parseAssistantMessage,
+  ASSISTANT_READY_TIMEOUT,
+  parseAnswer,
   type AnswerResult,
-  type AssistantConfig,
-  type AssistantService
+  type AssistantConfig
 } from '@/application/assistant'
 import type { Sdk, SdkStatus } from '@linagora/twake-sdk'
+import { Intents, type StartedIntent } from 'cozy-interapp'
 
 import { AsideClosable } from '@/ds/AppFrame'
-import { EmbedFrame } from '@/ds/EmbedFrame'
 import { LoadingRows } from '@/ds/Page'
 import { useI18n } from '@/ui/i18n/useI18n'
 import { useServices } from '@/ui/services/Services'
@@ -150,73 +150,59 @@ export function AssistantFrame({
   const status = useSdkStatus(sdk)
   const ready = status === 'ready' ? sdk : null
   const { colorScheme } = useColorScheme()
-  const frame = useRef<HTMLIFrameElement>(null)
+  const container = useRef<HTMLDivElement>(null)
+  const started = useRef<StartedIntent>(null)
+  const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading')
+  const theme =
+    colorScheme === 'light' || colorScheme === 'dark' ? colorScheme : null
+  const full = useMemo<AssistantConfig | null>(
+    () => config && { ...config, ...(theme && { theme: { type: theme } }) },
+    [config, theme]
+  )
+  const opening = full !== null
+
+  const answer = useEffectEvent((result: unknown) => {
+    const answered = parseAnswer(result)
+    // Not the result: warnings reach Sentry, and it holds the answer
+    if (answered === null) console.warn('Assistant result ignored')
+    else onResult?.(answered)
+  })
+  const end = useEffectEvent(onClose)
+  const title = useEffectEvent(() => t('assistant.title'))
   // An intent serves one frame: this conversation's, for as long as it shows.
-  const [intent, setIntent] = useState<
-    | { status: 'pending' }
-    | { status: 'failed' }
-    | { status: 'ready'; service: AssistantService | null }
-  >({ status: 'pending' })
   useEffect(() => {
-    if (!ready) return
-    let shown = true
-    ready.createIntent(ASSISTANT_INTENT).then(
-      created => {
-        if (shown) {
-          setIntent({ status: 'ready', service: assistantService(created) })
-        }
+    const element = container.current
+    if (!ready || !opening || !element) return
+    const running = new Intents({ client: ready })
+      .create(ASSISTANT_INTENT.action, ASSISTANT_INTENT.type)
+      .start(element, {
+        title: title(),
+        className: 'u-w-100 u-flex-auto u-bdw-0',
+        readyTimeout: ASSISTANT_READY_TIMEOUT,
+        onServiceReady: () => {
+          setState('ready')
+        },
+        onResult: answer
+      })
+    started.current = running
+    running.then(
+      () => {
+        end()
       },
       (error: unknown) => {
         console.error('Assistant intent failed:', error)
-        if (shown) setIntent({ status: 'failed' })
+        setState('failed')
       }
     )
     return () => {
-      shown = false
+      running.stop()
+      started.current = null
     }
-  }, [ready])
-  const service = intent.status === 'ready' ? intent.service : null
-  const theme =
-    colorScheme === 'light' || colorScheme === 'dark' ? colorScheme : null
-
+  }, [ready, opening])
+  // Sent at its `ready`; once ready, the assistant takes new data as they come
   useEffect(() => {
-    if (!service || config === null) return
-    const onMessage = (event: MessageEvent): void => {
-      if (
-        event.origin !== service.origin ||
-        event.source !== frame.current?.contentWindow
-      ) {
-        return
-      }
-      const data: unknown = event.data
-      const message = parseAssistantMessage(data, service.intentId)
-      if (message === null) {
-        // Its type only: warnings reach Sentry, and the data holds the answer
-        const type =
-          typeof data === 'object' &&
-          data !== null &&
-          'type' in data &&
-          typeof data.type === 'string'
-            ? data.type
-            : typeof data
-        console.warn('Assistant message ignored:', type)
-      } else if (message.kind === 'ready') {
-        const full: AssistantConfig = {
-          ...config,
-          ...(theme && { theme: { type: theme } })
-        }
-        frame.current.contentWindow?.postMessage(full, service.origin)
-      } else if (message.kind === 'result') {
-        onResult?.(message.result)
-      } else if (message.kind === 'cancel') {
-        onClose()
-      }
-    }
-    window.addEventListener('message', onMessage)
-    return () => {
-      window.removeEventListener('message', onMessage)
-    }
-  }, [service, config, theme, onResult, onClose])
+    if (full) started.current?.sendData(full)
+  }, [full, opening, ready])
 
   if (status === 'public') {
     return (
@@ -225,16 +211,7 @@ export function AssistantFrame({
       </Unavailable>
     )
   }
-  if (intent.status === 'pending' || (service && config === null)) {
-    return (
-      <Unavailable onClose={onClose}>
-        <div className="u-p-1">
-          <LoadingRows count={3} label={t('assistant.loading')} />
-        </div>
-      </Unavailable>
-    )
-  }
-  if (!service) {
+  if (state === 'failed') {
     return (
       <Unavailable onClose={onClose}>
         <Alert severity="error" className="u-m-1">
@@ -243,15 +220,25 @@ export function AssistantFrame({
       </Unavailable>
     )
   }
+  // The frame loads hidden, under the loading rows, until the assistant is ready
+  const loading = state === 'loading'
   return (
     <>
-      {children}
-      <EmbedFrame
-        frameRef={frame}
-        src={service.href}
-        title={t('assistant.title')}
-        allow="clipboard-write"
-      />
+      {loading ? (
+        <Unavailable onClose={onClose}>
+          <div className="u-p-1">
+            <LoadingRows count={3} label={t('assistant.loading')} />
+          </div>
+        </Unavailable>
+      ) : (
+        children
+      )}
+      {ready && opening && (
+        <div
+          ref={container}
+          className={loading ? 'u-dn' : 'u-flex u-flex-column u-flex-auto'}
+        />
+      )}
     </>
   )
 }
