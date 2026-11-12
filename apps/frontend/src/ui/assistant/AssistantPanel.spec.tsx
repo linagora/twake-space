@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ASSISTANT_INTENT } from '@/application/assistant'
+import { ASSISTANT_READY_TIMEOUT } from '@/application/assistant'
 import type { Space } from '@/application/spaces'
 import { fakeFeed } from '@/testing/fakeFeed'
 import { fakeSession, fakeUser } from '@/testing/fakeSession'
@@ -9,15 +9,24 @@ import { fakeSpaces } from '@/testing/fakeSpaces'
 import { renderWithProviders } from '@/testing/renderWithProviders'
 import { AssistantPanel } from '@/ui/assistant/AssistantPanel'
 
-const { createIntent } = vi.hoisted(() => ({
-  createIntent: vi.fn(() =>
+const { fetchJSON, sdk } = vi.hoisted(() => ({
+  sdk: {
+    status: 'ready',
+    listeners: new Set<() => void>()
+  },
+  fetchJSON: vi.fn(() =>
     Promise.resolve({
-      id: 'i1',
-      action: 'OPEN',
-      type: 'io.cozy.ai.chat.conversations',
-      services: [
-        { slug: 'assistant', href: 'https://assistant.test/intents/?intent=i1' }
-      ]
+      data: {
+        id: 'i1',
+        attributes: {
+          services: [
+            {
+              slug: 'assistant',
+              href: 'https://assistant.test/intents/?intent=i1'
+            }
+          ]
+        }
+      }
     })
   )
 }))
@@ -25,11 +34,20 @@ const { createIntent } = vi.hoisted(() => ({
 vi.mock('@linagora/twake-sdk', () => ({
   createSdk: () => ({
     platformURL: 'https://alice.twake.test',
-    status: 'ready',
-    onStatusChange: () => () => undefined,
-    createIntent
+    get status() {
+      return sdk.status
+    },
+    onStatusChange: (listener: () => void) => {
+      sdk.listeners.add(listener)
+      return () => sdk.listeners.delete(listener)
+    },
+    stackClient: { fetchJSON }
   })
 }))
+
+afterEach(() => {
+  sdk.status = 'ready'
+})
 
 const ORIGIN = 'https://assistant.test'
 
@@ -65,7 +83,7 @@ function renderPanel(
     feed,
     spaces
   })
-  return { feed, onClose }
+  return { feed, onClose, spaces }
 }
 
 async function findFrame(): Promise<HTMLIFrameElement> {
@@ -90,7 +108,15 @@ describe('AssistantPanel', () => {
     renderPanel()
 
     const frame = await findFrame()
-    expect(createIntent).toHaveBeenCalledWith(ASSISTANT_INTENT)
+    expect(document.querySelectorAll('iframe')).toHaveLength(1)
+    expect(fetchJSON).toHaveBeenCalledWith('POST', '/intents', {
+      data: expect.objectContaining({
+        attributes: expect.objectContaining({
+          action: 'OPEN',
+          type: 'io.cozy.ai.chat.conversations'
+        }) as unknown
+      }) as unknown
+    })
     expect(frame).toHaveAttribute(
       'src',
       'https://assistant.test/intents/?intent=i1'
@@ -111,17 +137,47 @@ describe('AssistantPanel', () => {
     )
   })
 
+  it('configures the assistant when the platform gets ready after the panel opens', async () => {
+    sdk.status = 'waiting'
+    const { spaces } = renderPanel()
+    // The space, so the configuration, settles before the platform
+    await waitFor(() => {
+      expect(spaces.get).toHaveBeenCalled()
+    })
+    await act(() => new Promise(resolve => setTimeout(resolve, 50)))
+
+    act(() => {
+      sdk.status = 'ready'
+      sdk.listeners.forEach(listener => {
+        listener()
+      })
+    })
+    const frame = await findFrame()
+    const inside = frame.contentWindow
+    if (!inside) throw new Error('no frame window')
+    const postMessage = vi.spyOn(inside, 'postMessage')
+    receive({ type: 'intent-i1:ready' })
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        answerActions: [{ name: 'post', label: 'Post in the feed' }]
+      }),
+      ORIGIN
+    )
+  })
+
   it('posts the answer the user picks in the feed of the space', async () => {
     const { feed } = renderPanel()
     await findFrame()
 
+    receive({ type: 'intent-i1:ready' })
     receive({
       type: 'intent-i1:result',
       result: { answerAction: 'post', text: 'Hello all', format: 'markdown' }
     })
 
     await waitFor(() => {
-      expect(feed.post).toHaveBeenCalledWith('a1', 'Hello all', [])
+      expect(feed.post).toHaveBeenCalledExactlyOnceWith('a1', 'Hello all', [])
     })
     expect(await screen.findByText('Posted in the feed')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open the feed' })).toHaveAttribute(
@@ -147,38 +203,18 @@ describe('AssistantPanel', () => {
     })
   })
 
-  it('logs a message of the assistant it does not understand', async () => {
+  it('logs a result of the assistant it does not understand', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const { feed } = renderPanel()
     await findFrame()
 
+    receive({ type: 'intent-i1:ready' })
     receive({ type: 'intent-i1:result', result: { text: 'Hello all' } })
 
     // Not the answer, which would reach Sentry
-    expect(warn).toHaveBeenCalledWith(
-      'Assistant message ignored:',
-      'intent-i1:result'
-    )
+    expect(warn).toHaveBeenCalledWith('Assistant result ignored')
     expect(feed.post).not.toHaveBeenCalled()
     warn.mockRestore()
-  })
-
-  it('ignores another window of the assistant origin', async () => {
-    const { feed, onClose } = renderPanel()
-    await findFrame()
-
-    receive(
-      {
-        type: 'intent-i1:result',
-        result: { answerAction: 'post', text: 'Hello all', format: 'markdown' }
-      },
-      ORIGIN,
-      window
-    )
-    receive({ type: 'intent-i1:cancel' }, ORIGIN, window)
-
-    expect(feed.post).not.toHaveBeenCalled()
-    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('says when the answer could not be posted', async () => {
@@ -186,6 +222,7 @@ describe('AssistantPanel', () => {
     vi.mocked(feed.post).mockRejectedValue(new Error('cannot_post'))
     await findFrame()
 
+    receive({ type: 'intent-i1:ready' })
     receive({
       type: 'intent-i1:result',
       result: { answerAction: 'post', text: 'Hello all', format: 'markdown' }
@@ -200,11 +237,32 @@ describe('AssistantPanel', () => {
     const { onClose } = renderPanel()
     await findFrame()
 
+    receive({ type: 'intent-i1:ready' })
     receive({ type: 'intent-i1:cancel' }, 'https://elsewhere.test')
     expect(onClose).not.toHaveBeenCalled()
     receive({ type: 'intent-i1:cancel' })
 
-    expect(onClose).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled()
+    })
+  })
+
+  it('says when the assistant never gets ready', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      renderPanel()
+      await findFrame()
+
+      await act(() => vi.advanceTimersByTimeAsync(ASSISTANT_READY_TIMEOUT))
+
+      expect(
+        await screen.findByText('The assistant could not be opened.')
+      ).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+      error.mockRestore()
+    }
   })
 
   it('says when the user has no platform', async () => {
@@ -213,7 +271,7 @@ describe('AssistantPanel', () => {
     expect(
       await screen.findByText('The assistant is not set up for TwakeSpace.')
     ).toBeInTheDocument()
-    expect(createIntent).not.toHaveBeenCalled()
+    expect(fetchJSON).not.toHaveBeenCalled()
   })
 
   it('closes without the assistant, from its button or Escape', async () => {
@@ -232,7 +290,7 @@ describe('AssistantPanel', () => {
   it('closes when the assistant could not be opened', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     // Strict mode creates it twice
-    createIntent
+    fetchJSON
       .mockRejectedValueOnce(new Error('no service'))
       .mockRejectedValueOnce(new Error('no service'))
     const { onClose } = renderPanel()

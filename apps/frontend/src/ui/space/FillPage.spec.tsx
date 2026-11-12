@@ -12,7 +12,7 @@ vi.mock('@linagora/twake-sdk', () => ({
   createSdk: () => ({
     status: 'ready',
     onStatusChange: () => () => undefined,
-    createIntent: () => new Promise(() => undefined)
+    stackClient: { fetchJSON: () => new Promise(() => undefined) }
   })
 }))
 

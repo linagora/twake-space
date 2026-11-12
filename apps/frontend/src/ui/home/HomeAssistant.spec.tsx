@@ -15,11 +15,17 @@ vi.mock('@linagora/twake-sdk', () => ({
     platformURL: 'https://alice.twake.test',
     status: 'ready',
     onStatusChange: () => () => undefined,
-    createIntent: () =>
-      Promise.resolve({
-        id: 'i1',
-        services: [{ href: 'https://assistant.test/intents/?intent=i1' }]
-      })
+    stackClient: {
+      fetchJSON: () =>
+        Promise.resolve({
+          data: {
+            id: 'i1',
+            attributes: {
+              services: [{ href: 'https://assistant.test/intents/?intent=i1' }]
+            }
+          }
+        })
+    }
   })
 }))
 
