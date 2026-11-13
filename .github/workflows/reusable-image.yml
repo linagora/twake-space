@@ -36,6 +36,7 @@ jobs:
         with:
           context: .
           file: ${{ env.DOCKERFILE }}
+          build-args: BUILD_ID=${{ github.sha }}
           tags: ${{ env.LOCAL_IMAGE }}
           load: true
           cache-from: type=gha,scope=${{ inputs.project }}
@@ -73,6 +74,7 @@ jobs:
         with:
           context: .
           file: ${{ env.DOCKERFILE }}
+          build-args: BUILD_ID=${{ github.sha }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

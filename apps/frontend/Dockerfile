@@ -4,6 +4,8 @@ COPY package.json package-lock.json tsconfig.base.json ./
 COPY apps/frontend/package.json apps/frontend/
 RUN npm ci --workspace @twake-space/frontend --include-workspace-root --no-audit --no-fund
 COPY apps/frontend apps/frontend
+# The commit, in the bundle and in /version.json (rsbuild.config.ts)
+ARG BUILD_ID
 RUN npm run build --workspace @twake-space/frontend
 
 FROM nginxinc/nginx-unprivileged:1.31-alpine
