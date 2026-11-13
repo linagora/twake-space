@@ -6,6 +6,7 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) }
   },
+  define: { __BUILD_ID__: JSON.stringify('test') },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/testing/setupTests.ts'],
