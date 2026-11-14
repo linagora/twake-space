@@ -45,7 +45,7 @@ jobs:
 
   manifest:
     needs: [verify, check]
-    uses: linagora/twake-workflows/.github/workflows/publish-manifest.yml@578530b3996920ec3459d1ef1f322ec8b9fed2b7 # v1.5.0
+    uses: linagora/twake-workflows/.github/workflows/publish-manifest.yml@c6f6a4de61671a4e5d440d138c5544e4233b58c7 # v1.7.0
     with:
       tag-prefix: frontend-v
       package-json: apps/frontend/package.json
