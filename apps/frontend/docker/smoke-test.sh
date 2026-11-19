@@ -66,6 +66,8 @@ expect '/.env.js comes from the environment' "$(body "$BASE/.env.js")" '*var SSO
 expect '/.env.js carries the Drive template' "$(body "$BASE/.env.js")" '*var DRIVE_URL = "https://{slug}-drive.{domain}/"*'
 expect '/.env.js carries the feedback switch' "$(body "$BASE/.env.js")" '*var SENTRY_FEEDBACK_ENABLED = "true"*'
 expect '/.env.js is never cached' "$(header /.env.js Cache-Control)" 'no-store'
+expect '/version.json names the build' "$(body "$BASE/version.json")" '{"build":"*"}'
+expect '/version.json is never cached' "$(header /version.json Cache-Control)" 'no-store'
 script="$(body "$BASE/" | grep -o 'src="/static/js/index[^"]*"' | head -1 | cut -d'"' -f2)"
 expect 'hashed assets are cached for a year' "$(header "$script" Cache-Control)" '*immutable'
 csp="$(header / Content-Security-Policy)"
