@@ -273,6 +273,23 @@ describe('EmbeddedApps', () => {
     expect(path()).toHaveTextContent('/spaces/a1/tasks/boards/b2')
   })
 
+  it('keeps the address under the tab when a frame reports a path above its route', async () => {
+    renderAt('/spaces/a1/tasks')
+    await screen.findByTitle('Projects and tasks')
+    await reported(
+      embedPath('p1', '/boards/b1', true),
+      '/spaces/a1/tasks/boards/b1'
+    )
+
+    postFromFrame(embedPath('p1', '/../../../settings/api-tokens', false))
+    postFromFrame({
+      type: 'twake-tasks:path',
+      path: '/embed/projects/p1/../../settings'
+    })
+    await act(() => Promise.resolve())
+    expect(path()).toHaveTextContent('/spaces/a1/tasks/boards/b1')
+  })
+
   it('moves the frame on Back, within the resource', async () => {
     renderAt('/spaces/a1/tasks')
     await screen.findByTitle('Projects and tasks')
