@@ -49,7 +49,7 @@ flowchart LR
 
 ## Images and CI
 
-Both images go to `ghcr.io/<repository owner>/twake-space-frontend` and `ghcr.io/<repository owner>/twake-space-backend`. The workflows run per app, triggered by changes under `apps/<app>/`, the root `package.json`, lock file, `tsconfig.base.json` and `.dockerignore`, and the workflows themselves. Pull requests also watch `eslint.config.js`, `.prettierrc` and `.nvmrc`.
+Both images go to `ghcr.io/<repository owner>/twake-space-frontend` and `ghcr.io/<repository owner>/twake-space-backend`. The workflows run per app, triggered by changes under `apps/<app>/`, the root `package.json`, lock file, `tsconfig.base.json` and `.dockerignore`, and the workflows themselves. Pull requests also watch `rstack.config.mjs` and `.nvmrc`.
 
 - Pull request (and the merge queue): runs the app's check (`npm audit`, then `npm run check`, which lints, checks formatting, typechecks, tests and builds) and builds the image without pushing. The backend tests run against a `postgres:18` and a `redis:7-alpine` container.
 - Push to `main`: runs the check, then builds and pushes the image tagged `latest`.

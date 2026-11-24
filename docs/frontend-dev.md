@@ -54,7 +54,7 @@ flowchart LR
 - `ui/` renders screens from `ds/` components and reaches services only through `useServices()`, never through an adapter.
 - `index.tsx` wires the real adapters, and `mock.tsx` wires the memory ones. Rsbuild picks `mock.tsx` when `MOCK=1`, so production builds never include the seed.
 
-ESLint enforces these boundaries, and a few more rules:
+Rslint enforces these boundaries, and a few more rules:
 
 - Named exports only, no `enum` (use a string union), no `as unknown as T`.
 - UI from the `@linagora/twake-mui` entry point. Raw `@mui/*` and `@emotion/*`, `styled` and `sx` only in `ds/`. Layout with twake-css classes, never inline styles.

@@ -385,6 +385,7 @@ export function registerSpaceWriteRoutes(
       const image = request.body
       const contentType = request.headers['content-type']
         ?.split(';', 1)[0]
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- false positive of Rslint (web-infra-dev/rslint#2625)
         ?.trim()
         .toLowerCase()
       if (

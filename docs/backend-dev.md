@@ -173,4 +173,4 @@ A new scope is a new value in the `token_scope` enum in `modules/tokens/schema.t
 npm run check -w @twake-space/backend
 ```
 
-It runs ESLint, Prettier, the type check, the tests and the build. CI runs `npm audit` and then the same command, with a Postgres 18 and a Redis 7 container, so start `docker compose up -d` first. `npm run format -w @twake-space/backend` fixes the formatting.
+It runs Rslint, rs fmt, the type check, the tests and the build. CI runs `npm audit` and then the same command, with a Postgres 18 and a Redis 7 container, so start `docker compose up -d` first. `npm run format -w @twake-space/backend` fixes the formatting.
