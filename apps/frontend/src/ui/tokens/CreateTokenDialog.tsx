@@ -135,7 +135,7 @@ export function CreateTokenDialog({
           <>
             <TextField
               // A dialog moves focus to its first field (WAI-ARIA dialog pattern).
-              // eslint-disable-next-line jsx-a11y-x/no-autofocus
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               required
               label={t('apiTokens.name')}
