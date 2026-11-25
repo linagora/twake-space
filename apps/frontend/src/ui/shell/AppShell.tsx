@@ -9,6 +9,7 @@ import {
   NavText,
   SearchBar
 } from '@linagora/twake-mui'
+import { NewVersionDialog } from '@linagora/twake-react-new-version'
 import {
   useLayoutEffect,
   useRef,
@@ -200,6 +201,7 @@ export function AppShell(): ReactElement {
         <NotificationPermissionPrompt />
         <CallWindow />
         <AppFeedback />
+        <NewVersionDialog running={__BUILD_ID__} appName="Twake Space" />
         <Suggestions />
         {creating && (
           <CreateSpaceDialog
