@@ -74,6 +74,26 @@ describe('parseEmbedPath', () => {
     ).toBeNull()
   })
 
+  it('refuses a path that leaves the route, in both dialects', () => {
+    expect(
+      parseEmbedPath(
+        {
+          type: 'twake-embed:path',
+          resourceId: 'p1',
+          path: '/../../../settings',
+          replace: false
+        },
+        '/embed/projects/p1'
+      )
+    ).toBeNull()
+    expect(
+      parseEmbedPath(
+        { type: 'twake-tasks:path', path: '/embed/projects/p1/../../settings' },
+        '/embed/projects/p1'
+      )
+    ).toBeNull()
+  })
+
   it("reads Tasks' legacy message as a replace", () => {
     expect(
       parseEmbedPath(
