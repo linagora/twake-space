@@ -91,8 +91,9 @@ async function signInOnce(
 //   windows and dialogs: an empty page the app renders into, shown within
 //   the region the app reports (`twake-embed:overlay-region`),
 // - with `canFillPage`, a floating window while the app asks for the page
-//   (`twake-embed:fill-page`): Chat during a call, on whichever tab or page
-//   TwakeSpace shows, which stays usable,
+//   (`twake-embed:fill-page`): Chat during a call, on whichever other tab or
+//   page TwakeSpace shows, which stays usable. On its own tab the frame
+//   stays in place: the room shows beside the call,
 // - its call window for a Meet room the app holds a link to
 //   (`twake-embed:pip`): a room of this Meet only, anything else is dropped.
 // The frame's `src` is set once: the host moves it with messages.
@@ -105,6 +106,7 @@ export function EmbeddedAppFrame({
   overlayPath,
   allow,
   canFillPage = false,
+  shown = false,
   frameRef,
   onPath,
   onBadges,
@@ -123,6 +125,8 @@ export function EmbeddedAppFrame({
   // Permissions of this app alone, beyond the clipboard (Chat's calls)
   allow?: string | undefined
   canFillPage?: boolean | undefined
+  // Its tab is the one on screen
+  shown?: boolean | undefined
   frameRef: RefObject<HTMLIFrameElement | null>
   // The frame's URL, already checked to come from it
   onPath: (report: EmbedPath) => void
@@ -170,6 +174,7 @@ export function EmbeddedAppFrame({
 
   const [asksPage, setAsksPage] = useState(false)
   const floats = canFillPage && asksPage
+  const windowed = floats && !shown
   const [body, setBody] = useState<WindowBody | null>(null)
   const float = useRef(onFloat)
   useEffect(() => {
@@ -308,7 +313,7 @@ export function EmbeddedAppFrame({
         src={src}
         sandbox={SANDBOX}
         allow={allow === undefined ? ALLOW : `${ALLOW}; ${allow}`}
-        over={floats ? body : null}
+        over={windowed ? body : null}
         onLoad={() => {
           // A frame loaded again draws nothing on the overlay yet, and
           // floats no more
@@ -328,7 +333,7 @@ export function EmbeddedAppFrame({
           region={region}
         />
       )}
-      {floats &&
+      {windowed &&
         createPortal(
           <FloatingWindow
             title={t('call.window')}

@@ -383,6 +383,7 @@ export function EmbeddedApps(): ReactElement | null {
               overlayPath={EMBEDDED_APPS[app].overlayPath}
               allow={EMBEDDED_APPS[app].allow}
               canFillPage={EMBEDDED_APPS[app].canFillPage}
+              shown={shown?.app === app}
               frameRef={elements[app]}
               onFloat={floats => {
                 setFloating(current =>

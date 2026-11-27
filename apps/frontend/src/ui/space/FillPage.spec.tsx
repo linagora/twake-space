@@ -192,7 +192,7 @@ describe('full page', () => {
     expect(screen.getByRole('tabpanel', { name: 'Feed' })).toBe(panel)
   })
 
-  it("floats Chat's call over it, and keeps it once the call is done", async () => {
+  it("keeps Chat's call in its tab, and the full page once the call is done", async () => {
     renderAt('/spaces/space-1/chat')
     await screen.findByTitle('Chat')
     const chat = frame('Chat')
@@ -209,11 +209,12 @@ describe('full page', () => {
       })
     }
 
-    await waitFor(() => {
-      post(true)
-      expect(getComputedStyle(chat).position).toBe('fixed')
-    })
-    // The page under the call stays usable
+    post(true)
+    // On its own tab the call stays in the frame, where its room shows
+    expect(getComputedStyle(chat).position).not.toBe('fixed')
+    expect(
+      screen.queryByRole('region', { name: 'Video meeting' })
+    ).not.toBeInTheDocument()
     expect(isInert(leaveButton())).toBe(false)
 
     post(false)
